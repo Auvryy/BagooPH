@@ -534,6 +534,21 @@ This document tracks all completed work and prompts with dates and timestamps.
      - When page finishes loading and the loading screen smoothly fades away, `BAGOO` slides into view from left to right (`-translate-x-32 opacity-0` ➔ `translate-x-0 opacity-100` with cubic-bezier easing), followed immediately by `SHOP` on a staggered 200ms delay.
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 15.92s (`exit 0`).
 
+### 📌 Prompt 44: Responsive Mobile Layout, Centered Hero & Header Hamburger Menu
+- **Date & Time:** `2026-08-23 21:35:45 +08:00`
+- **User Prompt:**
+  > *"fix the 2 video cards again make sure they are still visible at lower screen size, and when it goes mobie view, make sure the bagoo shop is centered instead of fixleft sticky. make sure to fix mobile sizes of the other nav like make it hamburger when it becomes small!"*
+- **What was done:**
+  1. **Mobile Hamburger Drawer Navigation ([`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx)):**
+     - Integrated animated `Menu` and `X` toggle button on mobile viewport.
+     - Built slide-down mobile navigation drawer with quick direct links to *Shop Marketplace*, *Seller Centre*, and *Sign In*, while keeping a prominent *Register* CTA button in the mobile navbar.
+  2. **Centered Hero Typography on Mobile ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Centered `BAGOO` + `SHOP` headlines on mobile devices (`items-center justify-center text-center`) while preserving left-alignment on desktop viewports.
+  3. **Fully Responsive Stacked Video Cards:**
+     - Converted stacked video showcase from desktop-only (`hidden lg:block`) to fully responsive across all screen sizes.
+     - On mobile/tablet: neatly centered below the headline with scaled dimensions (`w-52 sm:w-60 h-64 sm:h-76`), retaining the dual-tilted card stack with Card 1 (`store-shopping-1.webm`) prominently peeking out and Card 2 (`store-shopping-2.webm`) elevated on top.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.68s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -541,7 +556,8 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
-- [x] Symmetrical BAGOO SHOP Hero typography with post-reload left-to-right entrance animation.
+- [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.
+- [x] Centered Mobile BAGOO SHOP Typography & Responsive Video Cards across all devices.
 - [x] Stacked & Leaning Video Cards active in Landing Hero (store-shopping-2 on top).
 - [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
 - [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.

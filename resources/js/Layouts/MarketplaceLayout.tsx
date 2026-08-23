@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import CursorSpotlight from '@/Components/CursorSpotlight';
 import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
-    Store 
+    Store,
+    Menu,
+    X,
+    User,
+    ArrowRight
 } from 'lucide-react';
 
 interface Props {
@@ -15,31 +19,32 @@ interface Props {
 
 export default function MarketplaceLayout({ children, title, headerTheme = 'light' }: Props) {
     const isDark = headerTheme === 'dark';
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-[#ECEAE5] text-slate-900 flex flex-col font-sans relative selection:bg-[#E00D42] selection:text-white">
             {/* Custom Interactive Cursor Spotlight */}
             <CursorSpotlight />
 
-            {/* Minimal Dynamic Responsive Header: Logo on Left, Sign In & Register on Right */}
-            <header className={`sticky top-0 z-40 transition-colors duration-500 backdrop-blur-md ${
+            {/* Minimal Dynamic Responsive Header: Logo on Left, Nav on Right */}
+            <header className={`sticky top-0 z-50 transition-colors duration-500 backdrop-blur-md ${
                 isDark 
-                    ? 'bg-[#0A0D14]/85 border-b border-white/10 text-white' 
-                    : 'bg-[#ECEAE5]/85 border-b border-black/10 text-black'
+                    ? 'bg-[#0A0D14]/90 border-b border-white/10 text-white' 
+                    : 'bg-[#ECEAE5]/90 border-b border-black/10 text-black'
             }`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16 sm:h-20">
                         
                         {/* Left: Brand Icon + Website Name */}
                         <Link href={route('marketplace')} className="flex items-center gap-3 group shrink-0">
-                            <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 shadow-xs group-hover:scale-105 transition-transform" rounded="rounded-lg" />
+                            <BagooLogo className="w-8 h-8 sm:w-10 sm:h-10 shadow-xs group-hover:scale-105 transition-transform" rounded="rounded-lg" />
                             <div className="flex flex-col">
-                                <span className={`text-xl sm:text-2xl font-black tracking-tight transition-colors duration-300 ${
+                                <span className={`text-lg sm:text-2xl font-black tracking-tight transition-colors duration-300 ${
                                     isDark ? 'text-white' : 'text-black'
                                 }`}>
                                     Bagoo<span className="text-[#E00D42]">PH</span>
                                 </span>
-                                <span className={`text-[9px] uppercase font-mono font-bold tracking-widest -mt-1 transition-colors duration-300 ${
+                                <span className={`text-[8px] sm:text-[9px] uppercase font-mono font-bold tracking-widest -mt-1 transition-colors duration-300 ${
                                     isDark ? 'text-white/50' : 'text-black/50'
                                 }`}>
                                     ECOSYSTEM
@@ -47,8 +52,8 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             </div>
                         </Link>
 
-                        {/* Right: Sign In and Register Buttons (Always Public & Pristine) */}
-                        <div className="flex items-center gap-2 sm:gap-3 font-mono text-xs">
+                        {/* Desktop Actions */}
+                        <div className="hidden md:flex items-center gap-2 sm:gap-3 font-mono text-xs">
                             <Link
                                 href={route('buyer.index')}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
@@ -62,7 +67,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             </Link>
                             <Link
                                 href={route('seller.register')}
-                                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
                                     isDark
                                         ? 'border-white/20 text-white/90 hover:bg-white/10'
                                         : 'border-black/20 text-black/90 hover:bg-black/5'
@@ -88,8 +93,78 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                                 Register
                             </Link>
                         </div>
+
+                        {/* Mobile Actions: Register CTA + Hamburger Toggle */}
+                        <div className="flex md:hidden items-center gap-2 font-mono text-xs">
+                            <Link
+                                href={route('register')}
+                                className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
+                            >
+                                Register
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className={`p-2 rounded-lg border transition ${
+                                    isDark 
+                                        ? 'border-white/15 text-white hover:bg-white/10' 
+                                        : 'border-black/15 text-black hover:bg-black/5'
+                                }`}
+                                aria-label="Toggle Menu"
+                            >
+                                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            </button>
+                        </div>
+
                     </div>
                 </div>
+
+                {/* Mobile Dropdown Menu Drawer */}
+                {mobileMenuOpen && (
+                    <div className={`md:hidden border-t px-4 py-4 space-y-3 font-mono text-xs transition-all ${
+                        isDark 
+                            ? 'bg-[#0E121D] border-white/10 text-white' 
+                            : 'bg-[#ECEAE5] border-black/10 text-black'
+                    }`}>
+                        <div className="grid grid-cols-1 gap-2 pt-1">
+                            <Link
+                                href={route('buyer.index')}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 font-bold uppercase tracking-wider"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <ShoppingBag className="w-4 h-4 text-[#E00D42]" />
+                                    <span>Shop Marketplace</span>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                            </Link>
+
+                            <Link
+                                href={route('seller.register')}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 font-bold uppercase tracking-wider"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Store className="w-4 h-4 text-[#E00D42]" />
+                                    <span>Seller Centre</span>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                            </Link>
+
+                            <Link
+                                href={route('login')}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 font-bold uppercase tracking-wider"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <User className="w-4 h-4 text-[#E00D42]" />
+                                    <span>Sign In</span>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Page Body */}
