@@ -432,6 +432,157 @@ This document tracks all completed work and prompts with dates and timestamps.
      - Mandated 100% original **BagooPH** brand identity (Platform: BagooPH, Logistics: Bagoo Express, Currency: ₱, Brand Color: `#E00D42`, Bag terminology).
      - Applied across all code, comments, seeders, mock data, documentation, and assistant responses.
 
+### 📌 Prompt 37: Bespoke Bento Matrix Merchant Cockpit & Workstation Architecture
+- **Date & Time:** `2026-08-23 18:59:00 +08:00`
+- **User Prompt:**
+  > *"seller design is too generic. every ai and you would design that the same way. try to be difrferent on the way you think in designing that."*
+- **What was done:**
+  1. **Bespoke Swiss-Craft Merchant Workstation Layout ([`DashboardLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/DashboardLayout.tsx)):**
+     - Shifted away from standard AI card templates to an industrial-grade **Merchant Workstation**.
+     - Added live digital clock (PHT / UTC+8), server latency telemetry (18ms), merchant identifier card with 1-click store link clipboard copy, and dark slate tactical navigation dock.
+  2. **Bento Matrix Command Center ([`Seller/Dashboard.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Dashboard.tsx)):**
+     - **Live Command Strip:** High-contrast network status banner (`Store Status: Online & Accepting Orders`), active parcel counter, score badge, and quick ledger shortcuts.
+     - **Dynamic Revenue Velocity Engine (8 Cols):**
+       - High-precision tabular figures for Gross Sales (`₱248,920.00`) with growth indicator.
+       - Daily Revenue Goal Progress Dial (`₱24,800 / ₱30,000 Quota`).
+       - 7-Day interactive matrix bar chart with hover tooltips and day-by-day velocity tracking.
+       - Secondary metrics strip for Units Sold, Average Basket Size, and Net Payout.
+     - **Industrial Warehouse Assembly Track (4 Cols):**
+       - 4-stage interconnected conveyor line: `01 To Pack & Stage` ➔ `02 Thermal Label Attached` ➔ `03 In Transit with Fleet` ➔ `04 Delivered & Confirmed`.
+       - Fast dispatch compliance progress meter (98.4%).
+     - **Order Ingestion Radar & Velocity Leaderboard:** High-density live transaction queue and top SKU conversion leaders.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 8.60s (`exit 0`).
+
+### 📌 Prompt 38: Buyer Flowchart Full Implementation (Vouchers, Live Chat & Merchant Promos)
+- **Date & Time:** `2026-08-23 19:23:45 +08:00`
+- **User Prompt:**
+  > *"back then this is our flowchart activity that we follow in our buyer, note try to put the feautres listed that are not present in our system. especially in buyer but you can see there that there would be patter like voucher that may be apply to seller. add those feature too like adding voucher and anythi8ng you see here! moreover, list the feature that change here chat me what are those things that change or added"*
+- **What was done:**
+  1. **Comprehensive Buyer Flowchart Compliance:**
+     - Evaluated all 17 requirements from the PDF curriculum: Registration, Admin Approval, Login, Main Menu/Categories, Search & Browsing, Product Details, Quantity & Color/Size Variations, Add to Bag, Finalize Details in Bag, Apply Vouchers & Discounts, Payment Mode Selection, Place Order, Order Status Tracking (To Ship, In Transit, Out for Delivery, Delivered), Rating & Feedback, Live Chat / Messaging, Account Management, Logout.
+  2. **Vouchers & Discount Engine:**
+     - **Database Migration:** Created `vouchers` table with columns for code, name, description, shop_id (merchant-exclusive), discount_type (`fixed`, `percent`, `free_shipping`), discount_value, min_spend, max_discount, usage_limit, and used_count.
+     - **Default Seeded Vouchers:** `PAYDAY70` (10% off), `FREESHIP` (Free delivery), `BAGOO10` (₱200 off), `PRIME150` (₱150 off on merchant products).
+     - **Buyer Checkout Integration ([`Checkout/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Checkout/Index.tsx)):** Real-time voucher code application, interactive recommended voucher chips, and automatic deduction from order total.
+     - **Seller Vouchers Management ([`Seller/Vouchers.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Vouchers.tsx)):** Complete merchant interface to issue store promo codes, configure minimum spend requirements, and track redemption telemetry.
+  3. **Live Chat & Messaging System:**
+     - **Database Migration:** Created `messages` table with sender/receiver relationships, product references, order links, and read receipts.
+     - **Interactive Live Chat Modal ([`ChatModal.tsx`](file:///home/andy/Projects/bagoo/resources/js/Components/ChatModal.tsx)):** Accessible via floating "Customer Care" bubble and direct "Chat Now" buttons on product and shop pages.
+     - **Seller Customer Chat Hub ([`Seller/Messages.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Messages.tsx)):** Merchant inbox with customer conversation threads, search, and real-time response messaging.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.47s (`exit 0`).
+
+### 📌 Prompt 39: Animated Jumping-Letter "Bagoo" Loading Screen
+- **Date & Time:** `2026-08-23 21:12:45 +08:00`
+- **User Prompt:**
+  > *"in the landing page, add a loading screen where it will load when the contents are fully loadedd. maybe use my brand name "Bagoo" like the leters are jumping while loading like they are ike 80% light but when it jumps, let say B, the letter B will have a lither text than the other"*
+- **What was done:**
+  1. **Built Reusable Brand Loading Component ([`BagooLoadingScreen.tsx`](file:///home/andy/Projects/bagoo/resources/js/Components/BagooLoadingScreen.tsx)):**
+     - Custom CSS keyframe animation (`bagooLetterJump`) creating a sequential wave bounce for `B`, `a`, `g`, `o`, `o`.
+     - Resting state features dimmed typography (`text-white/35`), while each jumping letter lifts with an illuminated glowing highlight (`#FFFFFF` with `#E00D42` ambient drop-shadow glow).
+     - Includes animated gradient loading bar and ambient background radial glow.
+     - Automatically monitors `document.readyState === 'complete'` and executes a smooth fade-out blur dismiss animation once content is ready.
+  2. **Integrated into Landing Page & Buyer Ecosystem:**
+     - Enabled in [`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx) (Platform overview at `/`).
+     - Enabled in [`Buyer/Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) (Marketplace home at `/buyer`).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 11.63s (`exit 0`).
+
+### 📌 Prompt 40: Stacked & Leaning Video Showcase Cards in Landing Hero
+- **Date & Time:** `2026-08-23 21:18:20 +08:00`
+- **User Prompt:**
+  > *"in the hero section of landing page in this part of the image, put a video like a card maybe 2 cards but they are stack at each other and the ohter one is leaning on the side for subtle video and the video for now is temporary like get anything related to shop or ecommerce from the internet. and"*
+- **What was done:**
+  1. **Built Stacked Dual-Card Video Showcase in Hero ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Positioned in the upper/middle-right negative space of the hero section.
+     - **Card 1 (Back / Leaning Card):** Dark slate frame with a 6-degree counter-clockwise tilt (`-rotate-6 translate-x-3 -translate-y-2`), live status badge, and looping dispatch footage.
+     - **Card 2 (Front / Elevated Card):** Crisp white frame with a 3-degree clockwise tilt (`rotate-3`), 4K live chip, ecosystem reel footage, and smooth interactive hover fan-out transitions.
+  2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.73s (`exit 0`).
+
+### 📌 Prompt 41: Local WebM Video Integration (store-shopping-1 & store-shopping-2 on top)
+- **Date & Time:** `2026-08-23 21:25:35 +08:00`
+- **User Prompt:**
+  > *"check my downloads and change it to the 2 webm video there! make sure the 2 is on the top"*
+- **What was done:**
+  1. **Copied User Videos from Downloads:**
+     - Copied `/home/andy/Downloads/store-shopping-1.webm` ➔ `public/videos/store-shopping-1.webm`.
+     - Copied `/home/andy/Downloads/store-shopping-2.webm` ➔ `public/videos/store-shopping-2.webm`.
+  2. **Updated Video Cards in Landing Hero ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - **Card 2 (Top / Front Card):** Configured with `/videos/store-shopping-2.webm` as the foreground centerpiece.
+     - **Card 1 (Back / Leaning Card):** Configured with `/videos/store-shopping-1.webm` as the background leaning card.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 12.21s (`exit 0`).
+
+### 📌 Prompt 42: Refined COMMERCE Typography & Expanded Video Peeking Offset
+- **Date & Time:** `2026-08-23 21:27:35 +08:00`
+- **User Prompt:**
+  > *"can you make the commerce word a little more little and make sure the first webm is seaable like kinda peeking more a bit"*
+- **What was done:**
+  1. **Refined COMMERCE Typography ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Scaled down the `COMMERCE` font size from `text-[14vw]` to a cleaner, refined `text-[10.5vw] sm:text-[9.5vw] xl:text-[8.5vw]`.
+  2. **Expanded Video Peeking Fan-out:**
+     - Shifted Card 1 (`store-shopping-1.webm`) to a 12-degree tilt with prominent negative left/top translation (`-rotate-12 -translate-x-12 -translate-y-6 xl:-translate-x-16 xl:-translate-y-8`), allowing the back video to peek out clearly from behind Card 2 (`store-shopping-2.webm`).
+     - Upgraded hover interaction to fan out even wider (`group-hover:-rotate-16 group-hover:-translate-x-20`).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 12.76s (`exit 0`).
+
+### 📌 Prompt 43: Hero "SHOP" Typography & Post-Reload Left-to-Right Entrance Animation
+- **Date & Time:** `2026-08-23 21:31:35 +08:00`
+- **User Prompt:**
+  > *"hmm i don't like the commerce looking more smaller than bagoo. maybe try to find a word similar to shop, commerce store etc, or maybe just use "SHOP" with the same font size as the bagoo. moreover put animation when the web reloads the first thing that will show after reloading is the hero text animation from left to right"*
+- **What was done:**
+  1. **Adopted "SHOP" Matching Headline ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Replaced `COMMERCE` with **`SHOP`**, sharing the exact same colossal typography scale (`text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black`) as `BAGOO`.
+  2. **Coordinated Post-Reload Left-to-Right Entrance Animation:**
+     - Connected `BagooLoadingScreen` lifecycle `onComplete` callback directly to the hero section entrance trigger.
+     - When page finishes loading and the loading screen smoothly fades away, `BAGOO` slides into view from left to right (`-translate-x-32 opacity-0` ➔ `translate-x-0 opacity-100` with cubic-bezier easing), followed immediately by `SHOP` on a staggered 200ms delay.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 15.92s (`exit 0`).
+
+### 📌 Prompt 44: Responsive Mobile Layout, Centered Hero & Header Hamburger Menu
+- **Date & Time:** `2026-08-23 21:35:45 +08:00`
+- **User Prompt:**
+  > *"fix the 2 video cards again make sure they are still visible at lower screen size, and when it goes mobie view, make sure the bagoo shop is centered instead of fixleft sticky. make sure to fix mobile sizes of the other nav like make it hamburger when it becomes small!"*
+- **What was done:**
+  1. **Mobile Hamburger Drawer Navigation ([`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx)):**
+     - Integrated animated `Menu` and `X` toggle button on mobile viewport.
+     - Built slide-down mobile navigation drawer with quick direct links to *Shop Marketplace*, *Seller Centre*, and *Sign In*, while keeping a prominent *Register* CTA button in the mobile navbar.
+  2. **Centered Hero Typography on Mobile ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Centered `BAGOO` + `SHOP` headlines on mobile devices (`items-center justify-center text-center`) while preserving left-alignment on desktop viewports.
+  3. **Fully Responsive Stacked Video Cards:**
+     - Converted stacked video showcase from desktop-only (`hidden lg:block`) to fully responsive across all screen sizes.
+     - On mobile/tablet: neatly centered below the headline with scaled dimensions (`w-52 sm:w-60 h-64 sm:h-76`), retaining the dual-tilted card stack with Card 1 (`store-shopping-1.webm`) prominently peeking out and Card 2 (`store-shopping-2.webm`) elevated on top.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.68s (`exit 0`).
+
+### 📌 Prompt 45: Adaptive Breakpoint Layout & Vertical Spacing for Wrapped Video Cards
+- **Date & Time:** `2026-08-23 21:38:30 +08:00`
+- **User Prompt:**
+  > *"fix when the video card starts to go to bottom of the hero text, make sure the hero text bagoo shop will be now centered, and put a little more spacing between them!#"*
+- **What was done:**
+  1. **Centered Breakpoint Synchronization ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Aligned the headline container and typography to automatically switch to centered layout (`items-center justify-center text-center`) whenever the screen is below `xl:`, perfectly synchronizing with when the video cards wrap below the text.
+     - Preserved clean left-alignment when viewing on `xl` and `2xl` widescreen monitors where cards sit on the right.
+  2. **Generous Vertical Spacing & Proportions:**
+     - Added dedicated vertical padding and margins (`py-4 sm:py-6 xl:py-0` for the text, `space-y-1 sm:space-y-2 xl:space-y-0` between BAGOO and SHOP, and `my-8 sm:my-10 xl:my-0` for the video deck).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 14.94s (`exit 0`).
+
+### 📌 Prompt 46: Enlarged Cinematic Desktop Video Showcase Cards
+- **Date & Time:** `2026-08-23 21:42:20 +08:00`
+- **User Prompt:**
+  > *"one more thing, if the hero is on side by side with the video can you make the video cards more larger!"*
+- **What was done:**
+  1. **Enlarged Desktop Video Showcase Cards ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Expanded the video card deck dimensions on desktop (`xl` and `2xl`) to `xl:w-80 2xl:w-96` and `xl:h-[420px] 2xl:h-[480px]`.
+     - Scaled inner typography, status chips, and live indicators proportionally (`xl:text-[11px]`, `xl:p-4`).
+     - Calibrated the back leaning card translation offset on widescreen displays (`xl:-translate-x-20 2xl:-translate-x-24 xl:-translate-y-10 2xl:-translate-y-12`) so `store-shopping-1.webm` remains prominently visible and peeking out beside the enlarged `store-shopping-2.webm` card.
+  2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 8.17s (`exit 0`).
+
+### 📌 Prompt 47: IP Address Verification & Strict Privacy Guardrails
+- **Date & Time:** `2026-08-23 21:45:10 +08:00`
+- **User Prompt:**
+  > *"wait did you put my ip in any of the md in our project? if yes remove!"*
+- **What was done:**
+  1. **Full Repository & Markdown Audit:**
+     - Performed comprehensive regex and string search across all markdown files (`GEMINI.md`, `docs/PROGRESS.md`, `README.md`), source code, configuration files, and git history.
+     - Confirmed **zero IP addresses or server credentials** exist in the project repository files (`CLEAN: No IP found in git tracking`).
+  2. **Enshrined Strict Privacy Rule in [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md#L93-L96):**
+     - Added **Section 7: Absolute Privacy & Server Credential / IP Address Protection**, forbidding any persistence of real IP addresses, credentials, or private keys in repository files.
+
 ---
 
 ## 🎯 Current Status
@@ -439,14 +590,22 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Strict IP Address & Server Credential Privacy Protection active in `GEMINI.md`.
+- [x] Enlarged Cinematic Video Cards in Desktop Side-by-Side View.
+- [x] Adaptive Centering & Spacing for Hero BAGOO SHOP when video cards wrap below.
+- [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.
+- [x] Stacked & Leaning Video Cards active in Landing Hero (store-shopping-2 on top).
+- [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
+- [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.
+- [x] Complete Buyer Flowchart feature set implemented (17/17 functions active).
+- [x] Interactive Voucher & Discount Engine live in Buyer Checkout & Seller Portal.
+- [x] Real-Time Customer & Merchant Live Chat system live across marketplace and seller center.
 - [x] Full Security Audit completed: IDOR, Price Tampering, and Review Spam mitigations active.
 - [x] Role-Based Access Control (`['auth', 'role:seller']`, `['auth', 'role:courier']`, `['auth', 'role:admin']`) fully enforced.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
 - [x] Standalone Buyer E-Commerce Ecosystem live at `/buyer`.
 - [x] Dedicated Verified Storefront page (`/shop/{slug}`) wrapped in `BuyerLayout`.
 - [x] Dynamic Ambient Color Lighting system extracting dominant image hues on product pages.
-- [x] Professional Enterprise Light Mode Seller Center (`/seller/dashboard`, `/seller/orders`, `/seller/products`, `/seller/reports`, `/seller/settings`).
-- [x] Modern SVG Area Sales Velocity chart with hover tooltips and daily revenue telemetry.
 - [x] Printable Thermal Waybill / Shipping Label Simulation generator.
 - [x] "Bag" terminology standard applied across all UI components, buttons, and navigation.
 - [x] Customer Reviews support multi-photo uploads, photo galleries, and image zoom lightbox.

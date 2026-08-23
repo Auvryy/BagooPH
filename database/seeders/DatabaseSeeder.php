@@ -549,5 +549,56 @@ class DatabaseSeeder extends Seeder
                 'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=600&q=80',
             ],
         ]);
+
+        // 7. Seed Vouchers
+        \App\Models\Voucher::updateOrCreate(
+            ['code' => 'PAYDAY70'],
+            [
+                'name' => 'Payday 10% Discount',
+                'description' => '10% discount on all orders above ₱500',
+                'discount_type' => 'percent',
+                'discount_value' => 10.00,
+                'min_spend' => 500.00,
+                'max_discount' => 500.00,
+                'is_active' => true,
+            ]
+        );
+
+        \App\Models\Voucher::updateOrCreate(
+            ['code' => 'FREESHIP'],
+            [
+                'name' => 'Free Delivery Voucher',
+                'description' => 'Zero shipping fee with no minimum spend required',
+                'discount_type' => 'free_shipping',
+                'discount_value' => 50.00,
+                'min_spend' => 0.00,
+                'is_active' => true,
+            ]
+        );
+
+        \App\Models\Voucher::updateOrCreate(
+            ['code' => 'BAGOO10'],
+            [
+                'name' => 'New Buyer ₱200 Bonus',
+                'description' => '₱200 flat discount on orders ₱1,000 and up',
+                'discount_type' => 'fixed',
+                'discount_value' => 200.00,
+                'min_spend' => 1000.00,
+                'is_active' => true,
+            ]
+        );
+
+        \App\Models\Voucher::updateOrCreate(
+            ['code' => 'PRIME150'],
+            [
+                'name' => 'Store Exclusive ₱150 Voucher',
+                'description' => '₱150 off on official flagship products min spend ₱800',
+                'shop_id' => $shop->id,
+                'discount_type' => 'fixed',
+                'discount_value' => 150.00,
+                'min_spend' => 800.00,
+                'is_active' => true,
+            ]
+        );
     }
 }

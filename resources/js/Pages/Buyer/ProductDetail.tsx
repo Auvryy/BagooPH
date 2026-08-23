@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 
 import { useAmbientColor } from '@/Hooks/useAmbientColor';
+import ChatModal from '@/Components/ChatModal';
 
 interface VariationColor {
     id: string;
@@ -79,6 +80,7 @@ export default function BuyerProductDetail({
     const [addedSuccess, setAddedSuccess] = useState(false);
     const [copiedVoucher, setCopiedVoucher] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Dynamic Ambient Color Extraction
     const { ambientGlow, subtleBackground, accentColor } = useAmbientColor(
@@ -475,7 +477,8 @@ export default function BuyerProductDetail({
                                     </Link>
                                     <button
                                         type="button"
-                                        className="px-3 py-1.5 bg-[#E00D42] text-white font-bold rounded-lg transition flex items-center gap-1"
+                                        onClick={() => setIsChatOpen(true)}
+                                        className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-lg transition flex items-center gap-1"
                                     >
                                         <MessageSquare className="w-3.5 h-3.5" />
                                         <span>Chat Now</span>
@@ -635,6 +638,16 @@ export default function BuyerProductDetail({
                 </div>
 
             </div>
+
+            {/* Live Chat Modal */}
+            <ChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                receiverId={product.shop?.user_id || 2}
+                receiverName={product.shop?.name || 'Merchant Support'}
+                shopName={product.shop?.name}
+                product={product}
+            />
         </BuyerLayout>
     );
 }

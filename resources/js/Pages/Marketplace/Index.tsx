@@ -4,6 +4,7 @@ import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import { Category } from '@/types';
 import GrainOverlay from '@/Components/GrainOverlay';
 import ThreeShoppingBag from '@/Components/ThreeShoppingBag';
+import BagooLoadingScreen from '@/Components/BagooLoadingScreen';
 import { 
     ArrowRight, 
     Store, 
@@ -37,10 +38,10 @@ export default function MarketplaceIndex({ categories }: Props) {
     const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
     useEffect(() => {
-        // Trigger one-time left-to-right entrance animation on mount
+        // Trigger left-to-right entrance animation right after loading sequence
         const timer = setTimeout(() => {
             setIsLoaded(true);
-        }, 50);
+        }, 1100);
 
         const updateTime = () => {
             const now = new Date();
@@ -84,6 +85,9 @@ export default function MarketplaceIndex({ categories }: Props) {
         <MarketplaceLayout headerTheme={isDarkHeader ? 'dark' : 'light'}>
             <Head title="BagooPH — A New Standard in Multi-Role E-Commerce" />
 
+            {/* Jumping Letter Bagoo Intro Loading Screen */}
+            <BagooLoadingScreen onComplete={() => setIsLoaded(true)} />
+
             {/* Grain & Noise Film Overlay */}
             <GrainOverlay />
 
@@ -104,7 +108,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                     <span className="absolute bottom-4 right-4 text-black/40 font-mono text-xs select-none z-30">+</span>
 
                     {/* Top Info Line */}
-                    <div className="flex justify-between items-center z-30 font-mono text-[11px] uppercase tracking-wider text-black/70">
+                    <div className="flex flex-col sm:flex-row justify-between items-center z-30 font-mono text-[11px] uppercase tracking-wider text-black/70 gap-2">
                         <div className="flex items-center gap-3">
                             <span className="font-black text-black">BAGOO-PH</span>
                             <span className="text-black/30">/</span>
@@ -120,30 +124,88 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
                     </div>
 
-                    {/* BAGOO + COMMERCE stacked tightly together (centered vertically) */}
-                    <div className="relative z-20 my-auto space-y-0">
+                    {/* BAGOO + SHOP stacked (Centered below xl when cards wrap below, Left-aligned on xl+ desktop) */}
+                    <div className="relative z-20 my-auto py-4 sm:py-6 xl:py-0 flex flex-col items-center xl:items-start text-center xl:text-left w-full space-y-1 sm:space-y-2 xl:space-y-0">
                         {/* BAGOO (Left-to-Right Entrance) */}
                         <div 
                             className={`select-none pointer-events-none transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
-                            <h1 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center drop-shadow-xs">
+                            <h1 className="text-[16vw] sm:text-[13vw] xl:text-[12.5vw] leading-[0.84] font-black tracking-tighter text-black flex items-center justify-center xl:justify-start drop-shadow-xs">
                                 <span>BA</span>
                                 <span className="text-[#E00D42]">GO</span>
                                 <span>O</span>
                             </h1>
                         </div>
 
-                        {/* COMMERCE (Left-to-Right Entrance, staggered) */}
+                        {/* SHOP (Same font size as BAGOO with staggered Left-to-Right Entrance) */}
                         <div 
-                            className={`select-none pointer-events-none transition-all duration-1000 delay-150 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                            className={`select-none pointer-events-none transition-all duration-1000 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
-                            <h2 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black">
-                                COMMERCE
+                            <h2 className="text-[16vw] sm:text-[13vw] xl:text-[12.5vw] leading-[0.84] font-black tracking-tighter text-black flex items-center justify-center xl:justify-start drop-shadow-xs">
+                                SHOP
                             </h2>
+                        </div>
+                    </div>
+
+                    {/* STACKED & LEANING VIDEO CARDS (Centered below xl, Expanded Cinematic Size on xl+ side-by-side) */}
+                    <div className="relative xl:absolute xl:top-[20%] 2xl:top-[18%] xl:right-10 2xl:right-20 z-30 my-8 sm:my-10 xl:my-0 flex justify-center xl:block pointer-events-auto">
+                        <div className="relative w-56 sm:w-64 xl:w-80 2xl:w-96 h-68 sm:h-80 xl:h-[420px] 2xl:h-[480px] group cursor-pointer">
+                            
+                            {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out prominently to the left) */}
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-10 sm:-translate-x-14 xl:-translate-x-20 2xl:-translate-x-24 -translate-y-4 sm:-translate-y-6 xl:-translate-y-10 2xl:-translate-y-12 group-hover:-rotate-16 group-hover:-translate-x-28 group-hover:-translate-y-14 transition-all duration-500 ease-out z-10">
+                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
+                                    <span className="font-bold text-white">BAGOO // REEL 01</span>
+                                    <span className="w-1.5 xl:w-2 h-1.5 xl:h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                                </div>
+                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-black">
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                    >
+                                        <source src="/videos/store-shopping-1.webm" type="video/webm" />
+                                    </video>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-2 xl:bottom-3 left-2 xl:left-3 right-2 xl:right-3 font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-white flex justify-between items-center">
+                                        <span className="px-1.5 xl:px-2 py-0.5 rounded bg-[#E00D42] font-black text-[7px] sm:text-[8px] xl:text-[10px] uppercase">DISPATCH REEL</span>
+                                        <span className="text-emerald-400 text-[7px] sm:text-[8px] xl:text-[10px] font-bold">● ACTIVE</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 xl:translate-x-3 xl:translate-y-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
+                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
+                                    <span className="font-black text-slate-900 flex items-center gap-1.5">
+                                        <span className="w-1.5 sm:w-2 xl:w-2.5 h-1.5 sm:h-2 xl:h-2.5 rounded-full bg-[#E00D42]"></span>
+                                        BAGOO MARKETPLACE
+                                    </span>
+                                    <span className="px-1.5 xl:px-2 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
+                                </div>
+                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-slate-900">
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                    >
+                                        <source src="/videos/store-shopping-2.webm" type="video/webm" />
+                                    </video>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-2.5 xl:bottom-3.5 left-2.5 xl:left-3.5 right-2.5 xl:right-3.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px] xl:text-[11px]">
+                                        <span className="font-bold tracking-wider">ECOSYSTEM REEL</span>
+                                        <span className="text-emerald-400 font-bold">● LIVE</span>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
