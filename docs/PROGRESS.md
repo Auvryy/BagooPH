@@ -241,6 +241,25 @@ This document tracks all completed work and prompts with dates and timestamps.
   4. **Dedicated Seller Registration Portal (`/seller/register`):** Created `SellerRegister.tsx` with Store Name (`shop_name`), business verification context, and merchant feature highlights (Printable Waybills, 10% Flat Fee, Courier Fleet).
   5. **Global Navigation & Layout Integration:** Added "Seller Centre" links to the unauthenticated header and footer in `MarketplaceLayout.tsx`.
 
+### 📌 Prompt 22: Integration of Official Bagoo.svg Brand Icon & Favicon
+- **Date & Time:** `2026-08-23 11:00:31 +08:00`
+- **User Prompt:**
+  > *"i have this icon bagoo.svg in my downloads folder use this as our icon!"*
+- **What was done:**
+  1. **Copied Vector Assets:** Copied `bagoo.svg` to `public/bagoo.svg` and `public/favicon.svg`.
+  2. **Created Scalable `BagooLogo.tsx` Component:** Implemented a reusable vector React component with customizable scaling, responsive SVG paths, and rounded corners.
+  3. **Application & Navigation Integration:** Integrated `BagooLogo` into `ApplicationLogo.tsx`, `MarketplaceLayout.tsx`, `GuestLayout.tsx`, and `DashboardLayout.tsx`.
+  4. **Favicon Link in Blade:** Added `<link rel="icon" type="image/svg+xml" href="/bagoo.svg">` into `resources/views/app.blade.php`.
+
+### 📌 Prompt 23: Updated High-Contrast Bold Bagoo.svg Vector Integration
+- **Date & Time:** `2026-08-23 11:05:56 +08:00`
+- **User Prompt:**
+  > *"i change it again here is it same path it is in the downloads"*
+- **What was done:**
+  1. **Updated SVG Vector Asset:** Copied updated bold-stroke `bagoo.svg` from `~/Downloads/bagoo.svg` to `public/bagoo.svg` and `public/favicon.svg`.
+  2. **Updated `BagooLogo.tsx` Vector Definition:** Updated the vector paths, bold 4px stroke borders, mask definitions, and pupil details.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -248,4 +267,4 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] Multi-Role Auth Architecture + Redesigned Auth Pages & Dedicated Seller Registration Portal live.
+- [x] Latest Bold `bagoo.svg` Brand Icon & Favicon live across all layouts.

@@ -2,6 +2,8 @@ import React, { PropsWithChildren } from 'react';
 import { Link } from '@inertiajs/react';
 import GrainOverlay from '@/Components/GrainOverlay';
 
+import BagooLogo from '@/Components/BagooLogo';
+
 interface Props {
     title?: string;
     subtitle?: string;
@@ -22,7 +24,8 @@ export default function GuestLayout({ children, title, subtitle, headerBadge }: 
 
             {/* Top Minimal Navigation Bar */}
             <header className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-between font-mono text-xs py-2">
-                <Link href="/" className="group flex items-center gap-2">
+                <Link href="/" className="group flex items-center gap-2.5">
+                    <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform" rounded="rounded-lg" />
                     <span className="text-xl font-black tracking-tighter text-black flex items-center">
                         <span>B</span>
                         <span className="relative inline-flex items-center justify-center">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import CursorSpotlight from '@/Components/CursorSpotlight';
+import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
     User as UserIcon, 
@@ -57,9 +58,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                         
                         {/* Left: Brand Icon + Website Name */}
                         <Link href={route('marketplace')} className="flex items-center gap-3 group shrink-0">
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#E00D42] flex items-center justify-center text-white shadow-xs group-hover:bg-[#C20836] transition">
-                                <ShoppingBag className="w-5 h-5" />
-                            </div>
+                            <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 shadow-xs group-hover:scale-105 transition-transform" rounded="rounded-lg" />
                             <div className="flex flex-col">
                                 <span className={`text-xl sm:text-2xl font-black tracking-tight transition-colors duration-300 ${
                                     isDark ? 'text-white' : 'text-black'
@@ -186,9 +185,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
             <footer className="bg-[#111111] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-black font-mono">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6 text-xs text-white/50">
                     <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-md bg-[#E00D42] flex items-center justify-center text-white">
-                            <ShoppingBag className="w-4 h-4" />
-                        </div>
+                        <BagooLogo className="w-7 h-7" rounded="rounded-md" />
                         <span className="font-bold text-white tracking-tight">Bagoo<span className="text-[#E00D42]">PH</span></span>
                         <span>•</span>
                         <span>Next-Gen Multi-Role Commerce Ecosystem</span>
