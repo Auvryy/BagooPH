@@ -143,6 +143,17 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             ) : (
                                 <div className="flex items-center gap-2 sm:gap-3">
                                     <Link
+                                        href={route('products.index')}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                            isDark
+                                                ? 'border-white/20 text-white/90 hover:bg-white/10'
+                                                : 'border-black/20 text-black/90 hover:bg-black/5'
+                                        }`}
+                                    >
+                                        <ShoppingBag className="w-3.5 h-3.5 text-[#E00D42]" />
+                                        <span>Shop Catalog</span>
+                                    </Link>
+                                    <Link
                                         href={route('seller.register')}
                                         className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
                                             isDark

@@ -168,6 +168,7 @@ export interface PaginatedData<T> {
     total: number;
     next_page_url?: string | null;
     prev_page_url?: string | null;
+    links?: { url: string | null; label: string; active: boolean }[];
 }
 
 export type PageProps<

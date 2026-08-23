@@ -38,7 +38,7 @@ class AuthenticatedSessionController extends Controller
             'admin' => route('admin.dashboard', absolute: false),
             'seller' => route('seller.dashboard', absolute: false),
             'courier' => route('courier.deliveries', absolute: false),
-            default => route('marketplace', absolute: false),
+            default => route('buyer.index', absolute: false),
         };
 
         return redirect()->intended($targetRoute);

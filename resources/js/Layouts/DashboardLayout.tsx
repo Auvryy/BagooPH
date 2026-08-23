@@ -61,8 +61,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         }
 
         return [
-            { name: 'My Orders', href: route('orders.index'), icon: ShoppingBag, current: route().current('orders.index') },
-            { name: 'Cart', href: route('cart.index'), icon: ShoppingCart, current: route().current('cart.index') },
+            { name: 'Buyer Dashboard', href: route('buyer.dashboard'), icon: LayoutDashboard, current: route().current('buyer.dashboard') },
+            { name: 'Explore Marketplace', href: route('products.index'), icon: ShoppingBag, current: route().current('products.*') },
+            { name: 'My Cart & Bag', href: route('cart.index'), icon: ShoppingCart, current: route().current('cart.index') },
+            { name: 'My Orders & Shipments', href: route('orders.index'), icon: Package, current: route().current('orders.*') },
             { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
         ];
     };

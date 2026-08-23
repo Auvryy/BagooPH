@@ -269,6 +269,54 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. **Auth Header Consistency:** Also removed the dot from the `GuestLayout.tsx` header brand text.
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
+### 📌 Prompt 25: Full-Featured Dedicated Buyer Marketplace & Catalog Portal
+- **Date & Time:** `2026-08-23 11:42:54 +08:00`
+- **User Prompt:**
+  > *"base on the project plan, create me a buyer page with followign of design patterns etc"*
+- **What was done:**
+  1. **Seeded 14 Verified Curriculum Departments:** Expanded database categories to all 14 official departments with rich product seed data in PHP currency (`₱`).
+  2. **Created Buyer Shopping Portal (`/products`):** Built [`Catalog.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Catalog.tsx) featuring 14 departments horizontal filter bar, live search, sorting controls, active filter tags, in-stock toggle, and brutalist product cards with instant "Add to Bag" action.
+  3. **Live Dispatch Telemetry Bar:** Added real-time tracking widget for authenticated buyers with active in-transit shipments and new buyer voucher promotion (`BAGOO10`).
+  4. **Navigation & Routes Integration:** Added `/products` and `/catalog` routes, and linked them into `MarketplaceLayout.tsx` header and the landing page Buyer section CTA.
+  5. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 26: Dedicated Buyer Dashboard & Management Portal
+- **Date & Time:** `2026-08-23 11:49:56 +08:00`
+- **User Prompt:**
+  > *"retry again. when i said create a buyer page. create a whole new page and not in the landing page, a buyer should consist everything from our schema architecutre such as those buyer home page where products is dispalyed, search product, cart profile etc"*
+- **What was done:**
+  1. **Created `BuyerDashboardController.php`:** Built controller aggregating active in-transit shipments, recent order history, live cart items, recommended products across 14 departments, voucher wallet (`BAGOO10`, `FREESHIP`, `WELCOME50`), and buyer telemetry metrics.
+  2. **Created Dedicated Buyer Portal ([`resources/js/Pages/Buyer/Dashboard.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Dashboard.tsx)):** Full-featured Buyer Command Center using `DashboardLayout`, featuring:
+     - Top telemetry banner with KYC status, total orders, live shipments, and spend stats.
+     - Live courier dispatch tracking cards with tracking numbers, courier partner, and doorstep arrival ETA.
+     - Fast 14 verified departments navigator.
+     - Product showcase with instant "Add to Bag" action.
+     - Voucher wallet with 1-click clipboard copy.
+  3. **Universal Redirector & Routes:** Registered `/buyer/dashboard` (and `/buyer` redirect) and updated `/dashboard` to route buyers directly to their command center.
+  4. **Sidebar Navigation:** Enhanced `DashboardLayout.tsx` with dedicated Buyer Dashboard, Catalog, Cart, Orders, and Settings links.
+  5. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 27: Shopee/SHEIN-Grade Standalone Buyer E-Commerce Ecosystem & Auth Decoupling
+- **Date & Time:** `2026-08-23 11:57:45 +08:00`
+- **User Prompt:**
+  > *"first, remove the feature in our landing page where when i click sign it it goes me back to landing page with me being said i was login.it is a bad thing. a landing page is a landing page nothing will happen if ilog in okay like if i login i will go to /buyer home page. maybe try to create a mono repo that buyer seller admin are different pages etc. and landing page is just on it's own. i just remove some of the md and try to create buyer from scratch like literal e commerce like this buyer flow we need that! create it like it is almost like shopee or shein"*
+- **What was done:**
+  1. **Decoupled Landing Page & Auth Flow:** Fixed `AuthenticatedSessionController.php` and `RegisteredUserController.php` to immediately redirect buyers to `route('buyer.index')` (`/buyer`) on login/registration, leaving the landing page strictly for public marketing.
+  2. **Created Dedicated `BuyerLayout.tsx`:** Built Shopee/SHEIN-grade e-commerce navigation with top utility bar (notifications, currency, account dropdown), mega search bar with trending keywords, floating shopping bag badge, and floating live chat support launcher.
+  3. **Built Shopee/SHEIN Buyer Home (`/buyer`):** Implemented [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) featuring promotional hero carousel banners with 1-click voucher copy, 8 quick service shortcuts, ⚡ Flash Deals section with live countdown timer and sold progress bars, 14 master categories grid, and "Daily Discover" tabbed feed.
+  4. **Built Interactive Product Detail View (`/buyer/product/{slug}`):** Implemented [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx) with multi-image gallery, interactive color & size variation selectors with dynamic price/stock updates, shipping estimator, verified store card, and customer review breakdown.
+  5. **Upgraded Cart, Checkout & Order Tracking:** Updated [`Cart/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Cart/Index.tsx), [`Checkout/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Checkout/Index.tsx), and [`Orders.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Orders.tsx) / [`OrderDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/OrderDetail.tsx) with 5-stage delivery tracking milestones and post-delivery review modal.
+  6. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 28: Fixed routes/web.php Opening PHP Tag
+- **Date & Time:** `2026-08-23 12:01:41 +08:00`
+- **User Prompt:**
+  > *"fix this error: [routes/web.php contents]"*
+- **What was done:**
+  1. **Restored `<?php` Opening Tag:** Added missing `<?php` header tag to [`routes/web.php`](file:///home/andy/Projects/bagoo/routes/web.php).
+  2. **Verified Route Registration:** Ran `php artisan route:list` (61 routes active, `exit 0`).
+  3. **Verified HTTP Responses:** Tested `GET /` and `GET /buyer` (`HTTP 200 OK`).
+
 ---
 
 ## 🎯 Current Status
@@ -276,4 +324,6 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] Clean Hero Typography (`BA` + crimson `GO` + `O`) without the red dot on `A`.
+- [x] Standalone Shopee/SHEIN-grade Buyer E-Commerce Ecosystem live at `/buyer`.
+- [x] Landing Page (`/`) decoupled from authentication redirects.
+- [x] Direct Role-Based Redirects on Login (Buyer ➔ `/buyer`, Seller ➔ `/seller/dashboard`, Admin ➔ `/admin/dashboard`, Courier ➔ `/courier/deliveries`).

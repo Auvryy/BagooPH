@@ -261,13 +261,19 @@ export default function MarketplaceIndex({ categories }: Props) {
                                     </div>
                                 </div>
 
-                                <div className="pt-2 font-mono">
+                                <div className="pt-2 font-mono flex flex-wrap items-center gap-3">
                                     <Link
-                                        href={route('register')}
+                                        href={route('products.index')}
                                         className="inline-flex items-center gap-2 px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider"
                                     >
-                                        <span>Create Buyer Account</span>
+                                        <span>Shop 14 Departments</span>
                                         <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                    <Link
+                                        href={route('register')}
+                                        className="inline-flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-lg border border-white/20 transition uppercase tracking-wider"
+                                    >
+                                        <span>Create Buyer Account</span>
                                     </Link>
                                 </div>
                             </div>

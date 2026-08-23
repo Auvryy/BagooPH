@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Buyer\BuyerDashboardController;
+use App\Http\Controllers\Buyer\BuyerHomeController;
+use App\Http\Controllers\Buyer\BuyerProductController;
+use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
@@ -15,11 +19,35 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Public Marketplace Routes
+| Public Landing Page (Completely Standalone)
 |--------------------------------------------------------------------------
 */
 Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
-Route::get('/product/{slug}', [MarketplaceController::class, 'show'])->name('products.show');
+
+/*
+|--------------------------------------------------------------------------
+| Buyer E-Commerce Ecosystem Routes (/buyer)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('buyer')->name('buyer.')->group(function () {
+    Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
+    Route::get('/home', fn() => redirect()->route('buyer.index'));
+    Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
+    Route::get('/cart', [CartController::class, 'index'])->name('cart');
+    
+    Route::middleware('auth')->group(function () {
+        Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+        Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
+        Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
+    });
+});
+
+// Backward-compatible Public Marketplace / Catalog routes
+Route::get('/products', [MarketplaceController::class, 'catalog'])->name('products.index');
+Route::get('/catalog', fn() => redirect()->route('buyer.index'));
+Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
 
 // Cart (Accessible to guests and logged in users)
@@ -41,7 +69,7 @@ Route::middleware('auth')->group(function () {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
             'courier' => route('courier.deliveries'),
-            default => route('marketplace'),
+            default => route('buyer.index'),
         });
     })->name('dashboard');
 
