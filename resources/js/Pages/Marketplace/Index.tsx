@@ -124,15 +124,15 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
                     </div>
 
-                    {/* BAGOO + SHOP stacked tightly together (Centered on Mobile, Left-aligned on Desktop) */}
-                    <div className="relative z-20 my-auto py-4 sm:py-0 flex flex-col items-center sm:items-start text-center sm:text-left w-full space-y-0">
+                    {/* BAGOO + SHOP stacked (Centered below xl when cards wrap below, Left-aligned on xl+ desktop) */}
+                    <div className="relative z-20 my-auto py-4 sm:py-6 xl:py-0 flex flex-col items-center xl:items-start text-center xl:text-left w-full space-y-1 sm:space-y-2 xl:space-y-0">
                         {/* BAGOO (Left-to-Right Entrance) */}
                         <div 
                             className={`select-none pointer-events-none transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                                 isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
-                            <h1 className="text-[17vw] sm:text-[14vw] lg:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center justify-center sm:justify-start drop-shadow-xs">
+                            <h1 className="text-[16vw] sm:text-[13vw] xl:text-[12.5vw] leading-[0.84] font-black tracking-tighter text-black flex items-center justify-center xl:justify-start drop-shadow-xs">
                                 <span>BA</span>
                                 <span className="text-[#E00D42]">GO</span>
                                 <span>O</span>
@@ -145,18 +145,18 @@ export default function MarketplaceIndex({ categories }: Props) {
                                 isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
-                            <h2 className="text-[17vw] sm:text-[14vw] lg:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center justify-center sm:justify-start drop-shadow-xs">
+                            <h2 className="text-[16vw] sm:text-[13vw] xl:text-[12.5vw] leading-[0.84] font-black tracking-tighter text-black flex items-center justify-center xl:justify-start drop-shadow-xs">
                                 SHOP
                             </h2>
                         </div>
                     </div>
 
-                    {/* STACKED & LEANING VIDEO CARDS (Centered on Mobile/Tablet, Top-Right on Desktop) */}
-                    <div className="relative lg:absolute lg:top-[26%] lg:right-8 xl:right-16 z-30 my-6 lg:my-0 flex justify-center lg:block pointer-events-auto">
-                        <div className="relative w-52 sm:w-60 lg:w-64 xl:w-72 h-64 sm:h-76 lg:h-80 xl:h-92 group cursor-pointer">
+                    {/* STACKED & LEANING VIDEO CARDS (Centered below xl with generous breathing room, Pinned Top-Right on xl+) */}
+                    <div className="relative xl:absolute xl:top-[26%] xl:right-8 2xl:right-16 z-30 my-8 sm:my-10 xl:my-0 flex justify-center xl:block pointer-events-auto">
+                        <div className="relative w-56 sm:w-64 xl:w-72 h-68 sm:h-80 xl:h-92 group cursor-pointer">
                             
                             {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out to the left) */}
-                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2 sm:p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-8 sm:-translate-x-12 -translate-y-4 sm:-translate-y-6 lg:-translate-x-14 xl:-translate-x-16 lg:-translate-y-8 group-hover:-rotate-16 group-hover:-translate-x-18 group-hover:-translate-y-10 transition-all duration-500 ease-out z-10">
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-10 sm:-translate-x-14 -translate-y-4 sm:-translate-y-6 xl:-translate-x-16 xl:-translate-y-8 group-hover:-rotate-16 group-hover:-translate-x-20 group-hover:-translate-y-10 transition-all duration-500 ease-out z-10">
                                 <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] text-slate-300 px-1 pb-1 z-10">
                                     <span className="font-bold text-white">BAGOO // REEL 01</span>
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -172,7 +172,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 right-1.5 sm:right-2 font-mono text-[8px] sm:text-[9px] text-white flex justify-between items-center">
+                                    <div className="absolute bottom-2 left-2 right-2 font-mono text-[8px] sm:text-[9px] text-white flex justify-between items-center">
                                         <span className="px-1.5 py-0.5 rounded bg-[#E00D42] font-black text-[7px] sm:text-[8px] uppercase">DISPATCH REEL</span>
                                         <span className="text-emerald-400 text-[7px] sm:text-[8px] font-bold">● ACTIVE</span>
                                     </div>
@@ -180,10 +180,10 @@ export default function MarketplaceIndex({ categories }: Props) {
                             </div>
 
                             {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
-                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2 sm:p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-1.5 sm:translate-x-2 translate-y-1.5 sm:translate-y-2 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
                                 <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] text-slate-600 px-1 pb-1 z-10">
-                                    <span className="font-black text-slate-900 flex items-center gap-1 sm:gap-1.5">
-                                        <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-[#E00D42]"></span>
+                                    <span className="font-black text-slate-900 flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-[#E00D42]"></span>
                                         BAGOO MARKETPLACE
                                     </span>
                                     <span className="px-1.5 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
@@ -199,7 +199,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         <source src="/videos/store-shopping-2.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-1.5 sm:bottom-2.5 left-1.5 sm:left-2.5 right-1.5 sm:right-2.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px]">
+                                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px]">
                                         <span className="font-bold tracking-wider">ECOSYSTEM REEL</span>
                                         <span className="text-emerald-400 font-bold">● LIVE</span>
                                     </div>

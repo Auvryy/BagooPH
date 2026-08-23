@@ -549,6 +549,18 @@ This document tracks all completed work and prompts with dates and timestamps.
      - On mobile/tablet: neatly centered below the headline with scaled dimensions (`w-52 sm:w-60 h-64 sm:h-76`), retaining the dual-tilted card stack with Card 1 (`store-shopping-1.webm`) prominently peeking out and Card 2 (`store-shopping-2.webm`) elevated on top.
   4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.68s (`exit 0`).
 
+### 📌 Prompt 45: Adaptive Breakpoint Layout & Vertical Spacing for Wrapped Video Cards
+- **Date & Time:** `2026-08-23 21:38:30 +08:00`
+- **User Prompt:**
+  > *"fix when the video card starts to go to bottom of the hero text, make sure the hero text bagoo shop will be now centered, and put a little more spacing between them!#"*
+- **What was done:**
+  1. **Centered Breakpoint Synchronization ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Aligned the headline container and typography to automatically switch to centered layout (`items-center justify-center text-center`) whenever the screen is below `xl:`, perfectly synchronizing with when the video cards wrap below the text.
+     - Preserved clean left-alignment when viewing on `xl` and `2xl` widescreen monitors where cards sit on the right.
+  2. **Generous Vertical Spacing & Proportions:**
+     - Added dedicated vertical padding and margins (`py-4 sm:py-6 xl:py-0` for the text, `space-y-1 sm:space-y-2 xl:space-y-0` between BAGOO and SHOP, and `my-8 sm:my-10 xl:my-0` for the video deck).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 14.94s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -556,8 +568,8 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Adaptive Centering & Spacing for Hero BAGOO SHOP when video cards wrap below.
 - [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.
-- [x] Centered Mobile BAGOO SHOP Typography & Responsive Video Cards across all devices.
 - [x] Stacked & Leaning Video Cards active in Landing Hero (store-shopping-2 on top).
 - [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
 - [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.
