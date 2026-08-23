@@ -10,20 +10,18 @@ import {
     ShieldCheck, 
     PackageCheck,
     ChevronDown,
-    LogOut,
-    Menu,
-    X
+    LogOut
 } from 'lucide-react';
 
 interface Props {
     children: React.ReactNode;
     title?: string;
+    headerTheme?: 'light' | 'dark';
 }
 
-export default function MarketplaceLayout({ children, title }: Props) {
+export default function MarketplaceLayout({ children, title, headerTheme = 'light' }: Props) {
     const { auth } = usePage<PageProps>().props;
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const getRoleDashboardLink = () => {
         if (!auth.user) return null;
@@ -41,14 +39,19 @@ export default function MarketplaceLayout({ children, title }: Props) {
     };
 
     const dashboard = getRoleDashboardLink();
+    const isDark = headerTheme === 'dark';
 
     return (
         <div className="min-h-screen bg-[#ECEAE5] text-slate-900 flex flex-col font-sans relative selection:bg-[#E00D42] selection:text-white">
             {/* Custom Interactive Cursor Spotlight */}
             <CursorSpotlight />
 
-            {/* Minimal Header: Logo on Left, Sign In & Register on Right */}
-            <header className="sticky top-0 z-40 bg-[#ECEAE5]/90 backdrop-blur-md border-b border-black/10 transition-colors">
+            {/* Minimal Dynamic Responsive Header: Logo on Left, Sign In & Register on Right */}
+            <header className={`sticky top-0 z-40 transition-colors duration-500 backdrop-blur-md ${
+                isDark 
+                    ? 'bg-[#0A0D14]/85 border-b border-white/10 text-white' 
+                    : 'bg-[#ECEAE5]/85 border-b border-black/10 text-black'
+            }`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16 sm:h-20">
                         
@@ -58,10 +61,14 @@ export default function MarketplaceLayout({ children, title }: Props) {
                                 <ShoppingBag className="w-5 h-5" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-xl sm:text-2xl font-black tracking-tight text-black">
+                                <span className={`text-xl sm:text-2xl font-black tracking-tight transition-colors duration-300 ${
+                                    isDark ? 'text-white' : 'text-black'
+                                }`}>
                                     Bagoo<span className="text-[#E00D42]">PH</span>
                                 </span>
-                                <span className="text-[9px] uppercase font-mono font-bold tracking-widest text-black/50 -mt-1">
+                                <span className={`text-[9px] uppercase font-mono font-bold tracking-widest -mt-1 transition-colors duration-300 ${
+                                    isDark ? 'text-white/50' : 'text-black/50'
+                                }`}>
                                     ECOSYSTEM
                                 </span>
                             </div>
@@ -73,26 +80,30 @@ export default function MarketplaceLayout({ children, title }: Props) {
                                 <div className="relative">
                                     <button
                                         onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                                        className="flex items-center gap-2.5 px-3 py-1.5 bg-black/5 hover:bg-black/10 rounded-lg border border-black/15 transition"
+                                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border transition duration-300 ${
+                                            isDark 
+                                                ? 'bg-white/10 hover:bg-white/15 border-white/15 text-white' 
+                                                : 'bg-black/5 hover:bg-black/10 border-black/15 text-black'
+                                        }`}
                                     >
                                         <div className="w-7 h-7 rounded-md bg-[#E00D42] text-white text-xs font-bold flex items-center justify-center">
                                             {auth.user.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="text-left hidden sm:block">
-                                            <p className="text-xs font-bold text-black leading-none">
+                                            <p className="text-xs font-bold leading-none truncate max-w-[90px]">
                                                 {auth.user.name.split(' ')[0]}
                                             </p>
                                             <p className="text-[10px] uppercase text-[#E00D42] font-semibold">
                                                 {auth.user.role}
                                             </p>
                                         </div>
-                                        <ChevronDown className="w-3.5 h-3.5 text-black/50" />
+                                        <ChevronDown className="w-3.5 h-3.5 opacity-60" />
                                     </button>
 
                                     {/* User Dropdown Menu */}
                                     {userDropdownOpen && (
                                         <div 
-                                            className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-black/10 py-1.5 z-50 animate-scale-in"
+                                            className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-2xl border border-black/10 py-1.5 z-50 animate-scale-in text-slate-900"
                                             onMouseLeave={() => setUserDropdownOpen(false)}
                                         >
                                             <div className="px-4 py-2 border-b border-slate-100">
@@ -134,7 +145,11 @@ export default function MarketplaceLayout({ children, title }: Props) {
                                 <div className="flex items-center gap-3">
                                     <Link
                                         href={route('login')}
-                                        className="px-4 py-2 text-xs font-bold text-black/80 hover:text-black hover:bg-black/5 rounded-lg transition tracking-wider uppercase"
+                                        className={`px-4 py-2 text-xs font-bold rounded-lg transition tracking-wider uppercase ${
+                                            isDark 
+                                                ? 'text-white/80 hover:text-white hover:bg-white/10' 
+                                                : 'text-black/80 hover:text-black hover:bg-black/5'
+                                        }`}
                                     >
                                         Sign In
                                     </Link>
@@ -156,7 +171,7 @@ export default function MarketplaceLayout({ children, title }: Props) {
                 {children}
             </main>
 
-            {/* Clean Minimalist Footer (Without sensitive demo info) */}
+            {/* Clean Minimalist Footer */}
             <footer className="bg-[#111111] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-black font-mono">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6 text-xs text-white/50">
                     <div className="flex items-center gap-3">

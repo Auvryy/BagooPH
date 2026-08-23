@@ -143,6 +143,27 @@ This document tracks all completed work and prompts with dates and timestamps.
   3. Structured alternating screen theme shifts across sections (Light Mode ➔ Obsidian Dark ➔ Warm Studio Light ➔ Logistics Dark ➔ Midnight Dark ➔ Light Stone).
   4. Added high-resolution visual imagery and UI telemetry mockups for each role (Order tracking cards, Printable Waybill with barcode, Real-time Courier Dispatch job cards, and Admin KYC queue cards).
 
+### 📌 Prompt 13: Transparent Right-Side Elevator Card, Section Scroll Snapping & Adaptive Header Theme
+- **Date & Time:** `2026-08-23 09:50:56 +08:00`
+- **User Prompt:**
+  > *"i want you to make the navigation from the right to be transparent hwile also knowing that theuser will see it. moreover, when wescroll to the dark section, every section would snap so user can't scroll on the middle of between section like eveyr section snaps, morover, when we go to dark sections the navigation where the logo and sign in is plce, the navigation will also adapt to the color background"*
+- **What was done:**
+  1. Converted the right-side section elevator navigation card to a high-contrast frosted glassmorphic HUD (`bg-black/35 backdrop-blur-2xl border-white/20 text-white`) that remains clearly visible across all section backgrounds.
+  2. Implemented mandatory section scroll snapping (`snap-start snap-always min-h-screen`) ensuring every section aligns to the viewport without stopping in between.
+  3. Made the top navbar dynamically reactive to section background color themes (`headerTheme="light" | "dark"`), smoothly adapting logo typography, subtitle, and action buttons when scrolling over dark vs light sections.
+
+### 📌 Prompt 14: True Magnetic Section Snapping Controller & Hover-Reveal Right Edge Indicator
+- **Date & Time:** `2026-08-23 09:54:17 +08:00`
+- **User Prompt:**
+  > *"where is the section snapping. when we scroll there should be magnetic snap to the section so it is always at the center. moreover you can remove the nav right but only show it when user hover to the right section but also put an indicator that it can be hovered"*
+- **What was done:**
+  1. Implemented a dedicated high-performance **Magnetic Wheel / Touch / Keyboard Section Snapper** in `resources/js/Pages/Marketplace/Index.tsx`:
+     - Intercepts scroll gestures and smoothly & magnetically snaps to the exact center of the next/previous section with velocity throttling and momentum locking.
+     - Supports mouse wheel, trackpad swipes, and arrow keys (ArrowUp, ArrowDown, PageUp, PageDown, Space).
+  2. Converted the right-side navigation into a **Hover-Reveal HUD**:
+     - By default, displays a sleek glowing vertical indicator tab on the right edge (`[02] NAV` with pulsating `#E00D42` indicator and chevron).
+     - When hovered, the full frosted glassmorphic navigation card smoothly slides into view with section shortcuts.
+
 ---
 
 ## 🎯 Current Status
@@ -150,4 +171,4 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] 3D Shopping Bag behind brand name + Right-side Floating Elevator Nav Card + Dynamic Light/Dark Section Color Shifts + High-res Imagery live.
+- [x] True Magnetic Section Scroll Snapping + Hover-Reveal Right Edge Indicator Tab live.
