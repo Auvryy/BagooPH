@@ -22,6 +22,7 @@ import {
     Heart,
     SlidersHorizontal
 } from 'lucide-react';
+import ChatModal from '@/Components/ChatModal';
 
 interface Props {
     children: React.ReactNode;
@@ -258,63 +259,24 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                 {children}
             </main>
 
-            {/* 4. FLOATING LIVE CHAT WIDGET */}
+            {/* 4. FLOATING LIVE CHAT TRIGGER & MODAL */}
             <div className="fixed bottom-6 right-6 z-50">
-                {chatOpen ? (
-                    <div className="w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-sans animate-scale-in">
-                        <div className="bg-[#111319] text-white p-3.5 flex items-center justify-between border-b border-white/10">
-                            <div className="flex items-center gap-2 font-mono text-xs font-bold">
-                                <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                                <span>BagooPH Care & Merchant Dispatch</span>
-                            </div>
-                            <button onClick={() => setChatOpen(false)} className="text-white/70 hover:text-white">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <div className="p-4 h-64 overflow-y-auto space-y-3 bg-slate-50 text-xs">
-                            {chatHistory.map((msg, idx) => (
-                                <div 
-                                    key={idx} 
-                                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                                >
-                                    <div className={`p-3 rounded-2xl max-w-[80%] ${
-                                        msg.sender === 'user' 
-                                            ? 'bg-[#E00D42] text-white rounded-br-xs' 
-                                            : 'bg-white text-slate-800 border border-slate-200 shadow-2xs rounded-bl-xs'
-                                    }`}>
-                                        <p>{msg.text}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <form onSubmit={handleSendChat} className="p-2.5 bg-white border-t border-slate-200 flex gap-2">
-                            <input
-                                type="text"
-                                value={chatMessage}
-                                onChange={(e) => setChatMessage(e.target.value)}
-                                placeholder="Type a message to customer support..."
-                                className="flex-1 px-3 py-1.5 text-xs bg-slate-100 rounded-lg border-0 focus:ring-1 focus:ring-[#E00D42] outline-hidden"
-                            />
-                            <button
-                                type="submit"
-                                className="px-3.5 py-1.5 bg-[#E00D42] text-white font-bold text-xs rounded-lg font-mono uppercase"
-                            >
-                                Send
-                            </button>
-                        </form>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setChatOpen(true)}
-                        className="px-4 py-3 bg-[#111319] hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 uppercase tracking-wider text-xs font-mono border border-white/20"
-                    >
-                        <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                        <span>Live Care</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => setChatOpen(true)}
+                    className="px-4 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 uppercase tracking-wider text-xs font-mono border border-white/20"
+                >
+                    <MessageSquare className="w-4 h-4 text-[#E00D42]" />
+                    <span>Customer Care</span>
+                </button>
             </div>
+
+            <ChatModal
+                isOpen={chatOpen}
+                onClose={() => setChatOpen(false)}
+                receiverId={2}
+                receiverName="Bagoo Customer Care"
+                shopName="Bagoo Official Support & Merchant Dispatch"
+            />
 
             {/* 5. FOOTER */}
             <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">

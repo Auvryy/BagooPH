@@ -7,12 +7,15 @@ use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
+use App\Http\Controllers\Buyer\VoucherController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
+use App\Http\Controllers\Seller\SellerVoucherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -39,6 +42,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
+        Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
     });
 });
 
@@ -56,7 +60,7 @@ Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('car
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Shared & Buyer Routes
+| Authenticated Shared & Live Chat Routes
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
@@ -81,6 +85,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/my-orders', [OrderHistoryController::class, 'index'])->name('orders.index');
     Route::get('/my-orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
+
+    // Live Chat / Messaging Endpoints
+    Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 });
 
 /*
@@ -97,6 +105,11 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
     Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack'])->name('orders.pack');
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
+    Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
+    Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
+    Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
+    Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
+    Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');

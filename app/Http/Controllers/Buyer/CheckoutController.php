@@ -8,6 +8,7 @@ use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Voucher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,14 @@ class CheckoutController extends Controller
         $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
         $total = $subtotal + $shippingFee;
 
+        // Fetch available platform and merchant vouchers
+        $availableVouchers = Voucher::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->latest()
+            ->get();
+
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $cart->items,
@@ -46,6 +55,7 @@ class CheckoutController extends Controller
             'shippingFee' => $shippingFee,
             'total' => $total,
             'user' => $user,
+            'availableVouchers' => $availableVouchers,
         ]);
     }
 
@@ -66,6 +76,7 @@ class CheckoutController extends Controller
             'shipping_postal_code' => 'nullable|string|max:20',
             'payment_method' => 'required|string|in:card,cod,bank_transfer,e_wallet',
             'notes' => 'nullable|string|max:500',
+            'voucher_code' => 'nullable|string|max:50',
         ]);
 
         try {
@@ -87,7 +98,20 @@ class CheckoutController extends Controller
                 }
 
                 $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
-                $totalAmount = $subtotal + $shippingFee;
+                $voucherDiscount = 0.0;
+                $appliedVoucher = null;
+
+                if (! empty($validated['voucher_code'])) {
+                    $code = strtoupper(trim($validated['voucher_code']));
+                    $appliedVoucher = Voucher::where('code', $code)->where('is_active', true)->first();
+
+                    if ($appliedVoucher && $appliedVoucher->isValidForAmount($subtotal)) {
+                        $voucherDiscount = $appliedVoucher->calculateDiscount($subtotal, $shippingFee);
+                        $appliedVoucher->increment('used_count');
+                    }
+                }
+
+                $totalAmount = max(0, ($subtotal + $shippingFee) - $voucherDiscount);
 
                 $order = Order::create([
                     'order_number' => 'BGO-' . strtoupper(Str::random(8)),

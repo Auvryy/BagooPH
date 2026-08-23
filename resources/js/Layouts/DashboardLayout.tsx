@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
@@ -25,7 +25,15 @@ import {
     ChevronDown,
     BarChart3,
     FileText,
-    HelpCircle
+    HelpCircle,
+    Clock,
+    Copy,
+    Check,
+    Radio,
+    Terminal,
+    Sparkles,
+    Tag,
+    MessageSquare
 } from 'lucide-react';
 
 interface Props {
@@ -38,9 +46,30 @@ interface Props {
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [copiedStoreLink, setCopiedStoreLink] = useState(false);
+    const [currentTime, setCurrentTime] = useState('');
 
     const user = auth.user;
     const role = user?.role || 'buyer';
+
+    useEffect(() => {
+        const updateClock = () => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+        };
+        updateClock();
+        const timer = setInterval(updateClock, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const copyStoreUrl = () => {
+        if (user?.shop) {
+            const url = `${window.location.origin}/shop/${user.shop.slug}`;
+            navigator.clipboard.writeText(url);
+            setCopiedStoreLink(true);
+            setTimeout(() => setCopiedStoreLink(false), 2000);
+        }
+    };
 
     const getNavItems = () => {
         if (role === 'admin') {
@@ -53,11 +82,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
         if (role === 'seller') {
             return [
-                { name: 'Seller Overview', href: route('seller.dashboard'), icon: LayoutDashboard, current: route().current('seller.dashboard') },
-                { name: 'Catalog & Inventory', href: route('seller.products.index'), icon: Package, current: route().current('seller.products.*') },
-                { name: 'Order Fulfillment', href: route('seller.orders.index'), icon: ShoppingCart, current: route().current('seller.orders.*') },
-                { name: 'Financial Reports', href: route('seller.reports'), icon: TrendingUp, current: route().current('seller.reports') },
-                { name: 'Storefront Settings', href: route('seller.settings'), icon: Store, current: route().current('seller.settings') },
+                { name: 'Merchant Cockpit', href: route('seller.dashboard'), icon: LayoutDashboard, current: route().current('seller.dashboard'), tag: 'LIVE' },
+                { name: 'Inventory & Catalog', href: route('seller.products.index'), icon: Package, current: route().current('seller.products.*') },
+                { name: 'Fulfillment & Waybills', href: route('seller.orders.index'), icon: ShoppingCart, current: route().current('seller.orders.*') },
+                { name: 'Vouchers & Promos', href: route('seller.vouchers.index'), icon: Tag, current: route().current('seller.vouchers.*') },
+                { name: 'Customer Messages', href: route('seller.messages.index'), icon: MessageSquare, current: route().current('seller.messages.*') },
+                { name: 'Financial Statements', href: route('seller.reports'), icon: TrendingUp, current: route().current('seller.reports') },
+                { name: 'Storefront & Logistics', href: route('seller.settings'), icon: Store, current: route().current('seller.settings') },
             ];
         }
 
@@ -69,40 +100,23 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         }
 
         return [
-            { name: 'Buyer Dashboard', href: route('buyer.dashboard'), icon: LayoutDashboard, current: route().current('buyer.dashboard') },
-            { name: 'Explore Marketplace', href: route('products.index'), icon: ShoppingBag, current: route().current('products.*') },
-            { name: 'My Cart & Bag', href: route('cart.index'), icon: ShoppingCart, current: route().current('cart.index') },
-            { name: 'My Orders & Shipments', href: route('orders.index'), icon: Package, current: route().current('orders.*') },
-            { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
+            { name: 'Buyer Home', href: route('buyer.index'), icon: ShoppingBag, current: route().current('buyer.index') },
+            { name: 'My Orders & Tracking', href: route('buyer.orders.index'), icon: Package, current: route().current('buyer.orders.*') },
+            { name: 'Shopping Bag', href: route('buyer.cart'), icon: ShoppingCart, current: route().current('buyer.cart') },
+            { name: 'Profile & Security', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
         ];
     };
 
     const navItems = getNavItems();
 
-    const getRoleBadge = () => {
-        switch (role) {
-            case 'admin':
-                return { label: 'Platform Admin', color: 'bg-rose-50 text-[#E00D42] border-rose-200' };
-            case 'seller':
-                return { label: 'Verified Seller', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-            case 'courier':
-            case 'logistics':
-                return { label: 'Active Courier', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-            default:
-                return { label: 'Valued Buyer', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
-        }
-    };
-
-    const roleBadge = getRoleBadge();
-
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
+        <div className="min-h-screen bg-[#F8FAFC] flex flex-col lg:flex-row text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
             
             {/* Mobile Header Bar */}
             <div className="lg:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40 shadow-xs">
-                <Link href={route('marketplace')} className="flex items-center gap-2">
+                <Link href={route('seller.dashboard')} className="flex items-center gap-2">
                     <BagooLogo className="w-8 h-8" rounded="rounded-lg" />
-                    <span className="text-lg font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span> <span className="text-xs font-mono font-bold text-slate-400">SELLER</span></span>
+                    <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span> <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 font-bold text-slate-700">MERCHANT</span></span>
                 </Link>
                 <button 
                     onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -120,65 +134,92 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 />
             )}
 
-            {/* Clean Light Sidebar Navigation */}
-            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 flex flex-col transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:z-auto`}>
+            {/* Bespoke Swiss-Style Merchant Workstation Sidebar */}
+            <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-700 border-r border-slate-200 flex flex-col transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:z-auto`}>
                 
-                {/* Brand Header */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
-                    <Link href={route('seller.dashboard')} className="flex items-center gap-2.5">
-                        <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
-                        <div>
-                            <span className="text-lg font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                            <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400 -mt-1 font-mono">
-                                Seller Centre
-                            </span>
-                        </div>
-                    </Link>
-                    <button 
-                        onClick={() => setSidebarOpen(false)}
-                        className="lg:hidden p-1 text-slate-400 hover:text-slate-700"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Verified Store Banner Tag */}
-                <div className="p-3.5 mx-4 mt-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                        <Store className="w-4 h-4" />
-                    </div>
-                    <div className="overflow-hidden min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate">{user?.shop?.name || user?.name + "'s Store"}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">Store Online</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Navigation Links */}
-                <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-                    <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
-                        Management
-                    </p>
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                                item.current 
-                                    ? 'bg-[#E00D42] text-white shadow-xs' 
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                            }`}
-                        >
-                            <item.icon className="w-4 h-4 shrink-0" />
-                            <span>{item.name}</span>
+                {/* Brand & Terminal Moniker Header */}
+                <div className="p-5 border-b border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Link href={route('seller.dashboard')} className="flex items-center gap-2.5">
+                            <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
+                            <div>
+                                <span className="text-lg font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
+                                <span className="block text-[9px] uppercase font-bold tracking-widest text-[#E00D42] -mt-1 font-mono">
+                                    Merchant Workstation
+                                </span>
+                            </div>
                         </Link>
-                    ))}
+                        <button 
+                            onClick={() => setSidebarOpen(false)}
+                            className="lg:hidden p-1 text-slate-400 hover:text-slate-700"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
 
-                    <div className="pt-4 mt-2 border-t border-slate-100">
+                    {/* Merchant Store Identifier Card */}
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                <p className="text-xs font-bold text-slate-900 truncate">{user?.shop?.name || user?.name + "'s Store"}</p>
+                            </div>
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold uppercase">MALL</span>
+                        </div>
+
+                        {user?.shop && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 font-mono text-[10px] text-slate-500">
+                                <span className="truncate">/shop/{user.shop.slug}</span>
+                                <button
+                                    onClick={copyStoreUrl}
+                                    className="p-1 hover:text-[#E00D42] text-slate-400 transition"
+                                    title="Copy Store Link"
+                                >
+                                    {copiedStoreLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Navigation Sections */}
+                <nav className="flex-1 px-3.5 py-4 space-y-6 overflow-y-auto font-sans">
+                    
+                    {/* Operations Group */}
+                    <div className="space-y-1">
+                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono flex items-center justify-between">
+                            <span>Operations & Workflows</span>
+                            <span className="text-[9px] text-slate-400 font-normal">PHT</span>
+                        </p>
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition group ${
+                                    item.current 
+                                        ? 'bg-slate-900 text-white shadow-xs' 
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-[#E00D42]' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                    <span>{item.name}</span>
+                                </div>
+                                {item.tag && (
+                                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                                        item.current ? 'bg-[#E00D42] text-white' : 'bg-emerald-50 text-emerald-700'
+                                    }`}>
+                                        {item.tag}
+                                    </span>
+                                )}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Shortcuts & Network */}
+                    <div className="pt-3 border-t border-slate-100 space-y-1">
                         <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
-                            Shortcuts
+                            Network Shortcuts
                         </p>
                         {user?.shop && (
                             <Link
@@ -188,7 +229,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             >
                                 <div className="flex items-center gap-2.5">
                                     <ShoppingBag className="w-4 h-4 text-[#E00D42]" />
-                                    <span>Live Storefront</span>
+                                    <span>Live Public Storefront</span>
                                 </div>
                                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                             </Link>
@@ -198,25 +239,33 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <ArrowLeft className="w-4 h-4 text-slate-400" />
-                            <span>Buyer Marketplace</span>
+                            <span>Switch to Buyer Mode</span>
                         </Link>
                         <Link
                             href={route('profile.edit')}
                             className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <Settings className="w-4 h-4 text-slate-400" />
-                            <span>Account & Password</span>
+                            <span>Security & Account</span>
                         </Link>
                     </div>
                 </nav>
 
-                {/* Sidebar Bottom: Sign Out */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                {/* Sidebar Bottom: Status & Sign Out */}
+                <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3 font-mono">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{currentTime || '12:00:00 PM'}</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-600 font-bold">18ms Latency</span>
+                    </div>
+
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 font-mono uppercase"
+                        className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 uppercase tracking-wider"
                     >
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>
@@ -224,10 +273,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 </div>
             </aside>
 
-            {/* Main Content Area */}
+            {/* Main Content Terminal */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 
-                {/* Clean Light Topbar */}
+                {/* Cockpit Topbar */}
                 <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shadow-2xs">
                     <div className="flex items-center gap-3">
                         <button
@@ -237,12 +286,15 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Menu className="w-5 h-5" />
                         </button>
                         <div>
-                            <h1 className="text-lg font-black text-slate-900 tracking-tight">{title}</h1>
-                            {subtitle && <p className="text-xs text-slate-500 font-medium">{subtitle}</p>}
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-base font-black text-slate-900 tracking-tight">{title}</h1>
+                                <span className="hidden sm:inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold uppercase">PRO</span>
+                            </div>
+                            {subtitle && <p className="text-[11px] text-slate-500 font-medium">{subtitle}</p>}
                         </div>
                     </div>
 
-                    {/* Topbar Actions & Profile */}
+                    {/* Topbar Actions & Cockpit Gauges */}
                     <div className="flex items-center gap-3">
                         {actions}
 
@@ -250,7 +302,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Link
                                 href={route('shop.show', user.shop.slug)}
                                 target="_blank"
-                                className="hidden md:flex items-center gap-1 px-3 py-1.5 text-xs font-bold font-mono text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200"
+                                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold font-mono text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200"
                             >
                                 <Store className="w-3.5 h-3.5 text-[#E00D42]" />
                                 <span>Preview Store</span>
@@ -260,20 +312,20 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                         <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
 
-                        {/* User Avatar Pill */}
+                        {/* Merchant User Avatar Badge */}
                         <div className="flex items-center gap-2.5 pl-1">
                             <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                                 {user?.name.charAt(0)}
                             </div>
                             <div className="hidden sm:block text-left font-mono">
                                 <p className="text-xs font-bold text-slate-800 leading-tight">{user?.name}</p>
-                                <span className="text-[10px] text-emerald-600 font-bold uppercase">Seller Verified</span>
+                                <span className="text-[10px] text-emerald-600 font-bold uppercase">Verified Merchant</span>
                             </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Flash Messages */}
+                {/* Flash Alerts */}
                 {flash.success && (
                     <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4" />
@@ -287,7 +339,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 )}
 
                 {/* Body Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-slate-50/70">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F8FAFC]">
                     <div className="max-w-7xl mx-auto">
                         {children}
                     </div>
