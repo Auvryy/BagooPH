@@ -73,6 +73,76 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. Updated header, navbar, footer, and sidebar brand logos to `BagooPH` with `#E00D42` accent.
   3. Updated `ApplicationLogo.tsx` and logistics partner defaults to `BagooPH Express`.
 
+### 📌 Prompt 7: Git Protocol & Commit Message Rule
+- **Date & Time:** `2026-08-23 09:17:30 +08:00`
+- **User Prompt:**
+  > *"now add instrution so that every prompt is you will tryna give me commit message but also remember to not to try to commit or add anything by yourselves in github."*
+- **What was done:**
+  1. Updated `GEMINI.md` to establish strict Git protocol: AI must never run `git add`, `git commit`, or `git push` autonomously.
+  2. Configured AI behavior to provide clean, copy-pasteable conventional commit messages at the end of every prompt.
+
+### 📌 Prompt 8: Modern Buyer Landing Page & Interactive Cursor Animations
+- **Date & Time:** `2026-08-23 09:25:47 +08:00`
+- **User Prompt:**
+  > *"okay for now. change the landing page for our desgin gola here which is i know in the md documentation. use our color theme okay. beautiful landing page for buyers this one. there should be great animations and cursor animations there okay"*
+- **What was done:**
+  1. Built custom 60fps linear-interpolated `<CursorSpotlight />` component (`resources/js/Components/CursorSpotlight.tsx`) with ambient crimson `#E00D42` radial glow and interactive hover magnetic halo.
+  2. Crafted a modern minimalist dark hero banner (`#090D16`) with ambient radial mesh, live trending category chips, and an interactive **Live Courier Dispatch Simulator** with clickable milestone stages.
+  3. Built clean horizontal 14-category filter bar, curated product cards with `rounded-xl` borders, star ratings, and instant add-to-cart animations.
+  4. Added 4 buyer trust pillars (KYC Verified Stores, First-Come Dispatch, Protected Multi-Payment, In-App Mediation) and verified merchant showcase.
+
+### 📌 Prompt 9: Awwwards-Caliber Landing Page Rebuild
+- **Date & Time:** `2026-08-23 09:29:19 +08:00`
+- **User Prompt:**
+  > *"no. restart all the landing page, for now create it base on our design and the professional withanimation scrolling etc. like it was a WWWawwrads website thing"*
+- **What was done:**
+  1. Rebuilt the landing page (`resources/js/Pages/Marketplace/Index.tsx`) with an Awwwards-winning minimalist editorial design.
+  2. Implemented dual-point magnetic cursor tracker with physics LERP in `resources/js/Components/CursorSpotlight.tsx`.
+  3. Added high-contrast dark hero `#070A11` with bold typographic layout ("COMMERCE. DISPATCH. DELIVERED."), ambient `#E00D42` crimson glow, and interactive live parcel telemetry stepper.
+  4. Added infinite marquee ticker banner with smooth CSS animation.
+  5. Built interactive tabbed 4-Actor platform architecture explorer (Buyer, Seller, Courier, Admin).
+  6. Refined 14-category taxonomy bar, curated product grid, and verified merchant spotlight with `rounded-xl` borders.
+
+### 📌 Prompt 10: Editorial Brutalist 3D Landing Page with Film Grain & Floating Parallax
+- **Date & Time:** `2026-08-23 09:32:49 +08:00`
+- **User Prompt:**
+  > *"no. delete the whole content of landing page and let's start from the start. it was something like this, there is a grain on the landing page, and there is a 3d model and the 3d model will be our shopping bag with minimal professional header, and there is hard animation when scrolling like the text is floating etc."*
+- **What was done:**
+  1. Built procedural WebGL Three.js interactive 3D translucent Shopping Bag model (`resources/js/Components/ThreeShoppingBag.tsx`) with crimson `#E00D42` glass refraction, mouse tilt inertia, and dynamic scroll rotation.
+  2. Created authentic SVG fractal noise film grain overlay (`resources/js/Components/GrainOverlay.tsx`).
+  3. Rebuilt the landing page layout matching the uploaded reference image:
+     - Warm stone canvas background (`#ECEAE5`) with crosshair grid markers (`+`).
+     - Minimalist brutalist top navigation (`BAGOO-PH / MULTI-ROLE ECOSYSTEM` & `ENTER STORE ◼`).
+     - Monumental parallax floating typography: massive **`BAGOO`** (with `#E00D42` crimson character dot) and **`COMMERCE`** that glide dynamically on scroll.
+     - Monospace metadata block (Location, Local Time, Ecosystem Manifesto).
+     - 14 Master Product Departments indexed matrix (`[01/14]` to `[14/14]`).
+     - Curated product catalog, 4-actor architecture matrix, verified merchants directory, and minimal footer.
+
+### 📌 Prompt 11: Minimal Navbar & Role Capabilities Feature Showcase
+- **Date & Time:** `2026-08-23 09:39:23 +08:00`
+- **User Prompt:**
+  > *"okay remove the header and the thing will be left is the logo icon and our website name and on the other side is sign in and register. remove all products that is presented here. the thing that will be shown in our landing page when we scrolldown is information of feature of our buyer, seller, admin, etc features. do not put sensitive information in th elanding page tho"*
+- **What was done:**
+  1. Streamlined [`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx):
+     - Removed top announcement black bar.
+     - Reduced header navbar exclusively to: Logo Icon + Website Name (`BagooPH`) on the left, and `Sign In` / `Register` (`#E00D42` button) on the right.
+     - Removed all sensitive demo account credentials and test passwords from the footer.
+  2. Overhauled [`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx):
+     - Removed all product catalog items and sale cards.
+     - Kept the film grain overlay, interactive 3D WebGL shopping bag, and monumental floating typography with parallax scroll animations.
+     - Structured comprehensive feature deep-dive sections for the **4 Ecosystem Roles**: **Buyer Portal**, **Seller Center**, **Courier Logistics**, and **Admin Governance**.
+     - Displayed the official **14 Master Product Departments** taxonomy directory and platform governance directives (100% KYC Approved, 10% Platform Commission Engine, First-Come Dispatch, Tripartite Mediation).
+
+### 📌 Prompt 12: Background 3D Bag Layering, Floating Elevator Navigation Card & Dynamic Section Theme Shifts
+- **Date & Time:** `2026-08-23 09:46:55 +08:00`
+- **User Prompt:**
+  > *"put the 3d bag to the back of Bagoo name so we see the brand name easily. moreover for adding design capabilities. there should be a navigation card on the right i don't know if i called that rright but it is card of section name let say the feature name and each one of them is fixed on right side center of the screen, while we scroll the card go up to each other and change base on where we are on the section. each section should also change the whoel screen color for example in our first hero header it is light mode. while we scroll to the next it should be dark mode. it is also better to put some images in our landing page for visual clarity."*
+- **What was done:**
+  1. Positioned the interactive 3D WebGL Shopping Bag behind the monumental `BAGOO` typography layer (`z-0`), allowing crystal-clear brand readability with mouse-drag and parallax interactivity preserved.
+  2. Implemented a fixed right-side **Section Elevator Navigation Card** with active scroll-spy tracking across all 6 sections (`[01] OVERVIEW`, `[02] BUYER PORTAL`, `[03] SELLER STUDIO`, `[04] COURIER DISPATCH`, `[05] ADMIN GOVERNANCE`, `[06] 14 DEPARTMENTS`) with smooth click-to-scroll navigation.
+  3. Structured alternating screen theme shifts across sections (Light Mode ➔ Obsidian Dark ➔ Warm Studio Light ➔ Logistics Dark ➔ Midnight Dark ➔ Light Stone).
+  4. Added high-resolution visual imagery and UI telemetry mockups for each role (Order tracking cards, Printable Waybill with barcode, Real-time Courier Dispatch job cards, and Admin KYC queue cards).
+
 ---
 
 ## 🎯 Current Status
@@ -80,3 +150,4 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
+- [x] 3D Shopping Bag behind brand name + Right-side Floating Elevator Nav Card + Dynamic Light/Dark Section Color Shifts + High-res Imagery live.

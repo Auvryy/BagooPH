@@ -51,3 +51,10 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 1. **No Paid / External APIs:** Implement address selection, vouchers, waybills, and chat using local database logic.
 2. **Mandatory Admin Approval:** Newly registered users cannot access their portal until approved by Admin.
 3. **Consistent Theme & Styling:** Always use `#E00D42` for primary actions and adhere to the `rounded-lg` / `rounded-xl` professional border-radius standards.
+
+---
+
+## 🛑 5. Git & Commit Message Protocol
+1. **Never Commit Autonomously:** The AI must **NEVER** run `git add`, `git commit`, or `git push` autonomously. All git commands and repo pushes are manually handled by the user.
+2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
+
