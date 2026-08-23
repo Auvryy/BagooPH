@@ -572,6 +572,17 @@ This document tracks all completed work and prompts with dates and timestamps.
      - Calibrated the back leaning card translation offset on widescreen displays (`xl:-translate-x-20 2xl:-translate-x-24 xl:-translate-y-10 2xl:-translate-y-12`) so `store-shopping-1.webm` remains prominently visible and peeking out beside the enlarged `store-shopping-2.webm` card.
   2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 8.17s (`exit 0`).
 
+### 📌 Prompt 47: IP Address Verification & Strict Privacy Guardrails
+- **Date & Time:** `2026-08-23 21:45:10 +08:00`
+- **User Prompt:**
+  > *"wait did you put my ip in any of the md in our project? if yes remove!"*
+- **What was done:**
+  1. **Full Repository & Markdown Audit:**
+     - Performed comprehensive regex and string search across all markdown files (`GEMINI.md`, `docs/PROGRESS.md`, `README.md`), source code, configuration files, and git history.
+     - Confirmed **zero IP addresses or server credentials** exist in the project repository files (`CLEAN: No IP found in git tracking`).
+  2. **Enshrined Strict Privacy Rule in [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md#L93-L96):**
+     - Added **Section 7: Absolute Privacy & Server Credential / IP Address Protection**, forbidding any persistence of real IP addresses, credentials, or private keys in repository files.
+
 ---
 
 ## 🎯 Current Status
@@ -579,6 +590,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Strict IP Address & Server Credential Privacy Protection active in `GEMINI.md`.
 - [x] Enlarged Cinematic Video Cards in Desktop Side-by-Side View.
 - [x] Adaptive Centering & Spacing for Hero BAGOO SHOP when video cards wrap below.
 - [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.

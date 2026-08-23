@@ -88,3 +88,8 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
    - Shopping Container: **"Bag"** / **"Shopping Bag"** / **"Add to Bag"** (Never "Cart")
    - All sample products and stores must be 100% original Bagoo-branded assets.
 
+---
+
+## 🔒 7. Absolute Privacy & Server Credential / IP Address Protection
+1. **Zero IP Address Leaks in Files:** The AI must **NEVER** write or persist real server IP addresses, Azure hostnames, private keys, or SSH connection credentials into any repository files (including `.md`, documentation, code comments, or commit messages).
+2. **Placeholders Only:** If documentation requires reference to server setup, always use generic placeholders like `<SERVER_IP>` or `<AZURE_HOST>`.
