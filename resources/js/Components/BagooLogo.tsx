@@ -1,0 +1,48 @@
+import React from 'react';
+
+interface Props {
+    className?: string;
+    rounded?: string;
+}
+
+export default function BagooLogo({ className = 'w-10 h-10', rounded = 'rounded-xl' }: Props) {
+    return (
+        <div className={`relative overflow-hidden inline-flex items-center justify-center shrink-0 ${rounded} ${className}`}>
+            <svg 
+                viewBox="0 0 128 128" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-full h-full"
+            >
+                <rect width="128" height="128" fill="#E00D42"/>
+                <path 
+                    d="M94.9004 50C93.8981 60.1056 85.3704 68 75 68C64.6296 68 56.1019 60.1056 55.0996 50H94.9004Z" 
+                    fill="#C50032" 
+                    stroke="white" 
+                    strokeWidth="4"
+                />
+                <mask id="path-2-inside-1_1_3" fill="white">
+                    <rect x="41.5281" y="36.9213" width="66.4719" height="65.3258" rx="3"/>
+                </mask>
+                <rect 
+                    x="41.5281" 
+                    y="36.9213" 
+                    width="66.4719" 
+                    height="65.3258" 
+                    rx="3" 
+                    stroke="white" 
+                    strokeWidth="10" 
+                    mask="url(#path-2-inside-1_1_3)"
+                />
+                <path d="M17.4607 43.7978H30.0674" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                <path d="M6 60.9888L30.0674 60.9888" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                <path d="M12.8764 78.1798H30.0674" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                <path d="M24.3371 95.3708H30.0674" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+                <circle cx="56.1685" cy="23.1685" r="7.16854" stroke="white" strokeWidth="4"/>
+                <circle cx="60.5234" cy="22.5955" r="2" fill="white" stroke="white" strokeWidth="1.80456"/>
+                <circle cx="96.9779" cy="22.5955" r="2" fill="white" stroke="white" strokeWidth="1.80456"/>
+                <circle cx="93.1011" cy="23.1685" r="7.16854" stroke="white" strokeWidth="4"/>
+            </svg>
+        </div>
+    );
+}

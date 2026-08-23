@@ -25,6 +25,14 @@ class RegisteredUserController extends Controller
     }
 
     /**
+     * Display the dedicated seller registration view.
+     */
+    public function createSeller(): Response
+    {
+        return Inertia::render('Auth/SellerRegister');
+    }
+
+    /**
      * Handle an incoming registration request.
      *
      * @throws ValidationException
@@ -66,7 +74,7 @@ class RegisteredUserController extends Controller
             'admin' => route('admin.dashboard', absolute: false),
             'seller' => route('seller.dashboard', absolute: false),
             'courier' => route('courier.deliveries', absolute: false),
-            default => route('marketplace', absolute: false),
+            default => route('buyer.index', absolute: false),
         });
     }
 }

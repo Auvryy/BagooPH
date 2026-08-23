@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
     LayoutDashboard, 
@@ -48,34 +49,64 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'My Products', href: route('seller.products.index'), icon: Package, current: route().current('seller.products.*') },
                 { name: 'Incoming Orders', href: route('seller.orders.index'), icon: ShoppingCart, current: route().current('seller.orders.*') },
                 ...(user?.shop ? [{ name: 'Public Storefront', href: route('shop.show', user.shop.slug), icon: Store, current: false }] : []),
+                { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
             ];
         }
 
         if (role === 'courier' || role === 'logistics') {
             return [
-                { name: 'Delivery Board', href: route('courier.deliveries'), icon: Truck, current: route().current('courier.deliveries*') },
+                { name: 'Delivery Pool', href: route('courier.deliveries'), icon: Truck, current: route().current('courier.deliveries') },
+                { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
             ];
         }
 
         return [
-            { name: 'My Orders', href: route('orders.index'), icon: Package, current: route().current('orders.*') },
+            { name: 'Buyer Dashboard', href: route('buyer.dashboard'), icon: LayoutDashboard, current: route().current('buyer.dashboard') },
+            { name: 'Explore Marketplace', href: route('products.index'), icon: ShoppingBag, current: route().current('products.*') },
+            { name: 'My Cart & Bag', href: route('cart.index'), icon: ShoppingCart, current: route().current('cart.index') },
+            { name: 'My Orders & Shipments', href: route('orders.index'), icon: Package, current: route().current('orders.*') },
+            { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
         ];
     };
 
     const navItems = getNavItems();
 
     const getRoleBadge = () => {
-        return { label: `${role.toUpperCase()} PORTAL`, color: 'bg-[#FDF2F4] text-[#E00D42] border-[#F9D0D8]' };
+        switch (role) {
+            case 'admin':
+                return { label: 'Platform Admin', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+            case 'seller':
+                return { label: 'Verified Seller', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+            case 'courier':
+            case 'logistics':
+                return { label: 'Active Courier', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+            default:
+                return { label: 'Valued Buyer', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' };
+        }
     };
 
     const roleBadge = getRoleBadge();
 
     return (
-        <div className="min-h-screen bg-slate-100 flex font-sans">
-            {/* Sidebar backdrop for mobile */}
+        <div className="min-h-screen bg-slate-950 flex flex-col lg:flex-row text-slate-100 font-sans">
+            {/* Mobile Header Bar */}
+            <div className="lg:hidden h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-40">
+                <Link href={route('marketplace')} className="flex items-center gap-2">
+                    <BagooLogo className="w-8 h-8" rounded="rounded-lg" />
+                    <span className="text-xl font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
+                </Link>
+                <button 
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
+                >
+                    {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+            </div>
+
+            {/* Backdrop for mobile */}
             {sidebarOpen && (
                 <div 
-                    className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
@@ -85,9 +116,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Brand Header */}
                 <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800">
                     <Link href={route('marketplace')} className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#E00D42] flex items-center justify-center text-white font-bold shadow-md shadow-[#E00D42]/20">
-                            <ShoppingBag className="w-5 h-5" />
-                        </div>
+                        <BagooLogo className="w-9 h-9 shadow-md shadow-[#E00D42]/20" rounded="rounded-xl" />
                         <div>
                             <span className="text-xl font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
                             <span className="block text-[9px] uppercase font-bold tracking-widest text-[#E00D42] -mt-1">

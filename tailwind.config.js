@@ -27,6 +27,37 @@ export default {
                     DEFAULT: '#E00D42',
                 },
             },
+            keyframes: {
+                float: {
+                    '0%, 100%': { transform: 'translateY(0px)' },
+                    '50%': { transform: 'translateY(-6px)' },
+                },
+                'pulse-slow': {
+                    '0%, 100%': { opacity: '0.8', transform: 'scale(1)' },
+                    '50%': { opacity: '1', transform: 'scale(1.03)' },
+                },
+                marquee: {
+                    '0%': { transform: 'translateX(0%)' },
+                    '100%': { transform: 'translateX(-50%)' },
+                },
+                'marquee-reverse': {
+                    '0%': { transform: 'translateX(-50%)' },
+                    '100%': { transform: 'translateX(0%)' },
+                },
+                shimmer: {
+                    '0%': { backgroundPosition: '-200% 0' },
+                    '100%': { backgroundPosition: '200% 0' },
+                },
+            },
+            animation: {
+                float: 'float 4s ease-in-out infinite',
+                'float-delayed': 'float 4s ease-in-out 2s infinite',
+                'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
+                marquee: 'marquee 25s linear infinite',
+                'marquee-slow': 'marquee 40s linear infinite',
+                'marquee-reverse': 'marquee-reverse 25s linear infinite',
+                shimmer: 'shimmer 2.5s linear infinite',
+            },
         },
     },
 
