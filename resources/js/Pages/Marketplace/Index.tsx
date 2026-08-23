@@ -151,15 +151,15 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
                     </div>
 
-                    {/* STACKED & LEANING VIDEO CARDS (Centered below xl with generous breathing room, Pinned Top-Right on xl+) */}
-                    <div className="relative xl:absolute xl:top-[26%] xl:right-8 2xl:right-16 z-30 my-8 sm:my-10 xl:my-0 flex justify-center xl:block pointer-events-auto">
-                        <div className="relative w-56 sm:w-64 xl:w-72 h-68 sm:h-80 xl:h-92 group cursor-pointer">
+                    {/* STACKED & LEANING VIDEO CARDS (Centered below xl, Expanded Cinematic Size on xl+ side-by-side) */}
+                    <div className="relative xl:absolute xl:top-[20%] 2xl:top-[18%] xl:right-10 2xl:right-20 z-30 my-8 sm:my-10 xl:my-0 flex justify-center xl:block pointer-events-auto">
+                        <div className="relative w-56 sm:w-64 xl:w-80 2xl:w-96 h-68 sm:h-80 xl:h-[420px] 2xl:h-[480px] group cursor-pointer">
                             
-                            {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out to the left) */}
-                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-10 sm:-translate-x-14 -translate-y-4 sm:-translate-y-6 xl:-translate-x-16 xl:-translate-y-8 group-hover:-rotate-16 group-hover:-translate-x-20 group-hover:-translate-y-10 transition-all duration-500 ease-out z-10">
-                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] text-slate-300 px-1 pb-1 z-10">
+                            {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out prominently to the left) */}
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-10 sm:-translate-x-14 xl:-translate-x-20 2xl:-translate-x-24 -translate-y-4 sm:-translate-y-6 xl:-translate-y-10 2xl:-translate-y-12 group-hover:-rotate-16 group-hover:-translate-x-28 group-hover:-translate-y-14 transition-all duration-500 ease-out z-10">
+                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
                                     <span className="font-bold text-white">BAGOO // REEL 01</span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                    <span className="w-1.5 xl:w-2 h-1.5 xl:h-2 rounded-full bg-emerald-400 animate-ping"></span>
                                 </div>
                                 <div className="relative flex-1 rounded-2xl overflow-hidden bg-black">
                                     <video
@@ -172,21 +172,21 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-2 left-2 right-2 font-mono text-[8px] sm:text-[9px] text-white flex justify-between items-center">
-                                        <span className="px-1.5 py-0.5 rounded bg-[#E00D42] font-black text-[7px] sm:text-[8px] uppercase">DISPATCH REEL</span>
-                                        <span className="text-emerald-400 text-[7px] sm:text-[8px] font-bold">● ACTIVE</span>
+                                    <div className="absolute bottom-2 xl:bottom-3 left-2 xl:left-3 right-2 xl:right-3 font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-white flex justify-between items-center">
+                                        <span className="px-1.5 xl:px-2 py-0.5 rounded bg-[#E00D42] font-black text-[7px] sm:text-[8px] xl:text-[10px] uppercase">DISPATCH REEL</span>
+                                        <span className="text-emerald-400 text-[7px] sm:text-[8px] xl:text-[10px] font-bold">● ACTIVE</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
-                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
-                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] text-slate-600 px-1 pb-1 z-10">
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 xl:translate-x-3 xl:translate-y-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
+                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
                                     <span className="font-black text-slate-900 flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-[#E00D42]"></span>
+                                        <span className="w-1.5 sm:w-2 xl:w-2.5 h-1.5 sm:h-2 xl:h-2.5 rounded-full bg-[#E00D42]"></span>
                                         BAGOO MARKETPLACE
                                     </span>
-                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
+                                    <span className="px-1.5 xl:px-2 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
                                 </div>
                                 <div className="relative flex-1 rounded-2xl overflow-hidden bg-slate-900">
                                     <video
@@ -199,7 +199,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         <source src="/videos/store-shopping-2.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px]">
+                                    <div className="absolute bottom-2.5 xl:bottom-3.5 left-2.5 xl:left-3.5 right-2.5 xl:right-3.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px] xl:text-[11px]">
                                         <span className="font-bold tracking-wider">ECOSYSTEM REEL</span>
                                         <span className="text-emerald-400 font-bold">● LIVE</span>
                                     </div>

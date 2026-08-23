@@ -561,6 +561,17 @@ This document tracks all completed work and prompts with dates and timestamps.
      - Added dedicated vertical padding and margins (`py-4 sm:py-6 xl:py-0` for the text, `space-y-1 sm:space-y-2 xl:space-y-0` between BAGOO and SHOP, and `my-8 sm:my-10 xl:my-0` for the video deck).
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 14.94s (`exit 0`).
 
+### 📌 Prompt 46: Enlarged Cinematic Desktop Video Showcase Cards
+- **Date & Time:** `2026-08-23 21:42:20 +08:00`
+- **User Prompt:**
+  > *"one more thing, if the hero is on side by side with the video can you make the video cards more larger!"*
+- **What was done:**
+  1. **Enlarged Desktop Video Showcase Cards ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Expanded the video card deck dimensions on desktop (`xl` and `2xl`) to `xl:w-80 2xl:w-96` and `xl:h-[420px] 2xl:h-[480px]`.
+     - Scaled inner typography, status chips, and live indicators proportionally (`xl:text-[11px]`, `xl:p-4`).
+     - Calibrated the back leaning card translation offset on widescreen displays (`xl:-translate-x-20 2xl:-translate-x-24 xl:-translate-y-10 2xl:-translate-y-12`) so `store-shopping-1.webm` remains prominently visible and peeking out beside the enlarged `store-shopping-2.webm` card.
+  2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 8.17s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -568,6 +579,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Enlarged Cinematic Video Cards in Desktop Side-by-Side View.
 - [x] Adaptive Centering & Spacing for Hero BAGOO SHOP when video cards wrap below.
 - [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.
 - [x] Stacked & Leaning Video Cards active in Landing Hero (store-shopping-2 on top).
