@@ -38,10 +38,10 @@ export default function MarketplaceIndex({ categories }: Props) {
     const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
     useEffect(() => {
-        // Trigger one-time left-to-right entrance animation on mount
+        // Trigger left-to-right entrance animation right after loading sequence
         const timer = setTimeout(() => {
             setIsLoaded(true);
-        }, 50);
+        }, 1100);
 
         const updateTime = () => {
             const now = new Date();
@@ -86,7 +86,7 @@ export default function MarketplaceIndex({ categories }: Props) {
             <Head title="BagooPH — A New Standard in Multi-Role E-Commerce" />
 
             {/* Jumping Letter Bagoo Intro Loading Screen */}
-            <BagooLoadingScreen />
+            <BagooLoadingScreen onComplete={() => setIsLoaded(true)} />
 
             {/* Grain & Noise Film Overlay */}
             <GrainOverlay />
@@ -124,12 +124,12 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
                     </div>
 
-                    {/* BAGOO + COMMERCE stacked tightly together (centered vertically) */}
+                    {/* BAGOO + SHOP stacked tightly together with dynamic Left-to-Right entrance */}
                     <div className="relative z-20 my-auto space-y-0">
                         {/* BAGOO (Left-to-Right Entrance) */}
                         <div 
                             className={`select-none pointer-events-none transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
                             <h1 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center drop-shadow-xs">
@@ -139,25 +139,25 @@ export default function MarketplaceIndex({ categories }: Props) {
                             </h1>
                         </div>
 
-                        {/* COMMERCE (Left-to-Right Entrance, staggered) */}
+                        {/* SHOP (Same font size as BAGOO with staggered Left-to-Right Entrance) */}
                         <div 
-                            className={`select-none pointer-events-none transition-all duration-1000 delay-150 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                            className={`select-none pointer-events-none transition-all duration-1000 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-32'
                             }`}
                         >
-                            <h2 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black">
-                                COMMERCE
+                            <h2 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center drop-shadow-xs">
+                                SHOP
                             </h2>
                         </div>
                     </div>
 
-                    {/* STACKED & LEANING VIDEO CARDS (Upper-Right Space) */}
-                    <div className="hidden lg:block absolute top-[28%] right-8 xl:right-16 z-30 pointer-events-auto">
+                    {/* STACKED & LEANING VIDEO CARDS (Upper-Right Space with Prominent Peeking) */}
+                    <div className="hidden lg:block absolute top-[26%] right-8 xl:right-16 z-30 pointer-events-auto">
                         <div className="relative w-64 xl:w-72 h-80 xl:h-92 group cursor-pointer">
                             
-                            {/* Card 1: Back Leaning / Tilted Card */}
-                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black/80 shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-6 translate-x-3 -translate-y-2 group-hover:-rotate-12 group-hover:-translate-x-6 group-hover:-translate-y-4 transition-all duration-500 ease-out">
-                                <div className="flex items-center justify-between font-mono text-[9px] text-slate-400 px-1 pb-1 z-10">
+                            {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out to the left) */}
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-12 -translate-y-6 xl:-translate-x-16 xl:-translate-y-8 group-hover:-rotate-16 group-hover:-translate-x-20 group-hover:-translate-y-12 transition-all duration-500 ease-out z-10">
+                                <div className="flex items-center justify-between font-mono text-[9px] text-slate-300 px-1 pb-1 z-10">
                                     <span className="font-bold text-white">BAGOO // REEL 01</span>
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                                 </div>
@@ -167,19 +167,20 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         loop
                                         muted
                                         playsInline
-                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500"
+                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                     >
                                         <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
-                                    <div className="absolute bottom-2 left-2 right-2 font-mono text-[9px] text-white">
-                                        <span className="px-1.5 py-0.5 rounded bg-[#E00D42] font-black text-[8px] uppercase">DISPATCH</span>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-2 left-2 right-2 font-mono text-[9px] text-white flex justify-between items-center">
+                                        <span className="px-1.5 py-0.5 rounded bg-[#E00D42] font-black text-[8px] uppercase">DISPATCH REEL</span>
+                                        <span className="text-emerald-400 text-[8px] font-bold">● ACTIVE</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
-                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-0 translate-y-0 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out">
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
                                 <div className="flex items-center justify-between font-mono text-[9px] text-slate-600 px-1 pb-1 z-10">
                                     <span className="font-black text-slate-900 flex items-center gap-1.5">
                                         <span className="w-2 h-2 rounded-full bg-[#E00D42]"></span>

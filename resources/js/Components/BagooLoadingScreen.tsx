@@ -3,9 +3,10 @@ import BagooLogo from '@/Components/BagooLogo';
 
 interface Props {
     minDisplayTime?: number; // Minimum display time in ms (default 900ms)
+    onComplete?: () => void;
 }
 
-export default function BagooLoadingScreen({ minDisplayTime = 1000 }: Props) {
+export default function BagooLoadingScreen({ minDisplayTime = 1000, onComplete }: Props) {
     const [isVisible, setIsVisible] = useState(true);
     const [isFading, setIsFading] = useState(false);
 
@@ -13,6 +14,7 @@ export default function BagooLoadingScreen({ minDisplayTime = 1000 }: Props) {
         const handleComplete = () => {
             setTimeout(() => {
                 setIsFading(true);
+                onComplete?.();
                 setTimeout(() => {
                     setIsVisible(false);
                 }, 600); // fade duration

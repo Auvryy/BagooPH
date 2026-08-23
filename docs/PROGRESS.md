@@ -510,6 +510,30 @@ This document tracks all completed work and prompts with dates and timestamps.
      - **Card 1 (Back / Leaning Card):** Configured with `/videos/store-shopping-1.webm` as the background leaning card.
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 12.21s (`exit 0`).
 
+### 📌 Prompt 42: Refined COMMERCE Typography & Expanded Video Peeking Offset
+- **Date & Time:** `2026-08-23 21:27:35 +08:00`
+- **User Prompt:**
+  > *"can you make the commerce word a little more little and make sure the first webm is seaable like kinda peeking more a bit"*
+- **What was done:**
+  1. **Refined COMMERCE Typography ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Scaled down the `COMMERCE` font size from `text-[14vw]` to a cleaner, refined `text-[10.5vw] sm:text-[9.5vw] xl:text-[8.5vw]`.
+  2. **Expanded Video Peeking Fan-out:**
+     - Shifted Card 1 (`store-shopping-1.webm`) to a 12-degree tilt with prominent negative left/top translation (`-rotate-12 -translate-x-12 -translate-y-6 xl:-translate-x-16 xl:-translate-y-8`), allowing the back video to peek out clearly from behind Card 2 (`store-shopping-2.webm`).
+     - Upgraded hover interaction to fan out even wider (`group-hover:-rotate-16 group-hover:-translate-x-20`).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 12.76s (`exit 0`).
+
+### 📌 Prompt 43: Hero "SHOP" Typography & Post-Reload Left-to-Right Entrance Animation
+- **Date & Time:** `2026-08-23 21:31:35 +08:00`
+- **User Prompt:**
+  > *"hmm i don't like the commerce looking more smaller than bagoo. maybe try to find a word similar to shop, commerce store etc, or maybe just use "SHOP" with the same font size as the bagoo. moreover put animation when the web reloads the first thing that will show after reloading is the hero text animation from left to right"*
+- **What was done:**
+  1. **Adopted "SHOP" Matching Headline ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Replaced `COMMERCE` with **`SHOP`**, sharing the exact same colossal typography scale (`text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black`) as `BAGOO`.
+  2. **Coordinated Post-Reload Left-to-Right Entrance Animation:**
+     - Connected `BagooLoadingScreen` lifecycle `onComplete` callback directly to the hero section entrance trigger.
+     - When page finishes loading and the loading screen smoothly fades away, `BAGOO` slides into view from left to right (`-translate-x-32 opacity-0` ➔ `translate-x-0 opacity-100` with cubic-bezier easing), followed immediately by `SHOP` on a staggered 200ms delay.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 15.92s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -517,8 +541,8 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
-- [x] Custom WebM Video Showcase active in Landing Hero (store-shopping-2 on top).
-- [x] Stacked & Leaning Video Cards active in Landing Hero.
+- [x] Symmetrical BAGOO SHOP Hero typography with post-reload left-to-right entrance animation.
+- [x] Stacked & Leaning Video Cards active in Landing Hero (store-shopping-2 on top).
 - [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
 - [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.
 - [x] Complete Buyer Flowchart feature set implemented (17/17 functions active).
