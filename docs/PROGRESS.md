@@ -337,6 +337,15 @@ This document tracks all completed work and prompts with dates and timestamps.
   3. **Verified Auth Pages Access:** Verified **[`Login.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Auth/Login.tsx)** (`/login`) and **[`Register.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Auth/Register.tsx)** (`/register`) with demo one-click credentials and registration forms (`HTTP 200 OK`).
   4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
+### 📌 Prompt 31: Cloudflare Tunnel & Reverse Proxy Trusted Proxies Configuration
+- **Date & Time:** `2026-08-23 13:41:55 +08:00`
+- **User Prompt:**
+  > *"already done but i put 172.17.0.1:8000 in the cloudflare since it shows a bad gateway, now it loads but i am just in the landing page when i click the login or anythign it doens't lead me there"*
+- **What was done:**
+  1. **Configured Trusted Proxies in Laravel 11:** Added `$middleware->trustProxies(at: '*');` to [`bootstrap/app.php`](file:///home/andy/Projects/bagoo/bootstrap/app.php) so Laravel correctly trusts Cloudflare's `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-For` headers.
+  2. **Enforced HTTPS URL Generation:** Updated [`AppServiceProvider.php`](file:///home/andy/Projects/bagoo/app/Providers/AppServiceProvider.php) with `URL::forceScheme('https')` when forwarded over HTTPS, preventing mixed-content blocks and internal IP leakage (`172.17.0.1:8000`).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -345,6 +354,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
 - [x] Standalone Shopee/SHEIN-grade Buyer E-Commerce Ecosystem live at `/buyer`.
+- [x] Cloudflare Tunnel / Reverse Proxy support enabled with trusted proxies & forced HTTPS.
 - [x] Profile page placed directly beside Cart at the top right of `/buyer`.
 - [x] Profile edit screen fully functional without white screen issues.
 - [x] Dedicated Auth Portal live at `/login` and `/register`.
