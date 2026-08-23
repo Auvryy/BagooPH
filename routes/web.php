@@ -95,7 +95,11 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::put('/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack'])->name('orders.pack');
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
+    Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
+    Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
+    Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
 });
 
 /*

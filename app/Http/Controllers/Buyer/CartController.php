@@ -48,16 +48,27 @@ class CartController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'nullable|integer|min:1|max:99',
+            'color' => 'nullable|string|max:50',
+            'size' => 'nullable|string|max:50',
         ]);
 
-        $product = Product::findOrFail($request->input('product_id'));
-        $quantity = $request->input('quantity', 1);
+        $product = Product::where('status', 'active')->findOrFail($request->input('product_id'));
+        $quantity = (int) $request->input('quantity', 1);
+
+        if ($product->stock < $quantity) {
+            return back()->with('error', "Sorry, only {$product->stock} units are currently available.");
+        }
 
         $cart = $this->getCart($request);
         $item = $cart->items()->where('product_id', $product->id)->first();
 
         if ($item) {
-            $item->quantity += $quantity;
+            $newQuantity = $item->quantity + $quantity;
+            if ($product->stock < $newQuantity) {
+                return back()->with('error', "Cannot add more. Stock limit of {$product->stock} reached.");
+            }
+            $item->quantity = $newQuantity;
+            $item->unit_price = $product->price; // Always sync with real database price
             $item->save();
         } else {
             $cart->items()->create([
@@ -67,25 +78,44 @@ class CartController extends Controller
             ]);
         }
 
-        return back()->with('success', "'{$product->name}' added to your Bagoo cart!");
+        return back()->with('success', "'{$product->name}' added to your shopping bag!");
     }
 
     public function update(Request $request, CartItem $cartItem): RedirectResponse
     {
+        $cart = $this->getCart($request);
+        
+        // Authorization / IDOR Protection
+        if ($cartItem->cart_id !== $cart->id) {
+            abort(403, 'Unauthorized cart modification.');
+        }
+
         $request->validate([
             'quantity' => 'required|integer|min:1|max:99',
         ]);
 
+        $quantity = (int) $request->input('quantity');
+        if ($cartItem->product && $cartItem->product->stock < $quantity) {
+            return back()->with('error', "Stock limit reached. Only {$cartItem->product->stock} available.");
+        }
+
         $cartItem->update([
-            'quantity' => $request->input('quantity'),
+            'quantity' => $quantity,
         ]);
 
-        return back()->with('success', 'Cart updated.');
+        return back()->with('success', 'Shopping bag updated.');
     }
 
-    public function destroy(CartItem $cartItem): RedirectResponse
+    public function destroy(Request $request, CartItem $cartItem): RedirectResponse
     {
+        $cart = $this->getCart($request);
+
+        // Authorization / IDOR Protection
+        if ($cartItem->cart_id !== $cart->id) {
+            abort(403, 'Unauthorized cart modification.');
+        }
+
         $cartItem->delete();
-        return back()->with('success', 'Item removed from cart.');
+        return back()->with('success', 'Item removed from shopping bag.');
     }
 }

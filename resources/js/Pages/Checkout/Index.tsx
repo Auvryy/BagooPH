@@ -73,7 +73,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, tota
                         className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        <span>Back to Cart</span>
+                        <span>Back to My Bag</span>
                     </Link>
                 </div>
 

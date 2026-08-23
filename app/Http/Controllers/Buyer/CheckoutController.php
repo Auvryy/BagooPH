@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,11 +23,20 @@ class CheckoutController extends Controller
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 
         if (! $cart || $cart->items->isEmpty()) {
-            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+            return redirect()->route('buyer.cart')->with('error', 'Your shopping bag is empty.');
         }
 
-        $subtotal = $cart->total;
-        $shippingFee = $subtotal > 100 ? 0.00 : 10.00;
+        // Calculate subtotal directly from latest product database prices
+        $subtotal = 0;
+        foreach ($cart->items as $item) {
+            $currentProduct = Product::find($item->product_id);
+            if (! $currentProduct || $currentProduct->status !== 'active') {
+                return redirect()->route('buyer.cart')->with('error', 'One or more items in your bag are currently unavailable.');
+            }
+            $subtotal += $currentProduct->price * $item->quantity;
+        }
+
+        $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
         $total = $subtotal + $shippingFee;
 
         return Inertia::render('Checkout/Index', [
@@ -45,7 +55,7 @@ class CheckoutController extends Controller
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 
         if (! $cart || $cart->items->isEmpty()) {
-            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+            return redirect()->route('buyer.cart')->with('error', 'Your shopping bag is empty.');
         }
 
         $validated = $request->validate([
@@ -58,70 +68,89 @@ class CheckoutController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $subtotal = $cart->total;
-        $shippingFee = $subtotal > 100 ? 0.00 : 10.00;
-        $totalAmount = $subtotal + $shippingFee;
+        try {
+            $order = DB::transaction(function () use ($user, $cart, $validated) {
+                // Recompute exact total from database to prevent price manipulation
+                $subtotal = 0;
+                foreach ($cart->items as $item) {
+                    $product = Product::where('id', $item->product_id)->lockForUpdate()->firstOrFail();
+                    
+                    if ($product->status !== 'active') {
+                        throw new \Exception("'{$product->name}' is no longer active.");
+                    }
 
-        $order = DB::transaction(function () use ($user, $cart, $validated, $subtotal, $shippingFee, $totalAmount) {
-            $order = Order::create([
-                'order_number' => 'BGO-' . strtoupper(Str::random(8)),
-                'buyer_id' => $user->id,
-                'subtotal' => $subtotal,
-                'shipping_fee' => $shippingFee,
-                'total_amount' => $totalAmount,
-                'payment_method' => $validated['payment_method'],
-                'payment_status' => $validated['payment_method'] === 'cod' ? 'pending' : 'paid',
-                'status' => 'processing',
-                'recipient_name' => $validated['recipient_name'],
-                'recipient_phone' => $validated['recipient_phone'],
-                'shipping_address' => $validated['shipping_address'],
-                'shipping_city' => $validated['shipping_city'],
-                'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
-                'notes' => $validated['notes'] ?? null,
-            ]);
+                    if ($product->stock < $item->quantity) {
+                        throw new \Exception("'{$product->name}' does not have enough stock (Only {$product->stock} available).");
+                    }
 
-            $firstShop = null;
-            foreach ($cart->items as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item->product_id,
-                    'shop_id' => $item->product->shop_id,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'subtotal' => $item->quantity * $item->unit_price,
+                    $subtotal += $product->price * $item->quantity;
+                }
+
+                $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
+                $totalAmount = $subtotal + $shippingFee;
+
+                $order = Order::create([
+                    'order_number' => 'BGO-' . strtoupper(Str::random(8)),
+                    'buyer_id' => $user->id,
+                    'subtotal' => $subtotal,
+                    'shipping_fee' => $shippingFee,
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $validated['payment_method'],
+                    'payment_status' => $validated['payment_method'] === 'cod' ? 'pending' : 'paid',
+                    'status' => 'processing',
+                    'recipient_name' => $validated['recipient_name'],
+                    'recipient_phone' => $validated['recipient_phone'],
+                    'shipping_address' => $validated['shipping_address'],
+                    'shipping_city' => $validated['shipping_city'],
+                    'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
                 ]);
 
-                // Reduce stock and increment sales
-                $item->product->decrement('stock', $item->quantity);
-                $item->product->increment('sales_count', $item->quantity);
+                $firstShop = null;
+                foreach ($cart->items as $item) {
+                    $product = Product::findOrFail($item->product_id);
+                    
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item->product_id,
+                        'shop_id' => $product->shop_id,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $product->price,
+                        'subtotal' => $item->quantity * $product->price,
+                    ]);
 
-                if (! $firstShop && $item->product->shop) {
-                    $firstShop = $item->product->shop;
+                    // Atomically reduce stock & increment sales counter
+                    $product->decrement('stock', $item->quantity);
+                    $product->increment('sales_count', $item->quantity);
+
+                    if (! $firstShop && $product->shop) {
+                        $firstShop = $product->shop;
+                    }
                 }
-            }
 
-            // Create delivery/shipment record ready for courier dispatch
-            Delivery::create([
-                'order_id' => $order->id,
-                'courier_id' => null,
-                'tracking_number' => 'TRK-BGO-' . rand(10000000, 99999999),
-                'logistics_partner' => 'Bagoo Express Dispatch',
-                'status' => 'unassigned',
-                'pickup_store_name' => $firstShop ? $firstShop->name : 'BagooPH Central Hub',
-                'pickup_address' => $firstShop ? ($firstShop->address . ', ' . $firstShop->city) : '100 Bagoo Hub Blvd',
-                'pickup_phone' => $firstShop ? $firstShop->phone : '+1 (555) 000-0000',
-                'delivery_address' => $order->shipping_address . ', ' . $order->shipping_city . ' ' . ($order->shipping_postal_code ?? ''),
-                'delivery_recipient_name' => $order->recipient_name,
-                'delivery_phone' => $order->recipient_phone,
-                'estimated_delivery_at' => now()->addDays(2),
-            ]);
+                // Create Delivery record for courier pool
+                Delivery::create([
+                    'order_id' => $order->id,
+                    'tracking_number' => 'BGO-' . strtoupper(Str::random(10)),
+                    'logistics_partner' => 'Bagoo Express Dispatch Fleet',
+                    'status' => 'unassigned',
+                    'pickup_store_name' => $firstShop?->name ?? 'Bagoo Prime Store',
+                    'pickup_address' => ($firstShop?->address ?? 'Artisan District') . ', ' . ($firstShop?->city ?? 'Metro Manila'),
+                    'delivery_recipient_name' => $validated['recipient_name'],
+                    'delivery_address' => $validated['shipping_address'] . ', ' . $validated['shipping_city'],
+                    'recipient_phone' => $validated['recipient_phone'],
+                    'estimated_delivery_at' => now()->addDays(3),
+                ]);
 
-            // Clear the cart
-            $cart->items()->delete();
+                // Clear cart items safely
+                $cart->items()->delete();
 
-            return $order;
-        });
+                return $order;
+            });
 
-        return redirect()->route('orders.show', $order->id)->with('success', "Order #{$order->order_number} placed successfully!");
+            return redirect()->route('buyer.orders.index')->with('success', "Order #{$order->order_number} successfully placed!");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }

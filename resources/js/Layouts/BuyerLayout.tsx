@@ -4,7 +4,7 @@ import { PageProps, Category } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
 import { 
     Search, 
-    ShoppingCart, 
+    ShoppingBag, 
     User as UserIcon, 
     Package, 
     Tag, 
@@ -132,16 +132,16 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                             </form>
                         </div>
 
-                        {/* RIGHT ACTIONS: CART & PROFILE DIRECTLY BESIDE EACH OTHER */}
+                        {/* RIGHT ACTIONS: BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
                         <div className="flex items-center gap-3 shrink-0">
                             
-                            {/* CART BUTTON */}
+                            {/* BAG BUTTON */}
                             <Link 
                                 href={route('buyer.cart')} 
                                 className="relative flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 transition font-mono text-xs font-bold group"
                             >
-                                <ShoppingCart className="w-4 h-4 text-[#E00D42] group-hover:scale-110 transition-transform" />
-                                <span>Cart</span>
+                                <ShoppingBag className="w-4 h-4 text-[#E00D42] group-hover:scale-110 transition-transform" />
+                                <span>Bag</span>
                                 {cartCount > 0 && (
                                     <span className="min-w-[18px] h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                                         {cartCount}
@@ -149,7 +149,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                 )}
                             </Link>
 
-                            {/* PROFILE BUTTON (DIRECTLY BESIDE CART AT THE RIGHT) */}
+                            {/* PROFILE BUTTON (DIRECTLY BESIDE BAG AT THE RIGHT) */}
                             {auth.user ? (
                                 <div className="relative">
                                     <button
@@ -194,7 +194,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                                 href={route('buyer.cart')} 
                                                 className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
-                                                <ShoppingCart className="w-4 h-4 text-amber-500" />
+                                                <ShoppingBag className="w-4 h-4 text-rose-500" />
                                                 <span>My Shopping Bag</span>
                                             </Link>
 

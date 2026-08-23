@@ -16,7 +16,11 @@ import {
     Star,
     MessageSquare,
     Store,
-    X
+    X,
+    Camera,
+    Upload,
+    Sparkles,
+    Image as ImageIcon
 } from 'lucide-react';
 
 interface Props {
@@ -27,21 +31,50 @@ export default function BuyerOrderDetail({ order }: Props) {
     const delivery = order.delivery;
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(order.items?.[0]?.product_id || null);
+    const [previewImages, setPreviewImages] = useState<string[]>([]);
 
-    const { data, setData, post, processing, reset, recentlySuccessful } = useForm({
+    const { data, setData, post, processing, reset, recentlySuccessful, errors } = useForm<{
+        product_id: number | null;
+        order_id: number;
+        rating: number;
+        comment: string;
+        images: File[];
+    }>({
         product_id: selectedProductId,
         order_id: order.id,
         rating: 5,
         comment: '',
+        images: [],
     });
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const filesArray = Array.from(e.target.files).slice(0, 5 - data.images.length);
+            const newFiles = [...data.images, ...filesArray];
+            setData('images', newFiles);
+
+            // Generate image preview URLs
+            const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+            setPreviewImages(prev => [...prev, ...newPreviews]);
+        }
+    };
+
+    const removeImage = (index: number) => {
+        const updatedFiles = data.images.filter((_, i) => i !== index);
+        const updatedPreviews = previewImages.filter((_, i) => i !== index);
+        setData('images', updatedFiles);
+        setPreviewImages(updatedPreviews);
+    };
 
     const submitReview = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('buyer.reviews.store'), {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 reset();
-                setTimeout(() => setReviewModalOpen(false), 1500);
+                setPreviewImages([]);
+                setTimeout(() => setReviewModalOpen(false), 2000);
             }
         });
     };
@@ -75,7 +108,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                     <div>
                         <Link href={route('buyer.orders.index')} className="text-xs text-slate-500 hover:text-[#E00D42] flex items-center gap-1 mb-1 font-mono uppercase">
                             <ArrowLeft className="w-3.5 h-3.5" />
-                            <span>Back to My Orders</span>
+                            <span>Back to My Purchases</span>
                         </Link>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                             Order #{order.order_number}
@@ -90,10 +123,10 @@ export default function BuyerOrderDetail({ order }: Props) {
                             <button
                                 type="button"
                                 onClick={() => setReviewModalOpen(true)}
-                                className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-lg uppercase tracking-wider transition shadow-sm flex items-center gap-1.5"
+                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-sm flex items-center gap-2"
                             >
-                                <Star className="w-3.5 h-3.5" />
-                                <span>Rate & Review Products</span>
+                                <Star className="w-4 h-4 fill-white" />
+                                <span>Rate & Upload Photos</span>
                             </button>
                         )}
                     </div>
@@ -118,136 +151,123 @@ export default function BuyerOrderDetail({ order }: Props) {
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 relative">
                         {steps.map((step, idx) => (
                             <div key={step.key} className="flex flex-col items-center text-center space-y-2 relative">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-2xs z-10 transition ${
-                                    step.done ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-400'
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition ${
+                                    step.done ? 'bg-[#E00D42] text-white shadow-md' : 'bg-slate-100 text-slate-400 border border-slate-200'
                                 }`}>
                                     {step.done ? <Check className="w-5 h-5" /> : idx + 1}
                                 </div>
-                                <div>
-                                    <h4 className={`text-xs font-bold ${step.done ? 'text-slate-900' : 'text-slate-400'}`}>
-                                        {step.label}
-                                    </h4>
-                                    <p className="text-[10px] text-slate-400 font-mono">{step.subtext}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Driver Notes & Dispatch Status */}
-                    {delivery && (
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
-                            <div className="space-y-1">
-                                <p className="font-bold text-slate-900">
-                                    Courier Logistics Partner: <span className="text-[#E00D42]">{delivery.logistics_partner}</span>
-                                </p>
-                                <p className="text-slate-600 text-[11px]">
-                                    {delivery.courier_notes || 'Package loaded securely on regional dispatcher vehicle.'}
-                                </p>
-                            </div>
-
-                            {delivery.estimated_delivery_at && (
-                                <div className="text-right sm:border-l sm:border-slate-200 sm:pl-4">
-                                    <span className="text-[10px] text-slate-400 uppercase block">Est. Arrival</span>
-                                    <span className="text-emerald-600 font-bold">
-                                        {new Date(delivery.estimated_delivery_at).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* 2. DELIVERY DESTINATION & RECIPIENT */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-3 font-mono text-xs">
-                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100 font-bold text-slate-900 uppercase">
-                            <MapPin className="w-4 h-4 text-[#E00D42]" />
-                            <span>Delivery Address</span>
-                        </div>
-                        <div className="space-y-1 text-slate-700 font-sans">
-                            <p className="font-bold text-slate-900">{order.recipient_name}</p>
-                            <p className="text-slate-500 font-mono text-xs">{order.recipient_phone}</p>
-                            <p className="text-xs text-slate-600 pt-1">
-                                {order.shipping_address}, {order.shipping_city} {order.shipping_postal_code}
-                            </p>
-                            {order.notes && (
-                                <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg mt-2 font-mono">
-                                    Notes: "{order.notes}"
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-3 font-mono text-xs">
-                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100 font-bold text-slate-900 uppercase">
-                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                            <span>Payment & Security</span>
-                        </div>
-                        <div className="space-y-2 text-slate-700">
-                            <div className="flex justify-between">
-                                <span>Payment Mode:</span>
-                                <span className="font-bold uppercase text-slate-900">{order.payment_method}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Payment Status:</span>
-                                <span className="font-bold uppercase text-emerald-600">{order.payment_status}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Subtotal:</span>
-                                <span>{formatPrice(order.subtotal)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Shipping:</span>
-                                <span>{formatPrice(order.shipping_fee)}</span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t border-slate-100 font-bold text-sm text-slate-900">
-                                <span>Total Paid:</span>
-                                <span className="text-[#E00D42]">{formatPrice(order.total_amount)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. ORDERED PRODUCTS */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono text-xs font-bold text-slate-900 uppercase">
-                        <span>Ordered Items ({order.items?.length ?? 0})</span>
-                        <span>Amount</span>
-                    </div>
-
-                    <div className="divide-y divide-slate-100">
-                        {order.items?.map((item) => (
-                            <div key={item.id} className="py-3 flex items-center justify-between gap-4 text-xs font-sans">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <img
-                                        src={item.product?.featured_image || ''}
-                                        alt={item.product?.name}
-                                        className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                                    />
-                                    <div className="truncate space-y-0.5">
-                                        <p className="font-bold text-slate-900 truncate">{item.product?.name}</p>
-                                        <p className="text-slate-400 font-mono text-[11px]">
-                                            Qty: {item.quantity} × {formatPrice(item.unit_price)}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <span className="font-bold font-mono text-slate-900 shrink-0">
-                                    {formatPrice(Number(item.unit_price) * item.quantity)}
+                                <span className={`text-xs font-bold ${step.done ? 'text-slate-900' : 'text-slate-400'}`}>
+                                    {step.label}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                    {step.subtext}
                                 </span>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* 4. RATING & REVIEW MODAL */}
+                {/* 2. DISPATCH & COURIER TELEMETRY */}
+                {delivery && (
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-900 font-mono uppercase pb-3 border-b border-slate-100">
+                            <Truck className="w-4 h-4 text-indigo-600" />
+                            <span>Assigned Courier Fleet & Logistics</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+                            <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                                <span className="text-slate-400 text-[10px] uppercase block">Courier Service</span>
+                                <p className="font-bold text-slate-900">{delivery.logistics_partner}</p>
+                                <p className="text-indigo-600 font-bold">{delivery.status.toUpperCase()}</p>
+                            </div>
+
+                            <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                                <span className="text-slate-400 text-[10px] uppercase block">Pickup Merchant Hub</span>
+                                <p className="font-bold text-slate-900">{delivery.pickup_store_name || 'Bagoo Prime Store'}</p>
+                                <p className="text-slate-500 text-[11px] truncate">{delivery.pickup_address}</p>
+                            </div>
+
+                            <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                                <span className="text-slate-400 text-[10px] uppercase block">Recipient Address</span>
+                                <p className="font-bold text-slate-900">{delivery.delivery_recipient_name}</p>
+                                <p className="text-slate-500 text-[11px] truncate">{delivery.delivery_address}</p>
+                            </div>
+                        </div>
+
+                        {delivery.courier_notes && (
+                            <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs font-mono text-indigo-950 flex items-start gap-2">
+                                <MessageSquare className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <span className="font-bold">Courier Dispatch Notes: </span>
+                                    <span>{delivery.courier_notes}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 3. ORDER ITEMS BREAKDOWN */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-900 font-mono uppercase pb-3 border-b border-slate-100">
+                        <Package className="w-4 h-4 text-[#E00D42]" />
+                        <span>Package Items</span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                        {order.items?.map((item) => (
+                            <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <img
+                                        src={item.product?.featured_image || ''}
+                                        alt={item.product?.name}
+                                        className="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
+                                    />
+                                    <div className="space-y-1">
+                                        <Link 
+                                            href={route('buyer.products.show', item.product?.slug || '')}
+                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition"
+                                        >
+                                            {item.product?.name}
+                                        </Link>
+                                        <p className="text-xs font-mono text-slate-500">
+                                            Quantity: {item.quantity} × {formatPrice(item.unit_price)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="font-mono text-sm font-black text-slate-900">
+                                    {formatPrice(Number(item.unit_price) * item.quantity)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Subtotal / Shipping / Total */}
+                    <div className="border-t border-slate-100 pt-4 font-mono text-xs space-y-2">
+                        <div className="flex justify-between text-slate-500">
+                            <span>Subtotal</span>
+                            <span>{formatPrice(order.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                            <span>Shipping Fee</span>
+                            <span>{formatPrice(order.shipping_fee)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-900 font-bold text-sm pt-2 border-t border-slate-100">
+                            <span>Total Amount</span>
+                            <span className="text-[#E00D42] font-black text-base">{formatPrice(order.total_amount)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
                 {reviewModalOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 font-sans animate-scale-in">
+                    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 text-slate-900 font-black text-base">
                                     <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                                    <h3 className="font-bold text-slate-900 text-base">Rate Your Purchase</h3>
+                                    <span>Rate & Review Purchased Items</span>
                                 </div>
                                 <button onClick={() => setReviewModalOpen(false)} className="text-slate-400 hover:text-slate-700">
                                     <X className="w-5 h-5" />
@@ -257,12 +277,12 @@ export default function BuyerOrderDetail({ order }: Props) {
                             <form onSubmit={submitReview} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
-                                        Select Product:
+                                        Select Product to Review:
                                     </label>
                                     <select
                                         value={data.product_id || ''}
                                         onChange={(e) => setData('product_id', Number(e.target.value))}
-                                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#E00D42]"
                                     >
                                         {order.items?.map((item) => (
                                             <option key={item.product_id} value={item.product_id}>
@@ -274,7 +294,7 @@ export default function BuyerOrderDetail({ order }: Props) {
 
                                 <div>
                                     <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-2">
-                                        Rating Stars (1 to 5):
+                                        Your Rating (1 to 5 Stars):
                                     </label>
                                     <div className="flex items-center gap-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
@@ -282,9 +302,9 @@ export default function BuyerOrderDetail({ order }: Props) {
                                                 key={star}
                                                 type="button"
                                                 onClick={() => setData('rating', star)}
-                                                className="p-1 focus:outline-hidden"
+                                                className="p-1 focus:outline-hidden hover:scale-110 transition-transform"
                                             >
-                                                <Star className={`w-7 h-7 ${
+                                                <Star className={`w-8 h-8 ${
                                                     star <= data.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
                                                 }`} />
                                             </button>
@@ -294,38 +314,75 @@ export default function BuyerOrderDetail({ order }: Props) {
 
                                 <div>
                                     <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
-                                        Your Review & Feedback:
+                                        Detailed Review & Feedback:
                                     </label>
                                     <textarea
                                         value={data.comment}
                                         onChange={(e) => setData('comment', e.target.value)}
-                                        rows={4}
-                                        placeholder="Share details of the product quality, packaging, and courier speed..."
-                                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42]"
+                                        rows={3}
+                                        placeholder="Tell other buyers about product build, size fitting, and delivery condition..."
+                                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-[#E00D42]"
                                         required
                                     />
                                 </div>
 
+                                {/* Multi-Image Upload Section */}
+                                <div>
+                                    <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                                        Attach Product Photos (Up to 5 Photos):
+                                    </label>
+                                    
+                                    {/* Upload Trigger & Previews */}
+                                    <div className="flex flex-wrap gap-2.5 items-center">
+                                        {previewImages.map((src, idx) => (
+                                            <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
+                                                <img src={src} alt="Upload preview" className="w-full h-full object-cover" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeImage(idx)}
+                                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {data.images.length < 5 && (
+                                            <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#E00D42] bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition text-slate-400 hover:text-[#E00D42]">
+                                                <Camera className="w-5 h-5 mb-0.5" />
+                                                <span className="text-[9px] font-mono font-bold uppercase">+ Add</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    multiple
+                                                    onChange={handleImageChange}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {recentlySuccessful && (
-                                    <p className="text-xs text-emerald-600 font-mono flex items-center gap-1">
-                                        <Check className="w-4 h-4" /> Review submitted successfully!
+                                    <p className="text-xs text-emerald-600 font-mono font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                                        <Check className="w-4 h-4" /> Review & photos submitted successfully!
                                     </p>
                                 )}
 
-                                <div className="flex items-center justify-end gap-3 pt-2">
+                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                                     <button
                                         type="button"
                                         onClick={() => setReviewModalOpen(false)}
-                                        className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 font-mono uppercase"
+                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-mono uppercase"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="px-5 py-2 rounded-lg text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-mono uppercase shadow-sm disabled:opacity-50"
+                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-mono uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
                                     >
-                                        {processing ? 'Submitting...' : 'Submit Review'}
+                                        {processing ? 'Submitting...' : 'Post Verified Review'}
                                     </button>
                                 </div>
                             </form>

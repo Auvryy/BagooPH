@@ -603,11 +603,12 @@ export default function BuyerHome({
                                     : null;
 
                                 return (
-                                    <div
+                                    <Link
                                         key={product.id}
+                                        href={route('buyer.products.show', product.slug)}
                                         className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-[#E00D42]/50 transition duration-300 flex flex-col justify-between"
                                     >
-                                        <Link href={route('buyer.products.show', product.slug)} className="block relative aspect-square bg-slate-100 overflow-hidden">
+                                        <div className="block relative aspect-square bg-slate-100 overflow-hidden">
                                             <img
                                                 src={product.featured_image || ''}
                                                 alt={product.name}
@@ -630,20 +631,17 @@ export default function BuyerHome({
                                             {/* Free Shipping Tag */}
                                             <div className="absolute bottom-2 left-2">
                                                 <span className="px-1.5 py-0.5 rounded bg-emerald-600/90 backdrop-blur-xs text-white font-mono text-[8px] font-bold uppercase flex items-center gap-0.5 shadow-2xs">
-                                                    <Truck className="w-2.5 h-2.5" /> FREE SHIPPING
+                                                    <Truck className="w-2.5 h-2.5" /> FREE DELIVERY
                                                 </span>
                                             </div>
-                                        </Link>
+                                        </div>
 
                                         {/* Product Info */}
                                         <div className="p-3 space-y-2 font-sans flex-1 flex flex-col justify-between">
                                             <div className="space-y-1">
-                                                <Link
-                                                    href={route('buyer.products.show', product.slug)}
-                                                    className="font-bold text-xs text-slate-800 group-hover:text-[#E00D42] transition line-clamp-2 leading-tight"
-                                                >
+                                                <h4 className="font-bold text-xs text-slate-800 group-hover:text-[#E00D42] transition line-clamp-2 leading-tight">
                                                     {product.name}
-                                                </Link>
+                                                </h4>
 
                                                 {/* Price */}
                                                 <div className="flex items-baseline gap-1.5 pt-0.5">
@@ -667,35 +665,13 @@ export default function BuyerHome({
                                                 </div>
                                             </div>
 
-                                            {/* Quick Add Button */}
-                                            <button
-                                                type="button"
-                                                onClick={(e) => handleAddToCart(e, product.id)}
-                                                disabled={isAdding || product.stock <= 0}
-                                                className={`w-full py-1.5 rounded-lg font-mono text-[11px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 ${
-                                                    isSuccess
-                                                        ? 'bg-emerald-600 text-white'
-                                                        : product.stock <= 0
-                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                                            : 'bg-slate-900 hover:bg-[#E00D42] text-white active:scale-[0.98]'
-                                                }`}
-                                            >
-                                                {isSuccess ? (
-                                                    <>
-                                                        <Check className="w-3 h-3" />
-                                                        <span>Added</span>
-                                                    </>
-                                                ) : isAdding ? (
-                                                    <span>...</span>
-                                                ) : (
-                                                    <>
-                                                        <ShoppingCart className="w-3 h-3" />
-                                                        <span>Add to Bag</span>
-                                                    </>
-                                                )}
-                                            </button>
+                                            {/* Explore Details Hint */}
+                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between font-mono text-[10px] text-slate-400 group-hover:text-[#E00D42] transition">
+                                                <span className="uppercase font-bold">View Specs & Colors</span>
+                                                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                                            </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>

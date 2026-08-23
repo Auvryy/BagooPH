@@ -16,10 +16,12 @@ class Review extends Model
         'order_id',
         'rating',
         'comment',
+        'images',
     ];
 
     protected $casts = [
         'rating' => 'integer',
+        'images' => 'array',
     ];
 
     public function product(): BelongsTo
