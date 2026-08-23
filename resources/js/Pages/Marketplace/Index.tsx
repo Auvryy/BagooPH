@@ -151,23 +151,24 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
                     </div>
 
-                    {/* STACKED & LEANING VIDEO CARDS (Centered below xl, Expanded Cinematic Size on xl+ side-by-side) */}
-                    <div className="relative xl:absolute xl:top-[20%] 2xl:top-[18%] xl:right-10 2xl:right-20 z-30 my-8 sm:my-10 xl:my-0 flex justify-center xl:block pointer-events-auto">
-                        <div className="relative w-56 sm:w-64 xl:w-80 2xl:w-96 h-68 sm:h-80 xl:h-[420px] 2xl:h-[480px] group cursor-pointer">
+                    {/* STACKED & LEANING VIDEO CARDS (Dedicated Block Element on Mobile/Tablet, Pinned on xl+) */}
+                    <div className="relative xl:absolute xl:top-[20%] 2xl:top-[18%] xl:right-10 2xl:right-20 z-30 my-6 sm:my-8 xl:my-0 w-full xl:w-auto flex justify-center items-center shrink-0 pointer-events-auto">
+                        <div className="relative w-[260px] sm:w-[320px] xl:w-80 2xl:w-96 h-[340px] sm:h-[400px] xl:h-[420px] 2xl:h-[480px] shrink-0 group cursor-pointer">
                             
                             {/* Card 1: Back Leaning / Peeking Card (store-shopping-1 peeking out prominently to the left) */}
-                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-10 sm:-translate-x-14 xl:-translate-x-20 2xl:-translate-x-24 -translate-y-4 sm:-translate-y-6 xl:-translate-y-10 2xl:-translate-y-12 group-hover:-rotate-16 group-hover:-translate-x-28 group-hover:-translate-y-14 transition-all duration-500 ease-out z-10">
-                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-3 sm:p-3.5 xl:p-4 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-6 sm:-translate-x-12 xl:-translate-x-20 2xl:-translate-x-24 -translate-y-3 sm:-translate-y-6 xl:-translate-y-10 2xl:-translate-y-12 group-hover:-rotate-16 group-hover:-translate-x-10 sm:group-hover:-translate-x-28 group-hover:-translate-y-6 sm:group-hover:-translate-y-14 transition-all duration-500 ease-out z-10">
+                                <div className="flex items-center justify-between font-mono text-[9px] sm:text-[10px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
                                     <span className="font-bold text-white">BAGOO // REEL 01</span>
                                     <span className="w-1.5 xl:w-2 h-1.5 xl:h-2 rounded-full bg-emerald-400 animate-ping"></span>
                                 </div>
-                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-black">
+                                <div className="relative flex-1 min-h-[220px] sm:min-h-[260px] xl:min-h-[290px] rounded-2xl overflow-hidden bg-black">
                                     <video
                                         autoPlay
                                         loop
                                         muted
                                         playsInline
-                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                        preload="auto"
+                                        className="w-full h-full object-cover block group-hover:scale-105 transition duration-500"
                                     >
                                         <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
@@ -180,21 +181,22 @@ export default function MarketplaceIndex({ categories }: Props) {
                             </div>
 
                             {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
-                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 sm:p-3 xl:p-4 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-2 translate-y-2 xl:translate-x-3 xl:translate-y-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
-                                <div className="flex items-center justify-between font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-3 sm:p-3.5 xl:p-4 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-1 sm:translate-x-2 translate-y-1 sm:translate-y-2 xl:translate-x-3 xl:translate-y-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
+                                <div className="flex items-center justify-between font-mono text-[9px] sm:text-[10px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
                                     <span className="font-black text-slate-900 flex items-center gap-1.5">
                                         <span className="w-1.5 sm:w-2 xl:w-2.5 h-1.5 sm:h-2 xl:h-2.5 rounded-full bg-[#E00D42]"></span>
                                         BAGOO MARKETPLACE
                                     </span>
                                     <span className="px-1.5 xl:px-2 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
                                 </div>
-                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-slate-900">
+                                <div className="relative flex-1 min-h-[220px] sm:min-h-[260px] xl:min-h-[290px] rounded-2xl overflow-hidden bg-slate-900">
                                     <video
                                         autoPlay
                                         loop
                                         muted
                                         playsInline
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                        preload="auto"
+                                        className="w-full h-full object-cover block group-hover:scale-105 transition-transform duration-700"
                                     >
                                         <source src="/videos/store-shopping-2.webm" type="video/webm" />
                                     </video>

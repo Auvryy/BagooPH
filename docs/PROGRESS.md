@@ -583,6 +583,17 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. **Enshrined Strict Privacy Rule in [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md#L93-L96):**
      - Added **Section 7: Absolute Privacy & Server Credential / IP Address Protection**, forbidding any persistence of real IP addresses, credentials, or private keys in repository files.
 
+### 📌 Prompt 48: Mobile Video Cards Height & Non-Collapsing Block Flow Fix
+- **Date & Time:** `2026-08-24 05:26:00 +08:00`
+- **User Prompt:**
+  > *"when i use mobile, we know the landin page has video cards. the video cards shrinks to nothing showing non of the video but it only only shows when i make my screen bigger. can you fix that behavior on phone. like don't make the video disappear on mobile! like it not totattly disappear like the only left is the video card text like those "live" etc. so fix that and make it like a block element when it reaches small screen size!"*
+- **What was done:**
+  1. **Fixed Mobile Height Collapsing Bug ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Replaced non-standard arbitrary classes with explicit pixel and rem responsive sizing (`w-[260px] sm:w-[320px] xl:w-80 2xl:w-96` and `h-[340px] sm:h-[400px] xl:h-[420px] 2xl:h-[480px]`).
+     - Added explicit minimum video container heights (`min-h-[220px] sm:min-h-[260px] xl:min-h-[290px]`) and `shrink-0`, guaranteeing the video element physically cannot be crushed or collapsed to 0 on mobile screens.
+     - Added `preload="auto"` and `block` formatting to ensure reliable inline video playback on mobile browsers.
+  2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 13.18s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -591,6 +602,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
 - [x] Strict IP Address & Server Credential Privacy Protection active in `GEMINI.md`.
+- [x] Mobile Video Cards Height & Non-Collapsing Block Flow active across all devices.
 - [x] Enlarged Cinematic Video Cards in Desktop Side-by-Side View.
 - [x] Adaptive Centering & Spacing for Hero BAGOO SHOP when video cards wrap below.
 - [x] Mobile Hamburger Menu Drawer active in `MarketplaceLayout`.
