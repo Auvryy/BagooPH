@@ -497,6 +497,19 @@ This document tracks all completed work and prompts with dates and timestamps.
      - **Card 2 (Front / Elevated Card):** Crisp white frame with a 3-degree clockwise tilt (`rotate-3`), 4K live chip, ecosystem reel footage, and smooth interactive hover fan-out transitions.
   2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.73s (`exit 0`).
 
+### 📌 Prompt 41: Local WebM Video Integration (store-shopping-1 & store-shopping-2 on top)
+- **Date & Time:** `2026-08-23 21:25:35 +08:00`
+- **User Prompt:**
+  > *"check my downloads and change it to the 2 webm video there! make sure the 2 is on the top"*
+- **What was done:**
+  1. **Copied User Videos from Downloads:**
+     - Copied `/home/andy/Downloads/store-shopping-1.webm` ➔ `public/videos/store-shopping-1.webm`.
+     - Copied `/home/andy/Downloads/store-shopping-2.webm` ➔ `public/videos/store-shopping-2.webm`.
+  2. **Updated Video Cards in Landing Hero ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - **Card 2 (Top / Front Card):** Configured with `/videos/store-shopping-2.webm` as the foreground centerpiece.
+     - **Card 1 (Back / Leaning Card):** Configured with `/videos/store-shopping-1.webm` as the background leaning card.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 12.21s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -504,6 +517,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Custom WebM Video Showcase active in Landing Hero (store-shopping-2 on top).
 - [x] Stacked & Leaning Video Cards active in Landing Hero.
 - [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
 - [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.

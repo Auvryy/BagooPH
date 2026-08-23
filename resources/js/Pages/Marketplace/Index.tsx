@@ -169,7 +169,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         playsInline
                                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500"
                                     >
-                                        <source src="https://assets.mixkit.co/videos/preview/mixkit-holding-several-shopping-bags-42867-large.mp4" type="video/mp4" />
+                                        <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
                                     <div className="absolute bottom-2 left-2 right-2 font-mono text-[9px] text-white">
@@ -178,7 +178,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                 </div>
                             </div>
 
-                            {/* Card 2: Front Elevated Card */}
+                            {/* Card 2: Front Elevated Card (store-shopping-2 on top) */}
                             <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-0 translate-y-0 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out">
                                 <div className="flex items-center justify-between font-mono text-[9px] text-slate-600 px-1 pb-1 z-10">
                                     <span className="font-black text-slate-900 flex items-center gap-1.5">
@@ -195,7 +195,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                                         playsInline
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                     >
-                                        <source src="https://assets.mixkit.co/videos/preview/mixkit-shopping-spree-with-friends-42866-large.mp4" type="video/mp4" />
+                                        <source src="/videos/store-shopping-2.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
                                     <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white font-mono text-[9px]">
