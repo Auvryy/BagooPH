@@ -18,7 +18,8 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
         const height = container.clientHeight || 500;
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 0, 7.5);
+        camera.position.set(0, 0.1, 7.2);
+        camera.lookAt(0, 0.1, 0);
 
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
         renderer.setSize(width, height);
@@ -28,23 +29,23 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
         container.appendChild(renderer.domElement);
 
         // 2. Lighting Rig
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
         scene.add(ambientLight);
 
-        const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 2.8);
         mainLight.position.set(5, 8, 5);
         scene.add(mainLight);
 
-        const rimLight = new THREE.DirectionalLight(0xE00D42, 4.0);
+        const rimLight = new THREE.DirectionalLight(0xE00D42, 4.2);
         rimLight.position.set(-5, 3, -4);
         scene.add(rimLight);
 
-        const pointLight = new THREE.PointLight(0xE00D42, 3, 10);
-        pointLight.position.set(0, 0, 2);
+        const pointLight = new THREE.PointLight(0xE00D42, 3.5, 10);
+        pointLight.position.set(0, 0.2, 2);
         scene.add(pointLight);
 
         const bottomGlow = new THREE.PointLight(0xffa07a, 2, 8);
-        bottomGlow.position.set(0, -3, 1);
+        bottomGlow.position.set(0, -2.5, 1);
         scene.add(bottomGlow);
 
         // 3. 3D Shopping Bag Construction
@@ -68,14 +69,14 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
             side: THREE.DoubleSide,
         });
 
-        // Bag Body
-        const bagBodyGeo = new THREE.BoxGeometry(2.4, 2.8, 1.2, 16, 16, 16);
-        // Taper the top slightly like a luxury shopping bag
+        // Bag Body (centered)
+        const bagBodyGeo = new THREE.BoxGeometry(2.4, 2.7, 1.2, 16, 16, 16);
+        // Taper top slightly
         const pos = bagBodyGeo.attributes.position;
         for (let i = 0; i < pos.count; i++) {
             const y = pos.getY(i);
             if (y > 0) {
-                const factor = 1 - (y / 1.4) * 0.12;
+                const factor = 1 - (y / 1.35) * 0.12;
                 pos.setX(i, pos.getX(i) * factor);
                 pos.setZ(i, pos.getZ(i) * factor);
             }
@@ -83,10 +84,10 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
         bagBodyGeo.computeVertexNormals();
 
         const bagBody = new THREE.Mesh(bagBodyGeo, bagMaterial);
-        bagBody.position.y = -0.3;
+        bagBody.position.y = -0.15;
         bagGroup.add(bagBody);
 
-        // Bag Handles (Left & Right curves)
+        // Bag Handles
         const handleMaterial = new THREE.MeshStandardMaterial({
             color: new THREE.Color(0xE00D42),
             roughness: 0.25,
@@ -95,10 +96,10 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
 
         const createHandle = (zOffset: number) => {
             const curve = new THREE.CubicBezierCurve3(
-                new THREE.Vector3(-0.6, 1.1, zOffset),
-                new THREE.Vector3(-0.5, 2.3, zOffset),
-                new THREE.Vector3(0.5, 2.3, zOffset),
-                new THREE.Vector3(0.6, 1.1, zOffset)
+                new THREE.Vector3(-0.55, 1.2, zOffset),
+                new THREE.Vector3(-0.45, 2.3, zOffset),
+                new THREE.Vector3(0.45, 2.3, zOffset),
+                new THREE.Vector3(0.55, 1.2, zOffset)
             );
             const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.045, 12, false);
             return new THREE.Mesh(tubeGeo, handleMaterial);
@@ -120,32 +121,67 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
             wireframe: true,
         });
         const coreSphere = new THREE.Mesh(coreGeo, coreMat);
-        coreSphere.position.y = -0.3;
+        coreSphere.position.y = -0.15;
         bagGroup.add(coreSphere);
 
+        // Overall Bag Group Center Offset (adjusted so handles + body are perfectly centered)
+        bagGroup.position.y = -0.1;
         scene.add(bagGroup);
 
-        // 4. Mouse & Scroll Interaction Controller
+        // 4. Mouse Move Only Inside Container
         let mouseX = 0;
         let mouseY = 0;
-        let targetRotX = 0;
-        let targetRotY = 0;
-        let scrollY = 0;
+        let isHovered = false;
+        let isDragging = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+        let dragRotX = 0;
+        let dragRotY = 0;
 
         const onMouseMove = (e: MouseEvent) => {
             const rect = container.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / width - 0.5;
-            const y = (e.clientY - rect.top) / height - 0.5;
+            const x = (e.clientX - rect.left) / rect.width - 0.5;
+            const y = (e.clientY - rect.top) / rect.height - 0.5;
             mouseX = x * 2;
             mouseY = y * 2;
+            isHovered = true;
+
+            if (isDragging) {
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+                dragRotY += deltaX * 0.01;
+                dragRotX += deltaY * 0.01;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            }
         };
 
-        const onScroll = () => {
-            scrollY = window.scrollY;
+        const onMouseEnter = () => {
+            isHovered = true;
         };
 
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('scroll', onScroll, { passive: true });
+        const onMouseLeave = () => {
+            isHovered = false;
+            isDragging = false;
+            mouseX = 0;
+            mouseY = 0;
+        };
+
+        const onMouseDown = (e: MouseEvent) => {
+            isDragging = true;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+        };
+
+        container.addEventListener('mousemove', onMouseMove);
+        container.addEventListener('mouseenter', onMouseEnter);
+        container.addEventListener('mouseleave', onMouseLeave);
+        container.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mouseup', onMouseUp);
 
         // Handle Resize
         const onResize = () => {
@@ -165,14 +201,14 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
         const animate = () => {
             const time = clock.getElapsedTime();
 
-            // Hover tracking + idle organic oscillation
-            targetRotY = mouseX * 0.75 + Math.sin(time * 0.8) * 0.15 + (scrollY * 0.003);
-            targetRotX = -mouseY * 0.45 + Math.cos(time * 0.6) * 0.08 + (scrollY * 0.001);
+            // Hover tilt only when hovered inside container
+            const targetRotY = dragRotY + (isHovered ? mouseX * 0.8 : Math.sin(time * 0.8) * 0.12);
+            const targetRotX = dragRotX + (isHovered ? -mouseY * 0.5 : Math.cos(time * 0.6) * 0.08);
 
             // Smooth spring damping
             bagGroup.rotation.y += (targetRotY - bagGroup.rotation.y) * 0.08;
             bagGroup.rotation.x += (targetRotX - bagGroup.rotation.x) * 0.08;
-            bagGroup.position.y = Math.sin(time * 1.4) * 0.12 - (scrollY * 0.0008);
+            bagGroup.position.y = -0.1 + Math.sin(time * 1.5) * 0.08;
 
             // Rotate inner core
             coreSphere.rotation.x += 0.015;
@@ -185,8 +221,11 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
         animate();
 
         return () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('scroll', onScroll);
+            container.removeEventListener('mousemove', onMouseMove);
+            container.removeEventListener('mouseenter', onMouseEnter);
+            container.removeEventListener('mouseleave', onMouseLeave);
+            container.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mouseup', onMouseUp);
             window.removeEventListener('resize', onResize);
             cancelAnimationFrame(animationFrame);
             renderer.dispose();
@@ -199,7 +238,7 @@ export default function ThreeShoppingBag({ className = '' }: Props) {
     return (
         <div 
             ref={containerRef} 
-            className={`w-full h-full flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing ${className}`}
+            className={`w-full h-full flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing select-none ${className}`}
         />
     );
 }

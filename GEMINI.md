@@ -33,7 +33,19 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 * **Registration:** Personal details, Vehicle type, Plate number, Upload OR/CR, Upload Driver's License. Requires Admin approval.
 * **Core Functions:** Delivery dashboard, Accept delivery requests (First-Come, First-Served), Pick up order from seller, Deliver & Complete order, Profit/earnings page, Delivery history, Chat/Messaging, Account Management, Logout.
 
-### 🛡️ 4. Admin
+### 🛡️ 4. Multi-Role Authentication & Navigation Pattern
+* **Unified Smart Login (`/login`):** A single login page for all users. The backend automatically checks `user.role` on authentication and instantly redirects users to their designated interface:
+  * `buyer` ➔ Marketplace / Buyer Home
+  * `seller` ➔ `/seller/dashboard`
+  * `courier` ➔ `/courier/deliveries`
+  * `admin` ➔ `/admin/dashboard`
+* **Buyer-First Public Interface:** The primary consumer landing page is tailored for buyers with frictionless shopping and registration.
+* **Admin Obfuscation:** Admin controls and login buttons are **strictly hidden** from the public customer-facing UI (no "Admin Login" button on consumer headers). Accessible directly via `/admin/login` or via auto-redirect from `/login`.
+* **Dedicated Partner Onboarding:**
+  * **Seller Registration (`/seller/register`):** Dedicated merchant portal featuring shop name and business verification.
+  * **Courier Registration (`/courier/register`):** Dedicated driver portal featuring fleet and vehicle onboarding.
+
+### 🛡️ 5. Admin
 * **Core Functions:** Dashboard overview, Manage account registrations (review submitted IDs/permits, approve/disapprove with email), Manage user accounts (activate, suspend, deactivate), Monitor seller compliance (category match, prohibited items), Manage complaints/disputes (review evidence, coordinate), Manage 10% platform commission, Generate reports (sales summary, commission report), Manage platform settings (announcements, policies), Chat/Messaging, Account Management, Logout.
 
 ---

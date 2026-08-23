@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import { Category } from '@/types';
 import GrainOverlay from '@/Components/GrainOverlay';
 import ThreeShoppingBag from '@/Components/ThreeShoppingBag';
 import { 
-    ShoppingBag, 
     ArrowRight, 
     Store, 
     ShieldCheck, 
@@ -16,9 +15,7 @@ import {
     Zap, 
     UserCheck, 
     DollarSign,
-    MapPin, 
-    ChevronRight,
-    Menu
+    MapPin
 } from 'lucide-react';
 
 interface Props {
@@ -36,107 +33,51 @@ const SECTIONS = [
 
 export default function MarketplaceIndex({ categories }: Props) {
     const [currentTime, setCurrentTime] = useState('12:00 PM');
-    const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
-    const [isNavHovered, setIsNavHovered] = useState<boolean>(false);
-    const isScrollingRef = useRef<boolean>(false);
-    const activeIndexRef = useRef<number>(0);
-
-    // Keep activeIndexRef synced with state
-    useEffect(() => {
-        activeIndexRef.current = activeSectionIndex;
-    }, [activeSectionIndex]);
-
-    const scrollToSectionIndex = (index: number) => {
-        if (index < 0 || index >= SECTIONS.length) return;
-        const targetSection = SECTIONS[index];
-        const el = document.getElementById(targetSection.id);
-        if (!el) return;
-
-        isScrollingRef.current = true;
-        setActiveSectionIndex(index);
-
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        setTimeout(() => {
-            isScrollingRef.current = false;
-        }, 750);
-    };
+    const [activeSectionId, setActiveSectionId] = useState<string>('hero');
+    const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
     useEffect(() => {
-        // Clock timer
+        // Trigger one-time left-to-right entrance animation on mount
+        const timer = setTimeout(() => {
+            setIsLoaded(true);
+        }, 50);
+
         const updateTime = () => {
             const now = new Date();
             setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         };
         updateTime();
-        const timer = setInterval(updateTime, 1000);
+        const clockInterval = setInterval(updateTime, 1000);
 
-        // 1. MAGNETIC SECTION WHEEL CONTROLLER
-        const handleWheel = (e: WheelEvent) => {
-            // Ignore trivial trackpad vibrations
-            if (Math.abs(e.deltaY) < 25) return;
-            if (isScrollingRef.current) {
-                e.preventDefault();
-                return;
-            }
-
-            e.preventDefault();
-            const current = activeIndexRef.current;
-
-            if (e.deltaY > 0 && current < SECTIONS.length - 1) {
-                scrollToSectionIndex(current + 1);
-            } else if (e.deltaY < 0 && current > 0) {
-                scrollToSectionIndex(current - 1);
+        // Natural smooth scroll spy for dynamic adaptive navbar theme
+        const handleScroll = () => {
+            const scrollPos = window.scrollY + 200;
+            for (let i = SECTIONS.length - 1; i >= 0; i--) {
+                const el = document.getElementById(SECTIONS[i].id);
+                if (el && el.offsetTop <= scrollPos) {
+                    setActiveSectionId(SECTIONS[i].id);
+                    break;
+                }
             }
         };
 
-        // 2. KEYBOARD NAVIGATION (Arrow keys, Spacebar, PageDown/PageUp)
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (['ArrowDown', 'PageDown', ' '].includes(e.key)) {
-                e.preventDefault();
-                const current = activeIndexRef.current;
-                if (current < SECTIONS.length - 1) scrollToSectionIndex(current + 1);
-            } else if (['ArrowUp', 'PageUp'].includes(e.key)) {
-                e.preventDefault();
-                const current = activeIndexRef.current;
-                if (current > 0) scrollToSectionIndex(current - 1);
-            }
-        };
-
-        // 3. TOUCH SWIPE CONTROLLER FOR MOBILE / TABLET
-        let touchStartY = 0;
-        const handleTouchStart = (e: TouchEvent) => {
-            touchStartY = e.touches[0].clientY;
-        };
-
-        const handleTouchEnd = (e: TouchEvent) => {
-            if (isScrollingRef.current) return;
-            const touchEndY = e.changedTouches[0].clientY;
-            const diff = touchStartY - touchEndY;
-            const current = activeIndexRef.current;
-
-            if (diff > 45 && current < SECTIONS.length - 1) {
-                scrollToSectionIndex(current + 1);
-            } else if (diff < -45 && current > 0) {
-                scrollToSectionIndex(current - 1);
-            }
-        };
-
-        window.addEventListener('wheel', handleWheel, { passive: false });
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('touchstart', handleTouchStart, { passive: true });
-        window.addEventListener('touchend', handleTouchEnd, { passive: true });
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
 
         return () => {
-            clearInterval(timer);
-            window.removeEventListener('wheel', handleWheel);
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('touchstart', handleTouchStart);
-            window.removeEventListener('touchend', handleTouchEnd);
+            clearTimeout(timer);
+            clearInterval(clockInterval);
+            window.removeEventListener('scroll', handleScroll);
         };
     }, []);
 
-    const currentSection = SECTIONS[activeSectionIndex] || SECTIONS[0];
+    const scrollToSection = (id: string) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const currentSection = SECTIONS.find(s => s.id === activeSectionId) || SECTIONS[0];
     const isDarkHeader = currentSection.theme === 'dark';
 
     return (
@@ -146,87 +87,15 @@ export default function MarketplaceIndex({ categories }: Props) {
             {/* Grain & Noise Film Overlay */}
             <GrainOverlay />
 
-            {/* HOVER-REVEAL RIGHT-SIDE SECTION NAVIGATION WITH INDICATOR */}
-            <div 
-                className="fixed right-0 top-1/2 -translate-y-1/2 z-50 pointer-events-auto hidden md:flex items-center"
-                onMouseEnter={() => setIsNavHovered(true)}
-                onMouseLeave={() => setIsNavHovered(false)}
-            >
-                {/* 1. Minimal Glowing Edge Indicator Tab (Always visible on right edge) */}
-                <div 
-                    className={`cursor-pointer transition-all duration-300 py-3.5 px-2 rounded-l-xl flex flex-col items-center gap-2.5 font-mono shadow-2xl backdrop-blur-xl border-l border-y ${
-                        isDarkHeader
-                            ? 'bg-black/60 border-white/20 text-white'
-                            : 'bg-black/80 border-black/30 text-white'
-                    } ${isNavHovered ? 'opacity-0 translate-x-4 pointer-events-none' : 'opacity-100 translate-x-0'}`}
-                >
-                    <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
-                    <span className="text-[10px] font-bold text-[#E00D42]">{currentSection.num}</span>
-                    <div className="w-px h-6 bg-white/20"></div>
-                    <span className="[writing-mode:vertical-rl] text-[9px] uppercase tracking-widest text-white/70 font-semibold">
-                        NAV
-                    </span>
-                    <ChevronRight className="w-3 h-3 text-white/50" />
-                </div>
-
-                {/* 2. Full Glassmorphic Navigation Card (Slides in on hover) */}
-                <div 
-                    className={`transition-all duration-300 ease-out pr-6 ${
-                        isNavHovered 
-                            ? 'opacity-100 translate-x-0 pointer-events-auto' 
-                            : 'opacity-0 translate-x-12 pointer-events-none'
-                    }`}
-                >
-                    <div className="bg-black/65 backdrop-blur-2xl text-white border border-white/20 rounded-2xl p-4 shadow-2xl font-mono text-xs w-52 space-y-3">
-                        <div className="flex items-center justify-between border-b border-white/20 pb-2 text-[10px] text-white/70 tracking-wider">
-                            <span className="flex items-center gap-1.5 font-bold">
-                                <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
-                                MAGNETIC NAV
-                            </span>
-                            <span className="text-[#E00D42] font-bold">{currentSection.num} / 06</span>
-                        </div>
-
-                        {/* Section Stack */}
-                        <div className="space-y-1">
-                            {SECTIONS.map((sec, idx) => {
-                                const isCurrent = activeSectionIndex === idx;
-                                return (
-                                    <button
-                                        key={sec.id}
-                                        onClick={() => scrollToSectionIndex(idx)}
-                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 ${
-                                            isCurrent 
-                                                ? 'bg-[#E00D42] text-white font-bold shadow-lg shadow-[#E00D42]/30 scale-[1.02]' 
-                                                : 'text-white/75 hover:text-white hover:bg-white/15'
-                                        }`}
-                                    >
-                                        <span className="truncate text-[11px] uppercase tracking-wide">
-                                            {sec.name}
-                                        </span>
-                                        <span className={`text-[9px] ${isCurrent ? 'text-white' : 'text-white/50'}`}>
-                                            [{sec.num}]
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <div className="pt-1.5 text-[9px] text-center text-white/50 border-t border-white/15 uppercase">
-                            SCROLL WHEEL SNAPS
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* SECTIONS WRAPPER */}
+            {/* MAIN SECTIONS CONTAINER */}
             <div className="relative font-sans selection:bg-[#E00D42] selection:text-white">
                 
-                {/* SECTION 01: HERO (LIGHT MODE) */}
+                {/* SECTION 01: HERO (LIGHT MODE WITH LEFT-TO-RIGHT ENTRANCE ANIMATION) */}
                 <section 
                     id="hero" 
-                    className="relative min-h-[92vh] flex flex-col justify-between p-4 sm:p-8 lg:p-12 border-b border-black/15 bg-[#ECEAE5] text-[#111111] overflow-hidden transition-colors duration-700"
+                    className="relative min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex flex-col justify-between p-4 sm:p-8 lg:p-12 border-b border-black/15 bg-[#ECEAE5] text-[#111111] overflow-hidden transition-colors duration-700"
                 >
-                    {/* Crosshairs */}
+                    {/* Precision Crosshairs */}
                     <span className="absolute top-4 left-4 text-black/40 font-mono text-xs select-none">+</span>
                     <span className="absolute top-4 left-1/2 -translate-x-1/2 text-black/40 font-mono text-xs select-none">+</span>
                     <span className="absolute top-4 right-4 text-black/40 font-mono text-xs select-none">+</span>
@@ -243,46 +112,46 @@ export default function MarketplaceIndex({ categories }: Props) {
                         </div>
 
                         <div className="hidden sm:flex items-center gap-6 text-black/70 font-medium">
-                            <button onClick={() => scrollToSectionIndex(1)} className="hover:text-[#E00D42] transition">BUYER</button>
-                            <button onClick={() => scrollToSectionIndex(2)} className="hover:text-[#E00D42] transition">SELLER</button>
-                            <button onClick={() => scrollToSectionIndex(3)} className="hover:text-[#E00D42] transition">COURIER</button>
-                            <button onClick={() => scrollToSectionIndex(4)} className="hover:text-[#E00D42] transition">ADMIN</button>
+                            <button onClick={() => scrollToSection('buyer')} className="hover:text-[#E00D42] transition">BUYER</button>
+                            <button onClick={() => scrollToSection('seller')} className="hover:text-[#E00D42] transition">SELLER</button>
+                            <button onClick={() => scrollToSection('courier')} className="hover:text-[#E00D42] transition">COURIER</button>
+                            <button onClick={() => scrollToSection('admin')} className="hover:text-[#E00D42] transition">ADMIN</button>
+                            <button onClick={() => scrollToSection('departments')} className="hover:text-[#E00D42] transition">DEPARTMENTS</button>
                         </div>
                     </div>
 
-                    {/* 3D BAG AT THE BACK OF BRAND NAME (z-0) */}
-                    <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-auto">
-                        <div className="w-[340px] h-[340px] sm:w-[520px] sm:h-[520px] lg:w-[680px] lg:h-[680px]">
-                            <ThreeShoppingBag />
-                        </div>
-                    </div>
-
-                    {/* Massive Monumental Top Typography: BAGOO (z-20, sits above 3D Bag) */}
-                    <div className="relative z-20 select-none pointer-events-none mt-2 sm:mt-4">
-                        <h1 className="text-[17vw] leading-[0.8] font-black tracking-tighter text-black flex items-center drop-shadow-sm">
-                            <span>B</span>
-                            <span className="relative inline-flex items-center justify-center">
-                                A
-                                <span className="absolute top-[32%] left-[48%] -translate-x-1/2 -translate-y-1/2 w-[3.2vw] h-[3.2vw] rounded-full bg-[#E00D42] shadow-sm animate-pulse"></span>
-                            </span>
-                            <span>GOO</span>
-                        </h1>
-                    </div>
-
-                    {/* Mid Right Action Tag */}
-                    <div className="hidden lg:flex absolute right-12 top-1/2 -translate-y-1/2 z-30 flex-col items-end gap-3 font-mono text-xs">
-                        <button 
-                            onClick={() => scrollToSectionIndex(1)}
-                            className="group flex items-center gap-3 px-4 py-2.5 bg-black/5 hover:bg-black hover:text-white rounded-lg border border-black/15 backdrop-blur-md transition duration-200"
+                    {/* BAGOO + COMMERCE stacked tightly together (centered vertically) */}
+                    <div className="relative z-20 my-auto space-y-0">
+                        {/* BAGOO (Left-to-Right Entrance) */}
+                        <div 
+                            className={`select-none pointer-events-none transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                            }`}
                         >
-                            <span className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-[#E00D42] group-hover:border-l-white"></span>
-                            <span className="tracking-widest uppercase font-bold text-[11px]">SCROLL TO SNAP SECTIONS</span>
-                        </button>
-                        <span className="text-[10px] text-black/50 tracking-wider uppercase">HOVER RIGHT EDGE FOR NAV</span>
+                            <h1 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center drop-shadow-xs">
+                                <span>B</span>
+                                <span className="relative inline-flex items-center justify-center">
+                                    A
+                                    <span className="absolute top-[32%] left-[48%] -translate-x-1/2 -translate-y-1/2 w-[2.5vw] h-[2.5vw] rounded-full bg-[#E00D42] shadow-sm animate-pulse"></span>
+                                </span>
+                                <span>GOO</span>
+                            </h1>
+                        </div>
+
+                        {/* COMMERCE (Left-to-Right Entrance, staggered) */}
+                        <div 
+                            className={`select-none pointer-events-none transition-all duration-1000 delay-150 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-16'
+                            }`}
+                        >
+                            <h2 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black">
+                                COMMERCE
+                            </h2>
+                        </div>
                     </div>
 
-                    {/* Bottom Metadata & Lower Typography */}
-                    <div className="relative z-20 space-y-4 pt-6">
+                    {/* METADATA BAR (below COMMERCE, pinned to bottom) */}
+                    <div className="relative z-20 pt-6">
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end font-mono text-xs">
                             <div className="md:col-span-4 space-y-1 text-black/70">
                                 <div className="text-[10px] text-black/40 font-bold uppercase tracking-widest">ABOUT</div>
@@ -298,43 +167,40 @@ export default function MarketplaceIndex({ categories }: Props) {
                                 </p>
                             </div>
                         </div>
-
-                        <div className="select-none pointer-events-none">
-                            <h2 className="text-[17vw] leading-[0.8] font-black tracking-tighter text-black">
-                                COMMERCE
-                            </h2>
-                        </div>
                     </div>
                 </section>
 
-                {/* SECTION 02: BUYER PORTAL (DARK MODE) */}
+                {/* SECTION 02: BUYER PORTAL (DARK MODE WITH CENTERED 3D SHOPPING BAG SHOWCASE) */}
                 <section 
                     id="buyer" 
-                    className="relative min-h-[92vh] flex flex-col justify-center py-20 px-4 sm:px-8 lg:px-12 bg-[#0A0D14] text-white border-b border-white/10 transition-colors duration-700 font-mono"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#0A0D14] text-white border-b border-white/10 transition-colors duration-700 font-mono"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-white/15">
                             <div>
                                 <span className="text-xs font-bold text-[#E00D42] uppercase tracking-widest">[MODULE_01 // BUYER]</span>
                                 <h3 className="text-3xl sm:text-5xl font-black tracking-tight text-white mt-1 font-sans">
-                                    Buyer Experience & Doorstep Tracking
+                                    Buyer Experience & 3D Interactive Telemetry
                                 </h3>
                             </div>
                             <span className="text-xs text-white/40 uppercase">PSGC CASCADING & TELEMETRY</span>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                            {/* Imagery & Telemetry Mockup */}
+                            
+                            {/* 3D Interactive Shopping Bag Showcase (Centered & Container-Hover Only) */}
                             <div className="lg:col-span-6 space-y-4">
-                                <div className="relative rounded-2xl overflow-hidden border border-white/15 aspect-[4/3] group shadow-2xl">
-                                    <img 
-                                        src="https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80" 
-                                        alt="Buyer Shopping Experience" 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-90"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+                                <div className="relative rounded-2xl overflow-hidden border border-white/20 aspect-[4/3] bg-gradient-to-b from-[#141824] to-[#0A0D14] shadow-2xl flex items-center justify-center group">
+                                    
+                                    {/* 3D Shopping Bag Canvas (Centered vertically & horizontally) */}
+                                    <div className="w-full h-full flex items-center justify-center p-2">
+                                        <div className="w-[320px] h-[320px] sm:w-[400px] sm:h-[400px] lg:w-[460px] lg:h-[460px]">
+                                            <ThreeShoppingBag />
+                                        </div>
+                                    </div>
 
-                                    <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-black/85 backdrop-blur-md border border-white/20 text-xs font-mono space-y-2.5 shadow-2xl">
+                                    {/* Floating Live Telemetry Overlay Card */}
+                                    <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-black/85 backdrop-blur-md border border-white/20 text-xs font-mono space-y-2.5 shadow-2xl pointer-events-none">
                                         <div className="flex justify-between items-center border-b border-white/15 pb-2">
                                             <span className="text-white/60">PARCEL #BGO-98124</span>
                                             <span className="text-emerald-400 font-bold">IN TRANSIT</span>
@@ -415,7 +281,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                 {/* SECTION 03: SELLER CENTER (LIGHT MODE) */}
                 <section 
                     id="seller" 
-                    className="relative min-h-[92vh] flex flex-col justify-center py-20 px-4 sm:px-8 lg:px-12 bg-[#F3F0EA] text-[#111111] border-b border-black/15 transition-colors duration-700 font-mono"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#F3F0EA] text-[#111111] border-b border-black/15 transition-colors duration-700 font-mono"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-black/15">
@@ -518,7 +384,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                 {/* SECTION 04: COURIER DISPATCH (DARK MODE) */}
                 <section 
                     id="courier" 
-                    className="relative min-h-[92vh] flex flex-col justify-center py-20 px-4 sm:px-8 lg:px-12 bg-[#070A10] text-white border-b border-white/10 transition-colors duration-700 font-mono"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#070A10] text-white border-b border-white/10 transition-colors duration-700 font-mono"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-white/15">
@@ -616,7 +482,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                 {/* SECTION 05: ADMIN GOVERNANCE (DEEP MIDNIGHT DARK MODE) */}
                 <section 
                     id="admin" 
-                    className="relative min-h-[92vh] flex flex-col justify-center py-20 px-4 sm:px-8 lg:px-12 bg-[#05070B] text-white border-b border-white/10 transition-colors duration-700 font-mono"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#05070B] text-white border-b border-white/10 transition-colors duration-700 font-mono"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-white/15">
@@ -713,7 +579,7 @@ export default function MarketplaceIndex({ categories }: Props) {
                 {/* SECTION 06: 14 MASTER DEPARTMENTS (LIGHT MODE) */}
                 <section 
                     id="departments" 
-                    className="relative min-h-[92vh] flex flex-col justify-center py-20 px-4 sm:px-8 lg:px-12 bg-[#ECEAE5] text-[#111111] border-b border-black/15 transition-colors duration-700 font-mono"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#ECEAE5] text-[#111111] border-b border-black/15 transition-colors duration-700 font-mono"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-black/15">
@@ -726,61 +592,50 @@ export default function MarketplaceIndex({ categories }: Props) {
                             <span className="text-xs text-black/50 uppercase">OFFICIAL CURRICULUM TAXONOMY</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* 14 Department Cards Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                             {categories.map((cat, idx) => {
                                 const num = String(idx + 1).padStart(2, '0');
                                 return (
                                     <div
                                         key={cat.id}
-                                        className="p-5 bg-white rounded-xl border border-black/10 flex flex-col justify-between h-32 hover:border-black transition shadow-xs"
+                                        className="p-4 bg-white rounded-xl border border-black/10 flex flex-col justify-between h-28 hover:border-black transition shadow-xs"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-bold text-[#E00D42]">[{num}/14]</span>
-                                            <span className="text-[10px] text-black/40 uppercase">VERIFIED</span>
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="font-bold text-[#E00D42]">[{num}/14]</span>
+                                            <span className="text-black/40 uppercase text-[9px]">VERIFIED</span>
                                         </div>
                                         <div>
-                                            <h5 className="font-black text-sm text-black font-sans uppercase">
+                                            <h5 className="font-black text-xs text-black font-sans uppercase line-clamp-2">
                                                 {cat.name}
                                             </h5>
-                                            <span className="text-[11px] text-black/50 block font-sans mt-0.5">
-                                                {cat.description || 'Verified platform department'}
-                                            </span>
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
-                </section>
 
-                {/* CALL TO ACTION BOTTOM BANNER */}
-                <section className="bg-black text-white py-16 px-4 sm:px-8 font-mono border-t border-black">
-                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-                        <div className="space-y-2 text-center md:text-left font-sans">
-                            <span className="text-xs font-mono uppercase tracking-widest text-[#E00D42]">
-                                ✦ JOIN THE BAGOO-PH NETWORK
-                            </span>
-                            <h4 className="text-2xl sm:text-3xl font-black tracking-tight">
-                                Ready to Experience Multi-Role Commerce?
-                            </h4>
-                            <p className="text-xs sm:text-sm text-white/70 max-w-lg leading-relaxed font-mono uppercase">
-                                REGISTER TODAY AS A BUYER, MERCHANT STORE, OR COURIER LOGISTICS PARTNER.
-                            </p>
-                        </div>
+                        {/* Bottom Action Footer Bar */}
+                        <div className="bg-black text-white p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6 font-mono">
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
+                                <span className="font-bold text-white uppercase">READY TO EXPERIENCE MULTI-ROLE COMMERCE?</span>
+                            </div>
 
-                        <div className="flex flex-wrap items-center gap-3 shrink-0">
-                            <Link
-                                href={route('register')}
-                                className="px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider font-mono"
-                            >
-                                Register Now
-                            </Link>
-                            <Link
-                                href={route('login')}
-                                className="px-6 py-3 bg-white/10 hover:bg-white hover:text-black text-white font-bold text-xs rounded-lg border border-white/20 transition uppercase tracking-wider font-mono"
-                            >
-                                Sign In
-                            </Link>
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href={route('register')}
+                                    className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase"
+                                >
+                                    Register Now
+                                </Link>
+                                <Link
+                                    href={route('login')}
+                                    className="px-5 py-2.5 bg-white/10 hover:bg-white hover:text-black text-white font-bold text-xs rounded-lg border border-white/20 transition uppercase"
+                                >
+                                    Sign In
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </section>

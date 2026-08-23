@@ -25,6 +25,14 @@ class RegisteredUserController extends Controller
     }
 
     /**
+     * Display the dedicated seller registration view.
+     */
+    public function createSeller(): Response
+    {
+        return Inertia::render('Auth/SellerRegister');
+    }
+
+    /**
      * Handle an incoming registration request.
      *
      * @throws ValidationException

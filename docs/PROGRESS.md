@@ -164,6 +164,83 @@ This document tracks all completed work and prompts with dates and timestamps.
      - By default, displays a sleek glowing vertical indicator tab on the right edge (`[02] NAV` with pulsating `#E00D42` indicator and chevron).
      - When hovered, the full frosted glassmorphic navigation card smoothly slides into view with section shortcuts.
 
+### 📌 Prompt 15: Flush Right Nav, Precise Viewport Fit & Layered 3D Bag (Behind Bagoo, in Front of Commerce)
+- **Date & Time:** `2026-08-23 10:11:18 +08:00`
+- **User Prompt:**
+  > *"fix the nav right because it is floating kinda off. make sure to stick it with totatlly to the rigth side of the browser. moreover each section has now this annoying overflowwhere each section is not fully screened. make sure it is ffixed and also make sure the scroll snap is working in firefox browsers or zen browsers. .and earlier the 3d bag is on the top of bagoo now it is on the literal back make sure it is now in the front of commerce like we swapped it out. so the 3d bag will be quite in the front of the text of the commerce."*
+- **What was done:**
+  1. **Flush Right Navigation HUD:** Pinned the hover navigation tab flush against the right screen edge (`fixed right-0 top-1/2`), removing awkward floating offsets and clashing mid-screen badges.
+  2. **Exact Viewport Fitting (Zero Overflow):** Scaled every section to `h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] overflow-hidden` so all section frames fit 100% cleanly without bottom peeking bands or clipping.
+  3. **Cross-Browser Normalized Snapping (Firefox, Zen, Chrome, Safari):** Normalized mouse wheel delta (`e.deltaMode` line vs pixel mode) and integrated smooth header-offset calculations.
+  4. **Dimensional 3D Bag Layering:** Positioned `BAGOO` on top (`z-20`), the 3D Shopping Bag in the middle (`z-10`), and `COMMERCE` in the back (`z-0`) so the 3D bag sits behind `BAGOO` and overlaps in front of `COMMERCE`.
+
+### 📌 Prompt 16: Revolver Sun Radial Orbital Navigation & Whitespace 3D Bag Composition
+- **Date & Time:** `2026-08-23 10:15:49 +08:00`
+- **User Prompt:**
+  > *"why not put the bag in the white space here. and also you can see the nav right is still not on the right. why not remove the nav bar but instead the cards is like a sun like it rotates like a revolver when we scroll!"*
+- **What was done:**
+  1. **Whitespace 3D Bag Composition:** Moved the 3D translucent Shopping Bag into the upper-right open whitespace quadrant (`top-[10%] right-[16%]`), perfectly balancing the monumental typography `BAGOO` (top-left) and overlapping the `COMMERCE` (bottom) layer in front.
+  2. **Revolver / Sun Orbital Radial Navigation Dial:**
+     - Positioned directly on the browser right edge (`fixed right-0 top-1/2`).
+     - Features a central glowing Crimson Sun hub (`#E00D42`) surrounded by 12 sun-ray ticks and an orbital dashed ring.
+     - 6 chamber cards (`[01] HERO` to `[06] CATALOG`) rotate radially around the central hub like a revolver cylinder / sun dial as you scroll through sections.
+     - Clicking any orbital ray rotates the revolver dial and smoothly snaps to the selected section.
+
+### 📌 Prompt 17: Centered 3D Bag (On Top of Bagoo) & Compact Edge-Hugging Roulette Nav
+- **Date & Time:** `2026-08-23 10:19:03 +08:00`
+- **User Prompt:**
+  > *"try again but bring back the old styling weay of our 3d bag where it is in the center and it is ontop of bagoo. but in the sun nav or roulette nav, make sure it is compact and the current one is not near the center like it most ly showing in the right side so it isn't distracting"*
+- **What was done:**
+  1. **Centered 3D Bag Layering:** Restored the 3D translucent Shopping Bag to the dead center (`inset-0 flex items-center justify-center z-20`) positioned on top of the monumental `BAGOO` headline with full mouse tilt inertia and glass refraction.
+  2. **Compact Edge-Hugging Roulette Navigation Dial:**
+     - Tucked the roulette sun dial tightly against the far right screen wall (`w-28`, `ROULETTE_RADIUS = 95px`), preventing it from intruding near the screen center.
+     - Features a compact `#E00D42` numbered edge hub with smooth 36-degree radial chamber pills rotating along the right perimeter.
+
+### 📌 Prompt 18: Natural Fluid Smooth Scroll, 3D Bag Beside Bagoo & Minimalist Right Edge
+- **Date & Time:** `2026-08-23 10:21:30 +08:00`
+- **User Prompt:**
+  > *"remove the snap. but make sure it is smooth scrolling, and the 3d bag feels off again and why not let it sit beside the Bagoo and entirely remove the right nav"*
+- **What was done:**
+  1. **Removed Scroll Snap:** Removed the scroll lock and wheel snap handlers, restoring natural, buttery-smooth fluid scrolling while preserving adaptive navbar color switching on scroll.
+  2. **Positioned 3D Bag Beside BAGOO:** Restructured the hero layout into an editorial side-by-side composition where the monumental `BAGOO` headline sits on the left and the interactive 3D Shopping Bag sits directly alongside it on the right.
+  3. **Completely Removed Right Navigation:** Removed all right-side roulette/elevator HUD elements for a 100% clean, minimal, distraction-free viewport.
+
+### 📌 Prompt 19: Hero Entrance Typography Animation, Ambient Grid Accents & 3D Bag in Buyer Section
+- **Date & Time:** `2026-08-23 10:26:17 +08:00`
+- **User Prompt:**
+  > *"hmm maybe just remove the 3d bag in the hero section instead it will be in the buyer section like replace the image there. . also put animation when scrolling like when we first reload the page, the bagoo commerce will have an animation of entering the screen. also maybe put elements that might enhance our hero section maybe elements bg, or any form of design"*
+- **What was done:**
+  1. **Interactive 3D Bag in Buyer Portal Section:** Moved the WebGL 3D Shopping Bag into the Buyer Section (`#buyer`) replacing the static image with an interactive dark glassmorphic showcase viewport with mouse tilt and real-time parcel telemetry overlay.
+  2. **Page Load & Scroll Typography Animations:**
+     - Added staggered mounting entrance physics (`cubic-bezier(0.16, 1, 0.3, 1)`) for `BAGOO` and `COMMERCE` on page reload.
+     - Added smooth parallax scroll gliding to the monumental typography on scroll.
+  3. **Hero Section Design Elements & Graphic Enhancements:**
+     - Added subtle ambient `#E00D42` radial glow backdrop.
+     - Added live telemetry beacon (`● ECOSYSTEM LIVE`).
+     - Added multi-role architectural capsule badges (`✦ NEXT-GEN ARCHITECTURE`, `14 DEPARTMENTS`, `10% COMMISSION`, `100% KYC AUDITED`).
+     - Added animated explore CTA button with chevron indicator.
+
+### 📌 Prompt 20: Left-to-Right Hero Entrance Animation, Container-Bound 3D Hover & Bag Center Alignment
+- **Date & Time:** `2026-08-23 10:29:16 +08:00`
+- **User Prompt:**
+  > *"remove the element you add in the hero and make sure the animation is like going from left to right but also one time each page refresh. make sure the bag is movable when we only hover inside it's container. moroever make the bag center because it is a little bit too low"*
+- **What was done:**
+  1. **Clean Hero Layout:** Removed the extra badges, ambient radial glow, and explore button from the Hero section, restoring the pure editorial brutalist typography layout.
+  2. **One-Time Left-to-Right Entrance Animation:** Implemented single-trigger left-to-right entrance translation on mount (`-translate-x-16 opacity-0` ➔ `translate-x-0 opacity-100`) with smooth cubic-bezier easing for `BAGOO` and `COMMERCE`.
+  3. **Container-Restricted 3D Interaction:** Bound mouse movement, tilt inertia, and drag controls strictly to the 3D showcase container element (`container.addEventListener`), resetting when the cursor exits.
+  4. **3D Bag Vertical Centering:** Adjusted geometry offsets, handle curves, camera angle, and group positioning to center the shopping bag in the Buyer showcase viewport.
+
+### 📌 Prompt 21: Multi-Role Auth Architecture, Redesigned Login & Dedicated Seller Registration Portal
+- **Date & Time:** `2026-08-23 10:40:46 +08:00`
+- **User Prompt:**
+  > *"okay i love the buyer and seller idea where we don't want to show for buyer that there is admin. too. mayube put that idea in our md so we can follwo that now. now change the login and registration to apply for our design pattern same with seller where i think we will be creating new for seller right?"*
+- **What was done:**
+  1. **Master Architecture Documentation (`GEMINI.md`):** Documented the Multi-Role Authentication Architecture with unified smart login redirector (`user.role` matching), buyer-first consumer interface, total admin obfuscation, and dedicated partner portals.
+  2. **Redesigned Guest Layout & Login (`/login`):** Styled with Bagoo design system (`#E00D42` crimson accents, film grain texture, precision crosshairs, and quick demo role switcher).
+  3. **Streamlined Buyer Registration (`/register`):** 1-step shopper registration with direct order tracking benefits and merchant cross-link.
+  4. **Dedicated Seller Registration Portal (`/seller/register`):** Created `SellerRegister.tsx` with Store Name (`shop_name`), business verification context, and merchant feature highlights (Printable Waybills, 10% Flat Fee, Courier Fleet).
+  5. **Global Navigation & Layout Integration:** Added "Seller Centre" links to the unauthenticated header and footer in `MarketplaceLayout.tsx`.
+
 ---
 
 ## 🎯 Current Status
@@ -171,4 +248,4 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] True Magnetic Section Scroll Snapping + Hover-Reveal Right Edge Indicator Tab live.
+- [x] Multi-Role Auth Architecture + Redesigned Auth Pages & Dedicated Seller Registration Portal live.

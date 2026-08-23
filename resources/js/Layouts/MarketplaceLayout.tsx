@@ -142,10 +142,21 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <Link
+                                        href={route('seller.register')}
+                                        className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                            isDark
+                                                ? 'border-white/20 text-white/90 hover:bg-white/10'
+                                                : 'border-black/20 text-black/90 hover:bg-black/5'
+                                        }`}
+                                    >
+                                        <Store className="w-3.5 h-3.5 text-[#E00D42]" />
+                                        <span>Seller Centre</span>
+                                    </Link>
                                     <Link
                                         href={route('login')}
-                                        className={`px-4 py-2 text-xs font-bold rounded-lg transition tracking-wider uppercase ${
+                                        className={`px-3 sm:px-4 py-2 text-xs font-bold rounded-lg transition tracking-wider uppercase ${
                                             isDark 
                                                 ? 'text-white/80 hover:text-white hover:bg-white/10' 
                                                 : 'text-black/80 hover:text-black hover:bg-black/5'
@@ -155,7 +166,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
+                                        className="px-3 sm:px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
                                     >
                                         Register
                                     </Link>
@@ -184,6 +195,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                     </div>
 
                     <div className="flex items-center gap-6">
+                        <Link href={route('seller.register')} className="hover:text-[#E00D42] transition">Seller Centre</Link>
                         <Link href={route('login')} className="hover:text-white transition">Sign In</Link>
                         <Link href={route('register')} className="hover:text-white transition">Register</Link>
                         <span>&copy; {new Date().getFullYear()} BagooPH. All rights reserved.</span>

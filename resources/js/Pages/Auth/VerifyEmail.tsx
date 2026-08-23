@@ -1,7 +1,7 @@
-import PrimaryButton from '@/Components/PrimaryButton';
-import GuestLayout from '@/Layouts/GuestLayout';
+import React, { FormEventHandler } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import GuestLayout from '@/Layouts/GuestLayout';
+import { ArrowRight, MailCheck } from 'lucide-react';
 
 export default function VerifyEmail({ status }: { status?: string }) {
     const { post, processing } = useForm({});
@@ -13,34 +13,41 @@ export default function VerifyEmail({ status }: { status?: string }) {
     };
 
     return (
-        <GuestLayout>
-            <Head title="Email Verification" />
+        <GuestLayout 
+            title="Verify Email" 
+            subtitle="Please verify your email address to complete your account setup"
+            headerBadge="VERIFICATION // 06"
+        >
+            <Head title="Email Verification — BagooPH" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                Thanks for signing up! Before getting started, could you verify
-                your email address by clicking on the link we just emailed to
-                you? If you didn't receive the email, we will gladly send you
-                another.
+            <div className="mb-4 text-xs font-mono text-black/70 leading-relaxed uppercase">
+                THANKS FOR SIGNING UP! BEFORE GETTING STARTED, PLEASE VERIFY YOUR EMAIL ADDRESS BY CLICKING THE LINK WE JUST EMAILED TO YOU.
             </div>
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
+                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-mono font-bold text-emerald-800">
+                    A new verification link has been sent to the email address you provided during registration.
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <div className="mt-4 flex items-center justify-between">
-                    <PrimaryButton disabled={processing}>
-                        Resend Verification Email
-                    </PrimaryButton>
+            <form onSubmit={submit} className="space-y-4 font-mono">
+                <div>
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        <span>Resend Verification Email</span>
+                        <ArrowRight className="w-4 h-4" />
+                    </button>
+                </div>
 
+                <div className="text-center pt-2 text-xs font-sans">
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="text-black/60 hover:text-[#E00D42] transition underline underline-offset-2"
                     >
                         Log Out
                     </Link>
