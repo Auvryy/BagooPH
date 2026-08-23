@@ -1,17 +1,10 @@
-import React, { useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import { PageProps } from '@/types';
+import React from 'react';
+import { Link } from '@inertiajs/react';
 import CursorSpotlight from '@/Components/CursorSpotlight';
 import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
-    User as UserIcon, 
-    Truck, 
-    Store, 
-    ShieldCheck, 
-    PackageCheck,
-    ChevronDown,
-    LogOut
+    Store 
 } from 'lucide-react';
 
 interface Props {
@@ -21,25 +14,6 @@ interface Props {
 }
 
 export default function MarketplaceLayout({ children, title, headerTheme = 'light' }: Props) {
-    const { auth } = usePage<PageProps>().props;
-    const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-
-    const getRoleDashboardLink = () => {
-        if (!auth.user) return null;
-        switch (auth.user.role) {
-            case 'admin':
-                return { name: 'Admin Dashboard', route: route('admin.dashboard'), icon: ShieldCheck };
-            case 'seller':
-                return { name: 'Seller Center', route: route('seller.dashboard'), icon: Store };
-            case 'courier':
-            case 'logistics':
-                return { name: 'Courier Dispatch', route: route('courier.deliveries'), icon: Truck };
-            default:
-                return { name: 'My Orders', route: route('orders.index'), icon: PackageCheck };
-        }
-    };
-
-    const dashboard = getRoleDashboardLink();
     const isDark = headerTheme === 'dark';
 
     return (
@@ -73,115 +47,46 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             </div>
                         </Link>
 
-                        {/* Right: Sign In and Register Buttons */}
-                        <div className="flex items-center gap-3 font-mono text-xs">
-                            {auth.user ? (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border transition duration-300 ${
-                                            isDark 
-                                                ? 'bg-white/10 hover:bg-white/15 border-white/15 text-white' 
-                                                : 'bg-black/5 hover:bg-black/10 border-black/15 text-black'
-                                        }`}
-                                    >
-                                        <div className="w-7 h-7 rounded-md bg-[#E00D42] text-white text-xs font-bold flex items-center justify-center">
-                                            {auth.user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="text-left hidden sm:block">
-                                            <p className="text-xs font-bold leading-none truncate max-w-[90px]">
-                                                {auth.user.name.split(' ')[0]}
-                                            </p>
-                                            <p className="text-[10px] uppercase text-[#E00D42] font-semibold">
-                                                {auth.user.role}
-                                            </p>
-                                        </div>
-                                        <ChevronDown className="w-3.5 h-3.5 opacity-60" />
-                                    </button>
-
-                                    {/* User Dropdown Menu */}
-                                    {userDropdownOpen && (
-                                        <div 
-                                            className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-2xl border border-black/10 py-1.5 z-50 animate-scale-in text-slate-900"
-                                            onMouseLeave={() => setUserDropdownOpen(false)}
-                                        >
-                                            <div className="px-4 py-2 border-b border-slate-100">
-                                                <p className="text-xs font-bold text-slate-900 truncate">{auth.user.name}</p>
-                                                <p className="text-[11px] text-slate-500 truncate">{auth.user.email}</p>
-                                            </div>
-
-                                            {dashboard && (
-                                                <Link
-                                                    href={dashboard.route}
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                                >
-                                                    <dashboard.icon className="w-4 h-4 text-[#E00D42]" />
-                                                    <span>{dashboard.name}</span>
-                                                </Link>
-                                            )}
-
-                                            <Link
-                                                href={route('profile.edit')}
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                            >
-                                                <UserIcon className="w-4 h-4 text-slate-400" />
-                                                <span>Account Profile</span>
-                                            </Link>
-
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                                className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition border-t border-slate-100 mt-1"
-                                            >
-                                                <LogOut className="w-4 h-4" />
-                                                <span>Sign Out</span>
-                                            </Link>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                    <Link
-                                        href={route('products.index')}
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
-                                            isDark
-                                                ? 'border-white/20 text-white/90 hover:bg-white/10'
-                                                : 'border-black/20 text-black/90 hover:bg-black/5'
-                                        }`}
-                                    >
-                                        <ShoppingBag className="w-3.5 h-3.5 text-[#E00D42]" />
-                                        <span>Shop Catalog</span>
-                                    </Link>
-                                    <Link
-                                        href={route('seller.register')}
-                                        className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
-                                            isDark
-                                                ? 'border-white/20 text-white/90 hover:bg-white/10'
-                                                : 'border-black/20 text-black/90 hover:bg-black/5'
-                                        }`}
-                                    >
-                                        <Store className="w-3.5 h-3.5 text-[#E00D42]" />
-                                        <span>Seller Centre</span>
-                                    </Link>
-                                    <Link
-                                        href={route('login')}
-                                        className={`px-3 sm:px-4 py-2 text-xs font-bold rounded-lg transition tracking-wider uppercase ${
-                                            isDark 
-                                                ? 'text-white/80 hover:text-white hover:bg-white/10' 
-                                                : 'text-black/80 hover:text-black hover:bg-black/5'
-                                        }`}
-                                    >
-                                        Sign In
-                                    </Link>
-                                    <Link
-                                        href={route('register')}
-                                        className="px-3 sm:px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
-                                    >
-                                        Register
-                                    </Link>
-                                </div>
-                            )}
+                        {/* Right: Sign In and Register Buttons (Always Public & Pristine) */}
+                        <div className="flex items-center gap-2 sm:gap-3 font-mono text-xs">
+                            <Link
+                                href={route('buyer.index')}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                    isDark
+                                        ? 'border-white/20 text-white/90 hover:bg-white/10'
+                                        : 'border-black/20 text-black/90 hover:bg-black/5'
+                                }`}
+                            >
+                                <ShoppingBag className="w-3.5 h-3.5 text-[#E00D42]" />
+                                <span>Shop Marketplace</span>
+                            </Link>
+                            <Link
+                                href={route('seller.register')}
+                                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                    isDark
+                                        ? 'border-white/20 text-white/90 hover:bg-white/10'
+                                        : 'border-black/20 text-black/90 hover:bg-black/5'
+                                }`}
+                            >
+                                <Store className="w-3.5 h-3.5 text-[#E00D42]" />
+                                <span>Seller Centre</span>
+                            </Link>
+                            <Link
+                                href={route('login')}
+                                className={`px-3 sm:px-4 py-2 text-xs font-bold rounded-lg transition tracking-wider uppercase ${
+                                    isDark 
+                                        ? 'text-white/80 hover:text-white hover:bg-white/10' 
+                                        : 'text-black/80 hover:text-black hover:bg-black/5'
+                                }`}
+                            >
+                                Sign In
+                            </Link>
+                            <Link
+                                href={route('register')}
+                                className="px-3 sm:px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
+                            >
+                                Register
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Buyer\BuyerDashboardController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
 use App\Http\Controllers\Buyer\BuyerReviewController;
@@ -32,7 +31,6 @@ Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn() => redirect()->route('buyer.index'));
-    Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
     Route::get('/cart', [CartController::class, 'index'])->name('cart');
     

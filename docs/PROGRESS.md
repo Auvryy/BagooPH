@@ -317,6 +317,26 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. **Verified Route Registration:** Ran `php artisan route:list` (61 routes active, `exit 0`).
   3. **Verified HTTP Responses:** Tested `GET /` and `GET /buyer` (`HTTP 200 OK`).
 
+### 📌 Prompt 29: Purged Unneeded Buyer Dashboard & Fixed Landing Page Header
+- **Date & Time:** `2026-08-23 12:08:38 +08:00`
+- **User Prompt:**
+  > *"remove the feature you added earlier where there is buyer dashboard, and remove the login in in landingpage, not the actual button but where there is an auth where it says i am alex in the landing page where the register and login button disapperard and it says i am logged to an account. remove that feature because we don't need that we only need for now is we can log in to buyer, anything in between is nothing or remove"*
+- **What was done:**
+  1. **Purged Unneeded Buyer Dashboard Artifacts:** Removed `/buyer/dashboard` route, `BuyerDashboardController.php`, and `Buyer/Dashboard.tsx` view.
+  2. **Isolated Landing Page Header:** Updated [`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx) to completely remove session/auth detection, user dropdowns, and "Alex" avatar. Landing page header now always shows the pristine public navigation: *Shop Marketplace*, *Seller Centre*, *Sign In*, and *Register*.
+  3. **Streamlined Buyer Portal:** Logged-in buyers enter directly into the Shopee/SHEIN-grade e-commerce marketplace at `/buyer`.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 30: Profile Screen Fix & Redesigned Header with Profile Beside Cart
+- **Date & Time:** `2026-08-23 12:11:21 +08:00`
+- **User Prompt:**
+  > *"wheare is the login page and register page tho? bring back those and when i clikc to my profile the screen just gives me white screen. moreover put the profile page beside cart at the right so that our system don't look like shopee!"*
+- **What was done:**
+  1. **Redesigned Buyer Header Navigation:** Positioned the **Profile & Account** pill button directly beside the **Shopping Bag / Cart** button at the top-right of [`BuyerLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/BuyerLayout.tsx), creating a distinct, sleek brutalist design.
+  2. **Fixed Profile White Screen Bug:** Rebuilt [`Profile/Edit.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Profile/Edit.tsx) using `BuyerLayout` with KYC badge status, personal info form, security password update form, and account deletion danger zone.
+  3. **Verified Auth Pages Access:** Verified **[`Login.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Auth/Login.tsx)** (`/login`) and **[`Register.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Auth/Register.tsx)** (`/register`) with demo one-click credentials and registration forms (`HTTP 200 OK`).
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -325,5 +345,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
 - [x] Standalone Shopee/SHEIN-grade Buyer E-Commerce Ecosystem live at `/buyer`.
-- [x] Landing Page (`/`) decoupled from authentication redirects.
+- [x] Profile page placed directly beside Cart at the top right of `/buyer`.
+- [x] Profile edit screen fully functional without white screen issues.
+- [x] Dedicated Auth Portal live at `/login` and `/register`.
 - [x] Direct Role-Based Redirects on Login (Buyer ➔ `/buyer`, Seller ➔ `/seller/dashboard`, Admin ➔ `/admin/dashboard`, Courier ➔ `/courier/deliveries`).
