@@ -156,6 +156,7 @@ export interface Review {
     buyer_id: number;
     rating: number;
     comment?: string | null;
+    images?: string[] | null;
     buyer?: User;
     created_at?: string;
 }

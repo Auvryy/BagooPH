@@ -296,14 +296,14 @@ This document tracks all completed work and prompts with dates and timestamps.
   4. **Sidebar Navigation:** Enhanced `DashboardLayout.tsx` with dedicated Buyer Dashboard, Catalog, Cart, Orders, and Settings links.
   5. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
-### 📌 Prompt 27: Shopee/SHEIN-Grade Standalone Buyer E-Commerce Ecosystem & Auth Decoupling
+### 📌 Prompt 27: Standalone Buyer E-Commerce Ecosystem & Auth Decoupling
 - **Date & Time:** `2026-08-23 11:57:45 +08:00`
 - **User Prompt:**
-  > *"first, remove the feature in our landing page where when i click sign it it goes me back to landing page with me being said i was login.it is a bad thing. a landing page is a landing page nothing will happen if ilog in okay like if i login i will go to /buyer home page. maybe try to create a mono repo that buyer seller admin are different pages etc. and landing page is just on it's own. i just remove some of the md and try to create buyer from scratch like literal e commerce like this buyer flow we need that! create it like it is almost like shopee or shein"*
+  > *"first, remove the feature in our landing page where when i click sign it it goes me back to landing page with me being said i was login.it is a bad thing. a landing page is a landing page nothing will happen if ilog in okay like if i login i will go to /buyer home page. maybe try to create a mono repo that buyer seller admin are different pages etc. and landing page is just on it's own. i just remove some of the md and try to create buyer from scratch like literal e commerce like this buyer flow we need that!"*
 - **What was done:**
   1. **Decoupled Landing Page & Auth Flow:** Fixed `AuthenticatedSessionController.php` and `RegisteredUserController.php` to immediately redirect buyers to `route('buyer.index')` (`/buyer`) on login/registration, leaving the landing page strictly for public marketing.
-  2. **Created Dedicated `BuyerLayout.tsx`:** Built Shopee/SHEIN-grade e-commerce navigation with top utility bar (notifications, currency, account dropdown), mega search bar with trending keywords, floating shopping bag badge, and floating live chat support launcher.
-  3. **Built Shopee/SHEIN Buyer Home (`/buyer`):** Implemented [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) featuring promotional hero carousel banners with 1-click voucher copy, 8 quick service shortcuts, ⚡ Flash Deals section with live countdown timer and sold progress bars, 14 master categories grid, and "Daily Discover" tabbed feed.
+  2. **Created Dedicated `BuyerLayout.tsx`:** Built modern e-commerce navigation with top utility bar (notifications, currency, account dropdown), mega search bar with trending keywords, floating shopping bag badge, and floating live chat support launcher.
+  3. **Built Buyer Home (`/buyer`):** Implemented [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) featuring promotional hero carousel banners with 1-click voucher copy, 8 quick service shortcuts, ⚡ Flash Deals section with live countdown timer and sold progress bars, 14 master categories grid, and "Daily Discover" tabbed feed.
   4. **Built Interactive Product Detail View (`/buyer/product/{slug}`):** Implemented [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx) with multi-image gallery, interactive color & size variation selectors with dynamic price/stock updates, shipping estimator, verified store card, and customer review breakdown.
   5. **Upgraded Cart, Checkout & Order Tracking:** Updated [`Cart/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Cart/Index.tsx), [`Checkout/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Checkout/Index.tsx), and [`Orders.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Orders.tsx) / [`OrderDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/OrderDetail.tsx) with 5-stage delivery tracking milestones and post-delivery review modal.
   6. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
@@ -324,13 +324,13 @@ This document tracks all completed work and prompts with dates and timestamps.
 - **What was done:**
   1. **Purged Unneeded Buyer Dashboard Artifacts:** Removed `/buyer/dashboard` route, `BuyerDashboardController.php`, and `Buyer/Dashboard.tsx` view.
   2. **Isolated Landing Page Header:** Updated [`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx) to completely remove session/auth detection, user dropdowns, and "Alex" avatar. Landing page header now always shows the pristine public navigation: *Shop Marketplace*, *Seller Centre*, *Sign In*, and *Register*.
-  3. **Streamlined Buyer Portal:** Logged-in buyers enter directly into the Shopee/SHEIN-grade e-commerce marketplace at `/buyer`.
+  3. **Streamlined Buyer Portal:** Logged-in buyers enter directly into the modern e-commerce marketplace at `/buyer`.
   4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
 ### 📌 Prompt 30: Profile Screen Fix & Redesigned Header with Profile Beside Cart
 - **Date & Time:** `2026-08-23 12:11:21 +08:00`
 - **User Prompt:**
-  > *"wheare is the login page and register page tho? bring back those and when i clikc to my profile the screen just gives me white screen. moreover put the profile page beside cart at the right so that our system don't look like shopee!"*
+  > *"wheare is the login page and register page tho? bring back those and when i clikc to my profile the screen just gives me white screen. moreover put the profile page beside cart at the right"*
 - **What was done:**
   1. **Redesigned Buyer Header Navigation:** Positioned the **Profile & Account** pill button directly beside the **Shopping Bag / Cart** button at the top-right of [`BuyerLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/BuyerLayout.tsx), creating a distinct, sleek brutalist design.
   2. **Fixed Profile White Screen Bug:** Rebuilt [`Profile/Edit.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Profile/Edit.tsx) using `BuyerLayout` with KYC badge status, personal info form, security password update form, and account deletion danger zone.
@@ -346,16 +346,110 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. **Enforced HTTPS URL Generation:** Updated [`AppServiceProvider.php`](file:///home/andy/Projects/bagoo/app/Providers/AppServiceProvider.php) with `URL::forceScheme('https')` when forwarded over HTTPS, preventing mixed-content blocks and internal IP leakage (`172.17.0.1:8000`).
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
+### 📌 Prompt 32: Buyer Section Polish: Bag Terminology, Exploration Flow & Photo Reviews
+- **Date & Time:** `2026-08-23 17:23:39 +08:00`
+- **User Prompt:**
+  > *"now, let's make the buyer section more meaningfull by following all features. and start adding proper schemas or table needed such as ratings, where image can be submitted by the buyers. also it is better to remove the ADD to bag, in every browsing to trick the user to always click at the product. moreover don't call it cart, let's convert all cart to bag sicne our website name is bagoo!"*
+- **What was done:**
+  1. **Bagoo Brand Conversion ("Cart" ➔ "Bag"):** Replaced all "Cart" terminology across headers, dropdowns, navigation pills, shopping views, and checkout pages with **"Bag"**, **"Shopping Bag"**, **"My Bag"**, and **"Add to Bag"**.
+  2. **Product Exploration Flow:** Removed quick "Add to Bag" buttons on feed and catalog browsing cards in [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) so clicking always navigates the buyer directly into the rich **Product Detail Page** (`/buyer/product/{slug}`) to choose colors, sizes, specs, and view merchant verification.
+  3. **Multi-Image Photo Review Schema & Backend:**
+     - Created migration [`add_images_to_reviews_table.php`](file:///home/andy/Projects/bagoo/database/migrations/2026_01_01_000010_add_images_to_reviews_table.php) adding nullable `images` JSON column to `reviews`.
+     - Updated [`Review.php`](file:///home/andy/Projects/bagoo/app/Models/Review.php) model with `images` in fillable and array cast.
+     - Updated [`BuyerReviewController.php`](file:///home/andy/Projects/bagoo/app/Http/Controllers/Buyer/BuyerReviewController.php) to process and store up to 5 uploaded review photos in public storage.
+  4. **Customer Photo Gallery & Lightbox:** Added customer-submitted photo gallery and click-to-zoom image lightbox in [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx).
+  5. **Interactive Rate & Review Modal:** Added star rating selector and multi-image photo upload preview on delivered orders in [`OrderDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/OrderDetail.tsx).
+  6. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 33: Storefront Redesign, Dynamic Ambient Color System & Full Seller Portal
+- **Date & Time:** `2026-08-23 17:44:15 +08:00`
+- **User Prompt:**
+  > *"one weird thing i saw is visiting the seller page when i visit the product, it leads me to the landing page. i don't want that instead remove that, and create another page specificically for seller where user or buyer can click to their profile and leads to that page where it will show the seller products etc! moreover one thing i want to implement is ambient colors like our system will automaticallyknow the color of the product or which color has the most in the product image and it will create an ambient color in the background of that product, just subtle feature when the viewer is scrolling to the product page. moreover start creating the seller page where it can be accessed only when logging in. so when we log in with the account of the seller it will go to the dashboard of it, you can read the MD files on what it needs to be a seller and this files. there should be data and everywhere here"*
+- **What was done:**
+  1. **Dedicated Buyer Storefront ([`ShopDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/ShopDetail.tsx)):**
+     - Replaced old landing page wrapper with [`BuyerLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/BuyerLayout.tsx) so buyers remain in the buyer ecosystem with active search, bag count, and profile navigation.
+     - Built flagship store header with banner, official merchant badges, store metrics (ratings, products count, 99% response rate, 98% fast dispatch), 1-click store voucher claims, and in-store catalog search with PHP (`₱`) currency.
+  2. **Dynamic Ambient Color System ([`useAmbientColor.ts`](file:///home/andy/Projects/bagoo/resources/js/Hooks/useAmbientColor.ts) & [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx)):**
+     - Created custom React hook to extract dominant vibrant RGB from product images using offscreen HTML5 canvas sampling with variation hex fallback.
+     - Added smooth, ethereal ambient background glow aura (`radial-gradient`) behind the product hero stage that dynamically adapts as buyers view different images and select color variations.
+  3. **Full Seller Portal ([`Seller/Dashboard.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Dashboard.tsx), [`Orders.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Orders.tsx), [`Products.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Products.tsx), [`Reports.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Reports.tsx), [`Settings.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Settings.tsx)):**
+     - Protected under `['auth', 'role:seller']` with automatic redirect to `/seller/dashboard` on login.
+     - **Dashboard:** Real-time Gross Sales, Units Sold, Active Listings, 4.95★ rating, 4-stage Fulfillment Pipeline tracker (To Pack, Ready for Pickup, In Transit, Delivered), and 7-day revenue velocity bar chart.
+     - **Order Fulfillment & Waybill System:** Order packing workflow and realistic **Printable Thermal Waybill / Shipping Label Simulation Modal** (featuring Bagoo Express barcodes, QR codes, origin/destination details, package weight, and COD collection amount).
+     - **Catalog & Inventory Engine:** Product listing table with stock level alerts, search, and Add/Edit listing modals across the 14 Master Departments.
+     - **Financial & Profit Reports:** Date picker range filter (`from_date` to `to_date`), Gross Sales, 10% Platform Commission deduction, Net Seller Payout calculation, and printable audit trail.
+     - **Storefront Settings:** Manage public branding, warehouse pickup hub address, phone, logo, and banner.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
+### 📌 Prompt 34: Professional Enterprise Light Mode Redesign of Seller Center
+- **Date & Time:** `2026-08-23 17:58:45 +08:00`
+- **User Prompt:**
+  > *"change the design of the seller like it was a one of the famous seller dashboard make sure graphs are modern too good data. and don't make ti dark, put light mode on it because later we will turn it to dark mdoe. so change the design, make it look neat seller dashboard reall looks dashboard not a playful looking"*
+- **What was done:**
+  1. **Enterprise Light Mode Architecture ([`DashboardLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/DashboardLayout.tsx)):**
+     - Replaced dark mode styling with a crisp, modern light theme (`bg-slate-50`, `bg-white`, `border-slate-200/90`, `shadow-2xs`).
+     - Refined sidebar with store online status indicator, management group navigation, shortcuts (Live Storefront preview, Buyer Marketplace, Account Settings), and sign-out button.
+     - Redesigned top header with store preview button, notification alerts, and seller verification status.
+  2. **Professional Analytics Dashboard ([`Seller/Dashboard.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Dashboard.tsx)):**
+     - **Top Metrics Row:** Gross Sales, Units Fulfilled, Catalog Listings, and Merchant Rating with percentage change indicators (+14.8% vs last week).
+     - **Fulfillment Action Pipeline:** Quick-access cards for To Pack, Ready Pickup, In Transit, and Delivered orders.
+     - **Modern Interactive SVG Area Chart:** Smooth curve area chart with gradient fill, grid guidelines, data point tooltips on hover, and 7-day revenue velocity breakdown in Philippine Pesos (`₱`).
+     - **Logistics Telemetry:** Fast dispatch rate (98.4%), courier handover (99.1%), and customer satisfaction meters.
+     - **Recent Customer Purchases & Top Performing Listings:** High-density summary cards.
+  3. **Refined Light Mode Management Views:**
+     - **Order Fulfillment & Waybill Generator ([`Seller/Orders.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Orders.tsx)):** Clean white status filter tabs, status pills, search bar, and high-contrast thermal waybill label modal with barcode simulation.
+     - **Catalog & Inventory Engine ([`Seller/Products.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Products.tsx)):** Professional product table with stock badges and crisp modal forms.
+     - **Financial Statements & Reports ([`Seller/Reports.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Reports.tsx)):** Payout reconciliation ledger with date filters, commission deduction, and print actions.
+     - **Storefront Logistics Settings ([`Seller/Settings.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Settings.tsx)):** Clean profile and warehouse pickup hub address configuration.
+  4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.23s (`exit 0`).
+
+### 📌 Prompt 35: Security Audit, IDOR Hardening, Price Tampering Prevention & Link Verification
+- **Date & Time:** `2026-08-23 18:05:40 +08:00`
+- **User Prompt:**
+  > *"imagine you are a professional full stack web developer that is also a good seurity helper and finder, analyze and debug the buyer and seller page and avoid security leaks and conflict when something happened. debug every buttons that it leads make sure ther elike maybe middleware the helps us have a good security"*
+- **Security Vulnerabilities Identified & Remediated:**
+  1. **IDOR & Cross-User Cart Item Modification Prevention ([`CartController.php`](file:///home/andy/Projects/bagoo/app/Http/Controllers/Buyer/CartController.php)):**
+     - **Vulnerability:** Updating or deleting a cart item (`PATCH /cart/{cartItem}`, `DELETE /cart/{cartItem}`) did not verify ownership of the parent cart.
+     - **Fix:** Added strict cart ownership verification (`$cartItem->cart_id !== $cart->id ➔ abort(403)`). Added stock boundary validation before increments.
+  2. **Price Tampering, Inactive Listing & Race Condition Mitigation ([`CheckoutController.php`](file:///home/andy/Projects/bagoo/app/Http/Controllers/Buyer/CheckoutController.php)):**
+     - **Vulnerability:** Total price could be affected by stale or manipulated client-side prices.
+     - **Fix:** Enforced direct database price recalculation inside atomic transactions (`DB::transaction` with `lockForUpdate()`), ensuring products are active and have sufficient stock before decrementing and creating orders.
+  3. **Seller Order Fulfillment IDOR Protection ([`SellerOrderController.php`](file:///home/andy/Projects/bagoo/app/Http/Controllers/Seller/SellerOrderController.php)):**
+     - **Vulnerability:** Any authenticated seller could POST to `/seller/orders/{order}/pack` or `/seller/orders/{order}/ready` on orders belonging to another merchant.
+     - **Fix:** Added merchant authorization check (`$order->items()->where('shop_id', $shop->id)->exists() ➔ abort(403)`).
+  4. **Verified Purchase Enforcement & Review Spam Prevention ([`BuyerReviewController.php`](file:///home/andy/Projects/bagoo/app/Http/Controllers/Buyer/BuyerReviewController.php)):**
+     - **Vulnerability:** Unverified review spam or review submissions on orders not owned by the reviewer.
+     - **Fix:** Enforced buyer ownership on `order_id`, verified product existence within the order items, and blocked duplicate review submissions.
+  5. **Frontend Button & Route Audit:**
+     - Verified all button routes across Buyer layout, Marketplace, Product Detail, Cart, Checkout, Order History, and Seller Portal.
+### 📌 Prompt 36: Master Trademark & Brand Prohibition Rule in GEMINI.md
+- **Date & Time:** `2026-08-23 18:37:40 +08:00`
+- **User Prompt:**
+  > *"add to gemini that never mention popular brands. never try to mention that might lead to copy and also don't put big names ther eokay"*
+- **What was done:**
+  1. **Added Section 6 to [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md):**
+     - Established an absolute ban on mentioning, referencing, or comparing against any third-party commercial brands or platforms.
+     - Mandated 100% original **BagooPH** brand identity (Platform: BagooPH, Logistics: Bagoo Express, Currency: ₱, Brand Color: `#E00D42`, Bag terminology).
+     - Applied across all code, comments, seeders, mock data, documentation, and assistant responses.
+
 ---
 
 ## 🎯 Current Status
 - [x] Full-Stack Laravel + React TS + Tailwind + PostgreSQL + Docker running (`HTTP 200 OK`).
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
+- [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Full Security Audit completed: IDOR, Price Tampering, and Review Spam mitigations active.
+- [x] Role-Based Access Control (`['auth', 'role:seller']`, `['auth', 'role:courier']`, `['auth', 'role:admin']`) fully enforced.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] Standalone Shopee/SHEIN-grade Buyer E-Commerce Ecosystem live at `/buyer`.
+- [x] Standalone Buyer E-Commerce Ecosystem live at `/buyer`.
+- [x] Dedicated Verified Storefront page (`/shop/{slug}`) wrapped in `BuyerLayout`.
+- [x] Dynamic Ambient Color Lighting system extracting dominant image hues on product pages.
+- [x] Professional Enterprise Light Mode Seller Center (`/seller/dashboard`, `/seller/orders`, `/seller/products`, `/seller/reports`, `/seller/settings`).
+- [x] Modern SVG Area Sales Velocity chart with hover tooltips and daily revenue telemetry.
+- [x] Printable Thermal Waybill / Shipping Label Simulation generator.
+- [x] "Bag" terminology standard applied across all UI components, buttons, and navigation.
+- [x] Customer Reviews support multi-photo uploads, photo galleries, and image zoom lightbox.
 - [x] Cloudflare Tunnel / Reverse Proxy support enabled with trusted proxies & forced HTTPS.
-- [x] Profile page placed directly beside Cart at the top right of `/buyer`.
-- [x] Profile edit screen fully functional without white screen issues.
 - [x] Dedicated Auth Portal live at `/login` and `/register`.
 - [x] Direct Role-Based Redirects on Login (Buyer ➔ `/buyer`, Seller ➔ `/seller/dashboard`, Admin ➔ `/admin/dashboard`, Courier ➔ `/courier/deliveries`).

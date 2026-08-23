@@ -480,5 +480,74 @@ class DatabaseSeeder extends Seeder
             'delivery_phone' => $pendingOrder->recipient_phone,
             'estimated_delivery_at' => now()->addDay(),
         ]);
+
+        // 5. Create a Delivered Order for Rating & Review testing
+        $deliveredOrder = Order::create([
+            'order_number' => 'BGO-' . strtoupper(Str::random(8)),
+            'buyer_id' => $buyer->id,
+            'subtotal' => 89.00,
+            'shipping_fee' => 0.00,
+            'total_amount' => 89.00,
+            'payment_method' => 'cod',
+            'payment_status' => 'paid',
+            'status' => 'delivered',
+            'recipient_name' => $buyer->name,
+            'recipient_phone' => $buyer->phone,
+            'shipping_address' => $buyer->address,
+            'shipping_city' => $buyer->city,
+            'shipping_postal_code' => $buyer->postal_code,
+            'notes' => 'Left at reception desk with signed proof of receipt.',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $deliveredOrder->id,
+            'product_id' => $createdProducts[0]->id,
+            'shop_id' => $shop->id,
+            'quantity' => 1,
+            'unit_price' => 89.00,
+            'subtotal' => 89.00,
+        ]);
+
+        Delivery::create([
+            'order_id' => $deliveredOrder->id,
+            'courier_id' => $courier->id,
+            'tracking_number' => 'TRK-BGO-' . rand(10000000, 99999999),
+            'logistics_partner' => 'BagooPH Express Dispatch',
+            'status' => 'delivered',
+            'pickup_store_name' => $shop->name,
+            'pickup_address' => $shop->address . ', ' . $shop->city,
+            'pickup_phone' => $shop->phone,
+            'delivery_address' => $deliveredOrder->shipping_address . ', ' . $deliveredOrder->shipping_city . ' ' . $deliveredOrder->shipping_postal_code,
+            'delivery_recipient_name' => $deliveredOrder->recipient_name,
+            'delivery_phone' => $deliveredOrder->recipient_phone,
+            'assigned_at' => now()->subDays(2),
+            'picked_up_at' => now()->subDay(),
+            'delivered_at' => now()->subHours(4),
+            'courier_notes' => 'Handed over directly to recipient.',
+        ]);
+
+        // 6. Seed Verified Customer Reviews with Photo Attachments
+        \App\Models\Review::create([
+            'product_id' => $createdProducts[0]->id,
+            'buyer_id' => $buyer->id,
+            'order_id' => $deliveredOrder->id,
+            'rating' => 5,
+            'comment' => 'Exceptional build quality! The waterproof zippers and structured ergonomic back panel feel fantastic for my daily commute.',
+            'images' => [
+                'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80',
+                'https://images.unsplash.com/photo-1581605405669-fcdf81165afa?auto=format&fit=crop&w=600&q=80',
+            ],
+        ]);
+
+        \App\Models\Review::create([
+            'product_id' => $createdProducts[1]->id,
+            'buyer_id' => $buyer->id,
+            'order_id' => $deliveredOrder->id,
+            'rating' => 5,
+            'comment' => 'Super compact and lightweight! Fits my passport, keys, and phone perfectly during quick runs.',
+            'images' => [
+                'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=600&q=80',
+            ],
+        ]);
     }
 }

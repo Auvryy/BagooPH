@@ -70,3 +70,21 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 1. **Never Commit Autonomously:** The AI must **NEVER** run `git add`, `git commit`, or `git push` autonomously. All git commands and repo pushes are manually handled by the user.
 2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
 
+---
+
+## 🚫 6. Absolute Prohibition of Third-Party Brand Names (Copyright & Trademark Protection)
+1. **Never Mention Big / Popular Brands:** The AI must **NEVER** mention, reference, compare, or include names of popular commercial brands or platforms (e.g., Shopee, SHEIN, Lazada, Amazon, Shopify, Stripe, Nike, Adidas, Apple, Sony, Zara, etc.) anywhere in the project.
+2. **Strict Scope:** This applies to:
+   - Source code (variable names, JSX/HTML text, `<title>` tags, `<Head>` tags, meta descriptions)
+   - Code comments and inline annotations
+   - Database seeders, migrations, and mock data
+   - Documentation files (`PROGRESS.md`, `README.md`, walkthroughs, plans)
+   - AI assistant conversational responses and commit messages
+3. **100% Original BagooPH Identity:**
+   - Platform Name: **BagooPH** / **Bagoo**
+   - Logistics Fleet: **Bagoo Express**
+   - Currency: Philippine Pesos (`₱` / `PHP`)
+   - Brand Color: `#E00D42` (Crimson)
+   - Shopping Container: **"Bag"** / **"Shopping Bag"** / **"Add to Bag"** (Never "Cart")
+   - All sample products and stores must be 100% original Bagoo-branded assets.
+

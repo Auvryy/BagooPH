@@ -71,7 +71,7 @@ export default function CartIndex({ cart, items, total }: Props) {
 
     return (
         <BuyerLayout>
-            <Head title="Shopping Cart — BagooPH" />
+            <Head title="My Shopping Bag — BagooPH" />
 
             <div className="space-y-6">
                 

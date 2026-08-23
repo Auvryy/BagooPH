@@ -174,12 +174,16 @@ class MarketplaceController extends Controller
     public function shop(string $slug): Response
     {
         $shop = Shop::with('user')
+            ->withCount(['products' => function ($q) {
+                $q->where('status', 'active');
+            }])
             ->where('slug', $slug)
             ->firstOrFail();
 
         $products = Product::where('shop_id', $shop->id)
             ->where('status', 'active')
-            ->paginate(12);
+            ->latest()
+            ->paginate(18);
 
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
