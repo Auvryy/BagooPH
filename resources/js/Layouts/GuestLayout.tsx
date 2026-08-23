@@ -27,12 +27,9 @@ export default function GuestLayout({ children, title, subtitle, headerBadge }: 
                 <Link href="/" className="group flex items-center gap-2.5">
                     <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform" rounded="rounded-lg" />
                     <span className="text-xl font-black tracking-tighter text-black flex items-center">
-                        <span>B</span>
-                        <span className="relative inline-flex items-center justify-center">
-                            A
-                            <span className="absolute top-[32%] left-[48%] -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#E00D42] shadow-xs animate-pulse"></span>
-                        </span>
-                        <span>GOO</span>
+                        <span>BA</span>
+                        <span className="text-[#E00D42]">GO</span>
+                        <span>O</span>
                     </span>
                     <span className="text-black/30">/</span>
                     <span className="text-[10px] text-black/60 font-bold uppercase tracking-wider hidden sm:inline">

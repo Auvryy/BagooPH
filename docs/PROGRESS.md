@@ -260,6 +260,15 @@ This document tracks all completed work and prompts with dates and timestamps.
   2. **Updated `BagooLogo.tsx` Vector Definition:** Updated the vector paths, bold 4px stroke borders, mask definitions, and pupil details.
   3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
+### 📌 Prompt 24: Removed Red Dot from Letter A in Hero BAGOO Typography
+- **Date & Time:** `2026-08-23 11:39:22 +08:00`
+- **User Prompt:**
+  > *"remove this red dot from the A"*
+- **What was done:**
+  1. **Cleaned Letter A Typography:** Removed the absolute pulsing red circle element from the letter `A` in the Hero section typography ([`Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)).
+  2. **Auth Header Consistency:** Also removed the dot from the `GuestLayout.tsx` header brand text.
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -267,4 +276,4 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] Latest Bold `bagoo.svg` Brand Icon & Favicon live across all layouts.
+- [x] Clean Hero Typography (`BA` + crimson `GO` + `O`) without the red dot on `A`.

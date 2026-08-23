@@ -129,12 +129,9 @@ export default function MarketplaceIndex({ categories }: Props) {
                             }`}
                         >
                             <h1 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black flex items-center drop-shadow-xs">
-                                <span>B</span>
-                                <span className="relative inline-flex items-center justify-center">
-                                    A
-                                    <span className="absolute top-[32%] left-[48%] -translate-x-1/2 -translate-y-1/2 w-[2.5vw] h-[2.5vw] rounded-full bg-[#E00D42] shadow-sm animate-pulse"></span>
-                                </span>
-                                <span>GOO</span>
+                                <span>BA</span>
+                                <span className="text-[#E00D42]">GO</span>
+                                <span>O</span>
                             </h1>
                         </div>
 
