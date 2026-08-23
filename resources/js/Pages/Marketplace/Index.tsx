@@ -4,6 +4,7 @@ import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import { Category } from '@/types';
 import GrainOverlay from '@/Components/GrainOverlay';
 import ThreeShoppingBag from '@/Components/ThreeShoppingBag';
+import BagooLoadingScreen from '@/Components/BagooLoadingScreen';
 import { 
     ArrowRight, 
     Store, 
@@ -84,6 +85,9 @@ export default function MarketplaceIndex({ categories }: Props) {
         <MarketplaceLayout headerTheme={isDarkHeader ? 'dark' : 'light'}>
             <Head title="BagooPH — A New Standard in Multi-Role E-Commerce" />
 
+            {/* Jumping Letter Bagoo Intro Loading Screen */}
+            <BagooLoadingScreen />
+
             {/* Grain & Noise Film Overlay */}
             <GrainOverlay />
 
@@ -144,6 +148,63 @@ export default function MarketplaceIndex({ categories }: Props) {
                             <h2 className="text-[14vw] sm:text-[13vw] leading-[0.82] font-black tracking-tighter text-black">
                                 COMMERCE
                             </h2>
+                        </div>
+                    </div>
+
+                    {/* STACKED & LEANING VIDEO CARDS (Upper-Right Space) */}
+                    <div className="hidden lg:block absolute top-[28%] right-8 xl:right-16 z-30 pointer-events-auto">
+                        <div className="relative w-64 xl:w-72 h-80 xl:h-92 group cursor-pointer">
+                            
+                            {/* Card 1: Back Leaning / Tilted Card */}
+                            <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black/80 shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform -rotate-6 translate-x-3 -translate-y-2 group-hover:-rotate-12 group-hover:-translate-x-6 group-hover:-translate-y-4 transition-all duration-500 ease-out">
+                                <div className="flex items-center justify-between font-mono text-[9px] text-slate-400 px-1 pb-1 z-10">
+                                    <span className="font-bold text-white">BAGOO // REEL 01</span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                </div>
+                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-black">
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500"
+                                    >
+                                        <source src="https://assets.mixkit.co/videos/preview/mixkit-holding-several-shopping-bags-42867-large.mp4" type="video/mp4" />
+                                    </video>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
+                                    <div className="absolute bottom-2 left-2 right-2 font-mono text-[9px] text-white">
+                                        <span className="px-1.5 py-0.5 rounded bg-[#E00D42] font-black text-[8px] uppercase">DISPATCH</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Front Elevated Card */}
+                            <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-2.5 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-0 translate-y-0 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out">
+                                <div className="flex items-center justify-between font-mono text-[9px] text-slate-600 px-1 pb-1 z-10">
+                                    <span className="font-black text-slate-900 flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-[#E00D42]"></span>
+                                        BAGOO MARKETPLACE
+                                    </span>
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 font-bold text-slate-700">4K LIVE</span>
+                                </div>
+                                <div className="relative flex-1 rounded-2xl overflow-hidden bg-slate-900">
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                    >
+                                        <source src="https://assets.mixkit.co/videos/preview/mixkit-shopping-spree-with-friends-42866-large.mp4" type="video/mp4" />
+                                    </video>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white font-mono text-[9px]">
+                                        <span className="font-bold tracking-wider">ECOSYSTEM REEL</span>
+                                        <span className="text-emerald-400 font-bold">● LIVE</span>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 

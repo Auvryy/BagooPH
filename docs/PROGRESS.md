@@ -471,6 +471,32 @@ This document tracks all completed work and prompts with dates and timestamps.
      - **Seller Customer Chat Hub ([`Seller/Messages.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Seller/Messages.tsx)):** Merchant inbox with customer conversation threads, search, and real-time response messaging.
   4. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.47s (`exit 0`).
 
+### 📌 Prompt 39: Animated Jumping-Letter "Bagoo" Loading Screen
+- **Date & Time:** `2026-08-23 21:12:45 +08:00`
+- **User Prompt:**
+  > *"in the landing page, add a loading screen where it will load when the contents are fully loadedd. maybe use my brand name "Bagoo" like the leters are jumping while loading like they are ike 80% light but when it jumps, let say B, the letter B will have a lither text than the other"*
+- **What was done:**
+  1. **Built Reusable Brand Loading Component ([`BagooLoadingScreen.tsx`](file:///home/andy/Projects/bagoo/resources/js/Components/BagooLoadingScreen.tsx)):**
+     - Custom CSS keyframe animation (`bagooLetterJump`) creating a sequential wave bounce for `B`, `a`, `g`, `o`, `o`.
+     - Resting state features dimmed typography (`text-white/35`), while each jumping letter lifts with an illuminated glowing highlight (`#FFFFFF` with `#E00D42` ambient drop-shadow glow).
+     - Includes animated gradient loading bar and ambient background radial glow.
+     - Automatically monitors `document.readyState === 'complete'` and executes a smooth fade-out blur dismiss animation once content is ready.
+  2. **Integrated into Landing Page & Buyer Ecosystem:**
+     - Enabled in [`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx) (Platform overview at `/`).
+     - Enabled in [`Buyer/Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) (Marketplace home at `/buyer`).
+  3. **Verified Application Build:** Compiled frontend assets with `npm run build` in 11.63s (`exit 0`).
+
+### 📌 Prompt 40: Stacked & Leaning Video Showcase Cards in Landing Hero
+- **Date & Time:** `2026-08-23 21:18:20 +08:00`
+- **User Prompt:**
+  > *"in the hero section of landing page in this part of the image, put a video like a card maybe 2 cards but they are stack at each other and the ohter one is leaning on the side for subtle video and the video for now is temporary like get anything related to shop or ecommerce from the internet. and"*
+- **What was done:**
+  1. **Built Stacked Dual-Card Video Showcase in Hero ([`Marketplace/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/Index.tsx)):**
+     - Positioned in the upper/middle-right negative space of the hero section.
+     - **Card 1 (Back / Leaning Card):** Dark slate frame with a 6-degree counter-clockwise tilt (`-rotate-6 translate-x-3 -translate-y-2`), live status badge, and looping dispatch footage.
+     - **Card 2 (Front / Elevated Card):** Crisp white frame with a 3-degree clockwise tilt (`rotate-3`), 4K live chip, ecosystem reel footage, and smooth interactive hover fan-out transitions.
+  2. **Verified Application Build:** Compiled frontend assets with `npm run build` in 9.73s (`exit 0`).
+
 ---
 
 ## 🎯 Current Status
@@ -478,6 +504,8 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
 - [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
+- [x] Stacked & Leaning Video Cards active in Landing Hero.
+- [x] Animated Jumping-Letter "Bagoo" Loading Screen active on landing & buyer pages.
 - [x] Bespoke Bento Matrix Merchant Cockpit active at `/seller/dashboard`.
 - [x] Complete Buyer Flowchart feature set implemented (17/17 functions active).
 - [x] Interactive Voucher & Discount Engine live in Buyer Checkout & Seller Portal.
