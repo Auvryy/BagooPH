@@ -241,7 +241,7 @@ export default function BuyerHome({
 
     return (
         <BuyerLayout categories={categories}>
-            <Head title="Shopee/SHEIN-Style Buyer Marketplace — BagooPH" />
+            <Head title="Official Marketplace — BagooPH" />
 
             <div className="space-y-6">
 
@@ -274,7 +274,7 @@ export default function BuyerHome({
                     </div>
                 )}
 
-                {/* 2. HERO PROMOTIONAL BANNER CAROUSEL (SHOPEE / SHEIN STAGE) */}
+                {/* 2. HERO PROMOTIONAL BANNER CAROUSEL */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
                     
                     {/* Main Sliding Carousel Banner */}
@@ -392,7 +392,7 @@ export default function BuyerHome({
                     </div>
                 </div>
 
-                {/* 3. 8 QUICK-SERVICE ICON ACTIONS (SHOPEE STYLE) */}
+                {/* 3. 8 QUICK-SERVICE ICON ACTIONS */}
                 <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-xs border border-slate-100">
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 text-center">
                         {quickServices.map((service) => {

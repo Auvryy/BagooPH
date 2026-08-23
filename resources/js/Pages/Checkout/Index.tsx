@@ -82,7 +82,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, tota
                     {/* Left Column: Details, Shipping & Payment */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* 1. Delivery Address Card (Shopee Style) */}
+                        {/* 1. Delivery Address Card */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
                             <div className="flex items-center gap-2 pb-3 border-b border-slate-100 text-xs font-bold text-slate-900 font-mono uppercase">
                                 <MapPin className="w-4 h-4 text-[#E00D42]" />
@@ -232,7 +232,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, tota
                             </div>
                         </div>
 
-                        {/* 4. Payment Method Selection (Shopee Style) */}
+                        {/* 4. Payment Method Selection */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
                             <div className="flex items-center gap-2 pb-3 border-b border-slate-100 text-xs font-bold text-slate-900 font-mono uppercase">
                                 <CreditCard className="w-4 h-4 text-[#E00D42]" />

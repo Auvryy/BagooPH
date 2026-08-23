@@ -17,7 +17,7 @@ class BuyerHomeController extends Controller
     {
         $user = $request->user();
 
-        // 1. Promotional Hero Carousel Banners (Shopee / SHEIN Style)
+        // 1. Promotional Hero Carousel Banners
         $banners = [
             [
                 'id' => 1,
@@ -54,7 +54,7 @@ class BuyerHomeController extends Controller
             ],
         ];
 
-        // 2. 8 Shopee-Style Quick Service Icon Actions
+        // 2. 8 Quick Service Icon Actions
         $quickServices = [
             ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'color' => 'bg-emerald-500', 'tag' => '₱0 Min'],
             ['id' => 'flash', 'name' => 'Flash Deals', 'icon' => 'Zap', 'color' => 'bg-amber-500', 'tag' => 'Up to 70%'],

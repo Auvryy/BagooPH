@@ -81,7 +81,7 @@ export default function BuyerOrders({ orders }: Props) {
                     </Link>
                 </div>
 
-                {/* Shopee-Style Order Status Tabs Strip */}
+                {/* Order Status Tabs Strip */}
                 <div className="bg-white rounded-xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-2 overflow-x-auto scrollbar-none font-mono text-xs">
                     <button
                         onClick={() => setSelectedStatusTab('all')}

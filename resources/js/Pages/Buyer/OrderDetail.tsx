@@ -79,7 +79,7 @@ export default function BuyerOrderDetail({ order }: Props) {
         });
     };
 
-    // 5-Stage Shopee Delivery Milestones
+    // 5-Stage Bagoo Express Delivery Milestones
     const steps = [
         { key: 'placed', label: 'Order Placed', done: true, subtext: 'Payment Verified' },
         { key: 'packaging', label: 'Merchant Packaging', done: ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status), subtext: 'Prepared by Shop' },

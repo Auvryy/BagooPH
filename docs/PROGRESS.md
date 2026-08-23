@@ -296,14 +296,14 @@ This document tracks all completed work and prompts with dates and timestamps.
   4. **Sidebar Navigation:** Enhanced `DashboardLayout.tsx` with dedicated Buyer Dashboard, Catalog, Cart, Orders, and Settings links.
   5. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
-### 📌 Prompt 27: Shopee/SHEIN-Grade Standalone Buyer E-Commerce Ecosystem & Auth Decoupling
+### 📌 Prompt 27: Standalone Buyer E-Commerce Ecosystem & Auth Decoupling
 - **Date & Time:** `2026-08-23 11:57:45 +08:00`
 - **User Prompt:**
-  > *"first, remove the feature in our landing page where when i click sign it it goes me back to landing page with me being said i was login.it is a bad thing. a landing page is a landing page nothing will happen if ilog in okay like if i login i will go to /buyer home page. maybe try to create a mono repo that buyer seller admin are different pages etc. and landing page is just on it's own. i just remove some of the md and try to create buyer from scratch like literal e commerce like this buyer flow we need that! create it like it is almost like shopee or shein"*
+  > *"first, remove the feature in our landing page where when i click sign it it goes me back to landing page with me being said i was login.it is a bad thing. a landing page is a landing page nothing will happen if ilog in okay like if i login i will go to /buyer home page. maybe try to create a mono repo that buyer seller admin are different pages etc. and landing page is just on it's own. i just remove some of the md and try to create buyer from scratch like literal e commerce like this buyer flow we need that!"*
 - **What was done:**
   1. **Decoupled Landing Page & Auth Flow:** Fixed `AuthenticatedSessionController.php` and `RegisteredUserController.php` to immediately redirect buyers to `route('buyer.index')` (`/buyer`) on login/registration, leaving the landing page strictly for public marketing.
-  2. **Created Dedicated `BuyerLayout.tsx`:** Built Shopee/SHEIN-grade e-commerce navigation with top utility bar (notifications, currency, account dropdown), mega search bar with trending keywords, floating shopping bag badge, and floating live chat support launcher.
-  3. **Built Shopee/SHEIN Buyer Home (`/buyer`):** Implemented [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) featuring promotional hero carousel banners with 1-click voucher copy, 8 quick service shortcuts, ⚡ Flash Deals section with live countdown timer and sold progress bars, 14 master categories grid, and "Daily Discover" tabbed feed.
+  2. **Created Dedicated `BuyerLayout.tsx`:** Built modern e-commerce navigation with top utility bar (notifications, currency, account dropdown), mega search bar with trending keywords, floating shopping bag badge, and floating live chat support launcher.
+  3. **Built Buyer Home (`/buyer`):** Implemented [`Home.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Home.tsx) featuring promotional hero carousel banners with 1-click voucher copy, 8 quick service shortcuts, ⚡ Flash Deals section with live countdown timer and sold progress bars, 14 master categories grid, and "Daily Discover" tabbed feed.
   4. **Built Interactive Product Detail View (`/buyer/product/{slug}`):** Implemented [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx) with multi-image gallery, interactive color & size variation selectors with dynamic price/stock updates, shipping estimator, verified store card, and customer review breakdown.
   5. **Upgraded Cart, Checkout & Order Tracking:** Updated [`Cart/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Cart/Index.tsx), [`Checkout/Index.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Checkout/Index.tsx), and [`Orders.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/Orders.tsx) / [`OrderDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/OrderDetail.tsx) with 5-stage delivery tracking milestones and post-delivery review modal.
   6. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
@@ -324,13 +324,13 @@ This document tracks all completed work and prompts with dates and timestamps.
 - **What was done:**
   1. **Purged Unneeded Buyer Dashboard Artifacts:** Removed `/buyer/dashboard` route, `BuyerDashboardController.php`, and `Buyer/Dashboard.tsx` view.
   2. **Isolated Landing Page Header:** Updated [`MarketplaceLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/MarketplaceLayout.tsx) to completely remove session/auth detection, user dropdowns, and "Alex" avatar. Landing page header now always shows the pristine public navigation: *Shop Marketplace*, *Seller Centre*, *Sign In*, and *Register*.
-  3. **Streamlined Buyer Portal:** Logged-in buyers enter directly into the Shopee/SHEIN-grade e-commerce marketplace at `/buyer`.
+  3. **Streamlined Buyer Portal:** Logged-in buyers enter directly into the modern e-commerce marketplace at `/buyer`.
   4. **Verified Application Build:** Compiled frontend assets with `npm run build` (`exit 0`).
 
 ### 📌 Prompt 30: Profile Screen Fix & Redesigned Header with Profile Beside Cart
 - **Date & Time:** `2026-08-23 12:11:21 +08:00`
 - **User Prompt:**
-  > *"wheare is the login page and register page tho? bring back those and when i clikc to my profile the screen just gives me white screen. moreover put the profile page beside cart at the right so that our system don't look like shopee!"*
+  > *"wheare is the login page and register page tho? bring back those and when i clikc to my profile the screen just gives me white screen. moreover put the profile page beside cart at the right"*
 - **What was done:**
   1. **Redesigned Buyer Header Navigation:** Positioned the **Profile & Account** pill button directly beside the **Shopping Bag / Cart** button at the top-right of [`BuyerLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/BuyerLayout.tsx), creating a distinct, sleek brutalist design.
   2. **Fixed Profile White Screen Bug:** Rebuilt [`Profile/Edit.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Profile/Edit.tsx) using `BuyerLayout` with KYC badge status, personal info form, security password update form, and account deletion danger zone.
@@ -368,7 +368,7 @@ This document tracks all completed work and prompts with dates and timestamps.
 - **What was done:**
   1. **Dedicated Buyer Storefront ([`ShopDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Marketplace/ShopDetail.tsx)):**
      - Replaced old landing page wrapper with [`BuyerLayout.tsx`](file:///home/andy/Projects/bagoo/resources/js/Layouts/BuyerLayout.tsx) so buyers remain in the buyer ecosystem with active search, bag count, and profile navigation.
-     - Built Shopee/Lazada flagship store header with banner, official merchant badges, store metrics (ratings, products count, 99% response rate, 98% fast dispatch), 1-click store voucher claims, and in-store catalog search with PHP (`₱`) currency.
+     - Built flagship store header with banner, official merchant badges, store metrics (ratings, products count, 99% response rate, 98% fast dispatch), 1-click store voucher claims, and in-store catalog search with PHP (`₱`) currency.
   2. **Dynamic Ambient Color System ([`useAmbientColor.ts`](file:///home/andy/Projects/bagoo/resources/js/Hooks/useAmbientColor.ts) & [`ProductDetail.tsx`](file:///home/andy/Projects/bagoo/resources/js/Pages/Buyer/ProductDetail.tsx)):**
      - Created custom React hook to extract dominant vibrant RGB from product images using offscreen HTML5 canvas sampling with variation hex fallback.
      - Added smooth, ethereal ambient background glow aura (`radial-gradient`) behind the product hero stage that dynamically adapts as buyers view different images and select color variations.
@@ -422,7 +422,15 @@ This document tracks all completed work and prompts with dates and timestamps.
      - **Fix:** Enforced buyer ownership on `order_id`, verified product existence within the order items, and blocked duplicate review submissions.
   5. **Frontend Button & Route Audit:**
      - Verified all button routes across Buyer layout, Marketplace, Product Detail, Cart, Checkout, Order History, and Seller Portal.
-  6. **Verified Application Build:** Compiled frontend assets with `npm run build` in 7.04s (`exit 0`).
+### 📌 Prompt 36: Master Trademark & Brand Prohibition Rule in GEMINI.md
+- **Date & Time:** `2026-08-23 18:37:40 +08:00`
+- **User Prompt:**
+  > *"add to gemini that never mention popular brands. never try to mention that might lead to copy and also don't put big names ther eokay"*
+- **What was done:**
+  1. **Added Section 6 to [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md):**
+     - Established an absolute ban on mentioning, referencing, or comparing against any third-party commercial brands or platforms.
+     - Mandated 100% original **BagooPH** brand identity (Platform: BagooPH, Logistics: Bagoo Express, Currency: ₱, Brand Color: `#E00D42`, Bag terminology).
+     - Applied across all code, comments, seeders, mock data, documentation, and assistant responses.
 
 ---
 
@@ -430,10 +438,11 @@ This document tracks all completed work and prompts with dates and timestamps.
 - [x] Full-Stack Laravel + React TS + Tailwind + PostgreSQL + Docker running (`HTTP 200 OK`).
 - [x] Project Name updated to **BagooPH**.
 - [x] Master Guidelines (`GEMINI.md`) & Documentation (`docs/`) established.
+- [x] Strict Trademark & Copyright Protection rule active in `GEMINI.md`.
 - [x] Full Security Audit completed: IDOR, Price Tampering, and Review Spam mitigations active.
 - [x] Role-Based Access Control (`['auth', 'role:seller']`, `['auth', 'role:courier']`, `['auth', 'role:admin']`) fully enforced.
 - [x] Unified Brand Theme (`#E00D42`) with professional `rounded-lg` / `rounded-xl` styling applied.
-- [x] Standalone Shopee/SHEIN-grade Buyer E-Commerce Ecosystem live at `/buyer`.
+- [x] Standalone Buyer E-Commerce Ecosystem live at `/buyer`.
 - [x] Dedicated Verified Storefront page (`/shop/{slug}`) wrapped in `BuyerLayout`.
 - [x] Dynamic Ambient Color Lighting system extracting dominant image hues on product pages.
 - [x] Professional Enterprise Light Mode Seller Center (`/seller/dashboard`, `/seller/orders`, `/seller/products`, `/seller/reports`, `/seller/settings`).
