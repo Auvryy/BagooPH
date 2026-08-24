@@ -79,6 +79,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Platform Overview', href: route('admin.dashboard'), icon: LayoutDashboard, current: route().current('admin.dashboard') },
                 { name: 'User & Role Control', href: route('admin.users'), icon: Users, current: route().current('admin.users*') },
                 { name: 'Catalog Moderation', href: route('admin.products'), icon: Package, current: route().current('admin.products*') },
+                { name: 'Logistics Hub & Fleet', href: route('admin.logistics'), icon: Truck, current: route().current('admin.logistics*') },
             ];
         }
 

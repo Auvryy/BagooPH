@@ -6,6 +6,10 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
+### 📌 Prompt 58: Interconnected Courier Rider & Logistics Sorting Hub Ecosystem (`2026-08-24 20:12`)
+- **Outcome:** Built complete Courier & Logistics suite: (1) First-Come First-Served dispatch board with atomic claiming (`Courier/Deliveries.tsx`), (2) Step-by-step field route execution with drop-off proof photos and COD receipts, (3) Rider Earnings & Trip history ledger (`Courier/Earnings.tsx`), (4) Courier Live Support & Chat (`Courier/Messages.tsx`), (5) Driver & Vehicle Specs Profile (`Courier/Profile.tsx`), and (6) Central Logistics Sorting Hub & Fleet console (`Admin/Logistics.tsx`) with live parcel telemetry, tracking lookup, and dispatch override.
+- **Build:** `npm run build` passed (7.82s).
+
 ### 📌 Prompt 57: Fixed Architecture for Merchant Dashboard (Isolated Main Viewport Scrolling) (`2026-08-24 19:52`)
 - **Outcome:** Completely locked the Seller & Admin workstation layout into an enterprise-grade `h-screen overflow-hidden` grid: the left sidebar is permanently fixed (`lg:w-72 lg:h-full lg:shrink-0`), the top navbar is permanently fixed (`h-16 shrink-0`), and the right-hand main content area (`<main className="flex-1 overflow-y-auto">`) is the sole scrolling element.
 - **Build:** `npm run build` passed (8.23s).
@@ -14,13 +18,15 @@
 - **Outcome:** Eliminated unwanted mobile right-gap and horizontal scrolling on Buyer and Seller layouts by enforcing strict viewport boundary containment (`overflow-x-hidden w-full max-w-full`). Upgraded Seller `DashboardLayout.tsx` with sticky desktop sidebar (`lg:sticky lg:top-0 lg:h-screen`) and anchored the Sign Out button permanently to the visible bottom of the viewport.
 - **Build:** `npm run build` passed (8.19s).
 
-### 📌 Prompt 55: Fix Order Relation Eager Loading in BuyerDisputeController (`2026-08-24 19:32`)
-- **Outcome:** Resolved `RelationNotFoundException` by correcting eager loading query on `Order` from undefined `shop` to `items.product.shop` and `delivery` in `BuyerDisputeController.php`. Fixed TypeScript typing interfaces across `Buyer/Profile.tsx`, `Buyer/Disputes.tsx`, and `Seller/Reviews.tsx`.
-- **Build:** `npm run build` passed (7.72s).
-
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 54)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 55)
+
+* **Prompt 55 (Order Relation Eager Loading Fix):**
+  - Corrected `Order` eager loading query from undefined `shop` to `items.product.shop` in `BuyerDisputeController.php`.
+
+* **Prompt 54 (Visual Changes Reporting Protocol):**
+  - Added Section 5.4 to `GEMINI.md` for concise visual changes output.
 
 * **Prompt 54 (Visual Changes Reporting Protocol):**
   - Added Section 5.4 to `GEMINI.md` for concise visual changes output.

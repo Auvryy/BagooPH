@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
@@ -139,6 +140,10 @@ Route::middleware(['auth', 'role:courier,logistics'])->prefix('courier')->name('
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
+    Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
+    Route::get('/messages', [CourierDeliveryController::class, 'messages'])->name('messages');
+    Route::get('/profile', [CourierDeliveryController::class, 'profile'])->name('profile');
+    Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
 });
 
 /*
@@ -152,6 +157,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
     Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
+    Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
+    Route::post('/logistics/override', [LogisticsHubController::class, 'override'])->name('logistics.override');
 });
 
 require __DIR__.'/auth.php';
