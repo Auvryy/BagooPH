@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import BagooLoadingScreen from '@/Components/BagooLoadingScreen';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Zap, 
@@ -243,9 +242,6 @@ export default function BuyerHome({
     return (
         <BuyerLayout categories={categories}>
             <Head title="Official Marketplace — BagooPH" />
-
-            {/* Jumping Letter Bagoo Intro Loading Screen */}
-            <BagooLoadingScreen />
 
             <div className="space-y-6">
 
