@@ -85,7 +85,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
     };
 
     return (
-        <div className="min-h-screen bg-[#F4F3EF] text-[#111111] font-sans flex flex-col selection:bg-[#E00D42] selection:text-white">
+        <div className="min-h-screen bg-[#F4F3EF] text-[#111111] font-sans flex flex-col overflow-x-hidden w-full max-w-full selection:bg-[#E00D42] selection:text-white">
             
             {/* 1. TOP UTILITY BAR (CLEAN & DISTINCTIVE) */}
             <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
@@ -312,7 +312,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
             </header>
 
             {/* 3. MAIN CONTENT BODY */}
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
                 {children}
             </main>
 

@@ -114,41 +114,32 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const navItems = getNavItems();
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col lg:flex-row text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
+        <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
             
-            {/* Mobile Header Bar */}
-            <div className="lg:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40 shadow-xs">
-                <Link href={route('seller.dashboard')} className="flex items-center gap-2">
-                    <BagooLogo className="w-8 h-8" rounded="rounded-lg" />
-                    <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span> <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 font-bold text-slate-700">MERCHANT</span></span>
-                </Link>
-                <button 
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
-                >
-                    {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </button>
-            </div>
-
-            {/* Backdrop for mobile */}
+            {/* Backdrop for mobile drawer */}
             {sidebarOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 lg:hidden"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Bespoke Swiss-Style Merchant Workstation Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-700 border-r border-slate-200 flex flex-col transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:z-auto`}>
+            {/* Bespoke Swiss-Style Merchant Workstation Sidebar (Permanently Fixed on Desktop) */}
+            <aside className={`
+                fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-700 border-r border-slate-200 
+                flex flex-col transition-transform duration-200 ease-in-out
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+                lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
+            `}>
                 
                 {/* Brand & Terminal Moniker Header */}
-                <div className="p-5 border-b border-slate-100 space-y-3">
+                <div className="p-4 border-b border-slate-100 space-y-2.5 shrink-0 bg-white">
                     <div className="flex items-center justify-between">
                         <Link href={route('seller.dashboard')} className="flex items-center gap-2.5">
                             <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             <div>
-                                <span className="text-lg font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                                <span className="block text-[9px] uppercase font-bold tracking-widest text-[#E00D42] -mt-1 font-mono">
+                                <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
+                                <span className="block text-[9px] uppercase font-bold tracking-widest text-[#E00D42] -mt-0.5 font-mono">
                                     Merchant Workstation
                                 </span>
                             </div>
@@ -162,13 +153,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
 
                     {/* Merchant Store Identifier Card */}
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                                 <p className="text-xs font-bold text-slate-900 truncate">{user?.shop?.name || user?.name + "'s Store"}</p>
                             </div>
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold uppercase">MALL</span>
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold uppercase">MALL</span>
                         </div>
 
                         {user?.shop && (
@@ -176,7 +167,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <span className="truncate">/shop/{user.shop.slug}</span>
                                 <button
                                     onClick={copyStoreUrl}
-                                    className="p-1 hover:text-[#E00D42] text-slate-400 transition"
+                                    className="p-0.5 hover:text-[#E00D42] text-slate-400 transition"
                                     title="Copy Store Link"
                                 >
                                     {copiedStoreLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -186,12 +177,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </div>
 
-                {/* Navigation Sections */}
-                <nav className="flex-1 px-3.5 py-4 space-y-6 overflow-y-auto font-sans">
+                {/* Navigation Sections (Independent Scrollable Nav) */}
+                <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
                     
                     {/* Operations Group */}
                     <div className="space-y-1">
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono flex items-center justify-between">
+                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono flex items-center justify-between">
                             <span>Operations & Workflows</span>
                             <span className="text-[9px] text-slate-400 font-normal">PHT</span>
                         </p>
@@ -199,13 +190,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition group ${
+                                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition group ${
                                     item.current 
                                         ? 'bg-slate-900 text-white shadow-xs' 
                                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                                 }`}
                             >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2.5">
                                     <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-[#E00D42]' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                     <span>{item.name}</span>
                                 </div>
@@ -221,15 +212,15 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
 
                     {/* Shortcuts & Network */}
-                    <div className="pt-3 border-t border-slate-100 space-y-1">
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
+                    <div className="pt-2.5 border-t border-slate-100 space-y-1">
+                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
                             Network Shortcuts
                         </p>
                         {user?.shop && (
                             <Link
                                 href={route('shop.show', user.shop.slug)}
                                 target="_blank"
-                                className="flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                                className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                             >
                                 <div className="flex items-center gap-2.5">
                                     <ShoppingBag className="w-4 h-4 text-[#E00D42]" />
@@ -240,14 +231,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         )}
                         <Link
                             href={route('buyer.index')}
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <ArrowLeft className="w-4 h-4 text-slate-400" />
                             <span>Switch to Buyer Mode</span>
                         </Link>
                         <Link
                             href={route('profile.edit')}
-                            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <Settings className="w-4 h-4 text-slate-400" />
                             <span>Security & Account</span>
@@ -255,33 +246,33 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </nav>
 
-                {/* Sidebar Bottom: Status & Sign Out */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3 font-mono">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                {/* Sidebar Bottom: Anchored Clock & Permanent Visible Sign Out Button */}
+                <div className="p-3.5 border-t border-slate-100 bg-slate-50/70 shrink-0 font-mono mt-auto space-y-2">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
                         <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <Clock className="w-3 h-3 text-slate-400" />
                             <span>{currentTime || '12:00:00 PM'}</span>
                         </div>
-                        <span className="text-[10px] text-emerald-600 font-bold">18ms Latency</span>
+                        <span className="text-[9px] text-emerald-600 font-bold">18ms Latency</span>
                     </div>
 
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 uppercase tracking-wider"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 uppercase tracking-wider shadow-2xs"
                     >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
                     </Link>
                 </div>
             </aside>
 
-            {/* Main Content Terminal */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* Main Content Column (Full Viewport Height, Isolated Scrolling Body) */}
+            <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
                 
-                {/* Cockpit Topbar */}
-                <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shadow-2xs">
+                {/* Cockpit Topbar (Locked Fixed Header) */}
+                <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-2xs z-20">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setSidebarOpen(true)}
@@ -329,22 +320,22 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </header>
 
-                {/* Flash Alerts */}
+                {/* Flash Alerts (Shrink 0) */}
                 {flash.success && (
-                    <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs flex items-center gap-2">
+                    <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs flex items-center gap-2 shrink-0">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>{flash.success}</span>
                     </div>
                 )}
                 {flash.error && (
-                    <div className="bg-[#E00D42] text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs">
+                    <div className="bg-[#E00D42] text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs shrink-0">
                         {flash.error}
                     </div>
                 )}
 
-                {/* Body Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F8FAFC]">
-                    <div className="max-w-7xl mx-auto">
+                {/* Body Content (The ONLY Scrolling Viewport) */}
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8FAFC]">
+                    <div className="max-w-7xl mx-auto space-y-6">
                         {children}
                     </div>
                 </main>

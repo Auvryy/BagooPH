@@ -39,7 +39,7 @@ class BuyerDisputeController extends Controller
         ];
 
         // Eligible delivered orders for filing
-        $eligibleOrders = Order::with(['items.product', 'shop'])
+        $eligibleOrders = Order::with(['items.product.shop', 'delivery'])
             ->where('buyer_id', $user->id)
             ->whereIn('status', ['delivered', 'shipped'])
             ->latest()

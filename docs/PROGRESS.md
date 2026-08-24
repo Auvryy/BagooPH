@@ -6,21 +6,33 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
-### 📌 Prompt 54: Visual Changes & Page Navigation Guide Protocol Added to GEMINI.md (`2026-08-24 19:30`)
-- **Outcome:** Added Section 5.4 to `GEMINI.md` mandating that every prompt response includes a clear visual changes breakdown and a direct URL/navigation guide so the user immediately knows where to verify the frontend updates.
-- **Build:** `npm run build` verified.
+### 📌 Prompt 57: Fixed Architecture for Merchant Dashboard (Isolated Main Viewport Scrolling) (`2026-08-24 19:52`)
+- **Outcome:** Completely locked the Seller & Admin workstation layout into an enterprise-grade `h-screen overflow-hidden` grid: the left sidebar is permanently fixed (`lg:w-72 lg:h-full lg:shrink-0`), the top navbar is permanently fixed (`h-16 shrink-0`), and the right-hand main content area (`<main className="flex-1 overflow-y-auto">`) is the sole scrolling element.
+- **Build:** `npm run build` passed (8.23s).
 
-### 📌 Prompt 53: Buyer & Seller Complete Ecosystem Pages Implementation (`2026-08-24 19:18`)
-- **Outcome:** Built 5 missing pages from instructor workflow plans: (1) Buyer Profile & Address Hub (`Buyer/Profile.tsx`), (2) Buyer Returns & Dispute Center (`Buyer/Disputes.tsx`), (3) Buyer In-App Messaging (`Buyer/Messages.tsx`), (4) Seller Reviews & Feedback Manager (`Seller/Reviews.tsx`), and (5) Seller Dispute Resolution Center (`Seller/Disputes.tsx`). Connected all routes in `routes/web.php` and navigation in `BuyerLayout.tsx` and `DashboardLayout.tsx`.
-- **Build:** `npm run build` passed (8.02s).
+### 📌 Prompt 56: Mobile Horizontal Overflow Fix & Seller Sticky Desktop Navigation (`2026-08-24 19:45`)
+- **Outcome:** Eliminated unwanted mobile right-gap and horizontal scrolling on Buyer and Seller layouts by enforcing strict viewport boundary containment (`overflow-x-hidden w-full max-w-full`). Upgraded Seller `DashboardLayout.tsx` with sticky desktop sidebar (`lg:sticky lg:top-0 lg:h-screen`) and anchored the Sign Out button permanently to the visible bottom of the viewport.
+- **Build:** `npm run build` passed (8.19s).
 
-### 📌 Prompt 52: Dedicated Search & Multi-Filter Catalog Page (`2026-08-24 19:05`)
-- **Outcome:** Created dedicated full-featured search & catalog page (`Buyer/Search.tsx`) at `/buyer/search`. Upgraded `BuyerProductController::search` with paginated query filtering across 14 departments, price presets (Under ₱500 to ₱5k+), custom min/max price inputs, stock toggles, star rating filters, and multi-criteria sorting. Connected `BuyerLayout.tsx` search bar and trending tags to route directly to the dedicated page.
-- **Build:** `npm run build` passed (7.71s).
+### 📌 Prompt 55: Fix Order Relation Eager Loading in BuyerDisputeController (`2026-08-24 19:32`)
+- **Outcome:** Resolved `RelationNotFoundException` by correcting eager loading query on `Order` from undefined `shop` to `items.product.shop` and `delivery` in `BuyerDisputeController.php`. Fixed TypeScript typing interfaces across `Buyer/Profile.tsx`, `Buyer/Disputes.tsx`, and `Seller/Reviews.tsx`.
+- **Build:** `npm run build` passed (7.72s).
 
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 51)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 54)
+
+* **Prompt 54 (Visual Changes Reporting Protocol):**
+  - Added Section 5.4 to `GEMINI.md` for concise visual changes output.
+
+* **Prompt 53 (Missing Buyer & Seller Pages):**
+  - Built Buyer Profile, Disputes, Messages, Seller Reviews, and Seller Disputes pages. Connected routes and menus.
+
+* **Prompt 53 (Missing Buyer & Seller Pages):**
+  - Built Buyer Profile, Disputes, Messages, Seller Reviews, and Seller Disputes pages. Connected routes and menus.
+
+* **Prompt 52 (Dedicated Search & Multi-Filter Catalog Page):**
+  - Created dedicated search & catalog page (`Buyer/Search.tsx`) at `/buyer/search`. Upgraded `BuyerProductController::search` with paginated query filtering across 14 departments.
 
 * **Prompt 51 (Advanced Search & Multi-Filter Cockpit):**
   - Upgraded `BuyerHomeController.php` with deep search and multi-sort engine. Added interactive filter cockpit in `Buyer/Home.tsx`.
