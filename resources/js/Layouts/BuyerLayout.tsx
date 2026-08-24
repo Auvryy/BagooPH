@@ -31,7 +31,12 @@ interface Props {
 
 export default function BuyerLayout({ children, categories = [] }: Props) {
     const { auth, cartCount } = usePage<PageProps>().props;
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('search') || '';
+        }
+        return '';
+    });
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const [chatOpen, setChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
@@ -49,9 +54,17 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (searchQuery.trim()) {
-            router.get(route('buyer.index'), { search: searchQuery.trim() });
+        const trimmed = searchQuery.trim();
+        if (trimmed) {
+            router.get(route('buyer.search'), { search: trimmed });
+        } else {
+            router.get(route('buyer.search'));
         }
+    };
+
+    const handleQuickSearch = (keyword: string) => {
+        setSearchQuery(keyword);
+        router.get(route('buyer.search'), { search: keyword });
     };
 
     const handleSendChat = (e: React.FormEvent) => {
@@ -121,8 +134,20 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search 14 departments, curated gear, or trending brands..."
-                                    className="w-full pl-4 pr-24 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42] focus:bg-white transition"
+                                    className="w-full pl-4 pr-28 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42] focus:bg-white transition"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            router.get(route('buyer.index'), {}, { preserveState: true });
+                                        }}
+                                        className="absolute right-20 text-slate-400 hover:text-slate-700 p-1"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                                 <button
                                     type="submit"
                                     className="absolute right-1 top-1 bottom-1 px-4 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-2xs font-mono"
@@ -131,6 +156,21 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                     <span>Search</span>
                                 </button>
                             </form>
+                            
+                            {/* Trending Keyword Tags */}
+                            <div className="flex items-center gap-2 mt-1.5 overflow-x-auto scrollbar-none font-mono text-[10px] text-slate-500">
+                                <span className="font-bold text-slate-400 shrink-0">TRENDING:</span>
+                                {trendingKeywords.map((kw) => (
+                                    <button
+                                        key={kw}
+                                        type="button"
+                                        onClick={() => handleQuickSearch(kw)}
+                                        className="hover:text-[#E00D42] hover:underline shrink-0 transition"
+                                    >
+                                        {kw}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* RIGHT ACTIONS: BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}

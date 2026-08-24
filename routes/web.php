@@ -34,6 +34,8 @@ Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn() => redirect()->route('buyer.index'));
+    Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
+    Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
     Route::get('/cart', [CartController::class, 'index'])->name('cart');
     
@@ -47,8 +49,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 });
 
 // Backward-compatible Public Marketplace / Catalog routes
-Route::get('/products', [MarketplaceController::class, 'catalog'])->name('products.index');
-Route::get('/catalog', fn() => redirect()->route('buyer.index'));
+Route::get('/products', [BuyerProductController::class, 'search'])->name('products.index');
+Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
 

@@ -6,21 +6,27 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
+### 📌 Prompt 52: Dedicated Search & Multi-Filter Catalog Page (`2026-08-24 19:05`)
+- **Outcome:** Created dedicated full-featured search & catalog page (`Buyer/Search.tsx`) at `/buyer/search`. Upgraded `BuyerProductController::search` with paginated query filtering across 14 departments, price presets (Under ₱500 to ₱5k+), custom min/max price inputs, stock toggles, star rating filters, and multi-criteria sorting. Connected `BuyerLayout.tsx` search bar and trending tags to route directly to the dedicated page.
+- **Build:** `npm run build` passed (7.71s).
+
+### 📌 Prompt 51: Advanced Search Engine, Multi-Filter Toolbar & Related Products Discovery (`2026-08-24 18:59`)
+- **Outcome:** Upgraded `BuyerHomeController.php` with deep search (product name, description, SKU, category, shop name), price filters, stock filters, rating filters, and multi-sort engine. Built interactive search cockpit in `Buyer/Home.tsx` with active filter chips, expandable filter drawer, empty-state recommendations, and related product discovery feed. Added trending keyword chips and search clear button in `BuyerLayout.tsx`.
+- **Build:** `npm run build` passed (8.07s).
+
 ### 📌 Prompt 50: Skeleton Loading Engine & Landing-Exclusive Intro Isolation (`2026-08-24 18:49`)
 - **Outcome:** Isolated the animated jumping-letter `BagooLoadingScreen` exclusively to the public landing hero page (`Marketplace/Index.tsx`) and removed it from inner portals. Built modular `Skeleton.tsx` engine (`ProductCardSkeleton`, `StatsCardSkeleton`, `TableSkeleton`, `OrderCardSkeleton`) for seamless content shimmer across buyer/seller/admin dashboards. Configured Inertia top progress bar to `#E00D42`.
 - **Build:** `npm run build` passed (7.20s).
 
-### 📌 Prompt 49: Selective Docs Reading, Master Project Plan & File Path Reporting Protocol (`2026-08-24 18:42`)
-- **Outcome:** Enshrined Section 8 (Selective Docs Reading) and Section 5.3 (Changed File Paths output rule) in `GEMINI.md`. Created comprehensive system architecture in `docs/PROJECT_PLAN.md` (independent registrations, logistics sorting center, GIS dispatch, 10% commission, ₱50/₱80 shipping split, wallet simulation, and dispute ledger). Streamlined `docs/PROGRESS.md`.
-- **Build:** `npm run build` passed (9.77s).
-
-### 📌 Prompt 48: Mobile Video Cards Block Flow & Height Fix (`2026-08-24 05:26`)
-- **Outcome:** Replaced arbitrary height classes with explicit responsive pixel/rem constraints (`h-[340px] sm:h-[400px] xl:h-[420px]`) and `min-h-[220px]` on `<video>` elements with `shrink-0`. Fixed mobile card collapse and ensured videos display as a dedicated centered block element on mobile/tablet screens.
-- **Build:** `npm run build` passed (13.18s).
-
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 47)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 49)
+
+* **Prompt 49 (Selective Docs Reading & Master Architecture Plan):**
+  - Enshrined Section 8 (Selective Docs Reading) and Section 5.3 (Changed File Paths output rule) in `GEMINI.md`. Created master architecture in `docs/PROJECT_PLAN.md`.
+
+* **Prompt 48 (Mobile Video Cards Block Flow & Height Fix):**
+  - Replaced arbitrary height classes with explicit responsive pixel/rem constraints (`h-[340px] sm:h-[400px] xl:h-[420px]`) and `min-h-[220px]` on `<video>` elements with `shrink-0`. Fixed mobile card collapse.
 
 * **Prompt 47 (IP Address Verification & Privacy Guardrails):**
   - Audited all `.md` docs, code, and git history to confirm zero IP address or credential leaks (`CLEAN`). Enshrined Section 7 in `GEMINI.md` forbidding real server IP persistence in files.
