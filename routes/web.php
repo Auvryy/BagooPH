@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\LogisticsHubController;
+use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
+use App\Http\Controllers\Buyer\BuyerProfileController;
 use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
@@ -13,8 +16,10 @@ use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seller\SellerDashboardController;
+use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
+use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -34,10 +39,17 @@ Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn() => redirect()->route('buyer.index'));
+    Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
+    Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
     Route::get('/cart', [CartController::class, 'index'])->name('cart');
     
     Route::middleware('auth')->group(function () {
+        Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
+        Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
+        Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
+        Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
+        Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
         Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
@@ -47,8 +59,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 });
 
 // Backward-compatible Public Marketplace / Catalog routes
-Route::get('/products', [MarketplaceController::class, 'catalog'])->name('products.index');
-Route::get('/catalog', fn() => redirect()->route('buyer.index'));
+Route::get('/products', [BuyerProductController::class, 'search'])->name('products.index');
+Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
 
@@ -110,6 +122,10 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
     Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
+    Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('reviews.reply');
+    Route::get('/disputes', [SellerDisputeController::class, 'index'])->name('disputes.index');
+    Route::patch('/disputes/{dispute}/respond', [SellerDisputeController::class, 'respond'])->name('disputes.respond');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
@@ -124,6 +140,10 @@ Route::middleware(['auth', 'role:courier,logistics'])->prefix('courier')->name('
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
+    Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
+    Route::get('/messages', [CourierDeliveryController::class, 'messages'])->name('messages');
+    Route::get('/profile', [CourierDeliveryController::class, 'profile'])->name('profile');
+    Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
 });
 
 /*
@@ -137,6 +157,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
     Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
+    Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
+    Route::post('/logistics/override', [LogisticsHubController::class, 'override'])->name('logistics.override');
 });
 
 require __DIR__.'/auth.php';

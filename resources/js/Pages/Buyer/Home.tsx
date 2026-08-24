@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import BagooLoadingScreen from '@/Components/BagooLoadingScreen';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Zap, 
@@ -34,7 +33,13 @@ import {
     Watch,
     Car,
     PenTool,
-    HeartPulse
+    HeartPulse,
+    Filter,
+    SlidersHorizontal,
+    Search,
+    RotateCcw,
+    X,
+    ChevronDown
 } from 'lucide-react';
 
 interface Banner {
@@ -95,11 +100,17 @@ interface Props {
     flashDeals: FlashDeal[];
     categories: (Category & { products_count?: number })[];
     feedProducts: PaginatedData<Product>;
+    relatedProducts?: Product[];
     vouchers: Voucher[];
     activeShipment?: ActiveShipment | null;
     filters: {
         search?: string;
         category?: string;
+        sort?: string;
+        min_price?: string;
+        max_price?: string;
+        in_stock?: boolean | string;
+        rating?: string;
         tab?: string;
     };
 }
@@ -110,6 +121,7 @@ export default function BuyerHome({
     flashDeals,
     categories,
     feedProducts,
+    relatedProducts = [],
     vouchers,
     activeShipment,
     filters,
@@ -120,6 +132,9 @@ export default function BuyerHome({
     const [countdown, setCountdown] = useState({ hours: '02', minutes: '45', seconds: '30' });
     const [activeTab, setActiveTab] = useState(filters.tab || 'all');
     const [copiedVoucher, setCopiedVoucher] = useState<string | null>(null);
+    const [minPrice, setMinPrice] = useState(filters.min_price || '');
+    const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
+    const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
     // Auto-advance hero carousel
     useEffect(() => {
@@ -168,14 +183,53 @@ export default function BuyerHome({
         });
     };
 
-    const handleTabChange = (tab: string) => {
-        setActiveTab(tab);
-        router.get(route('buyer.index'), {
+    const applyFilterChange = (updates: Record<string, any>) => {
+        const nextFilters: Record<string, any> = {
             ...filters,
-            tab: tab !== 'all' ? tab : undefined,
-        }, {
+            ...updates,
+        };
+
+        // Clean empty or default values
+        Object.keys(nextFilters).forEach((key) => {
+            if (
+                nextFilters[key] === '' ||
+                nextFilters[key] === undefined ||
+                nextFilters[key] === null ||
+                nextFilters[key] === 'all' ||
+                nextFilters[key] === false
+            ) {
+                delete nextFilters[key];
+            }
+        });
+
+        router.get(route('buyer.index'), nextFilters, {
             preserveState: true,
             preserveScroll: true,
+        });
+    };
+
+    const handlePriceSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        applyFilterChange({
+            min_price: minPrice.trim() || undefined,
+            max_price: maxPrice.trim() || undefined,
+        });
+    };
+
+    const clearAllFilters = () => {
+        setMinPrice('');
+        setMaxPrice('');
+        router.get(route('buyer.index'), {}, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        applyFilterChange({
+            tab: tab !== 'all' ? tab : undefined,
+            sort: tab !== 'all' ? tab : undefined,
         });
     };
 
@@ -243,9 +297,6 @@ export default function BuyerHome({
     return (
         <BuyerLayout categories={categories}>
             <Head title="Official Marketplace — BagooPH" />
-
-            {/* Jumping Letter Bagoo Intro Loading Screen */}
-            <BagooLoadingScreen />
 
             <div className="space-y-6">
 
@@ -513,7 +564,7 @@ export default function BuyerHome({
                             <p className="text-xs text-slate-500 font-mono">14 Verified Product Departments</p>
                         </div>
 
-                        <Link href={route('products.index')} className="text-xs font-bold text-[#E00D42] hover:underline font-mono uppercase">
+                        <Link href={route('buyer.search')} className="text-xs font-bold text-[#E00D42] hover:underline font-mono uppercase">
                             View All ➔
                         </Link>
                     </div>
@@ -524,7 +575,7 @@ export default function BuyerHome({
                             return (
                                 <Link
                                     key={cat.id}
-                                    href={route('buyer.index', { category: cat.slug })}
+                                    href={route('buyer.search', { category: cat.slug })}
                                     className="p-3 rounded-xl bg-slate-50 hover:bg-white border border-slate-100 hover:border-[#E00D42]/40 hover:shadow-md transition text-center group flex flex-col items-center justify-between"
                                 >
                                     <div className="w-10 h-10 rounded-xl bg-white text-slate-700 group-hover:text-[#E00D42] group-hover:scale-110 transition flex items-center justify-center shadow-2xs">
@@ -541,65 +592,312 @@ export default function BuyerHome({
                         })}
                     </div>
                 </div>
+                          {/* 6. "DAILY DISCOVER" & SEARCH PRODUCT FEED */}
+                <div id="product-feed" className="space-y-4">
+                    
+                    {/* Search & Active Filters Header Banner (Triggered when searching or filtering) */}
+                    {(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
+                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <Search className="w-4 h-4 text-[#E00D42]" />
+                                        <h3 className="font-black text-slate-900 text-sm sm:text-base font-mono">
+                                            {filters.search ? `SEARCH RESULTS FOR "${filters.search.toUpperCase()}"` : 'FILTERED PRODUCTS'}
+                                        </h3>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                        Found <span className="font-bold text-[#E00D42]">{feedProducts.total}</span> products matching your criteria
+                                    </p>
+                                </div>
 
-                {/* 6. "DAILY DISCOVER" / FOR YOU E-COMMERCE FEED */}
-                <div className="space-y-4">
-                    {/* Feed Tabs */}
-                    <div className="bg-white rounded-xl p-2 shadow-xs border border-slate-100 flex items-center gap-2 overflow-x-auto scrollbar-none font-mono text-xs">
-                        <button
-                            onClick={() => handleTabChange('all')}
-                            className={`px-4 py-2 rounded-lg font-bold uppercase transition ${
-                                activeTab === 'all' 
-                                    ? 'bg-[#E00D42] text-white shadow-xs' 
-                                    : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            Daily Discover
-                        </button>
-                        <button
-                            onClick={() => handleTabChange('top_sales')}
-                            className={`px-4 py-2 rounded-lg font-bold uppercase transition ${
-                                activeTab === 'top_sales' 
-                                    ? 'bg-[#E00D42] text-white shadow-xs' 
-                                    : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            Top Sales
-                        </button>
-                        <button
-                            onClick={() => handleTabChange('top_rated')}
-                            className={`px-4 py-2 rounded-lg font-bold uppercase transition ${
-                                activeTab === 'top_rated' 
-                                    ? 'bg-[#E00D42] text-white shadow-xs' 
-                                    : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            Top Rated
-                        </button>
-                        <button
-                            onClick={() => handleTabChange('new_arrivals')}
-                            className={`px-4 py-2 rounded-lg font-bold uppercase transition ${
-                                activeTab === 'new_arrivals' 
-                                    ? 'bg-[#E00D42] text-white shadow-xs' 
-                                    : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            New Arrivals
-                        </button>
+                                <button
+                                    type="button"
+                                    onClick={clearAllFilters}
+                                    className="text-xs font-mono font-bold text-slate-600 hover:text-[#E00D42] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#E00D42]/40 transition w-fit"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Reset All Filters</span>
+                                </button>
+                            </div>
+
+                            {/* Active Filter Chips */}
+                            <div className="flex items-center gap-2 flex-wrap font-mono text-[11px]">
+                                {filters.search && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800">
+                                        <span>Keyword: "{filters.search}"</span>
+                                        <button onClick={() => applyFilterChange({ search: undefined })} className="hover:text-[#E00D42]">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+
+                                {filters.category && filters.category !== 'all' && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800">
+                                        <span>Dept: {categories.find(c => c.slug === filters.category)?.name || filters.category}</span>
+                                        <button onClick={() => applyFilterChange({ category: undefined })} className="hover:text-[#E00D42]">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+
+                                {(filters.min_price || filters.max_price) && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800">
+                                        <span>Price: ₱{filters.min_price || '0'} – ₱{filters.max_price || '∞'}</span>
+                                        <button onClick={() => { setMinPrice(''); setMaxPrice(''); applyFilterChange({ min_price: undefined, max_price: undefined }); }} className="hover:text-[#E00D42]">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+
+                                {filters.in_stock && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
+                                        <span>In Stock Only</span>
+                                        <button onClick={() => applyFilterChange({ in_stock: undefined })} className="hover:text-emerald-950">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+
+                                {filters.rating && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800">
+                                        <span>Rating: {filters.rating}★ & up</span>
+                                        <button onClick={() => applyFilterChange({ rating: undefined })} className="hover:text-amber-950">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filter & Sort Controls Toolbar */}
+                    <div className="bg-white rounded-xl p-3 shadow-xs border border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-mono text-xs">
+                        
+                        {/* Left: Feed Sort Tabs */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                            <button
+                                onClick={() => handleTabChange('all')}
+                                className={`px-3.5 py-1.5 rounded-lg font-bold uppercase transition shrink-0 ${
+                                    activeTab === 'all' 
+                                        ? 'bg-[#E00D42] text-white shadow-xs' 
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                Daily Discover
+                            </button>
+                            <button
+                                onClick={() => handleTabChange('top_sales')}
+                                className={`px-3.5 py-1.5 rounded-lg font-bold uppercase transition shrink-0 ${
+                                    activeTab === 'top_sales' 
+                                        ? 'bg-[#E00D42] text-white shadow-xs' 
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                Top Sales
+                            </button>
+                            <button
+                                onClick={() => handleTabChange('top_rated')}
+                                className={`px-3.5 py-1.5 rounded-lg font-bold uppercase transition shrink-0 ${
+                                    activeTab === 'top_rated' 
+                                        ? 'bg-[#E00D42] text-white shadow-xs' 
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                Top Rated
+                            </button>
+                            <button
+                                onClick={() => handleTabChange('new_arrivals')}
+                                className={`px-3.5 py-1.5 rounded-lg font-bold uppercase transition shrink-0 ${
+                                    activeTab === 'new_arrivals' 
+                                        ? 'bg-[#E00D42] text-white shadow-xs' 
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                New Arrivals
+                            </button>
+                        </div>
+
+                        {/* Right: Quick Sort & Filters Toggle */}
+                        <div className="flex items-center gap-2 justify-between md:justify-end">
+                            {/* Sort Selector Dropdown */}
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-slate-400 hidden sm:inline">Sort:</span>
+                                <select
+                                    value={filters.sort || 'relevance'}
+                                    onChange={(e) => applyFilterChange({ sort: e.target.value })}
+                                    className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                >
+                                    <option value="relevance">Relevance</option>
+                                    <option value="top_sales">Best Sellers</option>
+                                    <option value="price_asc">Price: Low to High</option>
+                                    <option value="price_desc">Price: High to Low</option>
+                                    <option value="top_rated">Top Customer Rated</option>
+                                    <option value="newest">Newest Arrivals</option>
+                                </select>
+                            </div>
+
+                            {/* Filter Drawer / Panel Toggle Button */}
+                            <button
+                                type="button"
+                                onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1.5 transition ${
+                                    showFiltersPanel || filters.min_price || filters.max_price || filters.in_stock
+                                        ? 'bg-slate-900 text-white border-slate-900'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                }`}
+                            >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                <span>Filters</span>
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Expandable Advanced Filters Box */}
+                    {showFiltersPanel && (
+                        <div className="bg-white rounded-xl p-4 shadow-xs border border-slate-200 space-y-4 font-mono text-xs animate-scale-in">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                                
+                                {/* 1. Category Dropdown */}
+                                <div>
+                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1">Department</label>
+                                    <select
+                                        value={filters.category || 'all'}
+                                        onChange={(e) => applyFilterChange({ category: e.target.value !== 'all' ? e.target.value : undefined })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2.5"
+                                    >
+                                        <option value="all">All 14 Departments</option>
+                                        {categories.map((c) => (
+                                            <option key={c.id} value={c.slug}>
+                                                {c.name} ({c.products_count ?? 0})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 2. Price Range Form */}
+                                <div>
+                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1">Price Range (₱ PHP)</label>
+                                    <form onSubmit={handlePriceSubmit} className="flex items-center gap-1.5">
+                                        <input
+                                            type="number"
+                                            placeholder="Min"
+                                            value={minPrice}
+                                            onChange={(e) => setMinPrice(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                        />
+                                        <span className="text-slate-400">-</span>
+                                        <input
+                                            type="number"
+                                            placeholder="Max"
+                                            value={maxPrice}
+                                            onChange={(e) => setMaxPrice(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-bold uppercase transition shrink-0"
+                                        >
+                                            Apply
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* 3. Stock & Rating Filters */}
+                                <div className="flex items-center gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(filters.in_stock)}
+                                            onChange={(e) => applyFilterChange({ in_stock: e.target.checked ? true : undefined })}
+                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span className="text-slate-700 font-bold">In Stock Only</span>
+                                    </label>
+
+                                    <select
+                                        value={filters.rating || ''}
+                                        onChange={(e) => applyFilterChange({ rating: e.target.value || undefined })}
+                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                    >
+                                        <option value="">Any Rating</option>
+                                        <option value="4">4★ & above</option>
+                                        <option value="4.5">4.5★ & above</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
 
                     {/* Feed Product Grid */}
                     {feedProducts.data.length === 0 ? (
-                        <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-100">
-                            <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
-                            <h3 className="text-base font-bold text-slate-800">No products found</h3>
-                            <p className="text-xs text-slate-500">Try clearing filters or search query.</p>
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-2xl p-10 text-center space-y-3 border border-slate-100">
+                                <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
+                                <h3 className="text-base font-bold text-slate-800">No products found matching your search</h3>
+                                <p className="text-xs text-slate-500 font-mono">
+                                    Try adjusting your search query, checking for typos, or clearing active filters.
+                                </p>
+                                <button
+                                    onClick={clearAllFilters}
+                                    className="mt-2 px-4 py-2 bg-[#E00D42] text-white rounded-lg text-xs font-mono font-bold uppercase hover:bg-[#C20836] transition"
+                                >
+                                    Clear All Filters & Browse All
+                                </button>
+                            </div>
+
+                            {/* Related / Recommended Fallback Products */}
+                            {relatedProducts && relatedProducts.length > 0 && (
+                                <div className="space-y-3 pt-4">
+                                    <div className="flex items-center gap-2 font-mono">
+                                        <Sparkles className="w-4 h-4 text-[#E00D42]" />
+                                        <h4 className="font-bold text-slate-900 text-sm uppercase">Recommended Products You Might Like</h4>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
+                                        {relatedProducts.map((product) => {
+                                            const priceNum = Number(product.price);
+                                            const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
+                                            const discountPct = compareNum && compareNum > priceNum 
+                                                ? Math.round(((compareNum - priceNum) / compareNum) * 100)
+                                                : null;
+
+                                            return (
+                                                <Link
+                                                    key={product.id}
+                                                    href={route('buyer.products.show', product.slug)}
+                                                    className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-[#E00D42]/50 transition duration-300 flex flex-col justify-between"
+                                                >
+                                                    <div className="block relative aspect-square bg-slate-100 overflow-hidden">
+                                                        <img
+                                                            src={product.featured_image || ''}
+                                                            alt={product.name}
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                                        />
+                                                        {discountPct && (
+                                                            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
+                                                                -{discountPct}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="p-2.5 space-y-1 font-sans">
+                                                        <h5 className="font-bold text-xs text-slate-800 group-hover:text-[#E00D42] transition line-clamp-2 leading-tight">
+                                                            {product.name}
+                                                        </h5>
+                                                        <span className="text-sm font-black text-[#E00D42] block">
+                                                            {formatPrice(product.price)}
+                                                        </span>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
                             {feedProducts.data.map((product) => {
-                                const isAdding = addingProductId === product.id;
-                                const isSuccess = addedSuccessId === product.id;
                                 const priceNum = Number(product.price);
                                 const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
                                 const discountPct = compareNum && compareNum > priceNum 
@@ -678,6 +976,29 @@ export default function BuyerHome({
                                     </Link>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Related Products Discovery Feed (when search query produced matches) */}
+                    {filters.search && feedProducts.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
+                        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-100 space-y-3 mt-8 font-mono">
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                <Sparkles className="w-4 h-4 text-[#E00D42]" />
+                                <h4 className="font-bold text-slate-900 text-xs uppercase">Related Products & Recommendations</h4>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                {relatedProducts.map((p) => (
+                                    <Link
+                                        key={p.id}
+                                        href={route('buyer.products.show', p.slug)}
+                                        className="group rounded-lg border border-slate-200 p-2 hover:border-[#E00D42] transition flex flex-col justify-between"
+                                    >
+                                        <img src={p.featured_image || ''} alt={p.name} className="w-full aspect-square object-cover rounded-md mb-2 group-hover:scale-105 transition" />
+                                        <h5 className="font-sans font-bold text-xs text-slate-800 line-clamp-1 group-hover:text-[#E00D42]">{p.name}</h5>
+                                        <span className="font-black text-xs text-[#E00D42] mt-1">{formatPrice(p.price)}</span>
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
                     )}
 

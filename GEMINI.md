@@ -66,9 +66,11 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 
 ---
 
-## 🛑 5. Git & Commit Message Protocol
+## 🛑 5. Git, Commit Message & Response Protocol
 1. **Never Commit Autonomously:** The AI must **NEVER** run `git add`, `git commit`, or `git push` autonomously. All git commands and repo pushes are manually handled by the user.
 2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
+3. **Always Output Changed File Paths:** At the end of every prompt completion, the AI must output a minimal list of the exact file paths modified or created during that prompt.
+4. **Always Output Visual Changes & Page Navigation Guide:** At the end of every prompt completion, the AI must summarize what visual changes were made to the frontend and specify the exact page routes / navigation steps (e.g. `Where to check: /buyer/search, /buyer/profile, or Seller Cockpit ➔ /seller/reviews`) so the user immediately knows where to verify the updates.
 
 ---
 
@@ -93,3 +95,14 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 ## 🔒 7. Absolute Privacy & Server Credential / IP Address Protection
 1. **Zero IP Address Leaks in Files:** The AI must **NEVER** write or persist real server IP addresses, Azure hostnames, private keys, or SSH connection credentials into any repository files (including `.md`, documentation, code comments, or commit messages).
 2. **Placeholders Only:** If documentation requires reference to server setup, always use generic placeholders like `<SERVER_IP>` or `<AZURE_HOST>`.
+
+---
+
+## 📖 8. Selective Documentation Activation Rule
+1. **Domain-Triggered Reading:** Whenever the user's prompt mentions a specific domain or user role, the AI must actively reference and strictly follow the corresponding documentation section in `docs/` and `GEMINI.md`:
+   - **"Buyer" / "Shopping" / "Bag" ➔** Read [`docs/BUYER_FLOWCHART.md`](file:///home/andy/Projects/bagoo/docs/BUYER_FLOWCHART.md) & Buyer section in `GEMINI.md`.
+   - **"Seller" / "Merchant" / "Shop" ➔** Read [`docs/SELLER_FLOW.md`](file:///home/andy/Projects/bagoo/docs/SELLER_FLOW.md) & Bento Matrix dashboard rules.
+   - **"Courier" / "Logistics" / "Sorting Center" ➔** Read [`docs/COURIER_FLOW.md`](file:///home/andy/Projects/bagoo/docs/COURIER_FLOW.md) & dispatch workflows.
+   - **"Admin" / "Governance" / "Commission" ➔** Read [`docs/ADMIN_FLOW.md`](file:///home/andy/Projects/bagoo/docs/ADMIN_FLOW.md) & 10% commission ledger rules.
+   - **"Style" / "Theme" / "UI" ➔** Read [`docs/STYLE_GUIDE.md`](file:///home/andy/Projects/bagoo/docs/STYLE_GUIDE.md).
+2. **Concise Progress Logging:** Keep `docs/PROGRESS.md` ultra-concise, focusing on functional outcomes rather than verbose conversational summaries. Batch and record completed milestones in high-density summary format.
