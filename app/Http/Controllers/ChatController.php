@@ -106,4 +106,37 @@ class ChatController extends Controller
             'shop' => $shop,
         ]);
     }
+
+    public function buyerInbox(Request $request): Response
+    {
+        $user = $request->user();
+
+        // Group recent conversations for buyer
+        $conversations = Message::where('receiver_id', $user->id)
+            ->orWhere('sender_id', $user->id)
+            ->with(['sender.shop', 'receiver.shop', 'product'])
+            ->latest()
+            ->get()
+            ->groupBy(function ($msg) use ($user) {
+                return $msg->sender_id === $user->id ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->map(function ($msgs, $otherUserId) {
+                $otherUser = User::with('shop')->find($otherUserId);
+                $latest = $msgs->first();
+                $unread = $msgs->where('receiver_id', auth()->id())->where('is_read', false)->count();
+
+                return [
+                    'user' => $otherUser,
+                    'last_message' => $latest->message,
+                    'last_time' => $latest->created_at->diffForHumans(),
+                    'unread_count' => $unread,
+                    'messages' => $msgs->reverse()->values(),
+                ];
+            })
+            ->values();
+
+        return Inertia::render('Buyer/Messages', [
+            'conversations' => $conversations,
+        ]);
+    }
 }

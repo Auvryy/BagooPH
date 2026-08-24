@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
+use App\Http\Controllers\Buyer\BuyerProfileController;
 use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
@@ -13,8 +15,10 @@ use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seller\SellerDashboardController;
+use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
+use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -40,6 +44,11 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart');
     
     Route::middleware('auth')->group(function () {
+        Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
+        Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
+        Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
+        Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
+        Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
         Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
@@ -112,6 +121,10 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
     Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
+    Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('reviews.reply');
+    Route::get('/disputes', [SellerDisputeController::class, 'index'])->name('disputes.index');
+    Route::patch('/disputes/{dispute}/respond', [SellerDisputeController::class, 'respond'])->name('disputes.respond');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');

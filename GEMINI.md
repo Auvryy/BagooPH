@@ -70,6 +70,7 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 1. **Never Commit Autonomously:** The AI must **NEVER** run `git add`, `git commit`, or `git push` autonomously. All git commands and repo pushes are manually handled by the user.
 2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
 3. **Always Output Changed File Paths:** At the end of every prompt completion, the AI must output a minimal list of the exact file paths modified or created during that prompt.
+4. **Always Output Visual Changes & Page Navigation Guide:** At the end of every prompt completion, the AI must summarize what visual changes were made to the frontend and specify the exact page routes / navigation steps (e.g. `Where to check: /buyer/search, /buyer/profile, or Seller Cockpit ➔ /seller/reviews`) so the user immediately knows where to verify the updates.
 
 ---
 

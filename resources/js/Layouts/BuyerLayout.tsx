@@ -20,7 +20,8 @@ import {
     X,
     ArrowRight,
     Heart,
-    SlidersHorizontal
+    SlidersHorizontal,
+    ShieldAlert
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
 
@@ -216,11 +217,11 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                             </div>
 
                                             <Link 
-                                                href={route('profile.edit')} 
+                                                href={route('buyer.profile')} 
                                                 className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <UserIcon className="w-4 h-4 text-[#E00D42]" />
-                                                <span>My Profile & Addresses</span>
+                                                <span>My Profile & Wallet</span>
                                             </Link>
 
                                             <Link 
@@ -229,6 +230,22 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                             >
                                                 <Package className="w-4 h-4 text-indigo-500" />
                                                 <span>My Purchases & Orders</span>
+                                            </Link>
+
+                                            <Link 
+                                                href={route('buyer.messages')} 
+                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                            >
+                                                <MessageSquare className="w-4 h-4 text-emerald-500" />
+                                                <span>Customer Messages & Inquiries</span>
+                                            </Link>
+
+                                            <Link 
+                                                href={route('buyer.disputes.index')} 
+                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                            >
+                                                <ShieldAlert className="w-4 h-4 text-amber-500" />
+                                                <span>Returns & Dispute Center</span>
                                             </Link>
 
                                             <Link 

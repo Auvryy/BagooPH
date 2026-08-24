@@ -33,7 +33,9 @@ import {
     Terminal,
     Sparkles,
     Tag,
-    MessageSquare
+    MessageSquare,
+    Star,
+    ShieldAlert
 } from 'lucide-react';
 
 interface Props {
@@ -87,6 +89,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Fulfillment & Waybills', href: route('seller.orders.index'), icon: ShoppingCart, current: route().current('seller.orders.*') },
                 { name: 'Vouchers & Promos', href: route('seller.vouchers.index'), icon: Tag, current: route().current('seller.vouchers.*') },
                 { name: 'Customer Messages', href: route('seller.messages.index'), icon: MessageSquare, current: route().current('seller.messages.*') },
+                { name: 'Customer Reviews', href: route('seller.reviews.index'), icon: Star, current: route().current('seller.reviews.*') },
+                { name: 'Disputes & Returns', href: route('seller.disputes.index'), icon: ShieldAlert, current: route().current('seller.disputes.*') },
                 { name: 'Financial Statements', href: route('seller.reports'), icon: TrendingUp, current: route().current('seller.reports') },
                 { name: 'Storefront & Logistics', href: route('seller.settings'), icon: Store, current: route().current('seller.settings') },
             ];
