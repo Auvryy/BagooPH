@@ -191,7 +191,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                 )}
                             </Link>
 
-                            {/* PROFILE BUTTON (CLICK -> MY ORDERS | HOVER -> DROPDOWN) */}
+                            {/* PROFILE BUTTON (CLICK -> MY ORDERS IN ACCOUNT HUB | HOVER -> DROPDOWN) */}
                             {auth.user ? (
                                 <div 
                                     className="relative"
@@ -199,7 +199,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                     onMouseLeave={() => setUserDropdownOpen(false)}
                                 >
                                     <Link
-                                        href={route('buyer.orders.index')}
+                                        href={route('buyer.profile', { tab: 'orders' })}
                                         className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white transition font-mono text-xs font-bold shadow-xs focus:outline-hidden group"
                                     >
                                         <div className="w-5 h-5 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center">
@@ -220,15 +220,15 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                             </div>
 
                                             <Link 
-                                                href={route('buyer.profile')} 
+                                                href={route('buyer.profile', { tab: 'account' })} 
                                                 className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <UserIcon className="w-4 h-4 text-[#E00D42]" />
-                                                <span>Profile</span>
+                                                <span>Profile / Settings</span>
                                             </Link>
 
                                             <Link 
-                                                href={route('buyer.orders.index')} 
+                                                href={route('buyer.profile', { tab: 'orders' })} 
                                                 className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <Package className="w-4 h-4 text-indigo-500" />

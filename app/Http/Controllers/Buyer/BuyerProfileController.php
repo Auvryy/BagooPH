@@ -52,13 +52,20 @@ class BuyerProfileController extends Controller
             ],
         ];
 
-        $ordersCount = Order::where('buyer_id', $user->id)->count();
+        $orders = Order::where('buyer_id', $user->id)
+            ->with(['items.product.shop', 'delivery.courier'])
+            ->latest()
+            ->get();
+
+        $initialTab = $request->query('tab', 'orders');
 
         return Inertia::render('Buyer/Profile', [
             'user' => $user,
             'addresses' => $savedAddresses,
             'wallet' => $wallet,
-            'ordersCount' => $ordersCount,
+            'orders' => $orders,
+            'ordersCount' => $orders->count(),
+            'initialTab' => $initialTab,
         ]);
     }
 

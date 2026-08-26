@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { User } from '@/types';
+import { User, Order } from '@/types';
 import { 
     User as UserIcon, 
     ShieldCheck, 
@@ -25,8 +25,12 @@ import {
     ChevronRight,
     Building2,
     Shield,
-    Trash2,
-    Edit3
+    Truck,
+    CheckCircle2,
+    Store,
+    MessageSquare,
+    ShoppingBag,
+    Star
 } from 'lucide-react';
 
 interface SavedAddress {
@@ -59,10 +63,12 @@ interface Props {
     user: User;
     addresses: SavedAddress[];
     wallet: WalletData;
+    orders: Order[];
     ordersCount: number;
+    initialTab?: TabType;
 }
 
-type TabType = 'account' | 'addresses' | 'wallet' | 'vouchers' | 'security';
+type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
 
 interface ProfileFormData {
     name: string;
@@ -71,14 +77,29 @@ interface ProfileFormData {
     gender: string;
 }
 
-export default function BuyerProfile({ user, addresses: initialAddresses, wallet: initialWallet, ordersCount }: Props) {
-    const [activeTab, setActiveTab] = useState<TabType>('account');
+export default function BuyerProfile({ 
+    user, 
+    addresses: initialAddresses, 
+    wallet: initialWallet, 
+    orders = [], 
+    ordersCount = 0,
+    initialTab = 'orders' 
+}: Props) {
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+    const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
     const [addresses, setAddresses] = useState<SavedAddress[]>(initialAddresses);
     const [wallet, setWallet] = useState<WalletData>(initialWallet);
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [topupAmount, setTopupAmount] = useState<number>(1000);
     const [topupLoading, setTopupLoading] = useState(false);
     const [topupSuccess, setTopupSuccess] = useState(false);
+
+    // Sync active tab if initialTab prop changes from URL navigation
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
 
     // Profile Form
     const { data, setData, post, processing, errors, recentlySuccessful } = useForm<ProfileFormData>({
@@ -180,15 +201,40 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
         }, 600);
     };
 
-    const formatPrice = (val: number) => {
+    const formatPrice = (val?: number | string | null) => {
+        const num = Number(val || 0);
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
             minimumFractionDigits: 2,
-        }).format(val);
+        }).format(num);
+    };
+
+    const filteredOrders = orders.filter(order => {
+        if (selectedOrderStatus === 'all') return true;
+        if (selectedOrderStatus === 'to_ship') return order.status === 'processing' || order.status === 'ready_for_pickup';
+        if (selectedOrderStatus === 'to_receive') return order.status === 'shipped';
+        if (selectedOrderStatus === 'completed') return order.status === 'delivered';
+        return true;
+    });
+
+    const getStatusPill = (status: string) => {
+        switch (status) {
+            case 'delivered':
+                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
+            case 'shipped':
+                return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3" /> Out for Delivery</span>;
+            case 'ready_for_pickup':
+                return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3" /> Ready for Pickup</span>;
+            case 'processing':
+                return <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3" /> Packaging</span>;
+            default:
+                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-bold font-mono uppercase">{status}</span>;
+        }
     };
 
     const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
+        { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: orders.length },
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
         { id: 'wallet', label: 'Simulated Digital Wallet', icon: Wallet, badge: formatPrice(wallet.balance) },
@@ -197,29 +243,31 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
 
     return (
         <BuyerLayout>
-            <Head title="My Account & Profile — BagooPH" />
+            <Head title="My Purchases & Account Hub — BagooPH" />
 
             <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
                 
                 {/* 1. TOP HEADER STRIP */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Account Dashboard & Settings</h1>
-                        <p className="text-xs text-slate-500 font-mono">Manage personal credentials, PSGC shipping addresses, and simulated wallet</p>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            {activeTab === 'orders' ? 'My Purchases & Order Tracking' : 'Account Settings & Credentials'}
+                        </h1>
+                        <p className="text-xs text-slate-500 font-mono">
+                            {activeTab === 'orders' ? 'Track real-time parcel dispatch, delivery timelines, and order receipts' : 'Manage personal credentials, PSGC shipping addresses, and simulated wallet'}
+                        </p>
                     </div>
 
-                    {/* Quick Link to My Orders */}
                     <Link
-                        href={route('buyer.orders.index')}
+                        href={route('buyer.index')}
                         className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-mono font-bold uppercase transition flex items-center gap-2 shadow-xs w-fit"
                     >
-                        <Package className="w-4 h-4 text-amber-400" />
-                        <span>View My Purchases & Orders ({ordersCount})</span>
-                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                        <ShoppingBag className="w-4 h-4 text-amber-400" />
+                        <span>Continue Shopping</span>
                     </Link>
                 </div>
 
-                {/* 2. TWO-COLUMN LAYOUT: LEFT SIDEBAR + RIGHT CANVAS */}
+                {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     {/* LEFT SIDEBAR NAVIGATION */}
@@ -257,7 +305,7 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                                             <item.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                                             <span>{item.label}</span>
                                         </div>
-                                        {item.badge && (
+                                        {item.badge !== undefined && (
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                                 isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                                             }`}>
@@ -272,12 +320,12 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                         {/* Extra Direct Shortcuts */}
                         <div className="pt-3 border-t border-slate-100 space-y-1 font-mono text-xs">
                             <Link
-                                href={route('buyer.orders.index')}
+                                href={route('buyer.messages')}
                                 className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition"
                             >
                                 <span className="flex items-center gap-2.5">
-                                    <Package className="w-4 h-4 text-indigo-500" />
-                                    <span>Track Order Delivery</span>
+                                    <MessageSquare className="w-4 h-4 text-emerald-500" />
+                                    <span>Store & Courier Messages</span>
                                 </span>
                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                             </Link>
@@ -299,7 +347,160 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                     {/* RIGHT CONTENT WORKSPACE */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* TAB 1: PERSONAL ACCOUNT & SECURITY */}
+                        {/* TAB 1: MY PURCHASES & ORDERS (DEFAULT ACTIVE TAB) */}
+                        {activeTab === 'orders' && (
+                            <div className="space-y-4">
+                                
+                                {/* Status Filter Strip */}
+                                <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-mono text-xs">
+                                    <button
+                                        onClick={() => setSelectedOrderStatus('all')}
+                                        className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap ${
+                                            selectedOrderStatus === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        All ({orders.length})
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedOrderStatus('to_ship')}
+                                        className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap ${
+                                            selectedOrderStatus === 'to_ship' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        To Ship
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedOrderStatus('to_receive')}
+                                        className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap ${
+                                            selectedOrderStatus === 'to_receive' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        In Transit
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedOrderStatus('completed')}
+                                        className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap ${
+                                            selectedOrderStatus === 'completed' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        Delivered
+                                    </button>
+                                </div>
+
+                                {/* Orders List Cards */}
+                                {filteredOrders.length === 0 ? (
+                                    <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
+                                        <Package className="w-12 h-12 text-slate-300 mx-auto" />
+                                        <h3 className="text-base font-bold text-slate-800">No orders found in this status</h3>
+                                        <p className="text-xs text-slate-500 font-mono">
+                                            Discover verified tactical apparel, bags, and EDC gear on BagooPH.
+                                        </p>
+                                        <Link
+                                            href={route('buyer.index')}
+                                            className="inline-block px-5 py-2.5 bg-[#E00D42] text-white rounded-xl text-xs font-mono font-bold uppercase shadow-xs"
+                                        >
+                                            Explore Marketplace
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    filteredOrders.map((order) => (
+                                        <div
+                                            key={order.id}
+                                            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-slate-300 transition space-y-4 font-sans"
+                                        >
+                                            {/* Header */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 font-mono text-xs">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Store className="w-4 h-4 text-slate-400" />
+                                                    <span className="font-bold text-slate-900">
+                                                        {order.items?.[0]?.product?.shop?.name || 'Bagoo Merchant Flagship'}
+                                                    </span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-slate-500">Order #{order.order_number}</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    {getStatusPill(order.status)}
+                                                </div>
+                                            </div>
+
+                                            {/* Items List */}
+                                            <div className="divide-y divide-slate-100">
+                                                {order.items?.map((item) => (
+                                                    <div key={item.id} className="py-3 flex items-center gap-4">
+                                                        <img
+                                                            src={item.product?.featured_image || (item.product?.images && item.product.images[0]?.image_url) || 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60'}
+                                                            alt={item.product?.name || 'Product Item'}
+                                                            className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-bold text-slate-900 text-xs truncate">
+                                                                {item.product?.name || 'Tactical Product'}
+                                                            </h4>
+                                                            <p className="text-[11px] text-slate-500 font-mono">
+                                                                Qty: <span className="text-slate-800 font-bold">{item.quantity}</span> • Unit: <span className="text-slate-800">{formatPrice(item.unit_price)}</span>
+                                                            </p>
+                                                            <p className="text-xs font-bold text-slate-900 font-mono mt-0.5">
+                                                                Subtotal: {formatPrice(item.subtotal || (Number(item.unit_price) * item.quantity))}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Delivery Telemetry / Notes */}
+                                            {order.delivery && (
+                                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between font-mono text-[11px]">
+                                                    <div className="flex items-center gap-2 text-slate-600">
+                                                        <Truck className="w-3.5 h-3.5 text-indigo-600" />
+                                                        <span>
+                                                            Tracking: <strong className="text-slate-900">#{order.delivery.tracking_number}</strong>
+                                                        </span>
+                                                        {order.delivery.courier && (
+                                                            <span className="text-slate-400">• Rider: {order.delivery.courier.name}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-indigo-600 font-bold uppercase text-[10px]">
+                                                        {order.delivery.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Footer Actions */}
+                                            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+                                                <div>
+                                                    <span className="text-slate-400 text-[11px]">Order Total: </span>
+                                                    <span className="font-black text-slate-900 text-base">{formatPrice(order.total_amount)}</span>
+                                                    <span className="text-slate-400 text-[10px] ml-1.5 uppercase">({order.payment_method})</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href={route('buyer.orders.show', order.id)}
+                                                        className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
+                                                    >
+                                                        <Truck className="w-3.5 h-3.5 text-amber-400" />
+                                                        <span>Track Parcel</span>
+                                                    </Link>
+
+                                                    {order.status === 'delivered' && (
+                                                        <Link
+                                                            href={route('buyer.disputes.index')}
+                                                            className="px-3 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition"
+                                                        >
+                                                            Report Defect
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+
+                            </div>
+                        )}
+
+                        {/* TAB 2: PERSONAL ACCOUNT & SECURITY */}
                         {activeTab === 'account' && (
                             <div className="space-y-6">
                                 
@@ -455,7 +656,7 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                             </div>
                         )}
 
-                        {/* TAB 2: DELIVERY ADDRESS BOOK */}
+                        {/* TAB 3: DELIVERY ADDRESS BOOK */}
                         {activeTab === 'addresses' && (
                             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -515,7 +716,7 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                             </div>
                         )}
 
-                        {/* TAB 3: SIMULATED DIGITAL WALLET */}
+                        {/* TAB 4: SIMULATED DIGITAL WALLET */}
                         {activeTab === 'wallet' && (
                             <div className="space-y-6">
                                 
@@ -594,7 +795,7 @@ export default function BuyerProfile({ user, addresses: initialAddresses, wallet
                             </div>
                         )}
 
-                        {/* TAB 4: VOUCHERS & PROMOS */}
+                        {/* TAB 5: VOUCHERS & PROMOS */}
                         {activeTab === 'vouchers' && (
                             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                 <div className="border-b border-slate-100 pb-4">

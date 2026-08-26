@@ -6,6 +6,10 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
+### 📌 Prompt 60: Seamless Integrated Purchases & Orders Tab in Buyer Account Hub (`2026-08-26 08:48`)
+- **Outcome:** Integrated the full Purchases & Orders tracking center as the primary default active tab (`'orders'`) within `Buyer/Profile.tsx`. When a user clicks their profile pill in the header, it opens `/buyer/profile?tab=orders` showing all order telemetry, status filters, item summaries, and tracking links, alongside the left navigation sidebar for managing personal info, PSGC addresses, simulated wallet, and vouchers.
+- **Build:** `npm run build` passed (8.00s).
+
 ### 📌 Prompt 59: 24h Session Token Lifetime, Profile Hover Dropdown & Account Hub Sidebar (`2026-08-26 08:42`)
 - **Outcome:** (1) Configured 1-day session lifetime (`SESSION_LIFETIME=1440` in `config/session.php` and `.env`), (2) Upgraded Buyer navigation header profile pill with direct single-click navigation to My Orders and a clean 3-item hover dropdown (Profile, My Orders, Sign Out), (3) Overhauled Buyer Profile into a Swiss-style multi-tab Account Hub with dedicated left sidebar (Personal Info & Password Security, PSGC Address Book, Digital Wallet Sandbox, Vouchers).
 - **Build:** `npm run build` passed (8.90s).
@@ -14,13 +18,15 @@
 - **Outcome:** Built complete Courier & Logistics suite: (1) First-Come First-Served dispatch board with atomic claiming (`Courier/Deliveries.tsx`), (2) Step-by-step field route execution with drop-off proof photos and COD receipts, (3) Rider Earnings & Trip history ledger (`Courier/Earnings.tsx`), (4) Courier Live Support & Chat (`Courier/Messages.tsx`), (5) Driver & Vehicle Specs Profile (`Courier/Profile.tsx`), and (6) Central Logistics Sorting Hub & Fleet console (`Admin/Logistics.tsx`) with live parcel telemetry, tracking lookup, and dispatch override.
 - **Build:** `npm run build` passed (7.82s).
 
-### 📌 Prompt 57: Fixed Architecture for Merchant Dashboard (Isolated Main Viewport Scrolling) (`2026-08-24 19:52`)
-- **Outcome:** Completely locked the Seller & Admin workstation layout into an enterprise-grade `h-screen overflow-hidden` grid: the left sidebar is permanently fixed (`lg:w-72 lg:h-full lg:shrink-0`), the top navbar is permanently fixed (`h-16 shrink-0`), and the right-hand main content area (`<main className="flex-1 overflow-y-auto">`) is the sole scrolling element.
-- **Build:** `npm run build` passed (8.23s).
-
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 56)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 57)
+
+* **Prompt 57 (Seller & Admin Isolated Scroll Workstation Grid):**
+  - Locked outer viewport to `h-screen overflow-hidden` with fixed sidebar and topbar.
+
+* **Prompt 56 (Mobile Overflow Fix & Sticky Seller Sidebar):**
+  - Enforced `overflow-x-hidden w-full max-w-full` across layouts.
 
 * **Prompt 56 (Mobile Overflow Fix & Sticky Seller Sidebar):**
   - Enforced `overflow-x-hidden w-full max-w-full` across layouts.
