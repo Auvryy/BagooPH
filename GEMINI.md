@@ -71,6 +71,8 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
 3. **Always Output Changed File Paths:** At the end of every prompt completion, the AI must output a minimal list of the exact file paths modified or created during that prompt.
 4. **Always Output Visual Changes & Page Navigation Guide:** At the end of every prompt completion, the AI must summarize what visual changes were made to the frontend and specify the exact page routes / navigation steps (e.g. `Where to check: /buyer/search, /buyer/profile, or Seller Cockpit ➔ /seller/reviews`) so the user immediately knows where to verify the updates.
+5. **Always Output Total Lines Changed:** At the end of the changed files list, output a concise line showing the total number of lines modified/created (e.g. `Total lines changed: ~X lines`).
+6. **Always Output Estimated Prompt Tokens:** At the end of every response, output a concise token usage estimate (e.g. `Estimated prompt tokens: ~X tokens`) and maintain strict token efficiency across all outputs.
 
 ---
 
