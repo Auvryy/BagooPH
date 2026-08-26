@@ -222,14 +222,14 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                         <ChevronDown className={`w-3 h-3 opacity-70 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                     </Link>
 
-                                    {/* User Hover Dropdown with Contiguous Hover Bridge */}
+                                    {/* User Hover Dropdown with Instant Seamless Overlap */}
                                     {userDropdownOpen && (
                                         <div 
-                                            className="absolute right-0 top-full pt-1.5 w-56 z-50 animate-scale-in hover-bridge"
+                                            className="absolute right-0 top-full -mt-0.5 pt-1 w-56 z-50 animate-scale-in"
                                             onMouseEnter={handleUserDropdownEnter}
                                             onMouseLeave={handleUserDropdownLeave}
                                         >
-                                            <div className="bg-white rounded-md shadow-xl border border-slate-300 py-1.5 text-slate-800 font-sans">
+                                            <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
                                                 <div className="px-4 py-2 border-b border-slate-200 font-mono text-xs">
                                                     <p className="font-bold text-slate-900 truncate">{auth.user.name}</p>
                                                     <p className="text-[10px] text-[#E00D42] uppercase font-bold">{auth.user.role} Account</p>

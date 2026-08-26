@@ -233,14 +233,14 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                                 </div>
                             </button>
 
-                            {/* Dropdown Menu with Contiguous Hover Bridge */}
+                            {/* Dropdown Menu with Instant Seamless Overlap */}
                             {userMenuOpen && (
                                 <div 
-                                    className="absolute right-0 top-full pt-1.5 w-60 z-50 animate-scale-in hover-bridge"
+                                    className="absolute right-0 top-full -mt-0.5 pt-1 w-60 z-50 animate-scale-in"
                                     onMouseEnter={handleUserMenuEnter}
                                     onMouseLeave={handleUserMenuLeave}
                                 >
-                                    <div className="bg-white rounded-md shadow-xl border border-slate-300 py-1.5 text-slate-800 font-sans">
+                                    <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
                                         <div className="px-4 py-2 border-b border-slate-200 font-mono text-xs">
                                             <p className="font-bold text-slate-900 truncate">{user?.name}</p>
                                             <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>

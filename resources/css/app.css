@@ -48,20 +48,3 @@
         border-color: rgba(0, 0, 0, 0.22) !important; /* Clearly demarcate landing and dark/light sections */
     }
 }
-
-@layer utilities {
-    /* Seamless Hover Bridge: Prevents dropdowns from vanishing when crossing mouse gaps */
-    .hover-bridge {
-        position: relative;
-    }
-    
-    .hover-bridge::before {
-        content: '';
-        position: absolute;
-        top: -12px;
-        left: 0;
-        right: 0;
-        height: 12px;
-        background: transparent;
-    }
-}
