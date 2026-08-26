@@ -1,15 +1,15 @@
-# 🎨 BagooPH Unified Design System & UI Architecture Guide
+# BagooPH Unified Design System & UI Architecture Guide
 
 > **CORE DESIGN DIRECTIVE FOR ALL AGENTS & DEVELOPERS:**
-> This document defines the permanent, immutable design tokens, layout patterns, and styling rules for BagooPH across **all 5 portals** (Landing, Buyer, Seller, Courier, Admin).
+> This document defines the permanent, immutable design tokens, layout patterns, and styling rules for BagooPH across all 5 portals (Landing, Buyer, Seller, Courier, Admin).
 > Follow these exact patterns to maintain visual harmony, razor-sharp precision, and eye-friendly ergonomics. Do NOT deviate or hallucinate alternative design styles.
 
 ---
 
-## 🏛️ 1. Design Philosophy: "Architectural Precision & Soft Ergonomics"
+## 1. Design Philosophy: "Architectural Precision & Soft Ergonomics"
 
 BagooPH avoids generic, bloated "AI bubble slop" (overly rounded pill shapes, washed-out invisible borders, and jarring high-saturation contrasts). 
-Instead, BagooPH adopts an **architectural precision software aesthetic**:
+Instead, BagooPH adopts an architectural precision software aesthetic:
 - **Crisp 2px Corner Geometry:** Buttons, inputs, and tags feel precise, sharp, and purposeful.
 - **High-Visibility Structural Borders:** Sections, cards, tables, and bento grids are clearly demarcated with visible slate boundaries for maximum visual accessibility.
 - **Soft Eye-Friendly Typography:** Soft Slate-800 body text with negative tracking (`-0.008em`) and generous line-height (`1.55`) ensures long hours of comfortable usage.
@@ -17,9 +17,9 @@ Instead, BagooPH adopts an **architectural precision software aesthetic**:
 
 ---
 
-## 🔴 2. Color Palette & Accessibility Tokens
+## 2. Color Palette & Accessibility Tokens
 
-The **Crimson Red (`#E00D42`)** is the sole primary accent color across all roles, paired with structured slate neutrals.
+The Crimson Red (`#E00D42`) is the sole primary accent color across all roles, paired with structured slate neutrals.
 
 ### Brand Accent Tokens:
 | Token | Hex Code | Tailwind / CSS | Purpose |
@@ -35,7 +35,7 @@ The **Crimson Red (`#E00D42`)** is the sole primary accent color across all role
 |---|---|---|---|
 | **Canvas Background** | `#F8FAFC` (`bg-slate-50`) / `#F4F3EF` | `#0A0D14` / `#111319` | Warm, neutral foundation |
 | **Card / Panel Background** | `#FFFFFF` (`bg-white`) | `#111319` / `#1E222D` | Clean container surface |
-| **Headings (H1–H6)** | `#0F172A` (`text-slate-900`) | `#FFFFFF` (`text-white`) | Bold, authoritative title hierarchy |
+| **Headings (H1-H6)** | `#0F172A` (`text-slate-900`) | `#FFFFFF` (`text-white`) | Bold, authoritative title hierarchy |
 | **Body Text** | `#1E293B` (`text-slate-800`) | `#E2E8F0` (`text-slate-200`) | Soft on the eyes; never use harsh #000 for body |
 | **Muted Labels / Meta** | `#64748B` (`text-slate-500`) | `#94A3B8` (`text-slate-400`) | Captions, dates, subtitles |
 | **Structural Borders** | `#CBD5E1` (`border-slate-300`) | `#334155` (`border-slate-700`) | **Mandatory high-visibility borders** |
@@ -47,7 +47,7 @@ The **Crimson Red (`#E00D42`)** is the sole primary accent color across all role
 
 ---
 
-## 📐 3. Permanent Corner Radius Scale (2px Buttons)
+## 3. Permanent Corner Radius Scale (2px Buttons)
 
 All corner radii are strictly standardized via `tailwind.config.js`:
 
@@ -70,15 +70,15 @@ borderRadius: {
 | **Buttons (All CTAs, Links, Icons)** | `rounded-xs` or `rounded-sm` | **2px** | Sharp, architectural, precision software look |
 | **Inputs, Textareas & Search Bars** | `rounded-xs` or `rounded-sm` | **2px** | Crisp rectangular form field |
 | **Status Badges, Chips & Tags** | `rounded-xs` | **2px** | Sharp rectangular indicators (**NO round pill bubbles**) |
-| **Bento Cards & Data Tables** | `rounded-md` or `rounded-lg` | **4px – 6px** | Distinctly framed modular cards |
-| **Modals, Dialogs & Drawers** | `rounded-lg` or `rounded-xl` | **6px – 8px** | Focused overlay panels |
-| **Brand Logo Box** | `rounded-xs` or `rounded-sm` | **2px – 4px** | Iconic square-proportioned emblem |
+| **Bento Cards & Data Tables** | `rounded-md` or `rounded-lg` | **4px - 6px** | Distinctly framed modular cards |
+| **Modals, Dialogs & Drawers** | `rounded-lg` or `rounded-xl` | **6px - 8px** | Focused overlay panels |
+| **Brand Logo Box** | `rounded-xs` or `rounded-sm` | **2px - 4px** | Iconic square-proportioned emblem |
 
 ---
 
-## 🖱️ 4. Navigation Dropdown Architecture (Zero-Shift Overlap Pattern)
+## 4. Navigation Dropdown Architecture (Zero-Shift Overlap Pattern)
 
-All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adhere to the **Zero-Shift Instant Overlap Standard**:
+All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adhere to the Zero-Shift Instant Overlap Standard:
 
 ```tsx
 /*
@@ -122,7 +122,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ---
 
-## 🔤 5. Typography & Spacing System
+## 5. Typography & Spacing System
 
 - **Primary Typeface:** `'Plus Jakarta Sans', 'Inter', system-ui, sans-serif`
 - **Monospace Data Font:** `'JetBrains Mono', 'Fira Code', monospace` (used for prices `₱`, order IDs `BGO-1234`, telemetry gauges, and badges).
@@ -132,7 +132,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ---
 
-## 💎 6. Standard Code Snippets
+## 6. Standard Code Snippets
 
 ### Primary Action Button (2px Radius):
 ```tsx
@@ -174,10 +174,10 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ---
 
-## 🚫 7. Forbidden Anti-Patterns (Do NOT Introduce)
+## 7. Forbidden Anti-Patterns (Do NOT Introduce)
 
-1. ❌ **No `rounded-full` or `rounded-3xl` on buttons and cards:** Keep buttons strictly at 2px (`rounded-xs`/`rounded-sm`).
-2. ❌ **No faint or washed-out borders (`border-slate-100`):** Always use `border-slate-300` for clear visual distinction.
-3. ❌ **No pure `#000000` body text:** Use soft, eye-friendly `#1E293B` (`text-slate-800`).
-4. ❌ **No continuous GPU animations on scroll:** Avoid heavy SVG `feTurbulence` grain filters or full-screen mouse spotlight canvas overlays.
-5. ❌ **No non-absolute dropdowns:** Floating menus must never shift or push navbar elements.
+1. **No `rounded-full` or `rounded-3xl` on buttons and cards:** Keep buttons strictly at 2px (`rounded-xs`/`rounded-sm`).
+2. **No faint or washed-out borders (`border-slate-100`):** Always use `border-slate-300` for clear visual distinction.
+3. **No pure `#000000` body text:** Use soft, eye-friendly `#1E293B` (`text-slate-800`).
+4. **No continuous GPU animations on scroll:** Avoid heavy SVG `feTurbulence` grain filters or full-screen mouse spotlight canvas overlays.
+5. **No non-absolute dropdowns:** Floating menus must never shift or push navbar elements.
