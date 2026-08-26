@@ -33,6 +33,14 @@ class RegisteredUserController extends Controller
     }
 
     /**
+     * Display the dedicated courier registration view.
+     */
+    public function createCourier(): Response
+    {
+        return Inertia::render('Auth/CourierRegister');
+    }
+
+    /**
      * Handle an incoming registration request.
      *
      * @throws ValidationException
