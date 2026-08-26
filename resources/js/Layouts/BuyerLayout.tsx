@@ -191,72 +191,51 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                 )}
                             </Link>
 
-                            {/* PROFILE BUTTON (DIRECTLY BESIDE BAG AT THE RIGHT) */}
+                            {/* PROFILE BUTTON (CLICK -> MY ORDERS | HOVER -> DROPDOWN) */}
                             {auth.user ? (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white transition font-mono text-xs font-bold shadow-xs focus:outline-hidden"
+                                <div 
+                                    className="relative"
+                                    onMouseEnter={() => setUserDropdownOpen(true)}
+                                    onMouseLeave={() => setUserDropdownOpen(false)}
+                                >
+                                    <Link
+                                        href={route('buyer.orders.index')}
+                                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white transition font-mono text-xs font-bold shadow-xs focus:outline-hidden group"
                                     >
                                         <div className="w-5 h-5 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center">
                                             {auth.user.name.charAt(0).toUpperCase()}
                                         </div>
                                         <span className="truncate max-w-[100px] hidden sm:inline">{auth.user.name.split(' ')[0]}</span>
-                                        <ChevronDown className="w-3 h-3 opacity-70" />
-                                    </button>
+                                        <ChevronDown className="w-3 h-3 opacity-70 group-hover:rotate-180 transition-transform" />
+                                    </Link>
 
-                                    {/* User Dropdown */}
+                                    {/* User Hover Dropdown */}
                                     {userDropdownOpen && (
                                         <div 
-                                            className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-black/10 py-2 z-50 text-slate-800 font-sans animate-scale-in"
-                                            onMouseLeave={() => setUserDropdownOpen(false)}
+                                            className="absolute right-0 mt-1 w-52 bg-white rounded-2xl shadow-2xl border border-black/10 py-2 z-50 text-slate-800 font-sans animate-scale-in"
                                         >
-                                            <div className="px-4 py-2.5 border-b border-slate-100 font-mono text-xs">
+                                            <div className="px-4 py-2 border-b border-slate-100 font-mono text-xs">
                                                 <p className="font-bold text-slate-900 truncate">{auth.user.name}</p>
                                                 <p className="text-[10px] text-[#E00D42] uppercase font-bold">{auth.user.role} Account</p>
                                             </div>
 
                                             <Link 
                                                 href={route('buyer.profile')} 
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <UserIcon className="w-4 h-4 text-[#E00D42]" />
-                                                <span>My Profile & Wallet</span>
+                                                <span>Profile</span>
                                             </Link>
 
                                             <Link 
                                                 href={route('buyer.orders.index')} 
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <Package className="w-4 h-4 text-indigo-500" />
-                                                <span>My Purchases & Orders</span>
+                                                <span>My Orders</span>
                                             </Link>
 
-                                            <Link 
-                                                href={route('buyer.messages')} 
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                            >
-                                                <MessageSquare className="w-4 h-4 text-emerald-500" />
-                                                <span>Customer Messages & Inquiries</span>
-                                            </Link>
-
-                                            <Link 
-                                                href={route('buyer.disputes.index')} 
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                            >
-                                                <ShieldAlert className="w-4 h-4 text-amber-500" />
-                                                <span>Returns & Dispute Center</span>
-                                            </Link>
-
-                                            <Link 
-                                                href={route('buyer.cart')} 
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                            >
-                                                <ShoppingBag className="w-4 h-4 text-rose-500" />
-                                                <span>My Shopping Bag</span>
-                                            </Link>
-
-                                            <div className="border-t border-slate-100 mt-1.5 pt-1">
+                                            <div className="border-t border-slate-100 mt-1 pt-1">
                                                 <Link 
                                                     href={route('logout')} 
                                                     method="post" 
