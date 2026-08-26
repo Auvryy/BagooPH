@@ -48,11 +48,24 @@ interface Props {
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
     const [copiedStoreLink, setCopiedStoreLink] = useState(false);
     const [currentTime, setCurrentTime] = useState('');
 
     const user = auth.user;
     const role = user?.role || 'buyer';
+
+    const handleUserMenuEnter = () => {
+        if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+        setUserMenuOpen(true);
+    };
+
+    const handleUserMenuLeave = () => {
+        userMenuTimeoutRef.current = setTimeout(() => {
+            setUserMenuOpen(false);
+        }, 250);
+    };
 
     useEffect(() => {
         const updateClock = () => {
@@ -61,7 +74,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         };
         updateClock();
         const timer = setInterval(updateClock, 1000);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+        };
     }, []);
 
     const copyStoreUrl = () => {
@@ -191,7 +207,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition group ${
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition group ${
                                     item.current 
                                         ? 'bg-slate-900 text-white shadow-xs' 
                                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -221,7 +237,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Link
                                 href={route('shop.show', user.shop.slug)}
                                 target="_blank"
-                                className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                                className="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                             >
                                 <div className="flex items-center gap-2.5">
                                     <ShoppingBag className="w-4 h-4 text-[#E00D42]" />
@@ -232,14 +248,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         )}
                         <Link
                             href={route('buyer.index')}
-                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <ArrowLeft className="w-4 h-4 text-slate-400" />
                             <span>Switch to Buyer Mode</span>
                         </Link>
                         <Link
                             href={route('profile.edit')}
-                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                         >
                             <Settings className="w-4 h-4 text-slate-400" />
                             <span>Security & Account</span>
@@ -261,7 +277,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 uppercase tracking-wider shadow-2xs"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-200 uppercase tracking-wider shadow-2xs"
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -290,33 +306,102 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         </div>
                     </div>
 
-                    {/* Topbar Actions & Cockpit Gauges */}
+                    {/* Topbar Actions & User Avatar */}
                     <div className="flex items-center gap-3">
                         {actions}
 
-                        {user?.shop && (
-                            <Link
-                                href={route('shop.show', user.shop.slug)}
-                                target="_blank"
-                                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold font-mono text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200"
+                        {/* Merchant / Admin User Avatar Interactive Dropdown with Seamless Hover Bridge */}
+                        <div 
+                            className="relative"
+                            onMouseEnter={handleUserMenuEnter}
+                            onMouseLeave={handleUserMenuLeave}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                className="flex items-center gap-2.5 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300"
                             >
-                                <Store className="w-3.5 h-3.5 text-[#E00D42]" />
-                                <span>Preview Store</span>
-                                <ExternalLink className="w-3 h-3 text-slate-400 ml-0.5" />
-                            </Link>
-                        )}
+                                <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-mono">
+                                    {user?.name.charAt(0)}
+                                </div>
+                                <div className="hidden sm:block text-left font-mono">
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
+                                        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+                                    <span className="text-[10px] text-emerald-600 font-bold uppercase">
+                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : 'Authorized User'}
+                                    </span>
+                                </div>
+                            </button>
 
-                        <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
+                            {/* Dropdown Menu with Instant Seamless Overlap */}
+                            {userMenuOpen && (
+                                <div 
+                                    className="absolute right-0 top-full -mt-0.5 pt-1 w-60 z-50 animate-scale-in"
+                                    onMouseEnter={handleUserMenuEnter}
+                                    onMouseLeave={handleUserMenuLeave}
+                                >
+                                    <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
+                                        <div className="px-4 py-2 border-b border-slate-200 font-mono text-xs">
+                                            <p className="font-bold text-slate-900 truncate">{user?.name}</p>
+                                            <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                                        </div>
 
-                        {/* Merchant User Avatar Badge */}
-                        <div className="flex items-center gap-2.5 pl-1">
-                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                                {user?.name.charAt(0)}
-                            </div>
-                            <div className="hidden sm:block text-left font-mono">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{user?.name}</p>
-                                <span className="text-[10px] text-emerald-600 font-bold uppercase">Verified Merchant</span>
-                            </div>
+                                        {role === 'seller' && user?.shop && (
+                                            <Link
+                                                href={route('shop.show', user.shop.slug)}
+                                                target="_blank"
+                                                className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <Store className="w-4 h-4 text-[#E00D42]" />
+                                                    <span>View Public Storefront</span>
+                                                </div>
+                                                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                            </Link>
+                                        )}
+
+                                        {role === 'seller' && (
+                                            <Link
+                                                href={route('seller.settings')}
+                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                            >
+                                                <Settings className="w-4 h-4 text-slate-400" />
+                                                <span>Store Settings</span>
+                                            </Link>
+                                        )}
+
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                        >
+                                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                            <span>Account & Security</span>
+                                        </Link>
+
+                                        <Link
+                                            href={route('buyer.index')}
+                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                        >
+                                            <ArrowLeft className="w-4 h-4 text-indigo-500" />
+                                            <span>Switch to Buyer Mode</span>
+                                        </Link>
+
+                                        <div className="border-t border-slate-200 mt-1 pt-1">
+                                            <Link
+                                                href={route('logout')}
+                                                method="post"
+                                                as="button"
+                                                className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition"
+                                            >
+                                                <LogOut className="w-4 h-4" />
+                                                <span>Sign Out</span>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

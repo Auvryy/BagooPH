@@ -5,14 +5,24 @@
 
 ---
 
-## 🎨 1. Unified Brand, Theme & Design Philosophy
+## 🎨 1. Unified Brand, Theme & Architectural Design Philosophy
 
 - **Primary Theme Color:** `#E00D42` (Crimson Red) shared **across all users and portals** (Buyer, Seller, Courier, and Admin).
-- **Design Aesthetic:** Minimalist, clean, and top-tier professional software look (clean slate borders, crisp micro-shadows, balanced whitespace, readable typography).
-- **Refined Corner Radius Rules (No "AI Bubble Slop"):**
-  - **Inputs & Buttons:** `rounded-lg` (6px–8px). Structured and sleek, NOT overly round.
-  - **Cards, Panels & Modals:** `rounded-xl` (10px–12px). Clean geometric layout.
-  - **Avoid:** Generic AI extremes (`rounded-3xl` or excessive `rounded-full` everywhere).
+- **Design Aesthetic:** Architectural precision software look — clean slate structural borders, crisp micro-shadows, balanced whitespace, soft readable typography (`#1E293B` body text, `-0.008em` tracking).
+- **Immutable Precision Corner Radius Scale (2px Buttons — No "AI Bubble Slop"):**
+  - **Buttons, CTAs & Action Icons:** `rounded-xs` or `rounded-sm` (**2px**). Precision software look.
+  - **Inputs, Search Bars & Selects:** `rounded-xs` or `rounded-sm` (**2px – 3px**).
+  - **Badges, Tags & Status Chips:** `rounded-xs` (**2px**). **NEVER use rounded-full pill bubbles.**
+  - **Cards, Panels & Data Tables:** `rounded-md` or `rounded-lg` (**4px – 6px**).
+  - **Modals & Drawers:** `rounded-lg` or `rounded-xl` (**6px – 8px** max).
+  - **Strict Ban:** Generic AI extremes (`rounded-3xl` or excessive `rounded-full` everywhere).
+- **High-Visibility Structural Borders:**
+  - Always use **`border-slate-300`** in light mode and **`border-slate-700` / `border-slate-800`** in dark mode.
+  - **Never use faint/invisible borders** (`border-slate-100` or `border-black/5`) so users can easily distinguish sections, data tables, and bento cards.
+- **Zero-Shift Overlap Navigation Standard:**
+  - Dropdown menus must be strictly `absolute right-0 top-full -mt-0.5 pt-1 z-50` with a **250ms mouse-leave grace timeout**.
+  - Dropdowns must **never expand the navbar height or shift elements**.
+- **Design Authority:** Refer to [`docs/STYLE_GUIDE.md`](file:///home/andy/Projects/bagoo/docs/STYLE_GUIDE.md) for full component specifications.
 
 ---
 
@@ -62,7 +72,7 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 ## 🚫 4. Strict Guardrails (Anti-Hallucination)
 1. **No Paid / External APIs:** Implement address selection, vouchers, waybills, and chat using local database logic.
 2. **Mandatory Admin Approval:** Newly registered users cannot access their portal until approved by Admin.
-3. **Consistent Theme & Styling:** Always use `#E00D42` for primary actions and adhere to the `rounded-lg` / `rounded-xl` professional border-radius standards.
+3. **Consistent Theme & Styling:** Always use `#E00D42` for primary actions and strictly adhere to the **2px button corner radius (`rounded-xs`/`rounded-sm`)** and **high-visibility borders (`border-slate-300`)** defined in `docs/STYLE_GUIDE.md`.
 
 ---
 
@@ -71,6 +81,8 @@ The system has **4 primary roles** (with logistics kept in mind for future exten
 2. **Always Suggest a Commit Message:** At the end of every prompt completion, the AI must provide a clean, copy-pasteable Git commit message following conventional commit standards (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `style: ...`).
 3. **Always Output Changed File Paths:** At the end of every prompt completion, the AI must output a minimal list of the exact file paths modified or created during that prompt.
 4. **Always Output Visual Changes & Page Navigation Guide:** At the end of every prompt completion, the AI must summarize what visual changes were made to the frontend and specify the exact page routes / navigation steps (e.g. `Where to check: /buyer/search, /buyer/profile, or Seller Cockpit ➔ /seller/reviews`) so the user immediately knows where to verify the updates.
+5. **Always Output Total Lines Changed:** At the end of the changed files list, output a concise line showing the total number of lines modified/created (e.g. `Total lines changed: ~X lines`).
+6. **Always Output Estimated Prompt Tokens:** At the end of every response, output a concise token usage estimate (e.g. `Estimated prompt tokens: ~X tokens`) and maintain strict token efficiency across all outputs.
 
 ---
 

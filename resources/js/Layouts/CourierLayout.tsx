@@ -16,7 +16,8 @@ import {
     ShieldCheck, 
     Navigation, 
     Package,
-    TrendingUp
+    TrendingUp,
+    ChevronDown
 } from 'lucide-react';
 
 interface Props {
@@ -29,6 +30,20 @@ interface Props {
 export default function CourierLayout({ children, title, subtitle, isOnline = true }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const handleUserMenuEnter = () => {
+        if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+        setUserMenuOpen(true);
+    };
+
+    const handleUserMenuLeave = () => {
+        userMenuTimeoutRef.current = setTimeout(() => {
+            setUserMenuOpen(false);
+        }, 250);
+    };
+
     const [currentTime, setCurrentTime] = useState('');
     const [dutyLoading, setDutyLoading] = useState(false);
 
@@ -41,7 +56,10 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
         };
         updateClock();
         const timer = setInterval(updateClock, 1000);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+        };
     }, []);
 
     const toggleDutyStatus = () => {
@@ -99,7 +117,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                     </div>
 
                     {/* Driver Status Card with Live Online Toggle */}
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 font-mono">
+                    <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2 font-mono">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
@@ -114,7 +132,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                             type="button"
                             onClick={toggleDutyStatus}
                             disabled={dutyLoading}
-                            className={`w-full py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase transition flex items-center justify-center gap-1.5 shadow-xs ${
+                            className={`w-full py-1.5 px-3 rounded-md text-[10px] font-bold uppercase transition flex items-center justify-center gap-1.5 shadow-xs ${
                                 isOnline 
                                     ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40' 
                                     : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950'
@@ -135,7 +153,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition ${
                                 item.current 
                                     ? 'bg-[#E00D42] text-white shadow-xs' 
                                     : 'text-slate-300 hover:text-white hover:bg-slate-900'
@@ -161,7 +179,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition border border-rose-900/50 uppercase tracking-wider shadow-2xs"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition border border-rose-900/50 uppercase tracking-wider shadow-2xs"
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -193,14 +211,71 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2.5 pl-1">
-                            <div className="w-8 h-8 rounded-full bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                                {user?.name.charAt(0)}
-                            </div>
-                            <div className="hidden sm:block text-left font-mono">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{user?.name}</p>
-                                <span className="text-[10px] text-emerald-600 font-bold uppercase">Authorized Driver</span>
-                            </div>
+                        <div 
+                            className="relative"
+                            onMouseEnter={handleUserMenuEnter}
+                            onMouseLeave={handleUserMenuLeave}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                className="flex items-center gap-2.5 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300"
+                            >
+                                <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-mono">
+                                    {user?.name.charAt(0)}
+                                </div>
+                                <div className="hidden sm:block text-left font-mono">
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
+                                        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+                                    <span className="text-[10px] text-emerald-600 font-bold uppercase">Authorized Driver</span>
+                                </div>
+                            </button>
+
+                            {/* Dropdown Menu with Instant Seamless Overlap */}
+                            {userMenuOpen && (
+                                <div 
+                                    className="absolute right-0 top-full -mt-0.5 pt-1 w-60 z-50 animate-scale-in"
+                                    onMouseEnter={handleUserMenuEnter}
+                                    onMouseLeave={handleUserMenuLeave}
+                                >
+                                    <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
+                                        <div className="px-4 py-2 border-b border-slate-200 font-mono text-xs">
+                                            <p className="font-bold text-slate-900 truncate">{user?.name}</p>
+                                            <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                                        </div>
+
+                                        <Link
+                                            href={route('courier.profile')}
+                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                        >
+                                            <UserIcon className="w-4 h-4 text-slate-400" />
+                                            <span>Driver & Vehicle Specs</span>
+                                        </Link>
+
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                        >
+                                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                            <span>Account Security</span>
+                                        </Link>
+
+                                        <div className="border-t border-slate-200 mt-1 pt-1">
+                                            <Link
+                                                href={route('logout')}
+                                                method="post"
+                                                as="button"
+                                                className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition"
+                                            >
+                                                <LogOut className="w-4 h-4" />
+                                                <span>Sign Out</span>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

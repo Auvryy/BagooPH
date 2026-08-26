@@ -6,21 +6,72 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
-### 📌 Prompt 58: Interconnected Courier Rider & Logistics Sorting Hub Ecosystem (`2026-08-24 20:12`)
-- **Outcome:** Built complete Courier & Logistics suite: (1) First-Come First-Served dispatch board with atomic claiming (`Courier/Deliveries.tsx`), (2) Step-by-step field route execution with drop-off proof photos and COD receipts, (3) Rider Earnings & Trip history ledger (`Courier/Earnings.tsx`), (4) Courier Live Support & Chat (`Courier/Messages.tsx`), (5) Driver & Vehicle Specs Profile (`Courier/Profile.tsx`), and (6) Central Logistics Sorting Hub & Fleet console (`Admin/Logistics.tsx`) with live parcel telemetry, tracking lookup, and dispatch override.
-- **Build:** `npm run build` passed (7.82s).
+### 📌 Prompt 69: Permanent Design System Specification & Anti-Hallucination Documentation Overhaul (`2026-08-26 16:55`)
+- **Outcome:** Overhauled and codified [`docs/STYLE_GUIDE.md`](file:///home/andy/Projects/bagoo/docs/STYLE_GUIDE.md) and [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md) to serve as permanent, immutable design tokens and anti-hallucination guardrails for all future AI agents. Documented the **Architectural Precision & Soft Ergonomics** standard: 2px button corner radii (`rounded-xs`/`rounded-sm`), high-visibility structural borders (`border-slate-300`), soft typography (`#1E293B` body text, negative tracking), and zero-shift absolute overlap navigation dropdowns (`top-full -mt-0.5 pt-1`).
+- **Build:** `npm run build` passed in 6.59s (0 errors).
 
-### 📌 Prompt 57: Fixed Architecture for Merchant Dashboard (Isolated Main Viewport Scrolling) (`2026-08-24 19:52`)
-- **Outcome:** Completely locked the Seller & Admin workstation layout into an enterprise-grade `h-screen overflow-hidden` grid: the left sidebar is permanently fixed (`lg:w-72 lg:h-full lg:shrink-0`), the top navbar is permanently fixed (`h-16 shrink-0`), and the right-hand main content area (`<main className="flex-1 overflow-y-auto">`) is the sole scrolling element.
-- **Build:** `npm run build` passed (8.23s).
+### 📌 Prompt 68: Hover Bridge Gap Fix, 2px Button Radii, High-Visibility Borders & Seller Topbar Declutter (`2026-08-26 16:10`)
+- **Outcome:** Resolved the hover dropdown disappearing issue on profile/user buttons in `BuyerLayout.tsx`, `DashboardLayout.tsx`, and `CourierLayout.tsx` by implementing pure absolute overlap and 250ms grace timeout. Calibrated button corner radius to crisp 2px in `tailwind.config.js`. Elevated border contrast across all pages (`border-slate-300`).
+- **Build:** `npm run build` passed in 7.43s (0 errors).
 
-### 📌 Prompt 56: Mobile Horizontal Overflow Fix & Seller Sticky Desktop Navigation (`2026-08-24 19:45`)
-- **Outcome:** Eliminated unwanted mobile right-gap and horizontal scrolling on Buyer and Seller layouts by enforcing strict viewport boundary containment (`overflow-x-hidden w-full max-w-full`). Upgraded Seller `DashboardLayout.tsx` with sticky desktop sidebar (`lg:sticky lg:top-0 lg:h-screen`) and anchored the Sign Out button permanently to the visible bottom of the viewport.
-- **Build:** `npm run build` passed (8.19s).
+### 📌 Prompt 67: Universal Soft Typography, 50% Reduced Radius & Buyer UX Decluttering (`2026-08-26 16:00`)
+- **Outcome:** Upgraded the design system to soft, eye-friendly typography across all portals. Reduced corner radius by 50% globally via `tailwind.config.js`. Decluttered Buyer Home by removing redundant categories directory.
+- **Build:** `npm run build` passed in 9.97s (0 errors).
 
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 55)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 66)
+
+* **Prompt 66 (Frontend Performance Optimization & Animation Streamlining):**
+  - Eliminated CPU/GPU rendering bottlenecks by removing `CursorSpotlight` and `GrainOverlay`. Removed artificial loading delays and optimized scroll spy.
+
+* **Prompt 65 (High-Performance Landing Page Redesign & Antigravity MCP Suite):**
+  - Overhauled landing page below hero with full-width value proposition splits and 4-stage ecosystem sequencer. Configured 5 MCP servers.
+
+* **Prompt 64 (Interactive Seller, Admin & Courier Profile Dropdowns):**
+  - Converted static user avatar badges in `DashboardLayout.tsx` and `CourierLayout.tsx` into interactive hover & click dropdown menus.
+
+* **Prompt 63 (Universal UX Decluttering & Product Card Streamlining):**
+  - Streamlined product card aesthetics by removing redundant footer bars. Enhanced breathing room and typography contrast.
+
+* **Prompt 62 (Modern Soft Typography Upgrade):**
+  - Replaced sharp fonts with Plus Jakarta Sans and Inter across the entire application. Softened letter-spacing (-0.012em).
+
+* **Prompt 61 (Lines Changed Counter & Token Protocol):**
+  - Updated GEMINI.md response protocol with line counter and token usage metrics.
+
+* **Prompt 60 (Integrated Orders Tab in Buyer Profile):**
+  - Integrated purchases and orders tracking directly into the unified profile account hub.
+
+* **Prompt 60 (Integrated Orders Tab in Buyer Profile):**
+  - Integrated purchases and orders tracking directly into the unified profile account hub.
+
+* **Prompt 59 (24h Session Token Lifetime & Account Hub Sidebar):**
+  - Configured 1-day session lifetime and profile hover dropdown.
+
+* **Prompt 59 (24h Session Token Lifetime & Account Hub Sidebar):**
+  - Configured 1-day session lifetime and profile hover dropdown.
+
+* **Prompt 58 (Interconnected Courier & Logistics Sorting Hub):**
+  - Built complete Courier Dispatch Board, Earnings Ledger, Live Chat, Profile, and Central Logistics Console.
+
+* **Prompt 58 (Interconnected Courier & Logistics Sorting Hub):**
+  - Built complete Courier Dispatch Board, Earnings Ledger, Live Chat, Profile, and Central Logistics Console.
+
+* **Prompt 57 (Seller & Admin Isolated Scroll Workstation Grid):**
+  - Locked outer viewport to `h-screen overflow-hidden` with fixed sidebar and topbar.
+
+* **Prompt 57 (Seller & Admin Isolated Scroll Workstation Grid):**
+  - Locked outer viewport to `h-screen overflow-hidden` with fixed sidebar and topbar.
+
+* **Prompt 56 (Mobile Overflow Fix & Sticky Seller Sidebar):**
+  - Enforced `overflow-x-hidden w-full max-w-full` across layouts.
+
+* **Prompt 56 (Mobile Overflow Fix & Sticky Seller Sidebar):**
+  - Enforced `overflow-x-hidden w-full max-w-full` across layouts.
+
+* **Prompt 55 (Order Relation Eager Loading Fix):**
+  - Corrected `Order` eager loading query from undefined `shop` to `items.product.shop` in `BuyerDisputeController.php`.
 
 * **Prompt 55 (Order Relation Eager Loading Fix):**
   - Corrected `Order` eager loading query from undefined `shop` to `items.product.shop` in `BuyerDisputeController.php`.

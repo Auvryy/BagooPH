@@ -539,7 +539,7 @@ export default function BuyerHome({
 
                                 {/* Claimed Progress Bar */}
                                 <div className="mt-2 space-y-1">
-                                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                         <div 
                                             className="bg-gradient-to-r from-amber-500 to-[#E00D42] h-full rounded-full"
                                             style={{ width: `${deal.claimed_percent}%` }}
@@ -556,44 +556,8 @@ export default function BuyerHome({
                     </div>
                 </div>
 
-                {/* 5. 14 MASTER CATEGORIES VISUAL GRID */}
-                <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-100 space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div>
-                            <h3 className="font-bold text-slate-900 text-base">Categories Directory</h3>
-                            <p className="text-xs text-slate-500 font-mono">14 Verified Product Departments</p>
-                        </div>
-
-                        <Link href={route('buyer.search')} className="text-xs font-bold text-[#E00D42] hover:underline font-mono uppercase">
-                            View All ➔
-                        </Link>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 font-sans">
-                        {categories.map((cat) => {
-                            const IconComponent = getCategoryIcon(cat.slug);
-                            return (
-                                <Link
-                                    key={cat.id}
-                                    href={route('buyer.search', { category: cat.slug })}
-                                    className="p-3 rounded-xl bg-slate-50 hover:bg-white border border-slate-100 hover:border-[#E00D42]/40 hover:shadow-md transition text-center group flex flex-col items-center justify-between"
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-white text-slate-700 group-hover:text-[#E00D42] group-hover:scale-110 transition flex items-center justify-center shadow-2xs">
-                                        <IconComponent className="w-5 h-5" />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-800 mt-2 truncate w-full group-hover:text-[#E00D42] transition">
-                                        {cat.name}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                        {cat.products_count ?? 0} items
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
-                          {/* 6. "DAILY DISCOVER" & SEARCH PRODUCT FEED */}
-                <div id="product-feed" className="space-y-4">
+                {/* 5. "DAILY DISCOVER" & SEARCH PRODUCT FEED */}
+                <div id="product-feed" className="space-y-6 pt-2">
                     
                     {/* Search & Active Filters Header Banner (Triggered when searching or filtering) */}
                     {(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
@@ -958,19 +922,13 @@ export default function BuyerHome({
                                                 </div>
 
                                                 {/* Rating & Sold count */}
-                                                <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1">
+                                                <div className="flex items-center justify-between text-[10px] text-slate-500 font-sans pt-1">
                                                     <div className="flex items-center gap-0.5 text-amber-500 font-bold">
                                                         <Star className="w-3 h-3 fill-amber-400" />
                                                         <span>{Number(product.rating || 5.0).toFixed(1)}</span>
                                                     </div>
-                                                    <span>{product.sales_count ?? 120} sold</span>
+                                                    <span className="text-slate-400">{product.sales_count ?? 120} sold</span>
                                                 </div>
-                                            </div>
-
-                                            {/* Explore Details Hint */}
-                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between font-mono text-[10px] text-slate-400 group-hover:text-[#E00D42] transition">
-                                                <span className="uppercase font-bold">View Specs & Colors</span>
-                                                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                                             </div>
                                         </div>
                                     </Link>

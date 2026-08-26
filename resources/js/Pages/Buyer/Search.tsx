@@ -535,19 +535,13 @@ export default function SearchPage({
                                                     </div>
 
                                                     {/* Rating & Sold count */}
-                                                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1">
+                                                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-sans pt-1">
                                                         <div className="flex items-center gap-0.5 text-amber-500 font-bold">
                                                             <Star className="w-3 h-3 fill-amber-400" />
                                                             <span>{Number(product.rating || 5.0).toFixed(1)}</span>
                                                         </div>
-                                                        <span>{product.sales_count ?? 85} sold</span>
+                                                        <span className="text-slate-400">{product.sales_count ?? 85} sold</span>
                                                     </div>
-                                                </div>
-
-                                                {/* Card Footer Action */}
-                                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between font-mono text-[10px] text-slate-400 group-hover:text-[#E00D42] transition">
-                                                    <span className="uppercase font-bold">View Product</span>
-                                                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                                                 </div>
                                             </div>
                                         </Link>

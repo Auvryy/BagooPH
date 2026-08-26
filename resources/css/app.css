@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        color: #1E293B; /* Soft slate-800 */
+        background-color: #F8FAFC;
+    }
+
+    body {
+        letter-spacing: -0.008em;
+        line-height: 1.55;
+        color: #1E293B;
+    }
+
+    /* Soft typography for headings */
+    h1, h2, h3, h4, h5, h6 {
+        letter-spacing: -0.018em;
+        color: #0F172A; /* Slate-900 */
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+
+    p, span, label, input, button, a {
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+
+    /* Clean focus rings */
+    *:focus-visible {
+        outline: 2px solid rgba(224, 13, 66, 0.5);
+        outline-offset: 2px;
+    }
+
+    /* Global High-Visibility Border Enhancement for Easy Visual Distinction */
+    .border-slate-100 {
+        border-color: #E2E8F0 !important; /* Upgrade faint border-slate-100 to visible slate-200 */
+    }
+
+    .border-slate-200 {
+        border-color: #CBD5E1 !important; /* Upgrade border-slate-200 to clear high-contrast slate-300 */
+    }
+
+    .border-black\/10, .border-black\/15 {
+        border-color: rgba(0, 0, 0, 0.22) !important; /* Clearly demarcate landing and dark/light sections */
+    }
+}

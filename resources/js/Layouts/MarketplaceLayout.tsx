@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
-import CursorSpotlight from '@/Components/CursorSpotlight';
 import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
@@ -23,9 +22,6 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
 
     return (
         <div className="min-h-screen bg-[#ECEAE5] text-slate-900 flex flex-col font-sans relative selection:bg-[#E00D42] selection:text-white">
-            {/* Custom Interactive Cursor Spotlight */}
-            <CursorSpotlight />
-
             {/* Minimal Dynamic Responsive Header: Logo on Left, Nav on Right */}
             <header className={`sticky top-0 z-50 transition-colors duration-500 backdrop-blur-md ${
                 isDark 
