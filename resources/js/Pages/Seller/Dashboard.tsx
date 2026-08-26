@@ -73,22 +73,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
             title="Merchant Command Cockpit"
             subtitle={`Operational workstation & live telemetry for ${shop.name}`}
             actions={
-                <div className="flex items-center gap-2">
-                    <Link
-                        href={route('seller.orders.index')}
-                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-mono rounded-xl border border-slate-200 shadow-2xs transition"
-                    >
-                        <Printer className="w-3.5 h-3.5 text-[#E00D42]" />
-                        <span>Fulfillment Queue</span>
-                    </Link>
-                    <Link
-                        href={route('seller.products.index')}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xl shadow-xs transition uppercase"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>New Listing</span>
-                    </Link>
-                </div>
+                <Link
+                    href={route('seller.products.index')}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xs shadow-xs transition uppercase tracking-wider"
+                >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>New Listing</span>
+                </Link>
             }
         >
             <Head title="Merchant Cockpit — BagooPH" />

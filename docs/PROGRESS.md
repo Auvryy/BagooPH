@@ -6,21 +6,30 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
-### 📌 Prompt 65: High-Performance Landing Page Redesign & Antigravity MCP Suite (`2026-08-26 13:05`)
-- **Outcome:** Overhauled the Bagoo landing page (`Marketplace/Index.tsx`) below the hero with full-width value proposition split sections (Bagoo Express Fast Logistics, 100% Verified Stores KYC, and 10% Economics Ledger), an interactive 4-stage ecosystem sequencer with animated progress line, and responsive category showcase tabs with smooth image hover-zoom. Configured 5 Antigravity MCP servers (`postgres`, `puppeteer`, `sequential-thinking`, `fetch`, and `bagoo-security-auditor`).
-- **Build:** `npm run build` passed (13.29s).
+### 📌 Prompt 68: Hover Bridge Gap Fix, 2px Button Radii, High-Visibility Borders & Seller Topbar Declutter (`2026-08-26 16:10`)
+- **Outcome:** Resolved the hover dropdown disappearing issue on profile/user buttons in `BuyerLayout.tsx`, `DashboardLayout.tsx`, and `CourierLayout.tsx` by implementing a contiguous `.hover-bridge` and 250ms mouse-leave grace timeout. Calibrated button corner radius to crisp 2px (`rounded-xs`/`rounded-sm`) in `tailwind.config.js` and updated `docs/STYLE_GUIDE.md`. Elevated border contrast across all pages (`border-slate-300` in light mode, `border-slate-800` in dark mode) for clear visual accessibility. Decluttered the Seller topbar by removing duplicate buttons in favor of clean single CTA and unified profile menu.
+- **Build:** `npm run build` passed in 7.43s (0 errors).
 
-### 📌 Prompt 64: Interactive Seller, Admin & Courier Profile Dropdowns (`2026-08-26 09:15`)
-- **Outcome:** Converted static user avatar badges in `DashboardLayout.tsx` (Seller/Admin) and `CourierLayout.tsx` (Courier Riders) into interactive hover & click dropdown menus with direct navigation to Store Settings, Account Security, Buyer Mode switch, and Sign Out. Verified global `Plus Jakarta Sans` typography inheritance across all platform portals.
-- **Build:** `npm run build` passed (8.22s).
+### 📌 Prompt 67: Universal Soft Typography, 50% Reduced Radius & Buyer UX Decluttering (`2026-08-26 16:00`)
+- **Outcome:** Upgraded the design system to soft, eye-friendly typography across all portals. Reduced corner radius by 50% globally via `tailwind.config.js`. Decluttered Buyer Home by removing redundant categories directory.
+- **Build:** `npm run build` passed in 9.97s (0 errors).
 
-### 📌 Prompt 63: Universal UX Decluttering & Product Card Streamlining (`2026-08-26 09:10`)
-- **Outcome:** Streamlined product card aesthetics across `Home.tsx`, `Search.tsx`, and `ShopDetail.tsx` by removing redundant "View Specs & Colors" / "View Product" footer bars. Enhanced card breathing room, refined bold/medium typography contrast, and elevated clean visual hierarchy.
-- **Build:** `npm run build` passed (7.68s).
+### 📌 Prompt 66: Frontend Performance Optimization & Animation Streamlining (`2026-08-26 13:12`)
+- **Outcome:** Eliminated CPU/GPU rendering bottlenecks by removing `CursorSpotlight` from `MarketplaceLayout.tsx` and `GrainOverlay` from `Marketplace/Index.tsx`. Removed artificial loading delays and optimized scroll spy.
+- **Build:** `npm run build` passed in 7.60s (bundle reduced by 15%).
 
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 62)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 65)
+
+* **Prompt 65 (High-Performance Landing Page Redesign & Antigravity MCP Suite):**
+  - Overhauled landing page below hero with full-width value proposition splits and 4-stage ecosystem sequencer. Configured 5 MCP servers.
+
+* **Prompt 64 (Interactive Seller, Admin & Courier Profile Dropdowns):**
+  - Converted static user avatar badges in `DashboardLayout.tsx` and `CourierLayout.tsx` into interactive hover & click dropdown menus.
+
+* **Prompt 63 (Universal UX Decluttering & Product Card Streamlining):**
+  - Streamlined product card aesthetics by removing redundant footer bars. Enhanced breathing room and typography contrast.
 
 * **Prompt 62 (Modern Soft Typography Upgrade):**
   - Replaced sharp fonts with Plus Jakarta Sans and Inter across the entire application. Softened letter-spacing (-0.012em).

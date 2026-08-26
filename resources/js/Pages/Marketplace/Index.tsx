@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import { Category, Product, Shop } from '@/types';
-import GrainOverlay from '@/Components/GrainOverlay';
-import BagooLoadingScreen from '@/Components/BagooLoadingScreen';
 import { 
     ArrowRight, 
     Store, 
@@ -134,7 +132,7 @@ const CURATED_SHOWCASE = [
 export default function MarketplaceIndex({ categories = [], products, featuredShops = [] }: Props) {
     const [currentTime, setCurrentTime] = useState('12:00 PM');
     const [activeSectionId, setActiveSectionId] = useState<string>('hero');
-    const [isLoaded, setIsLoaded] = useState<boolean>(false);
+    const [isLoaded, setIsLoaded] = useState<boolean>(true);
     
     // Interactive 4-Stage Ecosystem State
     const [activeStep, setActiveStep] = useState<number>(0);
@@ -144,11 +142,6 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
     const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('all');
 
     useEffect(() => {
-        // Trigger left-to-right entrance animation right after loading sequence
-        const timer = setTimeout(() => {
-            setIsLoaded(true);
-        }, 1100);
-
         const updateTime = () => {
             const now = new Date();
             setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -156,15 +149,22 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
         updateTime();
         const clockInterval = setInterval(updateTime, 1000);
 
-        // Natural smooth scroll spy for dynamic adaptive navbar theme
+        // Lightweight smooth scroll spy with requestAnimationFrame throttling
+        let ticking = false;
         const handleScroll = () => {
-            const scrollPos = window.scrollY + 200;
-            for (let i = SECTIONS.length - 1; i >= 0; i--) {
-                const el = document.getElementById(SECTIONS[i].id);
-                if (el && el.offsetTop <= scrollPos) {
-                    setActiveSectionId(SECTIONS[i].id);
-                    break;
-                }
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const scrollPos = window.scrollY + 200;
+                    for (let i = SECTIONS.length - 1; i >= 0; i--) {
+                        const el = document.getElementById(SECTIONS[i].id);
+                        if (el && el.offsetTop <= scrollPos) {
+                            setActiveSectionId(SECTIONS[i].id);
+                            break;
+                        }
+                    }
+                    ticking = false;
+                });
+                ticking = true;
             }
         };
 
@@ -172,7 +172,6 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
         handleScroll();
 
         return () => {
-            clearTimeout(timer);
             clearInterval(clockInterval);
             window.removeEventListener('scroll', handleScroll);
         };
@@ -183,7 +182,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
         if (!isAutoPlaying) return;
         const interval = setInterval(() => {
             setActiveStep((prev) => (prev + 1) % 4);
-        }, 4000);
+        }, 5000);
         return () => clearInterval(interval);
     }, [isAutoPlaying]);
 
@@ -292,12 +291,6 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
     return (
         <MarketplaceLayout headerTheme={isDarkHeader ? 'dark' : 'light'}>
             <Head title="BagooPH — A New Standard in Multi-Role E-Commerce" />
-
-            {/* Jumping Letter Bagoo Intro Loading Screen */}
-            <BagooLoadingScreen onComplete={() => setIsLoaded(true)} />
-
-            {/* Grain & Noise Film Overlay */}
-            <GrainOverlay />
 
             {/* MAIN CONTAINER */}
             <div className="relative font-sans selection:bg-[#E00D42] selection:text-white">

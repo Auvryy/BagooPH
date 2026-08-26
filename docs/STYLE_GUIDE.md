@@ -1,6 +1,6 @@
 # 🎨 UI Design System & Professional Styling Guide
 
-This guide establishes the visual identity, UI rules, and design principles for the platform. The goal is a **sleek, modern, and restrained aesthetic** (reminiscent of top-tier products like Stripe, Linear, or Vercel Marketplace), avoiding generic "AI-generated" designs.
+This guide establishes the visual identity, UI rules, and design principles for the BagooPH platform. The goal is a **sleek, modern, and restrained aesthetic** with high legibility, crisp 2px–6px corner geometry, and clear high-contrast section borders.
 
 ---
 
@@ -16,70 +16,57 @@ The crimson red (`#E00D42`) is the **sole accent & primary brand color** shared 
 | `brand-600` | `#C20836` | Primary hover state |
 | `brand-700` | `#A1052B` | Active / click / pressed state |
 
-### Neutrals (Minimalist Dark/Light foundation):
-- **Backgrounds:** Clean crisp whites (`#FFFFFF`) with subtle off-white canvas (`#F8FAFC` / `bg-slate-50`).
-- **Borders:** Crisp, razor-thin borders (`border-slate-200` or `border-slate-200/80`). Avoid thick, heavy outlines.
-- **Typography:** High-contrast slate hierarchy (`text-slate-900` for headings, `text-slate-600` for body, `text-slate-400` for muted captions).
+### Neutrals & High-Visibility Structural Contrast:
+- **Backgrounds:** Clean crisp whites (`#FFFFFF`) with subtle canvas (`#F8FAFC` / `bg-slate-50`).
+- **High-Visibility Borders:** Clear, distinguishable borders (`border-slate-300` or `border-slate-300/90` in light mode; `border-slate-800` / `border-slate-700` in dark mode). **Never use faint/invisible borders** (`border-slate-100` or `border-black/5`) so users can easily distinguish sections, cards, and data matrices.
+- **Typography:** Soft high-contrast slate hierarchy (`text-slate-900` for headings, `text-slate-800` for body, `text-slate-500` for captions).
 
 ---
 
-## 📐 2. Border Radius Philosophy (No "AI Pill Slop")
+## 📐 2. Crisp Corner Radius Philosophy (2px Buttons & Architectural Edges)
 
 > **CRITICAL RULE ON CORNER RADIUS:**
-> Avoid excessive, overly bubbly shapes (e.g. `rounded-3xl` or `rounded-full` on everything) and avoid harsh sharp corners (`rounded-none`).
-> Use refined, geometric radii that give a sharp, premium software feel:
+> Avoid bubbly "AI pill slop" (e.g. `rounded-2xl`, `rounded-3xl` or `rounded-full` on everything).
+> Use crisp, architectural radii that give a sharp, precision engineering feel:
 
-| UI Component | Standard Tailwind Class | Approximate Radius | Description |
+| UI Component | Standard Tailwind Class | Radius Size | Description |
 |---|---|---|---|
-| **Buttons (Primary & Secondary)** | `rounded-lg` or `rounded-md` | 6px – 8px | Sleek, compact, professional look |
-| **Form Inputs & Select Dropdowns** | `rounded-lg` | 8px | Clean rectangular structure |
-| **Cards & Content Panels** | `rounded-xl` | 12px | Structured framing without bubbly bubbles |
-| **Modals & Dialogs** | `rounded-xl` | 12px | Balanced viewport presence |
-| **Status Tags / Pill Badges** | `rounded-md` or `rounded-full` | 6px / Pill | Compact indicators |
-| **Product Image Containers** | `rounded-lg` | 8px | Clean aspect ratio borders |
+| **Buttons (Primary & Secondary)** | `rounded-xs` or `rounded-sm` | **2px** | Crisp, architectural, precision software look |
+| **Form Inputs & Select Dropdowns** | `rounded-xs` or `rounded-sm` | **2px – 3px** | Clean rectangular structure |
+| **Cards & Content Panels** | `rounded-md` or `rounded-lg` | **4px – 6px** | Structured framing with distinct boundaries |
+| **Modals & Dialogs** | `rounded-lg` | **6px** | Balanced viewport presence |
+| **Status Tags / Badges** | `rounded-xs` or `rounded-sm` | **2px** | Compact, sharp indicators (no round pill bubbles) |
+| **Product Image Containers** | `rounded-xs` or `rounded-sm` | **2px – 4px** | Clean aspect ratio framing |
 
 ---
 
-## 💎 3. Elevation, Borders & Shadows
+## 🖱️ 3. Hover Menu & Dropdown Bridge Standard
 
-- **Subtle, Crisp Shadows:** Avoid massive blurry drop-shadows. Use `shadow-xs` or `shadow-sm` layered with hairline borders:
-  ```html
-  <!-- Example: Clean Modern Card -->
-  <div class="bg-white border border-slate-200/80 rounded-xl shadow-xs p-6 hover:border-slate-300 transition-colors">
-  ```
-- **Micro-Interactions:** Quick, smooth transitions (`duration-150 ease-out` or `duration-200`). Use subtle active press effect: `active:scale-[0.98]` or `active:scale-[0.99]`.
+> **HOVER DROPDOWN GAP PREVENTION:**
+> All hover dropdowns (Profile, Settings, Filters) must implement a seamless physical bridge (`before:content-[''] before:absolute before:-top-3 before:left-0 before:right-0 before:h-3`) and a **250ms mouse-leave grace timeout**.
+> Users must NEVER experience dropdown disappearing mid-movement when moving the cursor from trigger to menu.
 
 ---
 
-## 🔘 4. Standard Component Templates
+## 💎 4. Standard Component Templates
 
-### Primary Action Button:
+### Primary Action Button (2px Radius):
 ```tsx
-<button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-semibold rounded-lg shadow-xs transition duration-150">
+<button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-semibold rounded-xs shadow-xs transition duration-150 font-mono uppercase tracking-wider">
   <span>Confirm & Proceed</span>
 </button>
 ```
 
-### Secondary / Ghost Button:
+### Secondary / Ghost Button (2px Radius):
 ```tsx
-<button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-medium rounded-lg transition duration-150">
+<button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-medium rounded-xs transition duration-150">
   <span>Cancel</span>
 </button>
 ```
 
-### Form Input:
+### High-Visibility Card:
 ```tsx
-<input 
-  type="text" 
-  className="w-full px-3.5 py-2 text-xs text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] placeholder:text-slate-400 transition" 
-  placeholder="Enter value..."
-/>
-```
-
-### Clean Table Row:
-```tsx
-<tr className="border-b border-slate-100 hover:bg-slate-50/60 transition duration-100">
-  <td className="py-3.5 px-4 text-xs font-medium text-slate-900">#TRK-10928</td>
-  <td className="py-3.5 px-4 text-xs text-slate-600">Pending Pickup</td>
-</tr>
+<div className="bg-white border border-slate-300 rounded-md shadow-xs p-6 hover:border-slate-400 transition-colors">
+  <!-- Content -->
+</div>
 ```

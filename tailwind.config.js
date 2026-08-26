@@ -16,6 +16,18 @@ export default {
                 sans: ['"Plus Jakarta Sans"', 'Inter', ...defaultTheme.fontFamily.sans],
                 mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
             },
+            borderRadius: {
+                none: '0px',
+                xs: '2px',
+                sm: '2px',
+                DEFAULT: '2px',
+                md: '4px',
+                lg: '4px',
+                xl: '6px',
+                '2xl': '8px',
+                '3xl': '8px',
+                full: '9999px',
+            },
             colors: {
                 brand: {
                     50: '#FDF2F4',
