@@ -6,21 +6,24 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
+### 📌 Prompt 69: Permanent Design System Specification & Anti-Hallucination Documentation Overhaul (`2026-08-26 16:55`)
+- **Outcome:** Overhauled and codified [`docs/STYLE_GUIDE.md`](file:///home/andy/Projects/bagoo/docs/STYLE_GUIDE.md) and [`GEMINI.md`](file:///home/andy/Projects/bagoo/GEMINI.md) to serve as permanent, immutable design tokens and anti-hallucination guardrails for all future AI agents. Documented the **Architectural Precision & Soft Ergonomics** standard: 2px button corner radii (`rounded-xs`/`rounded-sm`), high-visibility structural borders (`border-slate-300`), soft typography (`#1E293B` body text, negative tracking), and zero-shift absolute overlap navigation dropdowns (`top-full -mt-0.5 pt-1`).
+- **Build:** `npm run build` passed in 6.59s (0 errors).
+
 ### 📌 Prompt 68: Hover Bridge Gap Fix, 2px Button Radii, High-Visibility Borders & Seller Topbar Declutter (`2026-08-26 16:10`)
-- **Outcome:** Resolved the hover dropdown disappearing issue on profile/user buttons in `BuyerLayout.tsx`, `DashboardLayout.tsx`, and `CourierLayout.tsx` by implementing a contiguous `.hover-bridge` and 250ms mouse-leave grace timeout. Calibrated button corner radius to crisp 2px (`rounded-xs`/`rounded-sm`) in `tailwind.config.js` and updated `docs/STYLE_GUIDE.md`. Elevated border contrast across all pages (`border-slate-300` in light mode, `border-slate-800` in dark mode) for clear visual accessibility. Decluttered the Seller topbar by removing duplicate buttons in favor of clean single CTA and unified profile menu.
+- **Outcome:** Resolved the hover dropdown disappearing issue on profile/user buttons in `BuyerLayout.tsx`, `DashboardLayout.tsx`, and `CourierLayout.tsx` by implementing pure absolute overlap and 250ms grace timeout. Calibrated button corner radius to crisp 2px in `tailwind.config.js`. Elevated border contrast across all pages (`border-slate-300`).
 - **Build:** `npm run build` passed in 7.43s (0 errors).
 
 ### 📌 Prompt 67: Universal Soft Typography, 50% Reduced Radius & Buyer UX Decluttering (`2026-08-26 16:00`)
 - **Outcome:** Upgraded the design system to soft, eye-friendly typography across all portals. Reduced corner radius by 50% globally via `tailwind.config.js`. Decluttered Buyer Home by removing redundant categories directory.
 - **Build:** `npm run build` passed in 9.97s (0 errors).
 
-### 📌 Prompt 66: Frontend Performance Optimization & Animation Streamlining (`2026-08-26 13:12`)
-- **Outcome:** Eliminated CPU/GPU rendering bottlenecks by removing `CursorSpotlight` from `MarketplaceLayout.tsx` and `GrainOverlay` from `Marketplace/Index.tsx`. Removed artificial loading delays and optimized scroll spy.
-- **Build:** `npm run build` passed in 7.60s (bundle reduced by 15%).
-
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 65)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 66)
+
+* **Prompt 66 (Frontend Performance Optimization & Animation Streamlining):**
+  - Eliminated CPU/GPU rendering bottlenecks by removing `CursorSpotlight` and `GrainOverlay`. Removed artificial loading delays and optimized scroll spy.
 
 * **Prompt 65 (High-Performance Landing Page Redesign & Antigravity MCP Suite):**
   - Overhauled landing page below hero with full-width value proposition splits and 4-stage ecosystem sequencer. Configured 5 MCP servers.
