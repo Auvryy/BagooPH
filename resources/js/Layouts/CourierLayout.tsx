@@ -16,7 +16,8 @@ import {
     ShieldCheck, 
     Navigation, 
     Package,
-    TrendingUp
+    TrendingUp,
+    ChevronDown
 } from 'lucide-react';
 
 interface Props {
@@ -29,6 +30,7 @@ interface Props {
 export default function CourierLayout({ children, title, subtitle, isOnline = true }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [currentTime, setCurrentTime] = useState('');
     const [dutyLoading, setDutyLoading] = useState(false);
 
@@ -193,14 +195,65 @@ export default function CourierLayout({ children, title, subtitle, isOnline = tr
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2.5 pl-1">
-                            <div className="w-8 h-8 rounded-full bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                                {user?.name.charAt(0)}
-                            </div>
-                            <div className="hidden sm:block text-left font-mono">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{user?.name}</p>
-                                <span className="text-[10px] text-emerald-600 font-bold uppercase">Authorized Driver</span>
-                            </div>
+                        <div 
+                            className="relative"
+                            onMouseEnter={() => setUserMenuOpen(true)}
+                            onMouseLeave={() => setUserMenuOpen(false)}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition group focus:outline-hidden"
+                            >
+                                <div className="w-8 h-8 rounded-xl bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition">
+                                    {user?.name.charAt(0)}
+                                </div>
+                                <div className="hidden sm:block text-left font-mono">
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
+                                        <ChevronDown className="w-3 h-3 text-slate-400 group-hover:rotate-180 transition-transform" />
+                                    </div>
+                                    <span className="text-[10px] text-emerald-600 font-bold uppercase">Authorized Driver</span>
+                                </div>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {userMenuOpen && (
+                                <div className="absolute right-0 mt-1 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 text-slate-800 font-sans animate-scale-in">
+                                    <div className="px-4 py-2 border-b border-slate-100 font-mono text-xs">
+                                        <p className="font-bold text-slate-900 truncate">{user?.name}</p>
+                                        <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                                    </div>
+
+                                    <Link
+                                        href={route('courier.profile')}
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                    >
+                                        <UserIcon className="w-4 h-4 text-slate-400" />
+                                        <span>Driver & Vehicle Specs</span>
+                                    </Link>
+
+                                    <Link
+                                        href={route('profile.edit')}
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                    >
+                                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                        <span>Account Security</span>
+                                    </Link>
+
+                                    <div className="border-t border-slate-100 mt-1 pt-1">
+                                        <Link
+                                            href={route('logout')}
+                                            method="post"
+                                            as="button"
+                                            className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            <span>Sign Out</span>
+                                        </Link>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

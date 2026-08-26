@@ -6,20 +6,39 @@
 
 ## 🚀 Recent Milestones (Last 3 Updates)
 
-### 📌 Prompt 61: Added Lines Changed Counter & Estimated Token Usage Protocol (`2026-08-26 09:01`)
-- **Outcome:** Updated Section 5 of `GEMINI.md` with Rules 5.5 and 5.6 requiring concise output of total lines changed count and estimated prompt tokens for strict token minimization across all future AI responses.
+### 📌 Prompt 64: Interactive Seller, Admin & Courier Profile Dropdowns (`2026-08-26 09:15`)
+- **Outcome:** Converted static user avatar badges in `DashboardLayout.tsx` (Seller/Admin) and `CourierLayout.tsx` (Courier Riders) into interactive hover & click dropdown menus with direct navigation to Store Settings, Account Security, Buyer Mode switch, and Sign Out. Verified global `Plus Jakarta Sans` typography inheritance across all platform portals.
+- **Build:** `npm run build` passed (8.22s).
 
-### 📌 Prompt 60: Seamless Integrated Purchases & Orders Tab in Buyer Account Hub (`2026-08-26 08:48`)
-- **Outcome:** Integrated the full Purchases & Orders tracking center as the primary default active tab (`'orders'`) within `Buyer/Profile.tsx`. When a user clicks their profile pill in the header, it opens `/buyer/profile?tab=orders` showing all order telemetry, status filters, item summaries, and tracking links, alongside the left navigation sidebar for managing personal info, PSGC addresses, simulated wallet, and vouchers.
-- **Build:** `npm run build` passed (8.00s).
+### 📌 Prompt 63: Universal UX Decluttering & Product Card Streamlining (`2026-08-26 09:10`)
+- **Outcome:** Streamlined product card aesthetics across `Home.tsx`, `Search.tsx`, and `ShopDetail.tsx` by removing redundant "View Specs & Colors" / "View Product" footer bars. Enhanced card breathing room, refined bold/medium typography contrast, and elevated clean visual hierarchy.
+- **Build:** `npm run build` passed (7.68s).
 
-### 📌 Prompt 59: 24h Session Token Lifetime, Profile Hover Dropdown & Account Hub Sidebar (`2026-08-26 08:42`)
-- **Outcome:** (1) Configured 1-day session lifetime (`SESSION_LIFETIME=1440` in `config/session.php` and `.env`), (2) Upgraded Buyer navigation header profile pill with direct single-click navigation to My Orders and a clean 3-item hover dropdown (Profile, My Orders, Sign Out), (3) Overhauled Buyer Profile into a Swiss-style multi-tab Account Hub with dedicated left sidebar (Personal Info & Password Security, PSGC Address Book, Digital Wallet Sandbox, Vouchers).
-- **Build:** `npm run build` passed (8.90s).
+### 📌 Prompt 62: Modern Soft Typography Upgrade (Plus Jakarta Sans & Inter) (`2026-08-26 09:06`)
+- **Outcome:** Replaced sharp/edgy fonts with **Plus Jakarta Sans** and **Inter** across the entire application. Enabled subpixel antialiasing, clean text-rendering optimization, and softened typography letter-spacing (`-0.012em`) in `app.blade.php`, `app.css`, and `tailwind.config.js` for an eye-friendly, comfortable reading experience.
+- **Build:** `npm run build` passed (7.99s).
 
 ---
 
-## 🗂️ Consolidated Milestone History (Prompts 1 – 58)
+## 🗂️ Consolidated Milestone History (Prompts 1 – 61)
+
+* **Prompt 61 (Lines Changed Counter & Token Protocol):**
+  - Updated GEMINI.md response protocol with line counter and token usage metrics.
+
+* **Prompt 60 (Integrated Orders Tab in Buyer Profile):**
+  - Integrated purchases and orders tracking directly into the unified profile account hub.
+
+* **Prompt 60 (Integrated Orders Tab in Buyer Profile):**
+  - Integrated purchases and orders tracking directly into the unified profile account hub.
+
+* **Prompt 59 (24h Session Token Lifetime & Account Hub Sidebar):**
+  - Configured 1-day session lifetime and profile hover dropdown.
+
+* **Prompt 59 (24h Session Token Lifetime & Account Hub Sidebar):**
+  - Configured 1-day session lifetime and profile hover dropdown.
+
+* **Prompt 58 (Interconnected Courier & Logistics Sorting Hub):**
+  - Built complete Courier Dispatch Board, Earnings Ledger, Live Chat, Profile, and Central Logistics Console.
 
 * **Prompt 58 (Interconnected Courier & Logistics Sorting Hub):**
   - Built complete Courier Dispatch Board, Earnings Ledger, Live Chat, Profile, and Central Logistics Console.
