@@ -8,9 +8,16 @@ interface Props {
     title?: string;
     subtitle?: string;
     headerBadge?: string;
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export default function GuestLayout({ children, title, subtitle, headerBadge }: PropsWithChildren<Props>) {
+export default function GuestLayout({ children, title, subtitle, headerBadge, maxWidth = 'md' }: PropsWithChildren<Props>) {
+    const maxWidthClass = {
+        sm: 'max-w-sm',
+        md: 'max-w-md',
+        lg: 'max-w-lg',
+        xl: 'max-w-xl',
+    }[maxWidth];
     return (
         <div className="relative min-h-screen bg-[#ECEAE5] text-[#111111] font-sans selection:bg-[#E00D42] selection:text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-hidden">
             {/* Grain & Noise Overlay */}
@@ -48,7 +55,7 @@ export default function GuestLayout({ children, title, subtitle, headerBadge }: 
             </header>
 
             {/* Main Auth Container */}
-            <main className="relative z-20 w-full max-w-md mx-auto my-auto py-6">
+            <main className={`relative z-20 w-full ${maxWidthClass} mx-auto my-auto py-6`}>
                 <div className="bg-white rounded-2xl border border-black/15 p-6 sm:p-8 shadow-xl relative overflow-hidden">
                     {/* Top Red Accent Line */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#E00D42]"></div>

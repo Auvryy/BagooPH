@@ -34,13 +34,13 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
             <Head title="Admin Console Sign In — BagooPH" />
 
             {/* Security Warning Notice */}
-            <div className="mb-5 p-3 rounded-xs bg-slate-900 border border-slate-700 text-white font-mono text-[11px] flex items-center gap-2.5">
+            <div className="mb-5 p-3 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-[11px] flex items-center gap-2.5">
                 <ShieldAlert className="w-4 h-4 text-[#E00D42] shrink-0" />
                 <span>Restricted Administrative Access. All actions and sessions are cryptographically logged.</span>
             </div>
 
             {status && (
-                <div className="mb-5 p-3 rounded-xs bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
                     {status}
                 </div>
             )}
@@ -57,7 +57,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="admin@bagoo.ph"
                             autoComplete="username"
                             autoFocus
@@ -89,7 +89,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type="password"
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -114,7 +114,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-xs shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 font-mono"
+                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 font-mono"
                     >
                         <span>{processing ? 'Authenticating Admin Key...' : 'Authorize Console Access'}</span>
                         <ArrowRight className="w-4 h-4" />

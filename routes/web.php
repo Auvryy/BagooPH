@@ -33,15 +33,17 @@ use Inertia\Inertia;
 |--------------------------------------------------------------------------
 */
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 
 Route::domain('seller.{domain}')->group(function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isSeller()) {
             return redirect()->route('seller.dashboard');
         }
-        return app(AuthenticatedSessionController::class)->createSeller();
+        return Inertia::render('Seller/Landing');
     });
-    Route::get('/login', fn() => redirect('/'));
+    Route::get('/login', [AuthenticatedSessionController::class, 'createSeller']);
+    Route::get('/register', [RegisteredUserController::class, 'createSeller']);
 });
 
 Route::domain('courier.{domain}')->group(function () {
@@ -51,7 +53,8 @@ Route::domain('courier.{domain}')->group(function () {
         }
         return app(AuthenticatedSessionController::class)->createCourier();
     });
-    Route::get('/login', fn() => redirect('/'));
+    Route::get('/login', [AuthenticatedSessionController::class, 'createCourier']);
+    Route::get('/register', [RegisteredUserController::class, 'createCourier']);
 });
 
 Route::domain('admin.{domain}')->group(function () {
@@ -61,8 +64,15 @@ Route::domain('admin.{domain}')->group(function () {
         }
         return app(AuthenticatedSessionController::class)->createAdmin();
     });
-    Route::get('/login', fn() => redirect('/'));
+    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
 });
+
+Route::get('/seller', function () {
+    if (auth()->check() && auth()->user()->isSeller()) {
+        return redirect()->route('seller.dashboard');
+    }
+    return Inertia::render('Seller/Landing');
+})->name('seller.landing');
 
 /*
 |--------------------------------------------------------------------------

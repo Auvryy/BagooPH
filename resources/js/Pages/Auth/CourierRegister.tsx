@@ -2,9 +2,31 @@ import React, { FormEventHandler, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
-import { ArrowRight, Lock, Mail, Truck, User, ShieldCheck, Check, DollarSign, Upload, FileText, X, Phone, MapPin, Hash } from 'lucide-react';
+import { 
+    ArrowRight, 
+    ArrowLeft, 
+    Lock, 
+    Mail, 
+    Truck, 
+    User, 
+    ShieldCheck, 
+    Check, 
+    DollarSign, 
+    Upload, 
+    FileText, 
+    X, 
+    Phone, 
+    MapPin, 
+    Hash, 
+    Bike, 
+    FileCheck2, 
+    Car 
+} from 'lucide-react';
 
 export default function CourierRegister() {
+    const [currentStep, setCurrentStep] = useState(1);
+    const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
     const idInputRef = useRef<HTMLInputElement>(null);
     const licenseInputRef = useRef<HTMLInputElement>(null);
     const orCrInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +94,11 @@ export default function CourierRegister() {
             setData('driver_license', file);
             setLicenseFileName(file.name);
             setLicenseFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+            setStepErrors(prev => {
+                const next = { ...prev };
+                delete next.driver_license;
+                return next;
+            });
         }
     };
 
@@ -88,6 +115,11 @@ export default function CourierRegister() {
             setData('or_cr_document', file);
             setOrCrFileName(file.name);
             setOrCrFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+            setStepErrors(prev => {
+                const next = { ...prev };
+                delete next.or_cr_document;
+                return next;
+            });
         }
     };
 
@@ -96,6 +128,42 @@ export default function CourierRegister() {
         setOrCrFileName(null);
         setOrCrFileSize(null);
         if (orCrInputRef.current) orCrInputRef.current.value = '';
+    };
+
+    const validateStep1 = () => {
+        const newErrors: Record<string, string> = {};
+        if (!data.name.trim()) newErrors.name = 'Full legal name is required';
+        if (!data.email.trim()) {
+            newErrors.email = 'Email address is required';
+        } else if (!/\S+@\S+\.\S+/.test(data.email)) {
+            newErrors.email = 'Valid email is required';
+        }
+        if (!data.phone.trim()) newErrors.phone = 'Contact number is required';
+        if (!data.city.trim()) newErrors.city = 'Operating city is required';
+        setStepErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateStep2 = () => {
+        const newErrors: Record<string, string> = {};
+        if (!data.vehicle_type.trim()) newErrors.vehicle_type = 'Vehicle type is required';
+        if (!data.plate_number.trim()) newErrors.plate_number = 'Plate / conduction number is required';
+        if (!data.license_number.trim()) newErrors.license_number = 'Driver license number is required';
+        setStepErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (currentStep === 1) {
+            if (validateStep1()) setCurrentStep(2);
+        } else if (currentStep === 2) {
+            if (validateStep2()) setCurrentStep(3);
+        }
+    };
+
+    const handlePrev = () => {
+        setStepErrors({});
+        setCurrentStep(prev => Math.max(1, prev - 1));
     };
 
     const submit: FormEventHandler = (e) => {
@@ -110,366 +178,459 @@ export default function CourierRegister() {
     return (
         <GuestLayout 
             title="Join Courier Fleet" 
-            subtitle="Claim delivery tasks in the first-come pool with guaranteed ₱50/₱80 fare payouts"
-            headerBadge="COURIER DISPATCH // 04"
+            subtitle="Claim delivery tasks in the first-come pool with guaranteed ₱60/trip base payouts"
+            headerBadge="COURIER DISPATCH // 03"
+            maxWidth="lg"
         >
             <Head title="Courier Registration — BagooPH" />
 
+            {/* STEPPER PROGRESS HEADER */}
+            <div className="mb-6 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono font-bold">
+                    <span className="text-emerald-700 uppercase tracking-wider">
+                        Step {currentStep} of 3: {currentStep === 1 ? 'Rider Identity' : currentStep === 2 ? 'Vehicle & Fleet Specs' : 'License KYC & Security'}
+                    </span>
+                    <span className="text-slate-400 font-mono text-[11px]">
+                        {currentStep === 1 ? '33%' : currentStep === 2 ? '66%' : '100%'} Completed
+                    </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                        className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
+                        style={{ width: currentStep === 1 ? '33%' : currentStep === 2 ? '66%' : '100%' }}
+                    ></div>
+                </div>
+
+                {/* Step Indicators */}
+                <div className="grid grid-cols-3 gap-2 pt-2 font-mono text-[11px]">
+                    <div className={`p-2 rounded-lg border text-center transition ${
+                        currentStep === 1 
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold' 
+                            : currentStep > 1 
+                            ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' 
+                            : 'bg-white border-slate-200 text-slate-400'
+                    }`}>
+                        <span className="flex items-center justify-center gap-1">
+                            {currentStep > 1 ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : '1.'} Rider Info
+                        </span>
+                    </div>
+
+                    <div className={`p-2 rounded-lg border text-center transition ${
+                        currentStep === 2 
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold' 
+                            : currentStep > 2 
+                            ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' 
+                            : 'bg-white border-slate-200 text-slate-400'
+                    }`}>
+                        <span className="flex items-center justify-center gap-1">
+                            {currentStep > 2 ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : '2.'} Vehicle
+                        </span>
+                    </div>
+
+                    <div className={`p-2 rounded-lg border text-center transition ${
+                        currentStep === 3 
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold' 
+                            : 'bg-white border-slate-200 text-slate-400'
+                    }`}>
+                        <span>3. KYC & Security</span>
+                    </div>
+                </div>
+            </div>
+
             <form onSubmit={submit} className="space-y-4 font-mono">
-                <div>
-                    <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                        Rider Full Name *
-                    </label>
-                    <div className="relative">
-                        <User className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            id="name"
-                            type="text"
-                            name="name"
-                            value={data.name}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                            placeholder="e.g. Roberto Gomez"
-                            autoComplete="name"
-                            autoFocus
-                            onChange={(e) => setData('name', e.target.value)}
-                            required
-                        />
-                    </div>
-                    <InputError message={errors.name} className="mt-1" />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Email Address *
-                        </label>
-                        <div className="relative">
-                            <Mail className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input
-                                id="email"
-                                type="email"
-                                name="email"
-                                value={data.email}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                placeholder="rider@domain.com"
-                                autoComplete="username"
-                                onChange={(e) => setData('email', e.target.value)}
-                                required
-                            />
+                
+                {/* STEP 1: RIDER IDENTITY */}
+                {currentStep === 1 && (
+                    <div className="space-y-4 animate-fade-in">
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Full Legal Name *
+                            </label>
+                            <div className="relative">
+                                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    id="name"
+                                    type="text"
+                                    name="name"
+                                    value={data.name}
+                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                    placeholder="e.g. Juan Dela Cruz"
+                                    autoFocus
+                                    onChange={(e) => {
+                                        setData('name', e.target.value);
+                                        if (stepErrors.name) setStepErrors(prev => ({ ...prev, name: '' }));
+                                    }}
+                                    required
+                                />
+                            </div>
+                            {(stepErrors.name || errors.name) && (
+                                <InputError message={stepErrors.name || errors.name} className="mt-1" />
+                            )}
                         </div>
-                        <InputError message={errors.email} className="mt-1" />
-                    </div>
 
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Mobile Contact Phone *
-                        </label>
-                        <div className="relative">
-                            <Phone className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input
-                                id="phone"
-                                type="tel"
-                                name="phone"
-                                value={data.phone}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                placeholder="+63 917 000 0000"
-                                onChange={(e) => setData('phone', e.target.value)}
-                                required
-                            />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Email Address *
+                                </label>
+                                <div className="relative">
+                                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        name="email"
+                                        value={data.email}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="rider@domain.com"
+                                        autoComplete="username"
+                                        onChange={(e) => {
+                                            setData('email', e.target.value);
+                                            if (stepErrors.email) setStepErrors(prev => ({ ...prev, email: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.email || errors.email) && (
+                                    <InputError message={stepErrors.email || errors.email} className="mt-1" />
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Mobile Phone Number *
+                                </label>
+                                <div className="relative">
+                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="phone"
+                                        type="tel"
+                                        name="phone"
+                                        value={data.phone}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="+63 917 123 4567"
+                                        onChange={(e) => {
+                                            setData('phone', e.target.value);
+                                            if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.phone || errors.phone) && (
+                                    <InputError message={stepErrors.phone || errors.phone} className="mt-1" />
+                                )}
+                            </div>
                         </div>
-                        <InputError message={errors.phone} className="mt-1" />
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Residential Base Address *
-                        </label>
-                        <div className="relative">
-                            <MapPin className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Base City / Municipality *
+                            </label>
+                            <div className="relative">
+                                <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    id="city"
+                                    type="text"
+                                    name="city"
+                                    value={data.city}
+                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                    placeholder="e.g. Quezon City, Pasig, Makati"
+                                    onChange={(e) => {
+                                        setData('city', e.target.value);
+                                        if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
+                                    }}
+                                    required
+                                />
+                            </div>
+                            {(stepErrors.city || errors.city) && (
+                                <InputError message={stepErrors.city || errors.city} className="mt-1" />
+                            )}
+                        </div>
+
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2"
+                            >
+                                <span>Continue to Vehicle Specs</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 2: VEHICLE & FLEET SPECS */}
+                {currentStep === 2 && (
+                    <div className="space-y-4 animate-fade-in">
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Delivery Vehicle Type *
+                            </label>
+                            <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+                                {['Motorcycle', 'Scooter', 'Sedan / Van'].map((type) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => setData('vehicle_type', type)}
+                                        className={`p-3 rounded-lg border text-center transition flex flex-col items-center gap-1.5 ${
+                                            data.vehicle_type === type
+                                                ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {type === 'Sedan / Van' ? <Car className="w-5 h-5 text-indigo-600" /> : <Bike className="w-5 h-5 text-emerald-600" />}
+                                        <span className="text-[11px]">{type}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Vehicle Plate / MV File No. *
+                                </label>
+                                <div className="relative">
+                                    <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="plate_number"
+                                        type="text"
+                                        name="plate_number"
+                                        value={data.plate_number}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="e.g. 123-ABC / N12345"
+                                        onChange={(e) => {
+                                            setData('plate_number', e.target.value);
+                                            if (stepErrors.plate_number) setStepErrors(prev => ({ ...prev, plate_number: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.plate_number || errors.plate_number) && (
+                                    <InputError message={stepErrors.plate_number || errors.plate_number} className="mt-1" />
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Driver's License Number *
+                                </label>
+                                <div className="relative">
+                                    <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="license_number"
+                                        type="text"
+                                        name="license_number"
+                                        value={data.license_number}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="e.g. N01-12-345678"
+                                        onChange={(e) => {
+                                            setData('license_number', e.target.value);
+                                            if (stepErrors.license_number) setStepErrors(prev => ({ ...prev, license_number: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.license_number || errors.license_number) && (
+                                    <InputError message={stepErrors.license_number || errors.license_number} className="mt-1" />
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Residential / Garage Address
+                            </label>
                             <input
                                 id="address"
                                 type="text"
                                 name="address"
                                 value={data.address}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                placeholder="e.g. 12 Dispatcher Ave"
+                                className="w-full px-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                placeholder="Unit / Street / Barangay"
                                 onChange={(e) => setData('address', e.target.value)}
-                                required
                             />
+                            <InputError message={errors.address} className="mt-1" />
                         </div>
-                        <InputError message={errors.address} className="mt-1" />
-                    </div>
 
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Operating City / Hub Area *
-                        </label>
-                        <input
-                            id="city"
-                            type="text"
-                            name="city"
-                            value={data.city}
-                            className="w-full px-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                            placeholder="e.g. Pasig, Metro Manila"
-                            onChange={(e) => setData('city', e.target.value)}
-                            required
-                        />
-                        <InputError message={errors.city} className="mt-1" />
-                    </div>
-                </div>
-
-                {/* Fleet Specs */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Vehicle Type *
-                        </label>
-                        <div className="relative">
-                            <Truck className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <select
-                                id="vehicle_type"
-                                name="vehicle_type"
-                                value={data.vehicle_type}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                onChange={(e) => setData('vehicle_type', e.target.value)}
-                                required
+                        <div className="flex items-center gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={handlePrev}
+                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition uppercase tracking-wider flex items-center justify-center gap-1.5"
                             >
-                                <option value="Motorcycle">Motorcycle (Express)</option>
-                                <option value="Van">Delivery Van (Bulk)</option>
-                                <option value="Bicycle">Bicycle (Eco)</option>
-                                <option value="Truck">Light Truck (Cargo)</option>
-                            </select>
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <span>Back</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                className="w-2/3 py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2"
+                            >
+                                <span>Continue to Documents</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
-                        <InputError message={errors.vehicle_type} className="mt-1" />
                     </div>
+                )}
 
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Plate Number *
-                        </label>
-                        <input
-                            id="plate_number"
-                            type="text"
-                            name="plate_number"
-                            value={data.plate_number}
-                            className="w-full px-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition uppercase"
-                            placeholder="e.g. NCS-8892"
-                            onChange={(e) => setData('plate_number', e.target.value)}
-                            required
-                        />
-                        <InputError message={errors.plate_number} className="mt-1" />
-                    </div>
-
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            LTO License No.
-                        </label>
-                        <input
-                            id="license_number"
-                            type="text"
-                            name="license_number"
-                            value={data.license_number}
-                            className="w-full px-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition uppercase"
-                            placeholder="e.g. N02-18-092831"
-                            onChange={(e) => setData('license_number', e.target.value)}
-                        />
-                        <InputError message={errors.license_number} className="mt-1" />
-                    </div>
-                </div>
-
-                {/* 3 Courier Documents Uploads */}
-                <div className="space-y-3 pt-1">
-                    {/* 1. Government ID */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                            <span>1. Valid Government ID *</span>
-                            <span className="text-[10px] text-[#E00D42] font-normal">Passport / UMID / Postal</span>
-                        </label>
-                        <input
-                            type="file"
-                            ref={idInputRef}
-                            onChange={handleIdChange}
-                            accept="image/jpeg,image/png,image/webp,application/pdf"
-                            className="hidden"
-                        />
-                        {!idFileName ? (
-                            <div 
-                                onClick={() => idInputRef.current?.click()}
-                                className="border-2 border-dashed border-black/20 hover:border-[#E00D42] hover:bg-[#E00D42]/5 rounded-lg p-2.5 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
-                            >
-                                <Upload className="w-3.5 h-3.5 text-black/40" />
-                                <span className="text-[11px] text-black/70">Upload Gov ID</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between p-2 bg-[#F4F2EC] border border-black/15 rounded-lg text-xs">
-                                <div className="flex items-center gap-2 truncate">
-                                    <FileText className="w-4 h-4 text-[#E00D42] shrink-0" />
-                                    <span className="font-bold truncate text-[11px]">{idFileName}</span>
-                                    <span className="text-[10px] text-black/50 shrink-0">({idFileSize})</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={removeIdFile}
-                                    className="p-1 hover:bg-black/10 rounded text-black/60 hover:text-black transition"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        )}
-                        <InputError message={errors.id_document} className="mt-1" />
-                    </div>
-
-                    {/* 2. Driver's License */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                            <span>2. LTO Driver's License *</span>
-                            <span className="text-[10px] text-[#E00D42] font-normal">Professional or Non-Pro</span>
-                        </label>
-                        <input
-                            type="file"
-                            ref={licenseInputRef}
-                            onChange={handleLicenseChange}
-                            accept="image/jpeg,image/png,image/webp,application/pdf"
-                            className="hidden"
-                        />
-                        {!licenseFileName ? (
-                            <div 
-                                onClick={() => licenseInputRef.current?.click()}
-                                className="border-2 border-dashed border-black/20 hover:border-[#E00D42] hover:bg-[#E00D42]/5 rounded-lg p-2.5 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
-                            >
-                                <Upload className="w-3.5 h-3.5 text-black/40" />
-                                <span className="text-[11px] text-black/70">Upload Driver's License</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between p-2 bg-[#F4F2EC] border border-black/15 rounded-lg text-xs">
-                                <div className="flex items-center gap-2 truncate">
-                                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                                    <span className="font-bold truncate text-[11px]">{licenseFileName}</span>
-                                    <span className="text-[10px] text-black/50 shrink-0">({licenseFileSize})</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={removeLicenseFile}
-                                    className="p-1 hover:bg-black/10 rounded text-black/60 hover:text-black transition"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        )}
-                        <InputError message={errors.driver_license} className="mt-1" />
-                    </div>
-
-                    {/* 3. OR/CR Document */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                            <span>3. Vehicle Registration (OR / CR) *</span>
-                            <span className="text-[10px] text-[#E00D42] font-normal">Official Receipt & Cert of Registration</span>
-                        </label>
-                        <input
-                            type="file"
-                            ref={orCrInputRef}
-                            onChange={handleOrCrChange}
-                            accept="image/jpeg,image/png,image/webp,application/pdf"
-                            className="hidden"
-                        />
-                        {!orCrFileName ? (
-                            <div 
-                                onClick={() => orCrInputRef.current?.click()}
-                                className="border-2 border-dashed border-black/20 hover:border-[#E00D42] hover:bg-[#E00D42]/5 rounded-lg p-2.5 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
-                            >
-                                <Upload className="w-3.5 h-3.5 text-black/40" />
-                                <span className="text-[11px] text-black/70">Upload Vehicle OR / CR Document</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between p-2 bg-[#F4F2EC] border border-black/15 rounded-lg text-xs">
-                                <div className="flex items-center gap-2 truncate">
-                                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                                    <span className="font-bold truncate text-[11px]">{orCrFileName}</span>
-                                    <span className="text-[10px] text-black/50 shrink-0">({orCrFileSize})</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={removeOrCrFile}
-                                    className="p-1 hover:bg-black/10 rounded text-black/60 hover:text-black transition"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        )}
-                        <InputError message={errors.or_cr_document} className="mt-1" />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Password *
-                        </label>
-                        <div className="relative">
-                            <Lock className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                {/* STEP 3: FLEET KYC & PASSWORD */}
+                {currentStep === 3 && (
+                    <div className="space-y-4 animate-fade-in">
+                        {/* Driver's License Document */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Professional / Non-Prof Driver's License *
+                            </label>
                             <input
-                                id="password"
-                                type="password"
-                                name="password"
-                                value={data.password}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                placeholder="••••••••"
-                                autoComplete="new-password"
-                                onChange={(e) => setData('password', e.target.value)}
-                                required
+                                type="file"
+                                ref={licenseInputRef}
+                                onChange={handleLicenseChange}
+                                accept="image/jpeg,image/png,image/webp,application/pdf"
+                                className="hidden"
                             />
+                            {!licenseFileName ? (
+                                <div 
+                                    onClick={() => licenseInputRef.current?.click()}
+                                    className="border-2 border-dashed border-slate-300 hover:border-emerald-600 hover:bg-emerald-50/40 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                                >
+                                    <Upload className="w-4 h-4 text-emerald-600" />
+                                    <span className="text-[11px] text-slate-700 font-bold">Upload Driver's License (JPG, PNG, PDF max 10MB)</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <FileCheck2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                        <span className="font-bold truncate text-[11px] text-slate-900">{licenseFileName}</span>
+                                        <span className="text-[10px] text-slate-500 shrink-0">({licenseFileSize})</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={removeLicenseFile}
+                                        className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            <InputError message={errors.driver_license} className="mt-1" />
                         </div>
-                        <InputError message={errors.password} className="mt-1" />
-                    </div>
 
-                    <div>
-                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Confirm Password *
-                        </label>
-                        <div className="relative">
-                            <Lock className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                        {/* Vehicle OR/CR Document */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                Vehicle Official Receipt & Certificate of Registration (OR/CR)
+                            </label>
                             <input
-                                id="password_confirmation"
-                                type="password"
-                                name="password_confirmation"
-                                value={data.password_confirmation}
-                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                                placeholder="••••••••"
-                                autoComplete="new-password"
-                                onChange={(e) => setData('password_confirmation', e.target.value)}
-                                required
+                                type="file"
+                                ref={orCrInputRef}
+                                onChange={handleOrCrChange}
+                                accept="image/jpeg,image/png,image/webp,application/pdf"
+                                className="hidden"
                             />
+                            {!orCrFileName ? (
+                                <div 
+                                    onClick={() => orCrInputRef.current?.click()}
+                                    className="border-2 border-dashed border-slate-300 hover:border-emerald-600 hover:bg-emerald-50/40 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                                >
+                                    <Upload className="w-4 h-4 text-slate-400" />
+                                    <span className="text-[11px] text-slate-700">Upload OR/CR Document</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                                        <span className="font-bold truncate text-[11px] text-slate-900">{orCrFileName}</span>
+                                        <span className="text-[10px] text-slate-500 shrink-0">({orCrFileSize})</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={removeOrCrFile}
+                                        className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            <InputError message={errors.or_cr_document} className="mt-1" />
                         </div>
-                        <InputError message={errors.password_confirmation} className="mt-1" />
+
+                        {/* Password & Confirm Password */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Password *
+                                </label>
+                                <div className="relative">
+                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        name="password"
+                                        value={data.password}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="••••••••••••"
+                                        autoComplete="new-password"
+                                        onChange={(e) => setData('password', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <InputError message={errors.password} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                    Confirm Password *
+                                </label>
+                                <div className="relative">
+                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="password_confirmation"
+                                        type="password"
+                                        name="password_confirmation"
+                                        value={data.password_confirmation}
+                                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        placeholder="••••••••••••"
+                                        autoComplete="new-password"
+                                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <InputError message={errors.password_confirmation} className="mt-1" />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={handlePrev}
+                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition uppercase tracking-wider flex items-center justify-center gap-1.5"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <span>Back</span>
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="w-2/3 py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                <span>{processing ? 'Registering Rider...' : 'Submit Courier Application'}</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div className="p-3 bg-[#ECEAE5] border border-black/10 rounded-lg text-[10px] space-y-1 text-black/70 font-mono">
-                    <p className="font-bold text-black flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Instant FCFS Dispatch & Guaranteed Delivery Payout</span>
-                    </p>
-                    <p>Earn ₱50–₱60 standard delivery fees deposited directly to your Courier Ledger upon confirmed doorstep delivery.</p>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
-                >
-                    <span>{processing ? 'Submitting Application...' : 'Complete Driver Registration'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <div className="pt-3 border-t border-black/10 text-center text-xs">
-                    <span className="text-black/60">Already registered? </span>
-                    <Link
-                        href={route('login')}
-                        className="text-[#E00D42] font-bold hover:underline"
+                {/* Switcher & Portal Link */}
+                <div className="pt-4 border-t border-slate-200 text-center font-mono text-[11px] space-y-1">
+                    <span className="text-slate-500">Already registered with the fleet? </span>
+                    <Link 
+                        href={route('courier.login')} 
+                        className="text-slate-900 font-bold hover:text-emerald-700 underline underline-offset-2"
                     >
-                        Sign in here
+                        Sign In to Courier Dispatch
                     </Link>
                 </div>
             </form>

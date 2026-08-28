@@ -51,7 +51,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="name@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -83,7 +83,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             type="password"
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -108,7 +108,7 @@ export default function Login({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-xs shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         <span>{processing ? 'Authenticating...' : 'Sign In to Account'}</span>
                         <ArrowRight className="w-4 h-4" />
@@ -117,7 +117,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
                 {/* Role Registration Gateways */}
                 <div className="pt-4 border-t border-slate-200 space-y-3 font-sans text-xs">
-                    <div className="text-center">
+                    <div className="text-center font-mono text-[11px]">
                         <span className="text-slate-600">New shopper? </span>
                         <Link 
                             href={route('register')} 
@@ -127,9 +127,9 @@ export default function Login({ status, canResetPassword }: Props) {
                         </Link>
                     </div>
 
-                    <div className="p-3 rounded-xs bg-slate-900 text-white flex items-center justify-between gap-3 border border-slate-800">
+                    <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-3 border border-slate-800">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-xs bg-white/10 flex items-center justify-center text-[#E00D42]">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#E00D42]">
                                 <Store className="w-3.5 h-3.5" />
                             </div>
                             <div>
@@ -140,7 +140,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
                         <Link
                             href={route('seller.register')}
-                            className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xs font-mono text-[10px] font-bold uppercase shrink-0 transition"
+                            className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-mono text-[10px] font-bold uppercase shrink-0 transition"
                         >
                             Open Store
                         </Link>

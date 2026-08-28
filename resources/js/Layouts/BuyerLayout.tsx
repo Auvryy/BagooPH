@@ -76,7 +76,9 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
     };
 
     const sellerUrl = getSubdomainUrl('seller');
+    const sellerRegisterUrl = `${sellerUrl}/register`;
     const courierUrl = getSubdomainUrl('courier');
+    const courierRegisterUrl = `${courierUrl}/register`;
     const adminUrl = getSubdomainUrl('admin');
 
     const trendingKeywords = [
@@ -373,8 +375,8 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Partner with Us</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><a href={sellerUrl} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Login</a></li>
-                            <li><Link href={route('seller.register')} className="hover:text-[#E00D42]">Open a Verified Store</Link></li>
+                            <li><a href={sellerUrl} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Portal</a></li>
+                            <li><a href={sellerRegisterUrl} className="hover:text-[#E00D42]">Open a Verified Store</a></li>
                             <li><a href={courierUrl} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</a></li>
                             <li><Link href={route('hub.index')} className="hover:text-indigo-700">Logistics Sorting Hub</Link></li>
                         </ul>
