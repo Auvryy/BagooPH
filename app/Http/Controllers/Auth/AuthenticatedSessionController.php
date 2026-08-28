@@ -14,13 +14,50 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * Display the default / buyer login view.
      */
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'portal' => 'buyer',
+        ]);
+    }
+
+    /**
+     * Display the merchant / seller portal login view.
+     */
+    public function createSeller(): Response
+    {
+        return Inertia::render('Auth/SellerLogin', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'portal' => 'seller',
+        ]);
+    }
+
+    /**
+     * Display the courier rider dispatch portal login view.
+     */
+    public function createCourier(): Response
+    {
+        return Inertia::render('Auth/CourierLogin', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'portal' => 'courier',
+        ]);
+    }
+
+    /**
+     * Display the administrative governance login console.
+     */
+    public function createAdmin(): Response
+    {
+        return Inertia::render('Auth/AdminLogin', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'portal' => 'admin',
         ]);
     }
 
