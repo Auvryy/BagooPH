@@ -49,4 +49,9 @@ class Order extends Model
     {
         return $this->hasOne(Delivery::class);
     }
+
+    public function commissionLedger(): HasOne
+    {
+        return $this->hasOne(CommissionLedger::class);
+    }
 }

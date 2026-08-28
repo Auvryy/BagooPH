@@ -1,4 +1,4 @@
-# 🗂️ Master Product Categories & Subcategories Taxonomy
+# Master Product Categories & Subcategories Taxonomy
 
 This document records the exact 14 master product categories and their corresponding subcategories as defined in the official curriculum requirements.
 

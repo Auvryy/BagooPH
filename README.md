@@ -1,4 +1,4 @@
-# Bagoo — Multi-Role E-Commerce & Logistics Platform
+# Bagoo - Multi-Role E-Commerce & Logistics Platform
 
 <div align="center">
   <h3>Next-Generation Full-Stack E-Commerce Platform</h3>
@@ -7,19 +7,19 @@
 
 ---
 
-## 🌟 Overview & Architecture
+## Overview & Architecture
 
 **Bagoo** is a modern e-commerce application featuring Role-Based Access Control (RBAC) across distinct user workflows:
 
-- 🛒 **Buyer / Customer**: Browse catalog by category, search & filter products, shopping cart, multi-step checkout, real-time courier shipment tracking.
-- 🏪 **Seller / Merchant**: Dedicated Storefront management, product catalog & inventory control (stock, SKU, pricing), incoming orders list, and "Ready for Courier Pickup" dispatch trigger.
-- 🚚 **Courier / Rider**: Live delivery assignment board, pickup from merchant stores, drop-off to buyer destination, and delivery status milestones (`picked_up`, `in_transit`, `out_for_delivery`, `delivered`).
-- 🛡️ **Administrator**: Platform overview metrics, GMV & transaction telemetry, user and role governance (upgrade/downgrade roles, suspend accounts), and global product moderation.
-- 📦 **Extensible Logistics Provider**: Dedicated `deliveries` / `shipments` database schema, tracking numbers, and role interfaces structured to integrate 3rd-party logistics / fleet management hubs.
+- **Buyer / Customer**: Browse catalog by category, search & filter products, shopping cart, multi-step checkout, real-time courier shipment tracking.
+- **Seller / Merchant**: Dedicated Storefront management, product catalog & inventory control (stock, SKU, pricing), incoming orders list, and "Ready for Courier Pickup" dispatch trigger.
+- **Courier / Rider**: Live delivery assignment board, pickup from merchant stores, drop-off to buyer destination, and delivery status milestones (`picked_up`, `in_transit`, `out_for_delivery`, `delivered`).
+- **Administrator**: Platform overview metrics, GMV & transaction telemetry, user and role governance (upgrade/downgrade roles, suspend accounts), and global product moderation.
+- **Extensible Logistics Provider**: Dedicated `deliveries` / `shipments` database schema, tracking numbers, and role interfaces structured to integrate 3rd-party logistics / fleet management hubs.
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Layer | Technologies |
 |---|---|
@@ -32,7 +32,7 @@
 
 ---
 
-## 🚀 Quick Start with Docker
+## Quick Start with Docker
 
 ### 1. Launch Containers
 ```bash
@@ -53,7 +53,7 @@ The application will be accessible at: **`http://localhost:8000`**
 
 ---
 
-## 🔑 Pre-Configured Demo Credentials
+## Pre-Configured Demo Credentials
 
 All test accounts use the password: **`password`**
 
@@ -64,11 +64,11 @@ All test accounts use the password: **`password`**
 | **Buyer / Customer** | `buyer@bagoo.test` | `password` | `/` (Marketplace) |
 | **Courier / Rider** | `courier@bagoo.test` | `password` | `/courier/deliveries` |
 
-> 💡 *Tip: The Login page also includes 1-click demo login buttons for each role!*
+> *Tip: The Login page also includes 1-click demo login buttons for each role!*
 
 ---
 
-## 📋 Useful Helper Commands (`./bagoo.sh`)
+## Useful Helper Commands (`./bagoo.sh`)
 
 | Command | Action |
 |---|---|
@@ -81,7 +81,7 @@ All test accounts use the password: **`password`**
 
 ---
 
-## 🗄️ Database Schema & Logistics Design
+## Database Schema & Logistics Design
 
 ```
 users (role: admin | seller | buyer | courier | logistics)

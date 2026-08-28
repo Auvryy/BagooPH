@@ -1,10 +1,10 @@
-# 🗄️ Database Schema
+# Database Schema
 
 This document defines the database tables and columns for the platform.
 
 ---
 
-## 📋 Core Tables
+## Core Tables
 
 ### 1. `users`
 * `id` (PK)
