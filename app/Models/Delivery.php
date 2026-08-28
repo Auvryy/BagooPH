@@ -46,9 +46,4 @@ class Delivery extends Model
     {
         return $this->belongsTo(User::class, 'courier_id');
     }
-
-    public function checkpoints(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(DeliveryCheckpoint::class);
-    }
 }

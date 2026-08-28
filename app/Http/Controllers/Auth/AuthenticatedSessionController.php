@@ -34,26 +34,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
-
-        if ($user->status === 'suspended') {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors([
-                'email' => 'Your account has been suspended by platform administration.',
-            ]);
-        }
-
-        if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect()->route('kyc.pending');
-        }
-
         $targetRoute = match($user->role) {
             'admin' => route('admin.dashboard', absolute: false),
             'seller' => route('seller.dashboard', absolute: false),
             'courier' => route('courier.deliveries', absolute: false),
-            'logistics' => route('hub.index', absolute: false),
             default => route('buyer.index', absolute: false),
         };
 

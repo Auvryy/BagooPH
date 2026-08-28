@@ -23,14 +23,6 @@ class User extends Authenticatable
         'city',
         'postal_code',
         'status',
-        'kyc_status',
-        'id_document_path',
-        'business_permit_path',
-        'driver_license_path',
-        'or_cr_path',
-        'kyc_feedback',
-        'kyc_submitted_at',
-        'kyc_reviewed_at',
     ];
 
     protected $hidden = [
@@ -43,8 +35,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'kyc_submitted_at' => 'datetime',
-            'kyc_reviewed_at' => 'datetime',
         ];
     }
 
@@ -73,29 +63,9 @@ class User extends Authenticatable
         return $this->role === 'logistics';
     }
 
-    public function isKycApproved(): bool
-    {
-        return $this->isAdmin() || $this->kyc_status === 'approved';
-    }
-
-    public function isKycPending(): bool
-    {
-        return $this->kyc_status === 'pending_approval';
-    }
-
-    public function isKycRejected(): bool
-    {
-        return $this->kyc_status === 'rejected';
-    }
-
     public function shop(): HasOne
     {
         return $this->hasOne(Shop::class);
-    }
-
-    public function courierProfile(): HasOne
-    {
-        return $this->hasOne(CourierProfile::class);
     }
 
     public function orders(): HasMany

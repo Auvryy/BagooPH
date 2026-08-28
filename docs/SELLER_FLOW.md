@@ -1,10 +1,10 @@
-# Seller (Merchant) Module Specification & Flow
+# 🏪 Seller (Merchant) Module Specification & Flow
 
 This document details the complete end-to-end workflow, data points, and operational requirements for Sellers.
 
 ---
 
-## 1. Seller Registration & Verification
+## 📝 1. Seller Registration & Verification
 
 1. **Required Input Fields:**
    - **Personal:** Last Name*, First Name*, Middle Initial, Sex*, Email*, Contact No.*, Birthday*, Age (auto-generated)*.
@@ -18,7 +18,7 @@ This document details the complete end-to-end workflow, data points, and operati
 
 ---
 
-## 2. Store & Inventory Management
+## 📦 2. Store & Inventory Management
 
 - **Product Catalog Control:**
   - Create, edit, and archive products.
@@ -30,7 +30,7 @@ This document details the complete end-to-end workflow, data points, and operati
 
 ---
 
-## 3. Order Processing & Fulfillment Pipeline
+## 🏷️ 3. Order Processing & Fulfillment Pipeline
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,7 @@ flowchart LR
 
 ---
 
-## 4. Financial Analytics & Sales Reports
+## 📊 4. Financial Analytics & Sales Reports
 
 - **Date Filtered Reports:**
   - Dynamic `From Date` and `To Date` selection.

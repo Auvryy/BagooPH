@@ -42,12 +42,6 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('pending-approval', [RegisteredUserController::class, 'pendingApproval'])
-        ->name('kyc.pending');
-
-    Route::post('kyc/resubmit', [RegisteredUserController::class, 'resubmitKyc'])
-        ->name('kyc.resubmit');
-
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

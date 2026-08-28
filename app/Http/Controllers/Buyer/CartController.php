@@ -59,15 +59,8 @@ class CartController extends Controller
             return back()->with('error', "Sorry, only {$product->stock} units are currently available.");
         }
 
-        $color = $request->input('color');
-        $size = $request->input('size');
-
         $cart = $this->getCart($request);
-        $item = $cart->items()
-            ->where('product_id', $product->id)
-            ->where('color', $color)
-            ->where('size', $size)
-            ->first();
+        $item = $cart->items()->where('product_id', $product->id)->first();
 
         if ($item) {
             $newQuantity = $item->quantity + $quantity;
@@ -78,14 +71,10 @@ class CartController extends Controller
             $item->unit_price = $product->price; // Always sync with real database price
             $item->save();
         } else {
-            $skuSnapshot = $product->sku . ($color ? "-{$color}" : '') . ($size ? "-{$size}" : '');
             $cart->items()->create([
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'unit_price' => $product->price,
-                'color' => $color,
-                'size' => $size,
-                'sku_snapshot' => $skuSnapshot,
             ]);
         }
 
