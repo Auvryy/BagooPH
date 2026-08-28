@@ -18,17 +18,144 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Seed Single Platform Admin Account (Andy Super Admin)
+        // 1. Platform Admin Accounts
         User::updateOrCreate(
             ['email' => 'sarneandy6@gmail.com'],
             [
                 'name' => 'Andy Super Admin',
-                'password' => Hash::make('password'),
+                'password' => 'password',
                 'role' => 'admin',
                 'phone' => '+63 917 888 8888',
                 'address' => '100 Bagoo HQ Way, Floor 12',
                 'city' => 'Taguig, Metro Manila',
                 'postal_code' => '1634',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'admin@bagoo.ph'],
+            [
+                'name' => 'Bagoo Platform Admin',
+                'password' => 'password',
+                'role' => 'admin',
+                'phone' => '+63 917 888 0000',
+                'address' => 'Bagoo Tech Tower, BGC',
+                'city' => 'Taguig, Metro Manila',
+                'postal_code' => '1634',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        // 2. Verified Buyer Accounts
+        User::updateOrCreate(
+            ['email' => 'buyer@bagoo.ph'],
+            [
+                'name' => 'Juan Dela Cruz',
+                'password' => 'password',
+                'role' => 'buyer',
+                'phone' => '+63 917 123 4567',
+                'address' => 'Unit 402, Pioneer Woodlands, EDSA',
+                'city' => 'Mandaluyong City',
+                'postal_code' => '1550',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'sarneandy6+buyer@gmail.com'],
+            [
+                'name' => 'Andy Buyer',
+                'password' => 'password',
+                'role' => 'buyer',
+                'phone' => '+63 917 777 7777',
+                'address' => 'Unit 12A, High Street South Block',
+                'city' => 'Taguig, Metro Manila',
+                'postal_code' => '1634',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        // 3. Verified Seller Account & Store
+        $sellerUser = User::updateOrCreate(
+            ['email' => 'seller@bagoo.ph'],
+            [
+                'name' => 'Apex Apparel Merchant',
+                'password' => 'password',
+                'role' => 'seller',
+                'phone' => '+63 917 222 3333',
+                'address' => 'Warehouse 4, Pasig Mega Logistics Park',
+                'city' => 'Pasig City',
+                'postal_code' => '1600',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        $shop = Shop::updateOrCreate(
+            ['user_id' => $sellerUser->id],
+            [
+                'name' => 'Apex Gear & Studio',
+                'slug' => 'apex-gear-and-studio',
+                'description' => 'Premium ergonomic techwear, waterproof commuter packs, and modular EDC gear.',
+                'logo' => 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=200&q=80',
+                'banner' => 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80',
+                'phone' => '+63 917 222 3333',
+                'address' => 'Warehouse 4, Pasig Mega Logistics Park',
+                'city' => 'Pasig City',
+                'status' => 'active',
+                'rating' => 4.95,
+            ]
+        );
+
+        // 4. Verified Courier Fleet Rider
+        $courierUser = User::updateOrCreate(
+            ['email' => 'courier@bagoo.ph'],
+            [
+                'name' => 'Ricardo Dalisay',
+                'password' => 'password',
+                'role' => 'courier',
+                'phone' => '+63 917 555 7777',
+                'address' => 'Block 12, Guadalupe Nuevo',
+                'city' => 'Makati City',
+                'postal_code' => '1212',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+
+        \App\Models\CourierProfile::updateOrCreate(
+            ['user_id' => $courierUser->id],
+            [
+                'vehicle_type' => 'Motorcycle',
+                'plate_number' => 'BG-9876-PH',
+                'license_number' => 'N01-18-999888',
+                'or_cr_status' => 'Verified',
+                'is_available' => true,
+            ]
+        );
+
+        // 5. Logistics Hub Operator
+        User::updateOrCreate(
+            ['email' => 'hub@bagoo.ph'],
+            [
+                'name' => 'Metro Manila Central Hub Operator',
+                'password' => 'password',
+                'role' => 'logistics',
+                'phone' => '+63 917 444 8888',
+                'address' => 'Hub Station 01, C5 Road, Pasig City',
+                'city' => 'Pasig City',
+                'postal_code' => '1604',
                 'status' => 'active',
                 'kyc_status' => 'approved',
                 'kyc_reviewed_at' => now(),
@@ -143,7 +270,7 @@ class DatabaseSeeder extends Seeder
             $categories[$c['slug']] = Category::updateOrCreate(['slug' => $c['slug']], $c);
         }
 
-        // 3. Seed Platform Vouchers
+        // 4. Seed Platform Vouchers
         \App\Models\Voucher::updateOrCreate(
             ['code' => 'PAYDAY70'],
             [
@@ -180,5 +307,111 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // 5. Seed Catalog Products for Apex Gear & Studio
+        $sampleProducts = [
+            [
+                'category_slug' => 'backpacks-and-bags',
+                'name' => 'Apex Waterproof Commuter Pack 28L',
+                'slug' => 'apex-waterproof-commuter-pack-28l',
+                'description' => 'Cordura 500D waterproof ballistic nylon commuter backpack with Fidlock magnetic buckles and dedicated 16-inch padded laptop compartment.',
+                'price' => 2850.00,
+                'compare_at_price' => 3500.00,
+                'stock' => 50,
+                'sku' => 'APX-BP-001',
+                'featured_image' => 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.95,
+                'sales_count' => 128,
+            ],
+            [
+                'category_slug' => 'audio-and-spatial-sound',
+                'name' => 'Titanium ANC Spatial Headphones',
+                'slug' => 'titanium-anc-spatial-headphones',
+                'description' => 'Active Noise Cancelling over-ear headphones with 40mm beryllium drivers, LDAC lossless codec, and 45-hour playback battery.',
+                'price' => 4990.00,
+                'compare_at_price' => 6200.00,
+                'stock' => 25,
+                'sku' => 'APX-AUD-002',
+                'featured_image' => 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.90,
+                'sales_count' => 84,
+            ],
+            [
+                'category_slug' => 'apparel-and-footwear',
+                'name' => 'Weatherproof Heavy Techwear Hoodie',
+                'slug' => 'weatherproof-heavy-techwear-hoodie',
+                'description' => '500GSM heavyweight French terry cotton hoodie with DWR water-repellent coating and hidden magnetic utility pockets.',
+                'price' => 1850.00,
+                'compare_at_price' => 2400.00,
+                'stock' => 60,
+                'sku' => 'APX-APP-003',
+                'featured_image' => 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.88,
+                'sales_count' => 210,
+            ],
+            [
+                'category_slug' => 'mobile-and-gadgets',
+                'name' => '65W GaN Fast Dual Travel Charger',
+                'slug' => '65w-gan-fast-dual-travel-charger',
+                'description' => 'Gallium Nitride high-efficiency dual USB-C Power Delivery wall charger with foldable Philippine plug prongs.',
+                'price' => 1150.00,
+                'compare_at_price' => 1500.00,
+                'stock' => 100,
+                'sku' => 'APX-GAD-004',
+                'featured_image' => 'https://images.unsplash.com/photo-1580910051074-3eb694886505?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.92,
+                'sales_count' => 312,
+            ],
+            [
+                'category_slug' => 'watches-and-edc',
+                'name' => 'Automatic Field Watch Titanium Edition',
+                'slug' => 'automatic-field-watch-titanium-edition',
+                'description' => 'Grade-2 Titanium 38mm case with NH35 automatic movement, sapphire crystal lens, and 100m water resistance.',
+                'price' => 6450.00,
+                'compare_at_price' => 8200.00,
+                'stock' => 15,
+                'sku' => 'APX-WTC-005',
+                'featured_image' => 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.97,
+                'sales_count' => 42,
+            ],
+            [
+                'category_slug' => 'desk-studio-and-stationery',
+                'name' => 'Full-Grain Leather Desk Studio Mat',
+                'slug' => 'full-grain-leather-desk-studio-mat',
+                'description' => 'Vegetable-tanned full-grain leather 900x400mm workstation mat with suede anti-slip backing.',
+                'price' => 1250.00,
+                'compare_at_price' => 1600.00,
+                'stock' => 40,
+                'sku' => 'APX-DSK-006',
+                'featured_image' => 'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&w=800&q=80',
+                'rating' => 4.85,
+                'sales_count' => 95,
+            ],
+        ];
+
+        foreach ($sampleProducts as $p) {
+            $cat = $categories[$p['category_slug']] ?? null;
+            if ($cat) {
+                Product::updateOrCreate(
+                    ['slug' => $p['slug']],
+                    [
+                        'shop_id' => $shop->id,
+                        'category_id' => $cat->id,
+                        'name' => $p['name'],
+                        'description' => $p['description'],
+                        'price' => $p['price'],
+                        'compare_at_price' => $p['compare_at_price'],
+                        'stock' => $p['stock'],
+                        'sku' => $p['sku'],
+                        'featured_image' => $p['featured_image'],
+                        'weight_kg' => 0.5,
+                        'status' => 'active',
+                        'rating' => $p['rating'],
+                        'sales_count' => $p['sales_count'],
+                    ]
+                );
+            }
+        }
     }
 }
