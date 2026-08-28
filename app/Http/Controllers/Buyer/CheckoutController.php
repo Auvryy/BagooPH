@@ -141,6 +141,9 @@ class CheckoutController extends Controller
                         'quantity' => $item->quantity,
                         'unit_price' => $product->price,
                         'subtotal' => $item->quantity * $product->price,
+                        'color' => $item->color,
+                        'size' => $item->size,
+                        'sku_snapshot' => $item->sku_snapshot,
                     ]);
 
                     // Atomically reduce stock & increment sales counter
@@ -162,7 +165,7 @@ class CheckoutController extends Controller
                     'pickup_address' => ($firstShop?->address ?? 'Artisan District') . ', ' . ($firstShop?->city ?? 'Metro Manila'),
                     'delivery_recipient_name' => $validated['recipient_name'],
                     'delivery_address' => $validated['shipping_address'] . ', ' . $validated['shipping_city'],
-                    'recipient_phone' => $validated['recipient_phone'],
+                    'delivery_phone' => $validated['recipient_phone'],
                     'estimated_delivery_at' => now()->addDays(3),
                 ]);
 
