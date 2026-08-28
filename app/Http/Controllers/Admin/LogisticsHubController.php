@@ -91,20 +91,10 @@ class LogisticsHubController extends Controller
         ]);
 
         $delivery = Delivery::findOrFail($validated['delivery_id']);
-        $oldCourierId = $delivery->courier_id;
         $delivery->update([
             'courier_id' => $validated['courier_id'],
             'status' => $validated['status'],
             'assigned_at' => $delivery->assigned_at ?? now(),
-        ]);
-
-        \App\Models\DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'supervisor_override',
-            'location_name' => 'Logistics Central Dispatch Hub',
-            'barcode_scanned' => $delivery->tracking_number,
-            'notes' => "Reassigned from Courier #{$oldCourierId} to Courier #{$validated['courier_id']}",
-            'scanned_by_id' => $request->user()?->id,
         ]);
 
         return back()->with('success', "Delivery #{$delivery->tracking_number} manually reassigned by supervisor.");

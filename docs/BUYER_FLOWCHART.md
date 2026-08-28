@@ -1,14 +1,14 @@
-# Buyer-Side Process Flowchart & Lifecycle Diagram
+# 🗺️ Buyer-Side Process Flowchart & Lifecycle Diagram
 
 This document presents the complete visual process flow for the **Buyer Module** of the platform as mandated by the project activity specifications.
 
 ---
 
-## Buyer Lifecycle Flowchart (Mermaid)
+## 🧭 Buyer Lifecycle Flowchart (Mermaid)
 
 ```mermaid
 flowchart TD
-    START([START]) --> DecisionEntry{Already have an account?}
+    START([● START]) --> DecisionEntry{Already have an account?}
 
     %% REGISTRATION BRANCH
     DecisionEntry -- No --> RegPage[Open Registration Page]
@@ -42,10 +42,10 @@ flowchart TD
     ProductList --> ViewProduct[Select & Open Product Details Page]
     ViewProduct --> ChooseVariations[Select Product Variations: Color, Size, Specs]
     ChooseVariations --> SelectQty[Select Quantity within Stock Limit]
-    SelectQty --> AddToCart[Click 'Add to Bag']
+    SelectQty --> AddToCart[Click 'Add to Cart']
     AddToCart --> ContinueShopping{Continue Shopping?}
     ContinueShopping -- Yes --> MainMenu
-    ContinueShopping -- No --> ViewCart[Open Shopping Bag Page]
+    ContinueShopping -- No --> ViewCart[Open Shopping Cart Page]
 
     %% CART & CHECKOUT
     ViewCart --> ReviewCartItems[Review Selected Items & Quantities]
@@ -73,12 +73,12 @@ flowchart TD
     MainMenu --> AccountHub
     ChatAction --> AccountHub
     AccountHub --> LogoutAction[Click 'Sign Out']
-    LogoutAction --> END([END / Session Terminated])
+    LogoutAction --> END([● END / Session Terminated])
 ```
 
 ---
 
-## Buyer Flow Functional Checklist
+## 📋 Buyer Flow Functional Checklist
 
 - [x] **Registration Included:** Capture full name, sex, email, contact, birthday, autogen age, cascading address dropdowns, and ID upload.
 - [x] **Admin Approval Represented:** Mandatory admin approval gate before login access.

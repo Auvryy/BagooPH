@@ -19,10 +19,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
-        $user = User::factory()->create([
-            'kyc_status' => 'approved',
-            'status' => 'active',
-        ]);
+        $user = User::factory()->create();
 
         $response = $this->post('/login', [
             'email' => $user->email,
@@ -30,57 +27,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('buyer.index', absolute: false));
-    }
-
-    public function test_admin_user_authenticates_and_routes_to_admin_dashboard(): void
-    {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-            'kyc_status' => 'approved',
-            'status' => 'active',
-        ]);
-
-        $response = $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'password',
-        ]);
-
-        $this->assertAuthenticatedAs($admin);
-        $response->assertRedirect(route('admin.dashboard', absolute: false));
-    }
-
-    public function test_logistics_hub_user_authenticates_and_routes_to_hub_workstation(): void
-    {
-        $logistics = User::factory()->create([
-            'role' => 'logistics',
-            'kyc_status' => 'approved',
-            'status' => 'active',
-        ]);
-
-        $response = $this->post('/login', [
-            'email' => $logistics->email,
-            'password' => 'password',
-        ]);
-
-        $this->assertAuthenticatedAs($logistics);
-        $response->assertRedirect(route('hub.index', absolute: false));
-    }
-
-    public function test_pending_users_are_redirected_to_pending_approval_upon_login(): void
-    {
-        $user = User::factory()->create([
-            'kyc_status' => 'pending_approval',
-            'status' => 'pending_approval',
-        ]);
-
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
-
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('kyc.pending', absolute: false));
+        $response->assertRedirect(route('dashboard', absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

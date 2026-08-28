@@ -1,11 +1,11 @@
-# BagooPH - Master Project Plan & System Architecture
+# 📋 BagooPH — Master Project Plan & System Architecture
 
 > **Executive Overview:**
-> BagooPH ("Bag & Go") is an enterprise multi-role e-commerce and logistics ecosystem built for the Philippine market. It seamlessly interconnects Buyers, Sellers, Logistics Sorting Hubs / Couriers, and Platform Administrators in a single, high-performance architecture.
+> BagooPH ("Bag & Go") is an enterprise multi-role e-commerce and logistics ecosystem built for the Philippine market. It seamlessly interconnects **Buyers**, **Sellers**, **Logistics Sorting Hubs / Couriers**, and **Platform Administrators** in a single, high-performance architecture.
 
 ---
 
-## 1. Multi-Role Identity & Independent Onboarding
+## 🏛️ 1. Multi-Role Identity & Independent Onboarding
 
 ```mermaid
 graph TD
@@ -18,7 +18,7 @@ graph TD
     D --> F
     E --> F
     
-    F -->|Approved| G[Smart Single Login /login -> Direct Role-Based Routing]
+    F -->|Approved| G[Smart Single Login /login ➔ Direct Role-Based Routing]
     F -->|Pending / Rejected| H[Holding State with Status Notification]
 ```
 
@@ -29,7 +29,7 @@ graph TD
 
 ---
 
-## 2. Logistics, Sorting Center & GIS Fleet Architecture
+## 🚚 2. Logistics, Sorting Center & GIS Fleet Architecture
 
 ```mermaid
 sequenceDiagram
@@ -52,16 +52,16 @@ sequenceDiagram
 
 ### Sorting Center & Rider Mechanics:
 1. **Two-Tier Delivery Chain:**
-   * **Stage 1 (First-Mile):** Pickup rider collects parcels from merchant locations and transports them to the regional Logistics Sorting Center.
+   * **Stage 1 (First-Mile):** Pickup rider collects parcels from merchant locations and transports them to the regional **Logistics Sorting Center**.
    * **Stage 2 (Hub Sorting):** Sorting center scans barcodes, updates status to *In Sorting Hub*, and clusters packages by destination municipality and barangay.
-   * **Stage 3 (Last-Mile):** Sorting center assigns clustered parcels to specific courier riders assigned to that particular Barangay / Delivery Zone.
+   * **Stage 3 (Last-Mile):** Sorting center assigns clustered parcels to specific courier riders assigned to that particular **Barangay / Delivery Zone**.
 2. **GIS / Proximity-Based Fleet Matching:**
    * Parcels are routed to the nearest operational sorting facility based on geographic coordinates and PSGC address hierarchy.
    * Ensures merchant dispatch connects to the optimal logistics hub in their territory.
 
 ---
 
-## 3. Financial Architecture, Fees & Commission Ledger
+## 💰 3. Financial Architecture, Fees & Commission Ledger
 
 ```
 +-------------------------------------------------------------------------------+
@@ -75,29 +75,28 @@ sequenceDiagram
 ```
 
 ### Fee Calculations & Revenue Sharing:
-1. **Platform Commission:** Standard 10% commission automatically deducted from gross product sales and credited to the platform ledger.
+1. **Platform Commission:** Standard **10% commission** automatically deducted from gross product sales and credited to the platform ledger.
 2. **Handling & Shipping Fees:**
-   * Standard Flat Rate: ₱50.00 (Local/Intra-Zone).
-   * Distance/Weight-Adjusted Rate: ₱80.00 (Inter-Zone / Express).
+   * Standard Flat Rate: **₱50.00** (Local/Intra-Zone).
+   * Distance/Weight-Adjusted Rate: **₱80.00** (Inter-Zone / Express).
 3. **Shipping Revenue Split:**
-   * The collected shipping fee is divided between the Logistics Sorting Hub (operational facility fee) and the Assigned Rider (delivery compensation).
+   * The collected shipping fee is divided between the **Logistics Sorting Hub** (operational facility fee) and the **Assigned Rider** (delivery compensation).
 4. **Payment Options:**
    * **Cash on Delivery (COD):** Primary mandatory method across all Philippine locations.
    * **Simulated Digital Payment Sandbox ("Simulation"):** An in-house isolated digital wallet and payment simulation environment enabling instant authorized settlement and transaction ledger verification without paid external gateways.
 
 ---
 
-## 4. Returns, Defects & Issue Reporting Workflow
+## 📦 4. Returns, Defects & Issue Reporting Workflow
 
 ```mermaid
 graph LR
     A[Delivered Order] --> B{Buyer Discovers Issue?}
     B -->|Yes| C[File Issue Report]
-    B -->|No| G[Order Complete]
     C --> D[Upload Defect Photo & Description]
     D --> E[Recorded in Dispute & Audit Ledger]
     E --> F[Seller Review & Platform Mediation]
-    F -->|Approved Replacement/Correction| I[Dispatch Courier Exchange]
+    F -->|Approved Replacement/Correction| G[Dispatch Courier Exchange]
     F -->|Dismissed| H[Case Closed with Findings Note]
 ```
 

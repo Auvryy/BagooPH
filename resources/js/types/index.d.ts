@@ -1,19 +1,5 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
-export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none';
-
-export interface CourierProfile {
-    id: number;
-    user_id: number;
-    vehicle_type: string;
-    plate_number?: string | null;
-    license_number?: string | null;
-    or_cr_status?: string | null;
-    is_available: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
 export interface User {
     id: number;
     name: string;
@@ -25,17 +11,8 @@ export interface User {
     city?: string | null;
     postal_code?: string | null;
     status?: string;
-    kyc_status?: KycStatus;
-    id_document_path?: string | null;
-    business_permit_path?: string | null;
-    driver_license_path?: string | null;
-    or_cr_path?: string | null;
-    kyc_feedback?: string | null;
-    kyc_submitted_at?: string | null;
-    kyc_reviewed_at?: string | null;
     email_verified_at?: string;
     shop?: Shop | null;
-    courier_profile?: CourierProfile | null;
 }
 
 export interface Shop {
@@ -104,9 +81,6 @@ export interface CartItem {
     product_id: number;
     quantity: number;
     unit_price: string | number;
-    color?: string | null;
-    size?: string | null;
-    sku_snapshot?: string | null;
     product: Product;
 }
 
@@ -126,9 +100,6 @@ export interface OrderItem {
     quantity: number;
     unit_price: string | number;
     subtotal: string | number;
-    color?: string | null;
-    size?: string | null;
-    sku_snapshot?: string | null;
     product: Product;
     shop?: Shop;
     order?: Order;
@@ -214,3 +185,4 @@ export type PageProps<
         message?: string | null;
     };
 };
+

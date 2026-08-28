@@ -1,10 +1,10 @@
-# Administrator Module Specification & Governance Flow
+# 🛡️ Administrator Module Specification & Governance Flow
 
 This document details the administrative control center, verification workflows, 10% commission calculations, dispute resolution, and compliance mechanisms.
 
 ---
 
-## 1. Admin Functional Overview
+## 🧭 1. Admin Functional Overview
 
 ```mermaid
 graph TD
@@ -20,7 +20,7 @@ graph TD
 
 ---
 
-## 2. Registration Approval Queue (KYC Verification)
+## 🔍 2. Registration Approval Queue (KYC Verification)
 
 Admin must verify applicants before they can log in:
 
@@ -36,7 +36,7 @@ Admin must verify applicants before they can log in:
 
 ---
 
-## 3. Seller Compliance & Product Moderation
+## ⚖️ 3. Seller Compliance & Product Moderation
 
 - **Category Verification:** Ensure products listed by a seller fall strictly under their approved registered line of business (category).
 - **Prohibited Product Removal:** Immediate takedown button for flagged or counterfeit listings.
@@ -46,7 +46,7 @@ Admin must verify applicants before they can log in:
 
 ---
 
-## 4. Dispute & Complaint Resolution
+## 🤝 4. Dispute & Complaint Resolution
 
 - **Tripartite Mediation:** Handles disputes between Buyers, Sellers, and Couriers (e.g. damaged goods, missing items, delivery delays).
 - **Evidence Review:** View uploaded complaint evidence photos, order details, courier logs, and message history.
@@ -57,7 +57,7 @@ Admin must verify applicants before they can log in:
 
 ---
 
-## 5. Platform Commission Engine (10%)
+## 💰 5. Platform Commission Engine (10%)
 
 - On every successful order completion:
   - System automatically calculates **$10\%$ Platform Commission** from the item subtotal.

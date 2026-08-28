@@ -1,10 +1,10 @@
-# Courier & Logistics Module Specification & Flow
+# 🚚 Courier & Logistics Module Specification & Flow
 
 This document details the complete operational lifecycle, dispatch algorithms, and task execution for Couriers and Logistics Partners.
 
 ---
 
-## 1. Courier Registration & Verification
+## 📝 1. Courier Registration & Verification
 
 1. **Required Input Fields:**
    - **Personal:** Last Name*, First Name*, Middle Initial, Sex*, Email*, Contact No.*, Birthday*, Age (auto-generated)*.
@@ -16,7 +16,7 @@ This document details the complete operational lifecycle, dispatch algorithms, a
 
 ---
 
-## 2. First-Come, First-Served Dispatch Engine
+## ⚡ 2. First-Come, First-Served Dispatch Engine
 
 ```mermaid
 sequenceDiagram
@@ -36,7 +36,7 @@ sequenceDiagram
 
 ---
 
-## 3. Delivery Execution Workflow
+## 🛣️ 3. Delivery Execution Workflow
 
 1. **Step 1: Accept Request:**
    - Courier reviews pickup distance, merchant address, destination address, and package details.
@@ -51,7 +51,7 @@ sequenceDiagram
 
 ---
 
-## 4. Courier Earnings & Analytics
+## 💵 4. Courier Earnings & Analytics
 
 - **Profit / Earnings Page:**
   - Real-time earnings summary (total payouts per completed delivery).

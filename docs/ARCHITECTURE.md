@@ -1,10 +1,10 @@
-# System Architecture
+# 🏛️ System Architecture
 
 This document describes how the platform's backend, frontend, and database connect together.
 
 ---
 
-## 1. Tech Stack Overview
+## 🧩 1. Tech Stack Overview
 
 - **Backend:** Laravel handles database queries (Eloquent ORM), authentication, and business logic.
 - **Frontend:** React with TypeScript renders interactive user interfaces styled with Tailwind CSS.
@@ -14,7 +14,7 @@ This document describes how the platform's backend, frontend, and database conne
 
 ---
 
-## 2. User Role Access (RBAC)
+## 🔒 2. User Role Access (RBAC)
 
 When a user logs in, `RoleMiddleware` checks their role and routes them to their portal:
 
@@ -27,7 +27,7 @@ When a user logs in, `RoleMiddleware` checks their role and routes them to their
 
 ---
 
-## 3. Order & Delivery Flow
+## 📦 3. Order & Delivery Flow
 
 ```
 [Buyer Places Order]
