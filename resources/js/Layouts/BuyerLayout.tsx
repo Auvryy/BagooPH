@@ -104,18 +104,23 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
             <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between font-mono text-[11px]">
                     <div className="flex items-center gap-4">
-                        <Link href="/" className="hover:text-white transition flex items-center gap-1 font-bold text-white/90">
-                            <span>Platform Overview</span>
+                        <Link href={route('seller.login')} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-bold text-white/90">
+                            <Store className="w-3.5 h-3.5 text-[#E00D42]" />
+                            <span>Sell on Bagoo</span>
                         </Link>
                         <span className="text-white/20">/</span>
-                        <Link href={route('seller.register')} className="hover:text-[#E00D42] transition flex items-center gap-1 text-white/80">
-                            <Store className="w-3.5 h-3.5 text-[#E00D42]" />
-                            <span>Become a Merchant</span>
+                        <Link href={route('courier.login')} className="hover:text-emerald-400 transition flex items-center gap-1.5 text-white/80">
+                            <Truck className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Courier Fleet</span>
+                        </Link>
+                        <span className="text-white/20 hidden sm:inline">/</span>
+                        <Link href="/overview" className="hover:text-white transition flex items-center gap-1 text-white/60 hidden sm:inline">
+                            <span>Platform Showcase</span>
                         </Link>
                     </div>
 
                     <div className="flex items-center gap-4 text-white/70">
-                        <span className="hidden sm:inline">Doorstep Logistics & Verified Brands</span>
+                        <Link href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</Link>
                         <span className="text-white/20 hidden sm:inline">/</span>
                         <span className="text-[#E00D42] font-bold">PHP ₱ (PH)</span>
                     </div>
@@ -337,18 +342,20 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Platform Directory</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><Link href={route('buyer.index')} className="hover:text-[#E00D42]">Marketplace Home</Link></li>
+                            <li><Link href={route('marketplace')} className="hover:text-[#E00D42]">Marketplace Home</Link></li>
+                            <li><Link href={route('buyer.search')} className="hover:text-[#E00D42]">Search 14 Departments</Link></li>
                             <li><Link href={route('buyer.orders.index')} className="hover:text-[#E00D42]">Track Purchases</Link></li>
-                            <li><Link href={route('buyer.cart')} className="hover:text-[#E00D42]">Shopping Cart</Link></li>
+                            <li><Link href={route('buyer.cart')} className="hover:text-[#E00D42]">Shopping Bag</Link></li>
                         </ul>
                     </div>
 
                     <div>
-                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Ecosystem</h5>
+                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Partner with Us</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><Link href="/" className="hover:text-[#E00D42]">Platform Overview</Link></li>
-                            <li><Link href={route('seller.register')} className="hover:text-[#E00D42]">Seller Centre</Link></li>
-                            <li><Link href={route('login')} className="hover:text-[#E00D42]">Member Sign In</Link></li>
+                            <li><Link href={route('seller.login')} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Login</Link></li>
+                            <li><Link href={route('seller.register')} className="hover:text-[#E00D42]">Open a Verified Store</Link></li>
+                            <li><Link href={route('courier.login')} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</Link></li>
+                            <li><Link href={route('hub.index')} className="hover:text-indigo-700">Logistics Sorting Hub</Link></li>
                         </ul>
                     </div>
 
@@ -360,16 +367,21 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                             <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200">MAYA</span>
                             <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200">CARDS</span>
                         </div>
+                        <p className="text-slate-400 text-[10px] font-mono mt-2">100% Escrow & Anti-Fraud Protection</p>
                     </div>
 
                     <div>
-                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Dispatch Fleet</h5>
-                        <p className="text-slate-500 text-[11px]">Bagoo Express integrated logistics connecting Metro Manila and regional dispatch hubs.</p>
+                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Governance & Security</h5>
+                        <ul className="space-y-2 text-slate-500">
+                            <li><Link href={route('admin.login')} className="hover:text-slate-900 text-slate-600 font-mono text-[10px]">Admin Governance Console</Link></li>
+                            <li><Link href="/overview" className="hover:text-[#E00D42]">Platform Architecture</Link></li>
+                            <li><span className="text-slate-400">Strict KYC Compliance Verified</span></li>
+                        </ul>
                     </div>
                 </div>
 
                 <div className="border-t border-slate-100 py-4 text-center font-mono text-[11px] text-slate-400">
-                    © 2026 BagooPH Ecosystem. All Rights Reserved.
+                    © {new Date().getFullYear()} BagooPH Ecosystem. All Rights Reserved.
                 </div>
             </footer>
         </div>

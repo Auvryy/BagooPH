@@ -29,10 +29,48 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Public Landing Page (Completely Standalone)
+| Subdomain Routing (seller.bagooph.shop, courier.bagooph.shop, admin.bagooph.shop)
 |--------------------------------------------------------------------------
 */
-Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
+$appHost = parse_url(config('app.url', 'https://bagooph.shop'), PHP_URL_HOST) ?? 'bagooph.shop';
+
+if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
+    Route::domain("seller.{$appHost}")->group(function () {
+        Route::get('/', function () {
+            if (auth()->check() && auth()->user()->isSeller()) {
+                return redirect()->route('seller.dashboard');
+            }
+            return redirect()->route('seller.login');
+        });
+    });
+
+    Route::domain("courier.{$appHost}")->group(function () {
+        Route::get('/', function () {
+            if (auth()->check() && auth()->user()->isCourier()) {
+                return redirect()->route('courier.deliveries');
+            }
+            return redirect()->route('courier.login');
+        });
+    });
+
+    Route::domain("admin.{$appHost}")->group(function () {
+        Route::get('/', function () {
+            if (auth()->check() && auth()->user()->isAdmin()) {
+                return redirect()->route('admin.dashboard');
+            }
+            return redirect()->route('admin.login');
+        });
+    });
+}
+
+/*
+|--------------------------------------------------------------------------
+| Live Public Buyer Marketplace (Root /)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', [BuyerHomeController::class, 'index'])->name('marketplace');
+Route::get('/overview', [MarketplaceController::class, 'index'])->name('overview');
+Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +79,7 @@ Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace');
 */
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
-    Route::get('/home', fn() => redirect()->route('buyer.index'));
+    Route::get('/home', fn() => redirect()->route('marketplace'));
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
