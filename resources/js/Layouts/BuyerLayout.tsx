@@ -58,10 +58,26 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
 
-    const isProduction = typeof window !== 'undefined' && window.location.hostname.includes('bagooph.shop');
-    const sellerUrl = isProduction ? 'https://seller.bagooph.shop' : route('seller.login');
-    const courierUrl = isProduction ? 'https://courier.bagooph.shop' : route('courier.login');
-    const adminUrl = isProduction ? 'https://admin.bagooph.shop' : route('admin.login');
+    const getSubdomainUrl = (sub: string) => {
+        if (typeof window === 'undefined') return route(`${sub}.login`);
+        const { protocol, host, hostname, port } = window.location;
+        const portSuffix = port ? `:${port}` : '';
+        
+        if (hostname.startsWith(`${sub}.`)) return `${protocol}//${host}`;
+        
+        let cleanHostname = hostname;
+        ['seller.', 'courier.', 'admin.', 'www.'].forEach(prefix => {
+            if (cleanHostname.startsWith(prefix)) {
+                cleanHostname = cleanHostname.substring(prefix.length);
+            }
+        });
+
+        return `${protocol}//${sub}.${cleanHostname}${portSuffix}`;
+    };
+
+    const sellerUrl = getSubdomainUrl('seller');
+    const courierUrl = getSubdomainUrl('courier');
+    const adminUrl = getSubdomainUrl('admin');
 
     const trendingKeywords = [
         'Commuter Backpack',

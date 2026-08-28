@@ -34,39 +34,35 @@ use Inertia\Inertia;
 */
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
-$appHost = parse_url(config('app.url', 'https://bagooph.shop'), PHP_URL_HOST) ?? 'bagooph.shop';
-
-if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
-    Route::domain("seller.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isSeller()) {
-                return redirect()->route('seller.dashboard');
-            }
-            return app(AuthenticatedSessionController::class)->createSeller();
-        });
-        Route::get('/login', fn() => redirect('/'));
+Route::domain('seller.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isSeller()) {
+            return redirect()->route('seller.dashboard');
+        }
+        return app(AuthenticatedSessionController::class)->createSeller();
     });
+    Route::get('/login', fn() => redirect('/'));
+});
 
-    Route::domain("courier.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isCourier()) {
-                return redirect()->route('courier.deliveries');
-            }
-            return app(AuthenticatedSessionController::class)->createCourier();
-        });
-        Route::get('/login', fn() => redirect('/'));
+Route::domain('courier.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isCourier()) {
+            return redirect()->route('courier.deliveries');
+        }
+        return app(AuthenticatedSessionController::class)->createCourier();
     });
+    Route::get('/login', fn() => redirect('/'));
+});
 
-    Route::domain("admin.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isAdmin()) {
-                return redirect()->route('admin.dashboard');
-            }
-            return app(AuthenticatedSessionController::class)->createAdmin();
-        });
-        Route::get('/login', fn() => redirect('/'));
+Route::domain('admin.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return app(AuthenticatedSessionController::class)->createAdmin();
     });
-}
+    Route::get('/login', fn() => redirect('/'));
+});
 
 /*
 |--------------------------------------------------------------------------
