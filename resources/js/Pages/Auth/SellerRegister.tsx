@@ -1,23 +1,81 @@
-import React, { FormEventHandler } from 'react';
+import React, { FormEventHandler, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
-import { ArrowRight, Lock, Mail, Store, User, FileText, Check, TrendingUp, Sparkles, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Store, User, Upload, FileText, X, Phone, MapPin, Sparkles, ShoppingBag, ShieldCheck } from 'lucide-react';
 
 export default function SellerRegister() {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const idInputRef = useRef<HTMLInputElement>(null);
+    const permitInputRef = useRef<HTMLInputElement>(null);
+
+    const [idFileName, setIdFileName] = useState<string | null>(null);
+    const [idFileSize, setIdFileSize] = useState<string | null>(null);
+    const [permitFileName, setPermitFileName] = useState<string | null>(null);
+    const [permitFileSize, setPermitFileSize] = useState<string | null>(null);
+
+    const { data, setData, post, processing, errors, reset } = useForm<{
+        name: string;
+        shop_name: string;
+        email: string;
+        phone: string;
+        address: string;
+        city: string;
+        role: 'seller';
+        password: string;
+        password_confirmation: string;
+        id_document: File | null;
+        business_permit: File | null;
+    }>({
         name: '',
         shop_name: '',
         email: '',
-        role: 'seller' as const,
+        phone: '',
+        address: '',
+        city: '',
+        role: 'seller',
         password: '',
         password_confirmation: '',
+        id_document: null,
+        business_permit: null,
     });
+
+    const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('id_document', file);
+            setIdFileName(file.name);
+            setIdFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+        }
+    };
+
+    const removeIdFile = () => {
+        setData('id_document', null);
+        setIdFileName(null);
+        setIdFileSize(null);
+        if (idInputRef.current) idInputRef.current.value = '';
+    };
+
+    const handlePermitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('business_permit', file);
+            setPermitFileName(file.name);
+            setPermitFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+        }
+    };
+
+    const removePermitFile = () => {
+        setData('business_permit', null);
+        setPermitFileName(null);
+        setPermitFileSize(null);
+        if (permitInputRef.current) permitInputRef.current.value = '';
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         post(route('register'), {
+            forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -34,7 +92,7 @@ export default function SellerRegister() {
                 {/* Store Name Input */}
                 <div>
                     <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                        Store / Merchant Business Name
+                        Store / Merchant Business Name *
                     </label>
                     <div className="relative">
                         <Store className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -53,52 +111,194 @@ export default function SellerRegister() {
                     <InputError message={errors.shop_name} className="mt-1" />
                 </div>
 
-                <div>
-                    <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                        Merchant Owner Full Name
-                    </label>
-                    <div className="relative">
-                        <User className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            id="name"
-                            type="text"
-                            name="name"
-                            value={data.name}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                            placeholder="e.g. Maria Santos"
-                            autoComplete="name"
-                            onChange={(e) => setData('name', e.target.value)}
-                            required
-                        />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                            Merchant Owner Full Name *
+                        </label>
+                        <div className="relative">
+                            <User className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                                id="name"
+                                type="text"
+                                name="name"
+                                value={data.name}
+                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                                placeholder="e.g. Maria Santos"
+                                autoComplete="name"
+                                onChange={(e) => setData('name', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <InputError message={errors.name} className="mt-1" />
                     </div>
-                    <InputError message={errors.name} className="mt-1" />
-                </div>
 
-                <div>
-                    <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                        Business Email Address
-                    </label>
-                    <div className="relative">
-                        <Mail className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
-                            placeholder="merchant@brand.com"
-                            autoComplete="username"
-                            onChange={(e) => setData('email', e.target.value)}
-                            required
-                        />
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                            Business Email Address *
+                        </label>
+                        <div className="relative">
+                            <Mail className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                value={data.email}
+                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                                placeholder="merchant@brand.com"
+                                autoComplete="username"
+                                onChange={(e) => setData('email', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <InputError message={errors.email} className="mt-1" />
                     </div>
-                    <InputError message={errors.email} className="mt-1" />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Password
+                            Business Phone Number *
+                        </label>
+                        <div className="relative">
+                            <Phone className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                                id="phone"
+                                type="tel"
+                                name="phone"
+                                value={data.phone}
+                                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                                placeholder="+63 917 000 0000"
+                                onChange={(e) => setData('phone', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <InputError message={errors.phone} className="mt-1" />
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                            Business City / Region *
+                        </label>
+                        <input
+                            id="city"
+                            type="text"
+                            name="city"
+                            value={data.city}
+                            className="w-full px-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                            placeholder="e.g. Makati City"
+                            onChange={(e) => setData('city', e.target.value)}
+                            required
+                        />
+                        <InputError message={errors.city} className="mt-1" />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                        Pickup Store Address *
+                    </label>
+                    <div className="relative">
+                        <MapPin className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            id="address"
+                            type="text"
+                            name="address"
+                            value={data.address}
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                            placeholder="Unit / Building / Street for courier dispatch pickup"
+                            onChange={(e) => setData('address', e.target.value)}
+                            required
+                        />
+                    </div>
+                    <InputError message={errors.address} className="mt-1" />
+                </div>
+
+                {/* KYC Uploads: Gov ID & Business Permit */}
+                <div className="space-y-3 pt-1">
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>1. Merchant Owner Government ID *</span>
+                            <span className="text-[10px] text-[#E00D42] font-normal">Passport / UMID / Driver's License</span>
+                        </label>
+                        <input
+                            type="file"
+                            ref={idInputRef}
+                            onChange={handleIdChange}
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            className="hidden"
+                        />
+                        {!idFileName ? (
+                            <div 
+                                onClick={() => idInputRef.current?.click()}
+                                className="border-2 border-dashed border-black/20 hover:border-[#E00D42] hover:bg-[#E00D42]/5 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                            >
+                                <Upload className="w-4 h-4 text-black/40" />
+                                <span className="text-[11px] text-black/70">Upload Owner ID (JPG, PNG, PDF max 5MB)</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between p-2.5 bg-[#F4F2EC] border border-black/15 rounded-lg text-xs">
+                                <div className="flex items-center gap-2 truncate">
+                                    <FileText className="w-4 h-4 text-[#E00D42] shrink-0" />
+                                    <span className="font-bold truncate text-[11px]">{idFileName}</span>
+                                    <span className="text-[10px] text-black/50 shrink-0">({idFileSize})</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={removeIdFile}
+                                    className="p-1 hover:bg-black/10 rounded text-black/60 hover:text-black transition"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
+                        <InputError message={errors.id_document} className="mt-1" />
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>2. Business Permit / DTI Certificate *</span>
+                            <span className="text-[10px] text-[#E00D42] font-normal">DTI / SEC / Mayor's Permit</span>
+                        </label>
+                        <input
+                            type="file"
+                            ref={permitInputRef}
+                            onChange={handlePermitChange}
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            className="hidden"
+                        />
+                        {!permitFileName ? (
+                            <div 
+                                onClick={() => permitInputRef.current?.click()}
+                                className="border-2 border-dashed border-black/20 hover:border-[#E00D42] hover:bg-[#E00D42]/5 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                            >
+                                <Upload className="w-4 h-4 text-black/40" />
+                                <span className="text-[11px] text-black/70">Upload DTI / Business Permit (JPG, PNG, PDF max 5MB)</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between p-2.5 bg-[#F4F2EC] border border-black/15 rounded-lg text-xs">
+                                <div className="flex items-center gap-2 truncate">
+                                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span className="font-bold truncate text-[11px]">{permitFileName}</span>
+                                    <span className="text-[10px] text-black/50 shrink-0">({permitFileSize})</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={removePermitFile}
+                                    className="p-1 hover:bg-black/10 rounded text-black/60 hover:text-black transition"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
+                        <InputError message={errors.business_permit} className="mt-1" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                            Password *
                         </label>
                         <div className="relative">
                             <Lock className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -119,7 +319,7 @@ export default function SellerRegister() {
 
                     <div>
                         <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                            Confirm Password
+                            Confirm Password *
                         </label>
                         <div className="relative">
                             <Lock className="w-4 h-4 text-black/40 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -146,10 +346,10 @@ export default function SellerRegister() {
                         <span>Merchant Studio Power Suite:</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-[9px] text-black/80">
-                        <span className="flex items-center gap-1">✓ Printable Waybills</span>
+                        <span className="flex items-center gap-1">✓ Printable Thermal Waybills</span>
                         <span className="flex items-center gap-1">✓ 10% Flat Fair Fee</span>
                         <span className="flex items-center gap-1">✓ Live Courier Fleet</span>
-                        <span className="flex items-center gap-1">✓ Financial Date Filter</span>
+                        <span className="flex items-center gap-1">✓ Admin KYC Protected</span>
                     </div>
                 </div>
 
@@ -157,9 +357,9 @@ export default function SellerRegister() {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-black hover:bg-[#E00D42] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-3 bg-black hover:bg-[#E00D42] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
-                        <span>Open Seller Studio</span>
+                        <span>{processing ? 'Submitting Application...' : 'Submit Seller Application'}</span>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>

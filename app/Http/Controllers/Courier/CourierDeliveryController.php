@@ -102,6 +102,50 @@ class CourierDeliveryController extends Controller
             if ($delivery->order) {
                 $delivery->order->update(['status' => 'shipped']);
             }
+            \App\Models\DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'courier_pickup'],
+                [
+                    'location_name' => $delivery->pickup_store_name ?? 'Merchant Store',
+                    'barcode_scanned' => $delivery->tracking_number,
+                    'notes' => $validated['courier_notes'] ?? 'Courier verified barcode and picked up parcel from store',
+                    'scanned_by_id' => $request->user()->id,
+                ]
+            );
+        }
+
+        if ($validated['status'] === 'in_transit') {
+            \App\Models\DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'hub_intake'],
+                [
+                    'location_name' => 'Metro Manila Central Sorting Station',
+                    'barcode_scanned' => $delivery->tracking_number,
+                    'notes' => $validated['courier_notes'] ?? 'Central logistics hub intake scan complete',
+                    'scanned_by_id' => $request->user()->id,
+                ]
+            );
+        }
+
+        if ($validated['status'] === 'out_for_delivery') {
+            \App\Models\DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'barangay_sort'],
+                [
+                    'location_name' => 'Destination Delivery Bay',
+                    'barcode_scanned' => $delivery->tracking_number,
+                    'notes' => $validated['courier_notes'] ?? 'Parcel sorted for last-mile doorstep delivery',
+                    'scanned_by_id' => $request->user()->id,
+                ]
+            );
+        }
+
+        if ($validated['status'] === 'failed') {
+            \App\Models\DeliveryCheckpoint::create([
+                'delivery_id' => $delivery->id,
+                'checkpoint_type' => 'delivery_failed',
+                'location_name' => $delivery->delivery_address,
+                'barcode_scanned' => $delivery->tracking_number,
+                'notes' => $validated['courier_notes'] ?? 'Recipient unreachable at destination address',
+                'scanned_by_id' => $request->user()->id,
+            ]);
         }
 
         if ($validated['status'] === 'delivered' && ! $delivery->delivered_at) {
@@ -114,7 +158,36 @@ class CourierDeliveryController extends Controller
                     'status' => 'delivered',
                     'payment_status' => 'paid',
                 ]);
+
+                $gross = (float) $delivery->order->subtotal;
+                $sellerAmount = round($gross * 0.90, 2);
+                $platformCommission = round($gross * 0.10, 2);
+                $sellerUser = $delivery->order->items->first()?->product?->shop?->user_id;
+
+                \App\Models\CommissionLedger::firstOrCreate(
+                    ['order_id' => $delivery->order->id],
+                    [
+                        'seller_id' => $sellerUser,
+                        'courier_id' => $delivery->courier_id ?? $request->user()->id,
+                        'gross_amount' => $gross,
+                        'seller_amount' => $sellerAmount,
+                        'platform_commission' => $platformCommission,
+                        'delivery_fee' => 60.00,
+                        'status' => 'settled',
+                    ]
+                );
             }
+
+            \App\Models\DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'doorstep_handover'],
+                [
+                    'location_name' => $delivery->delivery_address,
+                    'barcode_scanned' => $delivery->tracking_number,
+                    'notes' => $validated['courier_notes'] ?? 'Recipient verified parcel and confirmed handover with proof photo',
+                    'scanned_by_id' => $request->user()->id,
+                    'proof_image' => $updates['proof_image'],
+                ]
+            );
         }
 
         $delivery->update($updates);

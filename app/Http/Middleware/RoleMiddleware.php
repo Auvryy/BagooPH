@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
@@ -16,19 +17,36 @@ class RoleMiddleware
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (! $request->user()) {
+        $user = $request->user();
+
+        if (! $user) {
             return redirect()->route('login');
         }
 
-        $userRole = $request->user()->role;
-
-        // If admin, grant full access across role routes
-        if ($userRole === 'admin') {
+        // Admins bypass KYC gate and have full portal access
+        if ($user->isAdmin()) {
             return $next($request);
         }
 
-        if (! in_array($userRole, $roles, true)) {
-            abort(403, 'Unauthorized access for your account role (' . $userRole . ').');
+        // Block and logout suspended users
+        if ($user->status === 'suspended') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Your account has been suspended by platform administration.',
+            ]);
+        }
+
+        // Intercept pending or rejected KYC accounts
+        if ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected') {
+            return redirect()->route('kyc.pending');
+        }
+
+        // Enforce role authorization
+        if (! in_array($user->role, $roles, true)) {
+            abort(403, 'Unauthorized access for your account role (' . $user->role . ').');
         }
 
         return $next($request);

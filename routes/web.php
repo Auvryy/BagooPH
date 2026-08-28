@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
@@ -15,12 +16,14 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
+use App\Http\Controllers\Simulation\OrderSimulationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -79,10 +82,17 @@ Route::middleware('auth')->group(function () {
     // Universal Dashboard Redirector
     Route::get('/dashboard', function () {
         $user = auth()->user();
+        if (! $user) {
+            return redirect()->route('login');
+        }
+        if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
+            return redirect()->route('kyc.pending');
+        }
         return redirect()->intended(match($user->role) {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
             'courier' => route('courier.deliveries'),
+            'logistics' => route('hub.index'),
             default => route('buyer.index'),
         });
     })->name('dashboard');
@@ -155,10 +165,34 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
     Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
+    Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
+    Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
+    Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
     Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
     Route::post('/logistics/override', [LogisticsHubController::class, 'override'])->name('logistics.override');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Logistics Hub Workstation Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:logistics,admin'])->prefix('hub')->name('hub.')->group(function () {
+    Route::get('/', [LogisticsHubWorkstationController::class, 'index'])->name('index');
+    Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
+    Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Order Progression Simulator Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->prefix('simulator')->name('simulator.')->group(function () {
+    Route::post('/orders/{order}/advance', [OrderSimulationController::class, 'advance'])->name('orders.advance');
+    Route::post('/orders/{order}/reset', [OrderSimulationController::class, 'reset'])->name('orders.reset');
 });
 
 require __DIR__.'/auth.php';
