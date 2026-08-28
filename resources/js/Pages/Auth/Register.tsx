@@ -113,44 +113,44 @@ export default function Register() {
         >
             <Head title="Buyer Registration — BagooPH" />
 
-            {/* STEPPER PROGRESS HEADER */}
-            <div className="mb-6 space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono font-bold">
-                    <span className="text-[#E00D42] uppercase tracking-wider">
-                        Step {currentStep} of 2: {currentStep === 1 ? 'Account Credentials' : 'Shipping Address & Contact'}
-                    </span>
-                    <span className="text-slate-400 font-mono text-[11px]">
-                        {currentStep === 1 ? '50%' : '100%'} Completed
-                    </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                        className="bg-[#E00D42] h-full transition-all duration-300 rounded-full"
-                        style={{ width: currentStep === 1 ? '50%' : '100%' }}
-                    ></div>
-                </div>
-
-                {/* Step Indicators */}
-                <div className="grid grid-cols-2 gap-2 pt-2 font-mono text-[11px]">
-                    <div className={`p-2 rounded-lg border text-center transition ${
-                        currentStep === 1 
-                            ? 'bg-rose-50 border-[#E00D42] text-[#E00D42] font-bold' 
-                            : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'
-                    }`}>
-                        <span className="flex items-center justify-center gap-1">
-                            {currentStep > 1 ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : '1.'} Credentials
+            {/* NUMBERED STEPS HEADER */}
+            <div className="mb-6 pb-2 border-b border-slate-100">
+                <div className="flex items-center justify-center gap-3 sm:gap-6 font-mono">
+                    
+                    {/* Step 1 */}
+                    <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                            currentStep === 1 
+                                ? 'bg-[#E00D42] text-white shadow-xs' 
+                                : 'bg-emerald-600 text-white'
+                        }`}>
+                            {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
+                        </div>
+                        <span className={`text-[11px] font-bold uppercase ${
+                            currentStep === 1 ? 'text-slate-900' : 'text-slate-500'
+                        }`}>
+                            Credentials
                         </span>
                     </div>
 
-                    <div className={`p-2 rounded-lg border text-center transition ${
-                        currentStep === 2 
-                            ? 'bg-rose-50 border-[#E00D42] text-[#E00D42] font-bold' 
-                            : 'bg-white border-slate-200 text-slate-400'
-                    }`}>
-                        <span>2. Delivery Address</span>
+                    <div className={`w-10 sm:w-16 h-px transition-colors ${currentStep > 1 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
+
+                    {/* Step 2 */}
+                    <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                            currentStep === 2 
+                                ? 'bg-[#E00D42] text-white shadow-xs' 
+                                : 'bg-slate-100 text-slate-400 border border-slate-200'
+                        }`}>
+                            2
+                        </div>
+                        <span className={`text-[11px] font-bold uppercase ${
+                            currentStep === 2 ? 'text-slate-900' : 'text-slate-400'
+                        }`}>
+                            Address & Contact
+                        </span>
                     </div>
+
                 </div>
             </div>
 
