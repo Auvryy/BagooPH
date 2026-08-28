@@ -42,7 +42,7 @@ export default function GuestLayout({ children, title, subtitle, headerBadge }: 
                         href="/" 
                         className="text-black/60 hover:text-black transition uppercase font-bold tracking-wider"
                     >
-                        ← Back to Overview
+                        ← Back to Marketplace
                     </Link>
                 </div>
             </header>

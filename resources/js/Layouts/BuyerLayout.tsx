@@ -58,6 +58,11 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
 
+    const isProduction = typeof window !== 'undefined' && window.location.hostname.includes('bagooph.shop');
+    const sellerUrl = isProduction ? 'https://seller.bagooph.shop' : route('seller.login');
+    const courierUrl = isProduction ? 'https://courier.bagooph.shop' : route('courier.login');
+    const adminUrl = isProduction ? 'https://admin.bagooph.shop' : route('admin.login');
+
     const trendingKeywords = [
         'Commuter Backpack',
         'ANC Headphones',
@@ -104,15 +109,15 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
             <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between font-mono text-[11px]">
                     <div className="flex items-center gap-4">
-                        <Link href={route('seller.login')} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-bold text-white/90">
+                        <a href={sellerUrl} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-bold text-white/90">
                             <Store className="w-3.5 h-3.5 text-[#E00D42]" />
                             <span>Sell on Bagoo</span>
-                        </Link>
+                        </a>
                         <span className="text-white/20">/</span>
-                        <Link href={route('courier.login')} className="hover:text-emerald-400 transition flex items-center gap-1.5 text-white/80">
+                        <a href={courierUrl} className="hover:text-emerald-400 transition flex items-center gap-1.5 text-white/80">
                             <Truck className="w-3.5 h-3.5 text-emerald-400" />
                             <span>Courier Fleet</span>
-                        </Link>
+                        </a>
                         <span className="text-white/20 hidden sm:inline">/</span>
                         <Link href="/overview" className="hover:text-white transition flex items-center gap-1 text-white/60 hidden sm:inline">
                             <span>Platform Showcase</span>
@@ -352,9 +357,9 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Partner with Us</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><Link href={route('seller.login')} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Login</Link></li>
+                            <li><a href={sellerUrl} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Login</a></li>
                             <li><Link href={route('seller.register')} className="hover:text-[#E00D42]">Open a Verified Store</Link></li>
-                            <li><Link href={route('courier.login')} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</Link></li>
+                            <li><a href={courierUrl} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</a></li>
                             <li><Link href={route('hub.index')} className="hover:text-indigo-700">Logistics Sorting Hub</Link></li>
                         </ul>
                     </div>
@@ -373,7 +378,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider font-mono text-[11px]">Governance & Security</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><Link href={route('admin.login')} className="hover:text-slate-900 text-slate-600 font-mono text-[10px]">Admin Governance Console</Link></li>
+                            <li><a href={adminUrl} className="hover:text-slate-900 text-slate-600 font-mono text-[10px]">Admin Governance Console</a></li>
                             <li><Link href="/overview" className="hover:text-[#E00D42]">Platform Architecture</Link></li>
                             <li><span className="text-slate-400">Strict KYC Compliance Verified</span></li>
                         </ul>

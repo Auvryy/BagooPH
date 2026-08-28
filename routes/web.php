@@ -32,6 +32,8 @@ use Inertia\Inertia;
 | Subdomain Routing (seller.bagooph.shop, courier.bagooph.shop, admin.bagooph.shop)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+
 $appHost = parse_url(config('app.url', 'https://bagooph.shop'), PHP_URL_HOST) ?? 'bagooph.shop';
 
 if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
@@ -40,8 +42,9 @@ if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
             if (auth()->check() && auth()->user()->isSeller()) {
                 return redirect()->route('seller.dashboard');
             }
-            return redirect()->route('seller.login');
+            return app(AuthenticatedSessionController::class)->createSeller();
         });
+        Route::get('/login', fn() => redirect('/'));
     });
 
     Route::domain("courier.{$appHost}")->group(function () {
@@ -49,8 +52,9 @@ if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
             if (auth()->check() && auth()->user()->isCourier()) {
                 return redirect()->route('courier.deliveries');
             }
-            return redirect()->route('courier.login');
+            return app(AuthenticatedSessionController::class)->createCourier();
         });
+        Route::get('/login', fn() => redirect('/'));
     });
 
     Route::domain("admin.{$appHost}")->group(function () {
@@ -58,8 +62,9 @@ if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
             if (auth()->check() && auth()->user()->isAdmin()) {
                 return redirect()->route('admin.dashboard');
             }
-            return redirect()->route('admin.login');
+            return app(AuthenticatedSessionController::class)->createAdmin();
         });
+        Route::get('/login', fn() => redirect('/'));
     });
 }
 
