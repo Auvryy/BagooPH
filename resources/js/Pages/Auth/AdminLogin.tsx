@@ -1,9 +1,9 @@
-import React, { FormEventHandler } from 'react';
+import React, { FormEventHandler, useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, ShieldCheck, ShieldAlert, Cpu } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Shield, Server, Terminal, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
     status?: string;
@@ -11,14 +11,29 @@ interface Props {
 }
 
 export default function AdminLogin({ status, canResetPassword }: Props) {
+    const [showPassword, setShowPassword] = useState(false);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
-        remember: false as boolean,
+        remember: true as boolean,
     });
+
+    useEffect(() => {
+        const savedEmail = localStorage.getItem('bagoo_admin_email');
+        if (savedEmail) {
+            setData('email', savedEmail);
+        }
+    }, []);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        if (data.remember && data.email) {
+            localStorage.setItem('bagoo_admin_email', data.email);
+        } else {
+            localStorage.removeItem('bagoo_admin_email');
+        }
 
         post(route('login'), {
             onFinish: () => reset('password'),
@@ -27,20 +42,33 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
 
     return (
         <GuestLayout 
-            title="Governance Control" 
-            subtitle="Platform KYC Verification, Hub Logistics & Treasury Console"
+            title="Governance Console" 
+            subtitle="Platform Infrastructure & Administrative Authorization"
             headerBadge="GOVERNANCE // 00"
         >
-            <Head title="Admin Console Sign In — BagooPH" />
+            <Head title="Platform Governance Login — BagooPH" />
 
-            {/* Security Warning Notice */}
-            <div className="mb-5 p-3 rounded-xs bg-slate-900 border border-slate-700 text-white font-mono text-[11px] flex items-center gap-2.5">
-                <ShieldAlert className="w-4 h-4 text-[#E00D42] shrink-0" />
-                <span>Restricted Administrative Access. All actions and sessions are cryptographically logged.</span>
+            {/* Admin Console Indicators */}
+            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
+                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
+                    <Shield className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
+                    <span className="font-bold block text-amber-950">KYC Gate</span>
+                    <span className="text-amber-700 text-[9px]">Document Audit</span>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
+                    <Server className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
+                    <span className="font-bold block text-amber-950">Ledger Audit</span>
+                    <span className="text-amber-700 text-[9px]">Commission 10%</span>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
+                    <Terminal className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
+                    <span className="font-bold block text-amber-950">Dispute Arb</span>
+                    <span className="text-amber-700 text-[9px]">Escrow Release</span>
+                </div>
             </div>
 
             {status && (
-                <div className="mb-5 p-3 rounded-xs bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
                     {status}
                 </div>
             )}
@@ -48,7 +76,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
             <form onSubmit={submit} className="space-y-4 font-mono">
                 <div>
                     <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                        Administrator Email
+                        Administrator Email Address
                     </label>
                     <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -57,8 +85,8 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                            placeholder="admin@bagoo.ph"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            placeholder="admin@domain.com"
                             autoComplete="username"
                             autoFocus
                             onChange={(e) => setData('email', e.target.value)}
@@ -71,14 +99,14 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                            Master Password
+                            Administrator Security Key / Password
                         </label>
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}
-                                className="text-[10px] text-slate-500 hover:text-[#E00D42] transition"
+                                className="text-[10px] text-slate-500 hover:text-amber-700 transition"
                             >
-                                Recover credentials?
+                                Reset key?
                             </Link>
                         )}
                     </div>
@@ -86,15 +114,23 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                         <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                     </div>
                     <InputError message={errors.password} className="mt-1" />
                 </div>
@@ -106,7 +142,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Secure administrative session</span>
+                        <span className="text-[11px] text-slate-700 font-mono">Store admin session</span>
                     </label>
                 </div>
 
@@ -114,16 +150,17 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-xs shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 font-mono"
+                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
-                        <span>{processing ? 'Authenticating Admin Key...' : 'Authorize Console Access'}</span>
+                        <span>{processing ? 'Verifying Key...' : 'Authorize Admin Console'}</span>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 text-center font-mono text-[11px]">
-                    <Link href={route('marketplace')} className="text-slate-500 hover:text-slate-900 transition">
-                        ← Return to Public Marketplace
+                    <span className="text-slate-500">Return to public store? </span>
+                    <Link href={route('login')} className="text-slate-900 font-bold hover:text-amber-700 underline">
+                        Buyer Login
                     </Link>
                 </div>
             </form>

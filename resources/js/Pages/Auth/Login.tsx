@@ -1,9 +1,9 @@
-import React, { FormEventHandler } from 'react';
+import React, { FormEventHandler, useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Store } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Store, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
     status?: string;
@@ -11,14 +11,29 @@ interface Props {
 }
 
 export default function Login({ status, canResetPassword }: Props) {
+    const [showPassword, setShowPassword] = useState(false);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: true as boolean,
     });
 
+    useEffect(() => {
+        const savedEmail = localStorage.getItem('bagoo_saved_email');
+        if (savedEmail) {
+            setData('email', savedEmail);
+        }
+    }, []);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        if (data.remember && data.email) {
+            localStorage.setItem('bagoo_saved_email', data.email);
+        } else {
+            localStorage.removeItem('bagoo_saved_email');
+        }
 
         post(route('login'), {
             onFinish: () => reset('password'),
@@ -34,7 +49,7 @@ export default function Login({ status, canResetPassword }: Props) {
             <Head title="Sign In — BagooPH" />
 
             {status && (
-                <div className="mb-5 p-3 rounded-xs bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
                     {status}
                 </div>
             )}
@@ -51,7 +66,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="name@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -80,15 +95,23 @@ export default function Login({ status, canResetPassword }: Props) {
                         <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                     </div>
                     <InputError message={errors.password} className="mt-1" />
                 </div>
@@ -100,7 +123,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Remember session</span>
+                        <span className="text-[11px] text-slate-700 font-mono">Remember email & session</span>
                     </label>
                 </div>
 
@@ -108,7 +131,7 @@ export default function Login({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-xs shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{processing ? 'Authenticating...' : 'Sign In to Account'}</span>
                         <ArrowRight className="w-4 h-4" />
@@ -117,7 +140,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
                 {/* Role Registration Gateways */}
                 <div className="pt-4 border-t border-slate-200 space-y-3 font-sans text-xs">
-                    <div className="text-center">
+                    <div className="text-center font-mono text-[11px]">
                         <span className="text-slate-600">New shopper? </span>
                         <Link 
                             href={route('register')} 
@@ -127,9 +150,9 @@ export default function Login({ status, canResetPassword }: Props) {
                         </Link>
                     </div>
 
-                    <div className="p-3 rounded-xs bg-slate-900 text-white flex items-center justify-between gap-3 border border-slate-800">
+                    <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-3 border border-slate-800">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-xs bg-white/10 flex items-center justify-center text-[#E00D42]">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#E00D42]">
                                 <Store className="w-3.5 h-3.5" />
                             </div>
                             <div>
@@ -140,7 +163,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
                         <Link
                             href={route('seller.register')}
-                            className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xs font-mono text-[10px] font-bold uppercase shrink-0 transition"
+                            className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-mono text-[10px] font-bold uppercase shrink-0 transition"
                         >
                             Open Store
                         </Link>

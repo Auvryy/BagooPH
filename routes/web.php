@@ -32,36 +32,47 @@ use Inertia\Inertia;
 | Subdomain Routing (seller.bagooph.shop, courier.bagooph.shop, admin.bagooph.shop)
 |--------------------------------------------------------------------------
 */
-$appHost = parse_url(config('app.url', 'https://bagooph.shop'), PHP_URL_HOST) ?? 'bagooph.shop';
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 
-if ($appHost !== 'localhost' && !str_contains($appHost, '127.0.0.1')) {
-    Route::domain("seller.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isSeller()) {
-                return redirect()->route('seller.dashboard');
-            }
-            return redirect()->route('seller.login');
-        });
+Route::domain('seller.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isSeller()) {
+            return redirect()->route('seller.dashboard');
+        }
+        return Inertia::render('Seller/Landing');
     });
+    Route::get('/login', [AuthenticatedSessionController::class, 'createSeller']);
+    Route::get('/register', [RegisteredUserController::class, 'createSeller']);
+});
 
-    Route::domain("courier.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isCourier()) {
-                return redirect()->route('courier.deliveries');
-            }
-            return redirect()->route('courier.login');
-        });
+Route::domain('courier.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isCourier()) {
+            return redirect()->route('courier.deliveries');
+        }
+        return app(AuthenticatedSessionController::class)->createCourier();
     });
+    Route::get('/login', [AuthenticatedSessionController::class, 'createCourier']);
+    Route::get('/register', [RegisteredUserController::class, 'createCourier']);
+});
 
-    Route::domain("admin.{$appHost}")->group(function () {
-        Route::get('/', function () {
-            if (auth()->check() && auth()->user()->isAdmin()) {
-                return redirect()->route('admin.dashboard');
-            }
-            return redirect()->route('admin.login');
-        });
+Route::domain('admin.{domain}')->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && auth()->user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return app(AuthenticatedSessionController::class)->createAdmin();
     });
-}
+    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
+});
+
+Route::get('/seller', function () {
+    if (auth()->check() && auth()->user()->isSeller()) {
+        return redirect()->route('seller.dashboard');
+    }
+    return Inertia::render('Seller/Landing');
+})->name('seller.landing');
 
 /*
 |--------------------------------------------------------------------------
