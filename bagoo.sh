@@ -44,7 +44,7 @@ case "$cmd" in
     docker compose exec app bash
     ;;
   test)
-    docker compose exec app php artisan test "$@"
+    docker compose exec -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: app php artisan test "$@"
     ;;
   *)
     echo "Bagoo CLI Helper"

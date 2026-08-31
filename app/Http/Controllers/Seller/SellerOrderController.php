@@ -36,7 +36,7 @@ class SellerOrderController extends Controller
             ->latest();
 
         if ($status === 'to_pack') {
-            $query->whereHas('order', fn($q) => $q->where('status', 'processing'));
+            $query->whereHas('order', fn($q) => $q->whereIn('status', ['pending', 'processing']));
         } elseif ($status === 'to_pickup') {
             $query->whereHas('order', fn($q) => $q->where('status', 'ready_for_pickup'));
         } elseif ($status === 'in_transit') {

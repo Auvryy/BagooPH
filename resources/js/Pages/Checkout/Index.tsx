@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Cart, CartItem, PageProps, User } from '@/types';
@@ -61,6 +61,21 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
     });
 
     const [shippingOption, setShippingOption] = useState<'standard' | 'express'>('standard');
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
+    const [validationError, setValidationError] = useState('');
+
+    useEffect(() => {
+        if (showConfirmModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showConfirmModal]);
+
     const baseShippingFee = shippingOption === 'express' ? 95 : (subtotal > 1500 ? 0 : 50);
     
     // Calculate final shipping fee accounting for free shipping vouchers
@@ -109,9 +124,22 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
         setData('voucher_code', '');
     };
 
-    const submit = (e: React.FormEvent) => {
+    const handlePromptConfirmation = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('checkout.store'));
+        setValidationError('');
+
+        if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim() || !data.shipping_city.trim()) {
+            setValidationError('Please complete all required recipient and address fields.');
+            return;
+        }
+
+        setShowConfirmModal(true);
+    };
+
+    const submitFinalOrder = () => {
+        post(route('checkout.store'), {
+            onFinish: () => setShowConfirmModal(false),
+        });
     };
 
     const formatPrice = (amount?: number | string | null) => {
@@ -145,7 +173,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                     </Link>
                 </div>
 
-                <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <form onSubmit={handlePromptConfirmation} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     {/* Left Column: Forms */}
                     <div className="lg:col-span-8 space-y-6 font-sans">
@@ -188,7 +216,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Street Address, Unit / Building</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Street Address, Unit / House No.</label>
                                     <input
                                         type="text"
                                         value={data.shipping_address}
@@ -200,7 +228,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Municipality / City</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">City / Municipality</label>
                                     <input
                                         type="text"
                                         value={data.shipping_city}
@@ -212,7 +240,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Postal Code</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Postal Code (Optional)</label>
                                     <input
                                         type="text"
                                         value={data.shipping_postal_code}
@@ -223,140 +251,201 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                             </div>
                         </div>
 
-                        {/* 2. Parcel Items Ordered */}
+                        {/* 2. Package Items in this Order */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
-                                        02
-                                    </div>
-                                    <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
-                                        Items In Shopping Bag ({items.length})
-                                    </h2>
+                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                                    02
                                 </div>
+                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                    Items In Your Shopping Bag ({items.length})
+                                </h2>
                             </div>
 
                             <div className="divide-y divide-slate-100 font-mono text-xs">
                                 {items.map((item) => (
-                                    <div key={item.id} className="py-3 first:pt-0 flex items-center justify-between gap-4">
+                                    <div key={item.id} className="py-3 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <img
                                                 src={item.product?.featured_image || ''}
                                                 alt=""
-                                                className="w-12 h-12 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
+                                                className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                             />
-                                            <div className="truncate">
-                                                <h4 className="font-bold text-slate-900 font-sans truncate">{item.product?.name}</h4>
-                                                <p className="text-slate-400 text-[11px]">
-                                                    Qty: {item.quantity} • {formatPrice(item.product?.price)} each
+                                            <div className="truncate space-y-0.5">
+                                                <p className="font-bold text-slate-900 truncate font-sans text-xs">{item.product?.name}</p>
+                                                <p className="text-slate-500 text-[11px]">
+                                                    Shop: {item.product?.shop?.name || 'Bagoo Prime Store'}
                                                 </p>
+                                                {(item.color || item.size) && (
+                                                    <p className="text-slate-400 text-[10px]">
+                                                        Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
-                                        <span className="font-bold text-slate-900 font-sans shrink-0">
-                                            {formatPrice(Number(item.product?.price || 0) * item.quantity)}
-                                        </span>
+
+                                        <div className="text-right shrink-0">
+                                            <p className="text-slate-500 text-[11px]">
+                                                {item.quantity} × {formatPrice(item.unit_price)}
+                                            </p>
+                                            <p className="font-bold text-slate-900">
+                                                {formatPrice(Number(item.unit_price) * item.quantity)}
+                                            </p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* 3. Payment Method Selection */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4 font-mono">
+                        {/* 3. Logistics & Delivery Carrier */}
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
                             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
                                     03
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
-                                    Payment Method Selection
+                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                    Shipping Carrier & Delivery Option
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <label className={`p-3.5 rounded-xl border-2 cursor-pointer text-center transition flex flex-col items-center justify-between ${
-                                    data.payment_method === 'cod' ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42]' : 'border-slate-200 hover:border-slate-300'
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                    shippingOption === 'standard' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
-                                    <Truck className="w-6 h-6 mb-1 text-slate-700" />
-                                    <span className="font-bold text-[11px] uppercase">Cash on Delivery</span>
+                                    <input
+                                        type="radio"
+                                        name="shipping_tier"
+                                        checked={shippingOption === 'standard'}
+                                        onChange={() => setShippingOption('standard')}
+                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
+                                    />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                            <Truck className="w-4 h-4 text-[#E00D42]" />
+                                            <span>Bagoo Express Standard</span>
+                                        </div>
+                                        <p className="text-slate-500 text-[11px]">Delivery in 2-3 days</p>
+                                        <p className="font-bold text-[#E00D42]">{subtotal > 1500 ? 'FREE' : '₱50.00'}</p>
+                                    </div>
+                                </label>
+
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                    shippingOption === 'express' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}>
+                                    <input
+                                        type="radio"
+                                        name="shipping_tier"
+                                        checked={shippingOption === 'express'}
+                                        onChange={() => setShippingOption('express')}
+                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
+                                    />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                            <Sparkles className="w-4 h-4 text-amber-500" />
+                                            <span>Priority Express Next-Day</span>
+                                        </div>
+                                        <p className="text-slate-500 text-[11px]">Priority dispatch & routing</p>
+                                        <p className="font-bold text-slate-900">₱95.00</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* 4. Payment Methods */}
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                                    04
+                                </div>
+                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                    Payment Method
+                                </h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                    data.payment_method === 'cod' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}>
                                     <input
                                         type="radio"
                                         name="payment_method"
                                         checked={data.payment_method === 'cod'}
                                         onChange={() => setData('payment_method', 'cod')}
-                                        className="mt-2 text-[#E00D42]"
+                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
                                     />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                            <Wallet className="w-4 h-4 text-emerald-600" />
+                                            <span>Cash On Delivery</span>
+                                        </div>
+                                        <p className="text-slate-500 text-[11px]">Pay upon doorstep receipt</p>
+                                    </div>
                                 </label>
 
-                                <label className={`p-3.5 rounded-xl border-2 cursor-pointer text-center transition flex flex-col items-center justify-between ${
-                                    data.payment_method === 'card' ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42]' : 'border-slate-200 hover:border-slate-300'
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                    data.payment_method === 'card' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
-                                    <CreditCard className="w-6 h-6 mb-1 text-slate-700" />
-                                    <span className="font-bold text-[11px] uppercase">Credit / Debit</span>
                                     <input
                                         type="radio"
                                         name="payment_method"
                                         checked={data.payment_method === 'card'}
                                         onChange={() => setData('payment_method', 'card')}
-                                        className="mt-2 text-[#E00D42]"
+                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
                                     />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                            <CreditCard className="w-4 h-4 text-indigo-600" />
+                                            <span>Credit / Debit Card</span>
+                                        </div>
+                                        <p className="text-slate-500 text-[11px]">Visa, Mastercard, JCB</p>
+                                    </div>
                                 </label>
 
-                                <label className={`p-3.5 rounded-xl border-2 cursor-pointer text-center transition flex flex-col items-center justify-between ${
-                                    data.payment_method === 'e_wallet' ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42]' : 'border-slate-200 hover:border-slate-300'
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                    data.payment_method === 'e_wallet' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
-                                    <Wallet className="w-6 h-6 mb-1 text-slate-700" />
-                                    <span className="font-bold text-[11px] uppercase">GCash / Maya</span>
                                     <input
                                         type="radio"
                                         name="payment_method"
                                         checked={data.payment_method === 'e_wallet'}
                                         onChange={() => setData('payment_method', 'e_wallet')}
-                                        className="mt-2 text-[#E00D42]"
+                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
                                     />
-                                </label>
-
-                                <label className={`p-3.5 rounded-xl border-2 cursor-pointer text-center transition flex flex-col items-center justify-between ${
-                                    data.payment_method === 'bank_transfer' ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42]' : 'border-slate-200 hover:border-slate-300'
-                                }`}>
-                                    <Building2 className="w-6 h-6 mb-1 text-slate-700" />
-                                    <span className="font-bold text-[11px] uppercase">Bank Transfer</span>
-                                    <input
-                                        type="radio"
-                                        name="payment_method"
-                                        checked={data.payment_method === 'bank_transfer'}
-                                        onChange={() => setData('payment_method', 'bank_transfer')}
-                                        className="mt-2 text-[#E00D42]"
-                                    />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                            <Building2 className="w-4 h-4 text-blue-600" />
+                                            <span>E-Wallet / GCash</span>
+                                        </div>
+                                        <p className="text-slate-500 text-[11px]">Instant digital checkout</p>
+                                    </div>
                                 </label>
                             </div>
                         </div>
 
                     </div>
 
-                    {/* Right Column: Order Payment Summary & Voucher Claim */}
-                    <div className="lg:col-span-4 space-y-4 font-mono text-xs">
+                    {/* Right Column: Order Total Breakdown */}
+                    <div className="lg:col-span-4 space-y-6 font-mono text-xs">
                         
-                        {/* VOUCHER APPLICATION CARD */}
+                        {/* VOUCHER INPUT CARD */}
                         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                            <div className="flex items-center gap-2 font-bold text-slate-800 uppercase text-xs">
                                 <Tag className="w-4 h-4 text-[#E00D42]" />
-                                <h3 className="font-bold text-xs uppercase text-slate-900 tracking-wider">
-                                    Vouchers & Discounts
-                                </h3>
+                                <span>Platform & Shop Vouchers</span>
                             </div>
 
                             {appliedVoucher ? (
                                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <span className="text-[10px] uppercase font-bold text-emerald-800 font-mono">
-                                            Code: {appliedVoucher.code}
+                                        <span className="font-bold text-emerald-800 block text-xs">{appliedVoucher.code}</span>
+                                        <span className="text-[10px] text-emerald-600">
+                                            {appliedVoucher.discount_type === 'free_shipping' ? 'Free Shipping Applied' : `₱${appliedVoucher.discount_value} Discount Applied`}
                                         </span>
-                                        <p className="font-bold text-emerald-700 font-sans text-xs">{appliedVoucher.name}</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={removeVoucher}
-                                        className="p-1 rounded-lg text-emerald-600 hover:bg-emerald-100 transition"
-                                        title="Remove voucher"
+                                        className="text-emerald-700 hover:text-emerald-900 p-1"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
@@ -367,39 +456,19 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                         <input
                                             type="text"
                                             value={voucherCodeInput}
-                                            onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
-                                            placeholder="Enter Promo Code"
-                                            className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase font-bold text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                            onChange={(e) => setVoucherCodeInput(e.target.value)}
+                                            placeholder="ENTER CODE (e.g. PAYDAY70)"
+                                            className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 uppercase text-xs focus:ring-1 focus:ring-[#E00D42]"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => applyVoucher()}
-                                            className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white font-bold rounded-xl uppercase transition shadow-2xs text-xs"
+                                            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl uppercase transition text-xs"
                                         >
                                             Apply
                                         </button>
                                     </div>
                                     {voucherError && <p className="text-rose-500 text-[10px]">{voucherError}</p>}
-
-                                    {/* Available Vouchers Chips */}
-                                    {availableVouchers.length > 0 && (
-                                        <div className="pt-2 space-y-1.5">
-                                            <span className="text-[10px] text-slate-400 uppercase block font-bold">Recommended Vouchers:</span>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {availableVouchers.map((v) => (
-                                                    <button
-                                                        key={v.code}
-                                                        type="button"
-                                                        onClick={() => applyVoucher(v.code)}
-                                                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-[#E00D42]/10 hover:text-[#E00D42] border border-slate-200 text-slate-700 text-[10px] font-bold transition flex items-center gap-1"
-                                                    >
-                                                        <Sparkles className="w-3 h-3 text-[#E00D42]" />
-                                                        <span>{v.code}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -443,12 +512,18 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </span>
                             </div>
 
+                            {validationError && (
+                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                                    {validationError}
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full py-3.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                                className="w-full py-3.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
                             >
-                                <span>{processing ? 'Processing Order...' : 'Place Order Now'}</span>
+                                <span>{processing ? 'Processing Order...' : 'Review & Place Order'}</span>
                             </button>
 
                             <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 pt-2 font-sans">
@@ -459,6 +534,113 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                     </div>
 
                 </form>
+
+                {/* ORDER PLACEMENT CONFIRMATION MODAL */}
+                {showConfirmModal && (
+                    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 font-sans my-auto">
+                            
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                <div>
+                                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E00D42] uppercase tracking-wider">
+                                        <ShoppingBag className="w-4 h-4" />
+                                        <span>Final Review Step</span>
+                                    </div>
+                                    <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                                        Confirm & Place Order
+                                    </h3>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmModal(false)}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Summary Cards */}
+                            <div className="space-y-3 font-mono text-xs">
+                                
+                                {/* Recipient & Destination Summary */}
+                                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold block flex items-center gap-1">
+                                        <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                        <span>Delivery Destination</span>
+                                    </span>
+                                    <p className="font-bold text-slate-900">{data.recipient_name} ({data.recipient_phone})</p>
+                                    <p className="text-slate-600 text-[11px]">{data.shipping_address}, {data.shipping_city} {data.shipping_postal_code || ''}</p>
+                                </div>
+
+                                {/* Payment Mode & Voucher Summary */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Mode</span>
+                                        <span className="font-bold text-[#E00D42] uppercase">{data.payment_method}</span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Applied Voucher</span>
+                                        <span className="font-bold text-slate-800">{appliedVoucher ? appliedVoucher.code : 'None'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Items Preview List */}
+                                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 max-h-40 overflow-y-auto">
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Package Items ({items.length})</span>
+                                    <div className="divide-y divide-slate-200">
+                                        {items.map(item => (
+                                            <div key={item.id} className="py-1.5 flex items-center justify-between text-[11px]">
+                                                <div className="truncate pr-2">
+                                                    <span className="font-bold text-slate-800">{item.product?.name}</span>
+                                                    <span className="text-slate-400 block text-[10px]">Qty: {item.quantity} × {formatPrice(item.unit_price)}</span>
+                                                </div>
+                                                <span className="font-bold text-slate-900 shrink-0">{formatPrice(Number(item.unit_price) * item.quantity)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Total Amount */}
+                                <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl flex items-center justify-between">
+                                    <span className="font-bold text-slate-800 text-xs">Total Amount Due:</span>
+                                    <span className="text-xl font-black text-[#E00D42] font-sans">{formatPrice(grandTotal)}</span>
+                                </div>
+                            </div>
+
+                            {/* Verification Checkbox */}
+                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-mono">
+                                <input
+                                    type="checkbox"
+                                    checked={hasConfirmedAgreement}
+                                    onChange={(e) => setHasConfirmedAgreement(e.target.checked)}
+                                    className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                />
+                                <span>I have reviewed my shipping details and confirm this order placement.</span>
+                            </label>
+
+                            {/* Modal Action Buttons */}
+                            <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmModal(false)}
+                                    className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold uppercase transition text-center"
+                                >
+                                    Edit Details
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={!hasConfirmedAgreement || processing}
+                                    onClick={submitFinalOrder}
+                                    className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase tracking-wider transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                >
+                                    <span>{processing ? 'Submitting...' : 'Confirm & Place Order'}</span>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                )}
 
             </div>
         </BuyerLayout>

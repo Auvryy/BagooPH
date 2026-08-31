@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Order } from '@/types';
@@ -32,6 +32,17 @@ export default function BuyerOrderDetail({ order }: Props) {
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(order.items?.[0]?.product_id || null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (reviewModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [reviewModalOpen]);
 
     const { data, setData, post, processing, reset, recentlySuccessful, errors } = useForm<{
         product_id: number | null;
@@ -80,12 +91,61 @@ export default function BuyerOrderDetail({ order }: Props) {
     };
 
     // 5-Stage Bagoo Express Delivery Milestones
+    const isPacked = ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status);
+    const isPickedUp = ['shipped', 'delivered'].includes(order.status) || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isInTransit = (order.status === 'shipped' || order.status === 'delivered') && ['in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isDelivered = order.status === 'delivered' || delivery?.status === 'delivered';
+
+    // Determine the exact active next step index (0 to 4)
+    let nextStepIndex = 1;
+    if (isDelivered) {
+        nextStepIndex = -1; // All complete
+    } else if (isInTransit) {
+        nextStepIndex = 4; // Delivered
+    } else if (isPickedUp) {
+        nextStepIndex = 3; // In Transit
+    } else if (isPacked) {
+        nextStepIndex = 2; // Courier Picked Up
+    } else {
+        nextStepIndex = 1; // Merchant Packaging
+    }
+
     const steps = [
-        { key: 'placed', label: 'Order Placed', done: true, subtext: 'Payment Verified' },
-        { key: 'packaging', label: 'Merchant Packaging', done: ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status), subtext: 'Prepared by Shop' },
-        { key: 'pickup', label: 'Courier Picked Up', done: ['shipped', 'delivered'].includes(order.status) || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || ''), subtext: 'Handed to Dispatch' },
-        { key: 'in_transit', label: 'In Transit', done: ['shipped', 'delivered'].includes(order.status) || ['in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || ''), subtext: 'On Route to Destination' },
-        { key: 'delivered', label: 'Delivered', done: order.status === 'delivered' || delivery?.status === 'delivered', subtext: 'Received at Doorstep' },
+        { 
+            key: 'placed', 
+            label: 'Order Placed', 
+            done: true, 
+            isNext: false,
+            subtext: order.payment_status === 'paid' ? 'Payment Verified' : 'Order Placed (COD)' 
+        },
+        { 
+            key: 'packaging', 
+            label: 'Merchant Packaging', 
+            done: isPacked, 
+            isNext: nextStepIndex === 1,
+            subtext: isPacked ? 'Prepared by Shop' : 'Waiting for Merchant' 
+        },
+        { 
+            key: 'pickup', 
+            label: 'Courier Picked Up', 
+            done: isPickedUp, 
+            isNext: nextStepIndex === 2,
+            subtext: isPickedUp ? 'Handed to Dispatch' : 'Waiting for Courier' 
+        },
+        { 
+            key: 'in_transit', 
+            label: 'In Transit', 
+            done: isInTransit, 
+            isNext: nextStepIndex === 3,
+            subtext: isInTransit ? 'On Route to Destination' : 'Pending Transit' 
+        },
+        { 
+            key: 'delivered', 
+            label: 'Delivered', 
+            done: isDelivered, 
+            isNext: nextStepIndex === 4,
+            subtext: isDelivered ? 'Received at Doorstep' : 'Doorstep Drop-off' 
+        },
     ];
 
     const formatPrice = (amount?: number | string | null) => {
@@ -147,23 +207,73 @@ export default function BuyerOrderDetail({ order }: Props) {
                         )}
                     </div>
 
-                    {/* Milestone Progress Bar */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 relative">
-                        {steps.map((step, idx) => (
-                            <div key={step.key} className="flex flex-col items-center text-center space-y-2 relative">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition ${
-                                    step.done ? 'bg-[#E00D42] text-white shadow-md' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                                }`}>
-                                    {step.done ? <Check className="w-5 h-5" /> : idx + 1}
-                                </div>
-                                <span className={`text-xs font-bold ${step.done ? 'text-slate-900' : 'text-slate-400'}`}>
-                                    {step.label}
-                                </span>
-                                <span className="text-[10px] text-slate-400 font-mono">
-                                    {step.subtext}
-                                </span>
-                            </div>
-                        ))}
+                    {/* Milestone Progress Tracker with Connecting Lines & Active Yellow/Amber Next Step */}
+                    <div className="relative py-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 sm:gap-2 relative">
+                            {steps.map((step, idx) => {
+                                const isNext = step.isNext;
+                                const isDone = step.done;
+                                return (
+                                    <div key={step.key} className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-2 relative group">
+                                        
+                                        {/* Horizontal Connecting Line (Desktop) */}
+                                        {idx < steps.length - 1 && (
+                                            <div className="hidden sm:block absolute top-5 left-1/2 w-full h-0.5 z-0">
+                                                <div className={`w-full h-full ${
+                                                    steps[idx + 1].done
+                                                        ? 'bg-[#E00D42]'
+                                                        : steps[idx + 1].isNext
+                                                        ? 'border-t-2 border-dashed border-amber-400'
+                                                        : 'border-t-2 border-dashed border-slate-200'
+                                                }`} />
+                                            </div>
+                                        )}
+
+                                        {/* Step Circle */}
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition relative z-10 ${
+                                            isDone
+                                                ? 'bg-[#E00D42] text-white shadow-md'
+                                                : isNext
+                                                ? 'bg-amber-50 text-amber-800 border-2 border-amber-400 shadow-sm ring-4 ring-amber-100'
+                                                : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                        }`}>
+                                            {isDone ? (
+                                                <Check className="w-5 h-5" />
+                                            ) : isNext ? (
+                                                <span className="font-black text-amber-700">{idx + 1}</span>
+                                            ) : (
+                                                idx + 1
+                                            )}
+
+                                            {/* Pulsing Next Step Indicator Pill */}
+                                            {isNext && (
+                                                <span className="absolute -top-2.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-mono text-[9px] font-black uppercase tracking-wider shadow-xs animate-pulse">
+                                                    Next
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Step Text Info */}
+                                        <div className="flex flex-col sm:items-center">
+                                            <span className={`text-xs font-bold ${
+                                                isDone 
+                                                    ? 'text-slate-900' 
+                                                    : isNext 
+                                                    ? 'text-amber-800 font-extrabold' 
+                                                    : 'text-slate-400'
+                                            }`}>
+                                                {step.label}
+                                            </span>
+                                            <span className={`text-[10px] font-mono ${
+                                                isNext ? 'text-amber-700 font-semibold' : 'text-slate-400'
+                                            }`}>
+                                                {step.subtext}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 

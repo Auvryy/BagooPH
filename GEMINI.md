@@ -74,6 +74,8 @@ The system has 4 primary roles (with logistics kept in mind for future extension
 2. **Mandatory Admin Approval:** Newly registered users cannot access their portal until approved by Admin.
 3. **Consistent Theme & Styling:** Always use `#E00D42` for primary actions and strictly adhere to the 2px button corner radius (`rounded-xs`/`rounded-sm`) and high-visibility borders (`border-slate-300`) defined in `docs/STYLE_GUIDE.md`.
 4. **No Emojis in Documentation:** Do NOT use emojis in any `.md` or documentation files to maintain a professional, human-engineered codebase.
+5. **Database Seeder & Multi-Role Integrity:** `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles (`buyer@bagoo.ph`, `seller@bagoo.ph`, `courier@bagoo.ph`, `hub@bagoo.ph`, `admin@bagoo.ph` / `sarneandy6@gmail.com`) with raw string password `'password'` (avoiding double-hashing with `'password' => 'hashed'` cast). Never strip these seed accounts.
+6. **Test Database Isolation:** Automated tests must strictly execute on an isolated SQLite in-memory database (`:memory:`) and must never connect to or wipe the main PostgreSQL database.
 
 ---
 
