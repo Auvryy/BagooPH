@@ -51,8 +51,9 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
     const getStatusPill = (status: string) => {
         switch (status) {
             case 'pending':
+                return <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-mono uppercase flex items-center gap-1"><Clock className="w-3 h-3" /> New Order (To Pack)</span>;
             case 'processing':
-                return <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-mono uppercase flex items-center gap-1"><Clock className="w-3 h-3" /> Packing Required</span>;
+                return <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-mono uppercase flex items-center gap-1"><Box className="w-3 h-3" /> Packed (Ready for Dispatch)</span>;
             case 'ready_for_pickup':
                 return <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold font-mono uppercase flex items-center gap-1"><Box className="w-3 h-3" /> Ready for Pickup</span>;
             case 'shipped':
@@ -317,7 +318,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                         )}
 
                                         {/* Step 2: Schedule Courier Pickup */}
-                                        {(item.order?.status === 'processing' || item.order?.status === 'pending') && (
+                                        {item.order?.status === 'processing' && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleSchedulePickup(item.order_id)}

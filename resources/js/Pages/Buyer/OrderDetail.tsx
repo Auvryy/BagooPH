@@ -80,12 +80,17 @@ export default function BuyerOrderDetail({ order }: Props) {
     };
 
     // 5-Stage Bagoo Express Delivery Milestones
+    const isPacked = ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status);
+    const isPickedUp = ['shipped', 'delivered'].includes(order.status) || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isInTransit = (order.status === 'shipped' || order.status === 'delivered') && ['in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isDelivered = order.status === 'delivered' || delivery?.status === 'delivered';
+
     const steps = [
-        { key: 'placed', label: 'Order Placed', done: true, subtext: 'Payment Verified' },
-        { key: 'packaging', label: 'Merchant Packaging', done: ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status), subtext: 'Prepared by Shop' },
-        { key: 'pickup', label: 'Courier Picked Up', done: ['shipped', 'delivered'].includes(order.status) || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || ''), subtext: 'Handed to Dispatch' },
-        { key: 'in_transit', label: 'In Transit', done: ['shipped', 'delivered'].includes(order.status) || ['in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || ''), subtext: 'On Route to Destination' },
-        { key: 'delivered', label: 'Delivered', done: order.status === 'delivered' || delivery?.status === 'delivered', subtext: 'Received at Doorstep' },
+        { key: 'placed', label: 'Order Placed', done: true, subtext: order.payment_status === 'paid' ? 'Payment Verified' : 'Order Placed (COD)' },
+        { key: 'packaging', label: 'Merchant Packaging', done: isPacked, subtext: isPacked ? 'Prepared by Shop' : 'Waiting for Merchant' },
+        { key: 'pickup', label: 'Courier Picked Up', done: isPickedUp, subtext: isPickedUp ? 'Handed to Dispatch' : 'Waiting for Courier' },
+        { key: 'in_transit', label: 'In Transit', done: isInTransit, subtext: isInTransit ? 'On Route to Destination' : 'Pending Transit' },
+        { key: 'delivered', label: 'Delivered', done: isDelivered, subtext: isDelivered ? 'Received at Doorstep' : 'Doorstep Drop-off' },
     ];
 
     const formatPrice = (amount?: number | string | null) => {

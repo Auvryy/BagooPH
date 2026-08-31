@@ -121,7 +121,7 @@ class CheckoutController extends Controller
                     'total_amount' => $totalAmount,
                     'payment_method' => $validated['payment_method'],
                     'payment_status' => $validated['payment_method'] === 'cod' ? 'pending' : 'paid',
-                    'status' => 'processing',
+                    'status' => 'pending',
                     'recipient_name' => $validated['recipient_name'],
                     'recipient_phone' => $validated['recipient_phone'],
                     'shipping_address' => $validated['shipping_address'],

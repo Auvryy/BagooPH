@@ -25,14 +25,16 @@ export default function BuyerOrders({ orders }: Props) {
 
     const getStatusPill = (status: string) => {
         switch (status) {
-            case 'delivered':
-                return <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Order Completed</span>;
-            case 'shipped':
-                return <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-bold flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> Out for Delivery</span>;
-            case 'ready_for_pickup':
-                return <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Ready for Courier Pickup</span>;
+            case 'pending':
+                return <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Order Placed (Pending Pack)</span>;
             case 'processing':
                 return <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Merchant Packaging</span>;
+            case 'ready_for_pickup':
+                return <span className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-xs font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Ready for Courier Pickup</span>;
+            case 'shipped':
+                return <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-bold flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> In Transit</span>;
+            case 'delivered':
+                return <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Order Completed</span>;
             default:
                 return <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase">{status}</span>;
         }
@@ -40,7 +42,7 @@ export default function BuyerOrders({ orders }: Props) {
 
     const filteredOrders = orders.data.filter(order => {
         if (selectedStatusTab === 'all') return true;
-        if (selectedStatusTab === 'to_ship') return order.status === 'processing' || order.status === 'ready_for_pickup';
+        if (selectedStatusTab === 'to_ship') return order.status === 'pending' || order.status === 'processing' || order.status === 'ready_for_pickup';
         if (selectedStatusTab === 'to_receive') return order.status === 'shipped';
         if (selectedStatusTab === 'completed') return order.status === 'delivered';
         return true;

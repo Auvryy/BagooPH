@@ -59,3 +59,10 @@ sequenceDiagram
   - Active duty toggle (`Available` vs `Off Duty`).
 - **In-App Messaging:**
   - Direct calling/chatting with Seller (for pickup coordination) and Buyer (for destination directions).
+
+---
+
+## 5. Sorting Center & Hub Operations (Partial Plan)
+
+For detailed parcel sorting, geographic territory partitioning (e.g. Area A, Area B, Area C), and automated rider area assignments, refer to [`docs/SORTING_CENTER_LOGISTICS_FLOW.md`](file:///home/andy/Projects/bagoo/docs/SORTING_CENTER_LOGISTICS_FLOW.md).
+
