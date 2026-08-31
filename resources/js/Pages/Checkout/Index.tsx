@@ -161,12 +161,12 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Finalize Checkout</h1>
-                        <p className="text-xs text-slate-500 font-mono">Verify delivery destination, applied vouchers, and payment mode</p>
+                        <p className="text-xs text-slate-500 font-sans mt-0.5">Verify delivery destination, applied vouchers, and payment mode</p>
                     </div>
 
                     <Link
                         href={route('buyer.cart')}
-                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase"
+                        className="text-xs font-semibold text-[#E00D42] hover:underline flex items-center gap-1 font-sans"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Back to My Bag</span>
@@ -180,72 +180,72 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                         
                         {/* 1. Verified Delivery Destination */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     01
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                <h2 className="font-bold text-sm text-slate-900">
                                     Delivery Address & Recipient
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Full Name</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5">Full Name</label>
                                     <input
                                         type="text"
                                         value={data.recipient_name}
                                         onChange={(e) => setData('recipient_name', e.target.value)}
                                         required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
-                                    {errors.recipient_name && <p className="text-rose-500 text-[10px] mt-1">{errors.recipient_name}</p>}
+                                    {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Contact Phone</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5">Contact Phone</label>
                                     <input
                                         type="text"
                                         value={data.recipient_phone}
                                         onChange={(e) => setData('recipient_phone', e.target.value)}
                                         required
                                         placeholder="09XXXXXXXXX"
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
-                                    {errors.recipient_phone && <p className="text-rose-500 text-[10px] mt-1">{errors.recipient_phone}</p>}
+                                    {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Street Address, Unit / House No.</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No.</label>
                                     <input
                                         type="text"
                                         value={data.shipping_address}
                                         onChange={(e) => setData('shipping_address', e.target.value)}
                                         required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
-                                    {errors.shipping_address && <p className="text-rose-500 text-[10px] mt-1">{errors.shipping_address}</p>}
+                                    {errors.shipping_address && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_address}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">City / Municipality</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5">City / Municipality</label>
                                     <input
                                         type="text"
                                         value={data.shipping_city}
                                         onChange={(e) => setData('shipping_city', e.target.value)}
                                         required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
-                                    {errors.shipping_city && <p className="text-rose-500 text-[10px] mt-1">{errors.shipping_city}</p>}
+                                    {errors.shipping_city && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_city}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Postal Code (Optional)</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5">Postal Code (Optional)</label>
                                     <input
                                         type="text"
                                         value={data.shipping_postal_code}
                                         onChange={(e) => setData('shipping_postal_code', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
                                 </div>
                             </div>
@@ -253,31 +253,31 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
 
                         {/* 2. Package Items in this Order */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     02
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                <h2 className="font-bold text-sm text-slate-900">
                                     Items In Your Shopping Bag ({items.length})
                                 </h2>
                             </div>
 
-                            <div className="divide-y divide-slate-100 font-mono text-xs">
+                            <div className="divide-y divide-slate-100 font-sans text-xs">
                                 {items.map((item) => (
-                                    <div key={item.id} className="py-3 flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3 min-w-0">
+                                    <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3.5 min-w-0">
                                             <img
                                                 src={item.product?.featured_image || ''}
                                                 alt=""
                                                 className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                             />
                                             <div className="truncate space-y-0.5">
-                                                <p className="font-bold text-slate-900 truncate font-sans text-xs">{item.product?.name}</p>
+                                                <p className="font-bold text-slate-900 truncate text-xs">{item.product?.name}</p>
                                                 <p className="text-slate-500 text-[11px]">
                                                     Shop: {item.product?.shop?.name || 'Bagoo Prime Store'}
                                                 </p>
                                                 {(item.color || item.size) && (
-                                                    <p className="text-slate-400 text-[10px]">
+                                                    <p className="text-slate-400 text-[11px]">
                                                         Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
                                                     </p>
                                                 )}
@@ -288,7 +288,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                             <p className="text-slate-500 text-[11px]">
                                                 {item.quantity} × {formatPrice(item.unit_price)}
                                             </p>
-                                            <p className="font-bold text-slate-900">
+                                            <p className="font-bold text-slate-900 text-sm">
                                                 {formatPrice(Number(item.unit_price) * item.quantity)}
                                             </p>
                                         </div>
@@ -299,18 +299,18 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
 
                         {/* 3. Logistics & Delivery Carrier */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     03
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                <h2 className="font-bold text-sm text-slate-900">
                                     Shipping Carrier & Delivery Option
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    shippingOption === 'standard' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs font-sans">
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${
+                                    shippingOption === 'standard' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
                                     <input
                                         type="radio"
@@ -320,7 +320,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                         className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
                                     />
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
                                             <Truck className="w-4 h-4 text-[#E00D42]" />
                                             <span>Bagoo Express Standard</span>
                                         </div>
@@ -329,8 +329,8 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                     </div>
                                 </label>
 
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    shippingOption === 'express' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${
+                                    shippingOption === 'express' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
                                     <input
                                         type="radio"
@@ -340,7 +340,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                         className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
                                     />
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
                                             <Sparkles className="w-4 h-4 text-amber-500" />
                                             <span>Priority Express Next-Day</span>
                                         </div>
@@ -353,18 +353,18 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
 
                         {/* 4. Payment Methods */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold font-mono text-xs">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     04
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900 uppercase font-mono tracking-wider">
+                                <h2 className="font-bold text-sm text-slate-900">
                                     Payment Method
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs font-sans">
                                 <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'cod' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                    data.payment_method === 'cod' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
                                     <input
                                         type="radio"
@@ -383,7 +383,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </label>
 
                                 <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'card' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                    data.payment_method === 'card' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
                                     <input
                                         type="radio"
@@ -402,7 +402,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </label>
 
                                 <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'e_wallet' ? 'border-[#E00D42] bg-[#E00D42]/5' : 'border-slate-200 bg-white hover:border-slate-300'
+                                    data.payment_method === 'e_wallet' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}>
                                     <input
                                         type="radio"
@@ -425,20 +425,20 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                     </div>
 
                     {/* Right Column: Order Total Breakdown */}
-                    <div className="lg:col-span-4 space-y-6 font-mono text-xs">
+                    <div className="lg:col-span-4 space-y-6 font-sans text-xs">
                         
                         {/* VOUCHER INPUT CARD */}
-                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                            <div className="flex items-center gap-2 font-bold text-slate-800 uppercase text-xs">
+                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
+                            <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
                                 <Tag className="w-4 h-4 text-[#E00D42]" />
                                 <span>Platform & Shop Vouchers</span>
                             </div>
 
                             {appliedVoucher ? (
-                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                                     <div className="space-y-0.5">
                                         <span className="font-bold text-emerald-800 block text-xs">{appliedVoucher.code}</span>
-                                        <span className="text-[10px] text-emerald-600">
+                                        <span className="text-[11px] text-emerald-600">
                                             {appliedVoucher.discount_type === 'free_shipping' ? 'Free Shipping Applied' : `₱${appliedVoucher.discount_value} Discount Applied`}
                                         </span>
                                     </div>
@@ -451,43 +451,43 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                     </button>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-2.5">
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
                                             value={voucherCodeInput}
                                             onChange={(e) => setVoucherCodeInput(e.target.value)}
-                                            placeholder="ENTER CODE (e.g. PAYDAY70)"
-                                            className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 uppercase text-xs focus:ring-1 focus:ring-[#E00D42]"
+                                            placeholder="Enter Promo Code (e.g. PAYDAY70)"
+                                            className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => applyVoucher()}
-                                            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl uppercase transition text-xs"
+                                            className="px-4 py-2.5 bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold rounded-xl transition text-xs cursor-pointer shadow-xs"
                                         >
                                             Apply
                                         </button>
                                     </div>
-                                    {voucherError && <p className="text-rose-500 text-[10px]">{voucherError}</p>}
+                                    {voucherError && <p className="text-rose-500 text-[11px]">{voucherError}</p>}
                                 </div>
                             )}
                         </div>
 
                         {/* ORDER TOTAL SUMMARY */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 sticky top-24">
-                            <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
+                            <h3 className="font-bold text-slate-900 text-sm pb-3 border-b border-slate-100">
                                 Order Total Breakdown
                             </h3>
 
-                            <div className="space-y-2.5 text-slate-600">
+                            <div className="space-y-3 text-slate-600 text-xs">
                                 <div className="flex justify-between">
                                     <span>Merchandise Subtotal:</span>
-                                    <span className="font-bold text-slate-900">{formatPrice(subtotal)}</span>
+                                    <span className="font-semibold text-slate-900">{formatPrice(subtotal)}</span>
                                 </div>
 
                                 <div className="flex justify-between">
                                     <span>Courier Shipping Fee:</span>
-                                    <span className={finalShippingFee === 0 ? 'text-emerald-600 font-bold' : 'font-bold text-slate-900'}>
+                                    <span className={finalShippingFee === 0 ? 'text-emerald-600 font-bold' : 'font-semibold text-slate-900'}>
                                         {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
                                     </span>
                                 </div>
@@ -501,13 +501,13 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
 
                                 <div className="flex justify-between">
                                     <span>Payment Selected:</span>
-                                    <span className="font-bold uppercase text-[#E00D42]">{data.payment_method}</span>
+                                    <span className="font-bold text-[#E00D42]">{data.payment_method.toUpperCase()}</span>
                                 </div>
                             </div>
 
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
                                 <span className="font-bold text-slate-900">Total Payment:</span>
-                                <span className="text-2xl font-black text-[#E00D42] font-sans">
+                                <span className="text-2xl font-black text-[#E00D42]">
                                     {formatPrice(grandTotal)}
                                 </span>
                             </div>
@@ -521,13 +521,13 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full py-3.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+                                className="w-full py-3.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{processing ? 'Processing Order...' : 'Review & Place Order'}</span>
                             </button>
 
-                            <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 pt-2 font-sans">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                            <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 font-sans">
+                                <ShieldCheck className="w-4 h-4 text-emerald-500" />
                                 <span>BagooPH Buyer Protection Guarantee</span>
                             </div>
                         </div>
@@ -543,57 +543,57 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                             {/* Modal Header */}
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div>
-                                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E00D42] uppercase tracking-wider">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#E00D42]">
                                         <ShoppingBag className="w-4 h-4" />
                                         <span>Final Review Step</span>
                                     </div>
-                                    <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
                                         Confirm & Place Order
                                     </h3>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmModal(false)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
 
                             {/* Summary Cards */}
-                            <div className="space-y-3 font-mono text-xs">
+                            <div className="space-y-3 font-sans text-xs">
                                 
                                 {/* Recipient & Destination Summary */}
-                                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                                    <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
+                                        <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
                                         <span>Delivery Destination</span>
                                     </span>
-                                    <p className="font-bold text-slate-900">{data.recipient_name} ({data.recipient_phone})</p>
-                                    <p className="text-slate-600 text-[11px]">{data.shipping_address}, {data.shipping_city} {data.shipping_postal_code || ''}</p>
+                                    <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
+                                    <p className="text-slate-600 text-xs">{data.shipping_address}, {data.shipping_city} {data.shipping_postal_code || ''}</p>
                                 </div>
 
                                 {/* Payment Mode & Voucher Summary */}
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Mode</span>
-                                        <span className="font-bold text-[#E00D42] uppercase">{data.payment_method}</span>
+                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
+                                        <span className="font-bold text-[#E00D42]">{data.payment_method.toUpperCase()}</span>
                                     </div>
-                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Applied Voucher</span>
+                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <span className="text-[11px] text-slate-400 font-semibold block">Applied Voucher</span>
                                         <span className="font-bold text-slate-800">{appliedVoucher ? appliedVoucher.code : 'None'}</span>
                                     </div>
                                 </div>
 
                                 {/* Items Preview List */}
-                                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 max-h-40 overflow-y-auto">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Package Items ({items.length})</span>
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 max-h-40 overflow-y-auto">
+                                    <span className="text-[11px] text-slate-400 font-semibold block">Package Items ({items.length})</span>
                                     <div className="divide-y divide-slate-200">
                                         {items.map(item => (
-                                            <div key={item.id} className="py-1.5 flex items-center justify-between text-[11px]">
+                                            <div key={item.id} className="py-2 flex items-center justify-between text-xs">
                                                 <div className="truncate pr-2">
-                                                    <span className="font-bold text-slate-800">{item.product?.name}</span>
-                                                    <span className="text-slate-400 block text-[10px]">Qty: {item.quantity} × {formatPrice(item.unit_price)}</span>
+                                                    <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
+                                                    <span className="text-slate-400 text-[11px]">Qty: {item.quantity} × {formatPrice(item.unit_price)}</span>
                                                 </div>
                                                 <span className="font-bold text-slate-900 shrink-0">{formatPrice(Number(item.unit_price) * item.quantity)}</span>
                                             </div>
@@ -602,14 +602,14 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </div>
 
                                 {/* Total Amount */}
-                                <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl flex items-center justify-between">
-                                    <span className="font-bold text-slate-800 text-xs">Total Amount Due:</span>
-                                    <span className="text-xl font-black text-[#E00D42] font-sans">{formatPrice(grandTotal)}</span>
+                                <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
+                                    <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
+                                    <span className="text-xl font-black text-[#E00D42]">{formatPrice(grandTotal)}</span>
                                 </div>
                             </div>
 
                             {/* Verification Checkbox */}
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-mono">
+                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-sans">
                                 <input
                                     type="checkbox"
                                     checked={hasConfirmedAgreement}
@@ -620,11 +620,11 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                             </label>
 
                             {/* Modal Action Buttons */}
-                            <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
+                            <div className="grid grid-cols-2 gap-3 pt-2 font-sans text-xs">
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmModal(false)}
-                                    className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold uppercase transition text-center"
+                                    className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
                                 >
                                     Edit Details
                                 </button>
@@ -632,7 +632,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                     type="button"
                                     disabled={!hasConfirmedAgreement || processing}
                                     onClick={submitFinalOrder}
-                                    className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase tracking-wider transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <span>{processing ? 'Submitting...' : 'Confirm & Place Order'}</span>
                                 </button>
