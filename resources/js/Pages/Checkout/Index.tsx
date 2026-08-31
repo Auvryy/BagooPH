@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Cart, CartItem, PageProps, User } from '@/types';
@@ -64,6 +64,17 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
     const [validationError, setValidationError] = useState('');
+
+    useEffect(() => {
+        if (showConfirmModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showConfirmModal]);
 
     const baseShippingFee = shippingOption === 'express' ? 95 : (subtotal > 1500 ? 0 : 50);
     
@@ -526,8 +537,8 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
 
                 {/* ORDER PLACEMENT CONFIRMATION MODAL */}
                 {showConfirmModal && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 font-sans">
+                    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 font-sans my-auto">
                             
                             {/* Modal Header */}
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

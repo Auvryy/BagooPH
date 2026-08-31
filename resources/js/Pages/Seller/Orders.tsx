@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Order, OrderItem, PaginatedData, Shop } from '@/types';
@@ -20,7 +20,8 @@ import {
     ShieldCheck,
     Check,
     ChevronRight,
-    Tag
+    Tag,
+    FileText
 } from 'lucide-react';
 
 interface Props {
@@ -33,7 +34,19 @@ interface Props {
 
 export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }: Props) {
     const [selectedOrderForWaybill, setSelectedOrderForWaybill] = useState<any | null>(null);
+    const [orderToAcceptAndPack, setOrderToAcceptAndPack] = useState<any | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+        if (selectedOrderForWaybill || orderToAcceptAndPack) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [selectedOrderForWaybill, orderToAcceptAndPack]);
 
     const formatPrice = (val: string | number | undefined | null) => {
         const num = Number(val || 0);
@@ -309,8 +322,8 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                         {item.order?.status === 'pending' && (
                                             <button
                                                 type="button"
-                                                onClick={() => handlePackOrder(item.order_id)}
-                                                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase transition shadow-xs flex items-center gap-1.5"
+                                                onClick={() => setOrderToAcceptAndPack(item)}
+                                                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                                             >
                                                 <Box className="w-3.5 h-3.5" />
                                                 <span>Pack Order</span>
@@ -322,7 +335,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                             <button
                                                 type="button"
                                                 onClick={() => handleSchedulePickup(item.order_id)}
-                                                className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition shadow-xs flex items-center gap-1.5"
+                                                className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                                             >
                                                 <Truck className="w-3.5 h-3.5" />
                                                 <span>Schedule Courier Pickup</span>
@@ -350,6 +363,123 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                 )}
 
             </div>
+
+            {/* SELLER ACCEPT & REVIEW ORDER MODAL (WITH WAYBILL PREVIEW) */}
+            {orderToAcceptAndPack && (
+                <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 font-sans my-auto space-y-5">
+                        
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-600 uppercase tracking-wider">
+                                    <Box className="w-4 h-4" />
+                                    <span>Accept Order Step</span>
+                                </div>
+                                <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                                    Review & Accept Order #{orderToAcceptAndPack.order?.order_number}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-mono">
+                                    Verify items and preview the generated waybill before packing.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setOrderToAcceptAndPack(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Order Item Snapshot */}
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 font-mono text-xs">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Purchased Item</span>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <img
+                                        src={orderToAcceptAndPack.product?.featured_image || ''}
+                                        alt=""
+                                        className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
+                                    />
+                                    <div className="truncate">
+                                        <p className="font-bold text-slate-900 truncate font-sans text-xs">{orderToAcceptAndPack.product?.name}</p>
+                                        {(orderToAcceptAndPack.color || orderToAcceptAndPack.size) && (
+                                            <p className="text-slate-400 text-[10px]">
+                                                Variant: {[orderToAcceptAndPack.color, orderToAcceptAndPack.size].filter(Boolean).join(' / ')}
+                                            </p>
+                                        )}
+                                        <p className="text-slate-500 text-[11px]">Qty: {orderToAcceptAndPack.quantity} × {formatPrice(orderToAcceptAndPack.unit_price)}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="font-bold text-slate-900">{formatPrice(Number(orderToAcceptAndPack.unit_price) * orderToAcceptAndPack.quantity)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thermal Waybill Preview Box */}
+                        <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl space-y-3 font-mono text-xs bg-slate-50/50">
+                            <div className="flex items-center justify-between border-b border-slate-300 pb-2">
+                                <div>
+                                    <h4 className="text-sm font-black text-[#E00D42] tracking-tighter">Bagoo<span className="text-slate-900">EXPRESS</span></h4>
+                                    <p className="text-[9px] text-slate-500">THERMAL WAYBILL PREVIEW</p>
+                                </div>
+                                <span className="px-2 py-0.5 rounded bg-black text-white font-bold text-[10px] uppercase">
+                                    {orderToAcceptAndPack.order?.payment_method?.toUpperCase() || 'COD'}
+                                </span>
+                            </div>
+
+                            {/* Barcode Mock */}
+                            <div className="text-center space-y-0.5">
+                                <div className="h-7 bg-slate-900 mx-auto flex items-center justify-center text-white tracking-[4px] font-mono text-[10px] font-black select-none">
+                                    ||| | |||| | ||| |||| | ||| |||| |
+                                </div>
+                                <p className="text-[10px] font-mono text-slate-600">
+                                    {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-WAYBILL-${orderToAcceptAndPack.order?.order_number}`}
+                                </p>
+                            </div>
+
+                            {/* Origin & Destination */}
+                            <div className="grid grid-cols-2 gap-3 border-t border-slate-300 pt-2 text-[10px]">
+                                <div>
+                                    <span className="font-bold text-slate-400 block uppercase text-[9px]">FROM (SENDER):</span>
+                                    <p className="font-bold text-slate-900 truncate">{shop.name}</p>
+                                    <p className="text-slate-500 truncate">{shop.city || 'Metro Manila'}</p>
+                                </div>
+                                <div className="border-l border-slate-200 pl-2">
+                                    <span className="font-bold text-slate-400 block uppercase text-[9px]">TO (RECIPIENT):</span>
+                                    <p className="font-bold text-slate-900 truncate">{orderToAcceptAndPack.order?.recipient_name || 'Buyer'}</p>
+                                    <p className="text-slate-500 truncate">{orderToAcceptAndPack.order?.shipping_city || 'Metro Manila'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Action Buttons */}
+                        <div className="grid grid-cols-2 gap-3 pt-1 font-mono text-xs">
+                            <button
+                                type="button"
+                                onClick={() => setOrderToAcceptAndPack(null)}
+                                className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold uppercase transition text-center"
+                            >
+                                Review Later
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handlePackOrder(orderToAcceptAndPack.order_id);
+                                    setOrderToAcceptAndPack(null);
+                                }}
+                                className="py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold uppercase tracking-wider transition text-center shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <Box className="w-4 h-4" />
+                                <span>Accept & Start Packaging</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 }
