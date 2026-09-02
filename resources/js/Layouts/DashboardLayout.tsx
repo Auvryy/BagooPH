@@ -97,7 +97,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'User & Role Control', href: route('admin.users'), icon: Users, current: route().current('admin.users*') },
                 { name: 'Catalog Moderation', href: route('admin.products'), icon: Package, current: route().current('admin.products*') },
                 { name: 'Logistics Hub & Fleet', href: route('admin.logistics'), icon: Truck, current: route().current('admin.logistics*') },
-                { name: 'Security & Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
             ];
         }
 
@@ -118,7 +117,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         if (role === 'courier' || role === 'logistics') {
             return [
                 { name: 'Delivery Pool', href: route('courier.deliveries'), icon: Truck, current: route().current('courier.deliveries') },
-                { name: 'Account Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
             ];
         }
 
