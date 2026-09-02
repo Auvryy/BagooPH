@@ -97,6 +97,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'User & Role Control', href: route('admin.users'), icon: Users, current: route().current('admin.users*') },
                 { name: 'Catalog Moderation', href: route('admin.products'), icon: Package, current: route().current('admin.products*') },
                 { name: 'Logistics Hub & Fleet', href: route('admin.logistics'), icon: Truck, current: route().current('admin.logistics*') },
+                { name: 'Security & Settings', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
             ];
         }
 
@@ -247,13 +248,15 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                             </Link>
                         )}
-                        <Link
-                            href={route('buyer.index')}
-                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                        >
-                            <ArrowLeft className="w-4 h-4 text-slate-400" />
-                            <span>Switch to Buyer Mode</span>
-                        </Link>
+                        {role !== 'admin' && (
+                            <Link
+                                href={route('buyer.index')}
+                                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                            >
+                                <ArrowLeft className="w-4 h-4 text-slate-400" />
+                                <span>Switch to Buyer Mode</span>
+                            </Link>
+                        )}
                         <Link
                             href={route('profile.edit')}
                             className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
@@ -381,13 +384,15 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             <span>Account & Security</span>
                                         </Link>
 
-                                        <Link
-                                            href={route('buyer.index')}
-                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                        >
-                                            <ArrowLeft className="w-4 h-4 text-indigo-500" />
-                                            <span>Switch to Buyer Mode</span>
-                                        </Link>
+                                        {role !== 'admin' && (
+                                            <Link
+                                                href={route('buyer.index')}
+                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                            >
+                                                <ArrowLeft className="w-4 h-4 text-indigo-500" />
+                                                <span>Switch to Buyer Mode</span>
+                                            </Link>
+                                        )}
 
                                         <div className="border-t border-slate-200 mt-1 pt-1">
                                             <Link
