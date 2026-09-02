@@ -64,30 +64,30 @@ export default function BuyerOrders({ orders }: Props) {
             <div className="space-y-6">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 font-sans">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#E00D42] flex items-center justify-center font-bold">
                             <Package className="w-5 h-5" />
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">My Purchases & Orders</h1>
-                            <p className="text-xs text-slate-500 font-mono">Live dispatch telemetry & past delivery history</p>
+                            <p className="text-xs text-slate-500 font-sans mt-0.5">Live dispatch telemetry & past delivery history</p>
                         </div>
                     </div>
 
                     <Link
                         href={route('buyer.index')}
-                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg text-xs font-bold uppercase font-mono transition"
+                        className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xl text-xs font-bold transition shadow-xs"
                     >
                         Shop More
                     </Link>
                 </div>
 
                 {/* Order Status Tabs Strip */}
-                <div className="bg-white rounded-xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-2 overflow-x-auto scrollbar-none font-mono text-xs">
+                <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-2xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-sans text-xs">
                     <button
                         onClick={() => setSelectedStatusTab('all')}
-                        className={`flex-1 py-2.5 px-4 rounded-lg font-bold uppercase transition text-center whitespace-nowrap ${
+                        className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition text-center whitespace-nowrap cursor-pointer ${
                             selectedStatusTab === 'all' ? 'bg-[#E00D42] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                     >
@@ -95,7 +95,7 @@ export default function BuyerOrders({ orders }: Props) {
                     </button>
                     <button
                         onClick={() => setSelectedStatusTab('to_ship')}
-                        className={`flex-1 py-2.5 px-4 rounded-lg font-bold uppercase transition text-center whitespace-nowrap ${
+                        className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition text-center whitespace-nowrap cursor-pointer ${
                             selectedStatusTab === 'to_ship' ? 'bg-[#E00D42] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                     >
@@ -103,7 +103,7 @@ export default function BuyerOrders({ orders }: Props) {
                     </button>
                     <button
                         onClick={() => setSelectedStatusTab('to_receive')}
-                        className={`flex-1 py-2.5 px-4 rounded-lg font-bold uppercase transition text-center whitespace-nowrap ${
+                        className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition text-center whitespace-nowrap cursor-pointer ${
                             selectedStatusTab === 'to_receive' ? 'bg-[#E00D42] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                     >
@@ -111,7 +111,7 @@ export default function BuyerOrders({ orders }: Props) {
                     </button>
                     <button
                         onClick={() => setSelectedStatusTab('completed')}
-                        className={`flex-1 py-2.5 px-4 rounded-lg font-bold uppercase transition text-center whitespace-nowrap ${
+                        className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition text-center whitespace-nowrap cursor-pointer ${
                             selectedStatusTab === 'completed' ? 'bg-[#E00D42] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                     >
@@ -121,13 +121,13 @@ export default function BuyerOrders({ orders }: Props) {
 
                 {/* Orders List */}
                 {filteredOrders.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4 max-w-lg mx-auto shadow-xs">
+                    <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-4 max-w-lg mx-auto shadow-2xs font-sans">
                         <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                         <h3 className="text-base font-bold text-slate-800">No orders found in this category</h3>
                         <p className="text-xs text-slate-500">Explore products on BagooPH to start shopping!</p>
                         <Link
                             href={route('buyer.index')}
-                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase tracking-wider shadow-sm hover:bg-[#C20836] transition font-mono"
+                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#E00D42] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#C20836] transition cursor-pointer"
                         >
                             Explore Marketplace
                         </Link>
@@ -137,10 +137,10 @@ export default function BuyerOrders({ orders }: Props) {
                         {filteredOrders.map((order) => (
                             <div
                                 key={order.id}
-                                className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition space-y-4 font-sans"
+                                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs hover:shadow-md transition space-y-4 font-sans"
                             >
                                 {/* Order Header */}
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 font-mono text-xs">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 text-xs">
                                     <div className="space-y-0.5">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-slate-900 text-sm">
@@ -151,9 +151,9 @@ export default function BuyerOrders({ orders }: Props) {
                                             </span>
                                         </div>
                                         {order.delivery && (
-                                            <p className="text-indigo-600 font-semibold flex items-center gap-1 text-[11px]">
+                                            <p className="text-indigo-600 font-semibold flex items-center gap-1.5 text-xs">
                                                 <Truck className="w-3.5 h-3.5" />
-                                                Courier Tracking: {order.delivery.tracking_number} ({order.delivery.logistics_partner})
+                                                Courier Tracking: <span className="font-mono">{order.delivery.tracking_number}</span> ({order.delivery.logistics_partner})
                                             </p>
                                         )}
                                     </div>
@@ -167,21 +167,21 @@ export default function BuyerOrders({ orders }: Props) {
                                 <div className="divide-y divide-slate-100">
                                     {order.items?.map((item) => (
                                         <div key={item.id} className="py-3 flex items-center justify-between gap-4 text-xs">
-                                            <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex items-center gap-3.5 min-w-0">
                                                 <img
                                                     src={item.product?.featured_image || ''}
                                                     alt={item.product?.name}
                                                     className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                                 />
                                                 <div className="truncate space-y-0.5">
-                                                    <p className="font-bold text-slate-900 truncate">{item.product?.name}</p>
-                                                    <p className="text-slate-400 font-mono text-[11px]">
+                                                    <p className="font-semibold text-slate-900 truncate text-xs">{item.product?.name}</p>
+                                                    <p className="text-slate-400 text-[11px]">
                                                         Qty: {item.quantity} × {formatPrice(item.unit_price)}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            <span className="font-bold font-mono text-slate-900 shrink-0">
+                                            <span className="font-bold text-slate-900 shrink-0 text-xs">
                                                 {formatPrice(Number(item.unit_price) * item.quantity)}
                                             </span>
                                         </div>
@@ -189,22 +189,22 @@ export default function BuyerOrders({ orders }: Props) {
                                 </div>
 
                                 {/* Order Bottom Actions */}
-                                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono text-xs">
+                                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-sans">
                                     <div className="text-slate-500">
-                                        Payment: <span className="font-bold uppercase text-slate-800">{order.payment_method}</span> ({order.payment_status})
+                                        Payment: <span className="font-semibold text-slate-800">{order.payment_method.toUpperCase()}</span> ({order.payment_status})
                                     </div>
 
                                     <div className="flex items-center gap-4">
                                         <div className="text-right">
-                                            <span className="text-slate-400 text-[10px] uppercase block">Order Total</span>
-                                            <span className="font-black text-base text-[#E00D42] font-sans">
+                                            <span className="text-slate-400 text-[10px] uppercase block font-semibold">Order Total</span>
+                                            <span className="font-black text-base text-[#E00D42]">
                                                 {formatPrice(order.total_amount)}
                                             </span>
                                         </div>
 
                                         <Link
                                             href={route('buyer.orders.show', order.id)}
-                                            className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition uppercase"
+                                            className="px-4 py-2.5 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-2xs"
                                         >
                                             <span>View Details & Timeline</span>
                                             <ArrowRight className="w-3.5 h-3.5" />

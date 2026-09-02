@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, User } from '@/types';
@@ -61,6 +62,18 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     const { data: rejectData, setData: setRejectData, post: postReject, processing: rejectProcessing, reset: resetReject, errors: rejectErrors } = useForm({
         reason: '',
     });
+
+    // Scroll locking for open modals
+    useEffect(() => {
+        if (inspectingApplicant || rejectingApplicant) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [inspectingApplicant, rejectingApplicant]);
 
     const handleFilterChange = (newStatus?: string, newRole?: string) => {
         const s = newStatus !== undefined ? newStatus : selectedStatus;
@@ -163,7 +176,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
             return (
                 <div className="h-96 flex flex-col items-center justify-center text-slate-400 bg-slate-100 rounded-xl border border-dashed border-slate-300">
                     <FileText className="w-12 h-12 mb-2 text-slate-300" />
-                    <p className="font-mono text-xs">No document file attached</p>
+                    <p className="font-sans text-xs">No document file attached</p>
                 </div>
             );
         }
@@ -182,7 +195,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         href={path}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white rounded-lg font-mono text-xs font-bold flex items-center gap-2 transition"
+                        className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white rounded-lg font-sans text-xs font-bold flex items-center gap-2 transition"
                     >
                         <span>Open Document in New Tab</span>
                         <ExternalLink className="w-4 h-4" />
@@ -192,17 +205,17 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
         }
 
         return (
-            <div className="relative group bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center min-h-[380px] max-h-[500px]">
+            <div className="relative group bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center min-h-[380px] max-h-[520px] p-2">
                 <img
                     src={path}
                     alt="Applicant Document Inspection"
-                    className="max-h-[480px] w-auto object-contain transition group-hover:scale-[1.02]"
+                    className="max-h-[500px] w-auto max-w-full object-contain rounded-lg transition group-hover:scale-[1.01]"
                 />
                 <a
                     href={path}
                     target="_blank"
                     rel="noreferrer"
-                    className="absolute top-3 right-3 px-3 py-1.5 bg-black/80 hover:bg-black text-white rounded-md font-mono text-[10px] font-bold flex items-center gap-1.5 backdrop-blur-xs transition"
+                    className="absolute top-3 right-3 px-3 py-1.5 bg-black/80 hover:bg-black text-white rounded-lg font-sans text-xs font-bold flex items-center gap-1.5 backdrop-blur-xs transition shadow-md"
                 >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Full Resolution</span>
@@ -581,10 +594,10 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                 </div>
             </div>
 
-            {/* 4. High-Resolution Document Inspection Modal */}
-            {inspectingApplicant && (
-                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden font-mono">
+            {/* 4. High-Resolution Document Inspection Modal (Portaled to root) */}
+            {typeof document !== 'undefined' && inspectingApplicant && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
+                    <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
                         {/* Modal Header */}
                         <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-2.5">
@@ -593,7 +606,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-sm">KYC Document Inspector</h3>
-                                    <p className="text-[10px] text-slate-400">
+                                    <p className="text-xs text-slate-400">
                                         {inspectingApplicant.name} • {inspectingApplicant.email} ({inspectingApplicant.role.toUpperCase()})
                                     </p>
                                 </div>
@@ -608,7 +621,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         </div>
 
                         {/* Modal Document Tabs */}
-                        <div className="flex items-center gap-2 p-3 bg-slate-100 border-b border-slate-200 shrink-0 text-xs font-bold">
+                        <div className="flex items-center gap-2 p-3 bg-slate-100 border-b border-slate-200 shrink-0 text-xs font-semibold">
                             <button
                                 onClick={() => setActiveDocTab('id')}
                                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
@@ -671,19 +684,19 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             {/* Applicant Metadata Box */}
                             <div className="p-3 bg-white border border-slate-200 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase">Name</span>
-                                    <span className="font-bold">{inspectingApplicant.name}</span>
+                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Name</span>
+                                    <span className="font-semibold text-slate-900">{inspectingApplicant.name}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase">Contact Phone</span>
-                                    <span className="font-bold">{inspectingApplicant.phone || 'N/A'}</span>
+                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Contact Phone</span>
+                                    <span className="font-semibold text-slate-900">{inspectingApplicant.phone || 'N/A'}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase">Address / Hub</span>
-                                    <span className="font-bold truncate block">{inspectingApplicant.address || 'Metro Manila'}</span>
+                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Address / Hub</span>
+                                    <span className="font-semibold text-slate-900 truncate block">{inspectingApplicant.address || 'Metro Manila'}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase">Current KYC Status</span>
+                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Current KYC Status</span>
                                     <span className="font-bold uppercase text-[#E00D42]">{inspectingApplicant.kyc_status}</span>
                                 </div>
                             </div>
@@ -694,7 +707,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             <button
                                 type="button"
                                 onClick={() => setInspectingApplicant(null)}
-                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold uppercase transition"
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
                             >
                                 Close
                             </button>
@@ -703,7 +716,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => openRejectModal(inspectingApplicant)}
-                                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold uppercase flex items-center gap-1.5 transition"
+                                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                     <X className="w-4 h-4" />
                                     <span>Reject with Reason</span>
@@ -712,7 +725,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => handleApprove(inspectingApplicant)}
-                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase flex items-center gap-1.5 transition shadow-xs"
+                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
                                 >
                                     <Check className="w-4 h-4" />
                                     <span>Approve Account</span>
@@ -720,12 +733,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* 5. Reject with Feedback Modal */}
-            {rejectingApplicant && (
-                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-mono">
+            {/* 5. Reject with Feedback Modal (Portaled to root) */}
+            {typeof document !== 'undefined' && rejectingApplicant && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
                     <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div className="flex items-center gap-2">
@@ -738,19 +752,19 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             </div>
                             <button
                                 onClick={() => setRejectingApplicant(null)}
-                                className="text-slate-400 hover:text-slate-700"
+                                className="text-slate-400 hover:text-slate-700 p-1"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <p className="text-xs text-slate-600 font-sans">
+                        <p className="text-xs text-slate-600 leading-relaxed">
                             Specify the reason why <strong>{rejectingApplicant.name}</strong>'s KYC application is rejected. The user will be prompted to resubmit corrected documents on their pending gate screen.
                         </p>
 
                         {/* Quick Presets */}
                         <div className="space-y-1.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 Quick Fill Presets:
                             </span>
                             <div className="flex flex-wrap gap-1">
@@ -765,7 +779,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                         key={idx}
                                         type="button"
                                         onClick={() => fillPresetReason(preset)}
-                                        className="text-[10px] px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-left"
+                                        className="text-[11px] px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-left cursor-pointer"
                                     >
                                         + {preset}
                                     </button>
@@ -775,14 +789,14 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
                         <form onSubmit={handleRejectSubmit} className="space-y-3">
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-900 uppercase mb-1">
+                                <label className="block text-xs font-semibold text-slate-900 mb-1">
                                     Feedback & Instructions for Resubmission *
                                 </label>
                                 <textarea
                                     value={rejectData.reason}
                                     onChange={(e) => setRejectData('reason', e.target.value)}
                                     rows={4}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-900 outline-hidden focus:border-rose-600"
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 outline-hidden focus:border-rose-600 focus:bg-white transition"
                                     placeholder="Explain required corrections in detail..."
                                     required
                                 />
@@ -795,7 +809,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => setRejectingApplicant(null)}
-                                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold uppercase transition"
+                                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -803,7 +817,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="submit"
                                     disabled={rejectProcessing || rejectData.reason.length < 5}
-                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
+                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                                 >
                                     <ShieldAlert className="w-3.5 h-3.5" />
                                     <span>{rejectProcessing ? 'Rejecting...' : 'Confirm Rejection'}</span>
@@ -811,7 +825,8 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </DashboardLayout>
     );
