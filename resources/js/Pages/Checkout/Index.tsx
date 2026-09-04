@@ -267,7 +267,7 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                     <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3.5 min-w-0">
                                             <img
-                                                src={item.product?.featured_image || ''}
+                                                src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
                                                 alt=""
                                                 className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                             />

@@ -129,7 +129,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                             {/* Product Info */}
                                             <div className="flex items-center gap-4 min-w-0">
                                                 <img
-                                                    src={item.product?.featured_image || ''}
+                                                    src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
                                                     alt={item.product?.name}
                                                     className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                                                 />

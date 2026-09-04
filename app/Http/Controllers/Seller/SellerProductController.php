@@ -163,10 +163,16 @@ class SellerProductController extends Controller
         if (!empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
             foreach ($variantsRaw['colors'] as $idx => $color) {
                 if (is_array($color) && !empty($color['name'])) {
+                    $imgUrl = !empty($color['image_url']) ? trim($color['image_url']) : null;
+                    if ($imgUrl && str_starts_with($imgUrl, 'blob:')) {
+                        $imgUrl = null;
+                    }
                     $colors[] = [
                         'id' => (string)($color['id'] ?? ('c_' . ($idx + 1))),
                         'name' => trim($color['name']),
                         'hex' => !empty($color['hex']) ? trim($color['hex']) : '#111111',
+                        'image_url' => $imgUrl,
+                        'gallery_index' => isset($color['gallery_index']) && is_numeric($color['gallery_index']) ? (int)$color['gallery_index'] : null,
                         'in_stock' => isset($color['in_stock']) ? (bool)$color['in_stock'] : true,
                     ];
                 }
@@ -191,7 +197,12 @@ class SellerProductController extends Controller
             return null;
         }
 
+        $option1Name = !empty($variantsRaw['option1_name']) ? trim((string)$variantsRaw['option1_name']) : (!empty($colors) ? 'Color / Edition' : null);
+        $option2Name = !empty($variantsRaw['option2_name']) ? trim((string)$variantsRaw['option2_name']) : (!empty($sizes) ? 'Specification / Size' : null);
+
         return [
+            'option1_name' => $option1Name,
+            'option2_name' => $option2Name,
             'colors' => $colors,
             'sizes' => $sizes,
         ];
@@ -251,6 +262,37 @@ class SellerProductController extends Controller
                     'is_primary' => ($index === 0),
                     'sort_order' => $index,
                 ]);
+            }
+        } else {
+            $orderedUrls = ProductImage::where('product_id', $product->id)
+                ->orderBy('sort_order')
+                ->pluck('image_url')
+                ->toArray();
+        }
+
+        // Map variant colors to final persisted gallery URLs
+        if (! empty($product->variants) && is_array($product->variants)) {
+            $variants = $product->variants;
+            $updated = false;
+
+            if (! empty($variants['colors']) && is_array($variants['colors'])) {
+                foreach ($variants['colors'] as &$c) {
+                    if (isset($c['gallery_index']) && is_numeric($c['gallery_index'])) {
+                        $galleryIdx = (int) $c['gallery_index'];
+                        if (isset($orderedUrls[$galleryIdx])) {
+                            $c['image_url'] = $orderedUrls[$galleryIdx];
+                            $updated = true;
+                        }
+                    } elseif (! empty($c['image_url']) && str_starts_with($c['image_url'], 'blob:')) {
+                        $c['image_url'] = null;
+                        $updated = true;
+                    }
+                }
+                unset($c);
+            }
+
+            if ($updated) {
+                $product->update(['variants' => $variants]);
             }
         }
     }

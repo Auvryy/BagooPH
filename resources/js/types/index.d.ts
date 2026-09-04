@@ -87,7 +87,9 @@ export interface Product {
     stock: number;
     sku?: string | null;
     variants?: {
-        colors?: { id: string; name: string; hex: string; in_stock?: boolean }[];
+        option1_name?: string | null;
+        option2_name?: string | null;
+        colors?: { id: string; name: string; hex: string; image_url?: string | null; gallery_index?: number | null; in_stock?: boolean }[];
         sizes?: { id: string; name: string; extra_price: number; stock?: number }[];
     } | null;
     featured_image?: string | null;

@@ -243,4 +243,142 @@ class SellerProductVariantsTest extends TestCase
             'quantity' => 1,
         ]);
     }
+
+    public function test_seller_can_create_product_with_variant_photo_linked_from_gallery(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $file1 = \Illuminate\Http\UploadedFile::fake()->image('duffle_olive.jpg');
+        $file2 = \Illuminate\Http\UploadedFile::fake()->image('duffle_espresso.jpg');
+
+        $manifest = [
+            ['type' => 'file', 'file_index' => 0],
+            ['type' => 'file', 'file_index' => 1],
+        ];
+
+        $variants = [
+            'colors' => [
+                ['id' => 'c1', 'name' => 'Olive Drab', 'hex' => '#4B5320', 'gallery_index' => 0],
+                ['id' => 'c2', 'name' => 'Espresso Brown', 'hex' => '#3B2F2F', 'gallery_index' => 1],
+            ],
+            'sizes' => [],
+        ];
+
+        $response = $this->actingAs($this->seller)
+            ->post(route('seller.products.store'), [
+                'name' => 'Rugged Weekender Duffle',
+                'category_id' => $this->category->id,
+                'price' => 2499.00,
+                'stock' => 20,
+                'description' => 'Heavy duty canvas duffle.',
+                'image_files' => [$file1, $file2],
+                'gallery_manifest' => json_encode($manifest),
+                'variants' => json_encode($variants),
+            ]);
+
+        $response->assertRedirect();
+        $product = Product::where('name', 'Rugged Weekender Duffle')->first();
+        $this->assertNotNull($product);
+
+        $this->assertNotNull($product->variants);
+        $this->assertCount(2, $product->variants['colors']);
+
+        $color1 = $product->variants['colors'][0];
+        $color2 = $product->variants['colors'][1];
+
+        $this->assertNotEmpty($color1['image_url']);
+        $this->assertStringStartsWith('/storage/products/', $color1['image_url']);
+
+        $this->assertNotEmpty($color2['image_url']);
+        $this->assertStringStartsWith('/storage/products/', $color2['image_url']);
+        $this->assertNotEquals($color1['image_url'], $color2['image_url']);
+    }
+
+    public function test_seller_can_create_product_with_custom_variant_image_url(): void
+    {
+        $variants = [
+            'colors' => [
+                [
+                    'id' => 'c1',
+                    'name' => 'Matte Black',
+                    'hex' => '#111111',
+                    'image_url' => 'https://images.unsplash.com/photo-matte-black-edition.jpg',
+                ],
+            ],
+            'sizes' => [],
+        ];
+
+        $response = $this->actingAs($this->seller)
+            ->post(route('seller.products.store'), [
+                'name' => 'Anodized EDC Pen',
+                'category_id' => $this->category->id,
+                'price' => 599.00,
+                'stock' => 100,
+                'description' => 'Aircraft aluminum pen.',
+                'variants' => json_encode($variants),
+            ]);
+
+        $response->assertRedirect();
+        $product = Product::where('name', 'Anodized EDC Pen')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(
+            'https://images.unsplash.com/photo-matte-black-edition.jpg',
+            $product->variants['colors'][0]['image_url']
+        );
+    }
+
+    public function test_seller_can_create_product_with_custom_named_variation_groups(): void
+    {
+        $variants = [
+            'option1_name' => 'Model & Finish',
+            'option2_name' => 'Storage Capacity',
+            'colors' => [
+                ['id' => 'c1', 'name' => 'Space Gray', 'hex' => '#374151', 'in_stock' => true],
+                ['id' => 'c2', 'name' => 'Silver', 'hex' => '#E5E7EB', 'in_stock' => true],
+            ],
+            'sizes' => [
+                ['id' => 's1', 'name' => '128GB', 'extra_price' => 0, 'stock' => 25],
+                ['id' => 's2', 'name' => '256GB', 'extra_price' => 3000.00, 'stock' => 20],
+                ['id' => 's3', 'name' => '512GB', 'extra_price' => 7000.00, 'stock' => 10],
+            ],
+        ];
+
+        $response = $this->actingAs($this->seller)
+            ->post(route('seller.products.store'), [
+                'name' => 'Quantum Pro Smartphone Ultra',
+                'category_id' => $this->category->id,
+                'price' => 45999.00,
+                'stock' => 55,
+                'description' => 'Flagship flagship smartphone.',
+                'variants' => json_encode($variants),
+            ]);
+
+        $response->assertRedirect();
+        $product = Product::where('name', 'Quantum Pro Smartphone Ultra')->first();
+        $this->assertNotNull($product);
+        $this->assertNotNull($product->variants);
+        $this->assertEquals('Model & Finish', $product->variants['option1_name']);
+        $this->assertEquals('Storage Capacity', $product->variants['option2_name']);
+        $this->assertCount(2, $product->variants['colors']);
+        $this->assertCount(3, $product->variants['sizes']);
+        $this->assertEquals(3000.00, $product->variants['sizes'][1]['extra_price']);
+    }
+
+    public function test_seller_can_create_product_without_any_variations_persisting_null_variants(): void
+    {
+        $response = $this->actingAs($this->seller)
+            ->post(route('seller.products.store'), [
+                'name' => 'Minimalist Titanium Key Carabiner',
+                'category_id' => $this->category->id,
+                'price' => 399.00,
+                'stock' => 100,
+                'description' => 'Solid grade 5 titanium carabiner.',
+                'variants' => '', // Empty string sent when merchant has 0 variations configured
+            ]);
+
+        $response->assertRedirect();
+        $product = Product::where('name', 'Minimalist Titanium Key Carabiner')->first();
+        $this->assertNotNull($product);
+        $this->assertNull($product->variants);
+    }
 }
