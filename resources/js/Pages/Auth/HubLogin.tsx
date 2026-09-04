@@ -3,15 +3,14 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Store, Eye, EyeOff } from 'lucide-react';
-import { getDomainUrl } from '@/utils/domain';
+import { ArrowRight, Lock, Mail, Box, MapPin, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
     status?: string;
     canResetPassword?: boolean;
 }
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function HubLogin({ status, canResetPassword }: Props) {
     const [showPassword, setShowPassword] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -21,7 +20,7 @@ export default function Login({ status, canResetPassword }: Props) {
     });
 
     useEffect(() => {
-        const savedEmail = localStorage.getItem('bagoo_saved_email');
+        const savedEmail = localStorage.getItem('bagoo_hub_email');
         if (savedEmail) {
             setData('email', savedEmail);
         }
@@ -31,9 +30,9 @@ export default function Login({ status, canResetPassword }: Props) {
         e.preventDefault();
 
         if (data.remember && data.email) {
-            localStorage.setItem('bagoo_saved_email', data.email);
+            localStorage.setItem('bagoo_hub_email', data.email);
         } else {
-            localStorage.removeItem('bagoo_saved_email');
+            localStorage.removeItem('bagoo_hub_email');
         }
 
         post(route('login'), {
@@ -43,11 +42,31 @@ export default function Login({ status, canResetPassword }: Props) {
 
     return (
         <GuestLayout 
-            title="Shopper Sign In" 
-            subtitle="Access your Bagoo Shopping Bag, Order Tracking & Member Perks"
-            headerBadge="BUYER STOREFRONT // 01"
+            title="Logistics Sorting Hub" 
+            subtitle="Intake Scanning, Destination Area Sorting & Rider Dispatch"
+            headerBadge="LOGISTICS HUB // 04"
+            showMarketplaceLink={false}
         >
-            <Head title="Shopper Sign In — BagooPH" />
+            <Head title="Logistics Sorting Hub Sign In — BagooPH" />
+
+            {/* Hub Metrics Strip */}
+            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
+                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
+                    <Box className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
+                    <span className="font-bold block text-indigo-950">Intake Scan</span>
+                    <span className="text-indigo-700 text-[9px]">Waybill Optical</span>
+                </div>
+                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
+                    <span className="font-bold block text-indigo-950">Area Bins</span>
+                    <span className="text-indigo-700 text-[9px]">Zones A / B / C</span>
+                </div>
+                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
+                    <span className="font-bold block text-indigo-950">Rider Fleet</span>
+                    <span className="text-indigo-700 text-[9px]">KYC & Area Match</span>
+                </div>
+            </div>
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
@@ -58,7 +77,7 @@ export default function Login({ status, canResetPassword }: Props) {
             <form onSubmit={submit} className="space-y-4 font-mono">
                 <div>
                     <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                        Email Address
+                        Hub Operator Email
                     </label>
                     <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -67,8 +86,8 @@ export default function Login({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                            placeholder="name@domain.com"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            placeholder="hub.operator@bagooph.shop"
                             autoComplete="username"
                             autoFocus
                             onChange={(e) => setData('email', e.target.value)}
@@ -86,7 +105,7 @@ export default function Login({ status, canResetPassword }: Props) {
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}
-                                className="text-[10px] text-slate-500 hover:text-[#E00D42] transition"
+                                className="text-[10px] text-slate-500 hover:text-indigo-700 transition"
                             >
                                 Forgot password?
                             </Link>
@@ -99,7 +118,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -124,7 +143,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Remember email & session</span>
+                        <span className="text-[11px] text-slate-700 font-mono">Keep station signed in</span>
                     </label>
                 </div>
 
@@ -132,43 +151,11 @@ export default function Login({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
-                        <span>{processing ? 'Authenticating...' : 'Sign In to Account'}</span>
+                        <span>{processing ? 'Connecting Station...' : 'Access Sorting Workstation'}</span>
                         <ArrowRight className="w-4 h-4" />
                     </button>
-                </div>
-
-                {/* Role Registration Gateways */}
-                <div className="pt-4 border-t border-slate-200 space-y-3 font-sans text-xs">
-                    <div className="text-center font-mono text-[11px]">
-                        <span className="text-slate-600">New shopper? </span>
-                        <Link 
-                            href={route('register')} 
-                            className="text-slate-900 font-bold hover:text-[#E00D42] transition underline underline-offset-2"
-                        >
-                            Create Buyer Account
-                        </Link>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-3 border border-slate-800">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#E00D42]">
-                                <Store className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                                <span className="block font-bold text-[11px]">Want to sell on Bagoo?</span>
-                                <span className="block text-[9px] text-slate-400 font-mono">10% Flat Fee & Waybill Printing</span>
-                            </div>
-                        </div>
-
-                        <a
-                            href={getDomainUrl('seller', '/register')}
-                            className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-mono text-[10px] font-bold uppercase shrink-0 transition"
-                        >
-                            Open Store
-                        </a>
-                    </div>
                 </div>
             </form>
         </GuestLayout>

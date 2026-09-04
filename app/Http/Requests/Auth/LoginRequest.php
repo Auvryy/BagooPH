@@ -50,6 +50,46 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+        $host = $this->getHost();
+        $appDomain = env('APP_DOMAIN', 'bagooph.shop');
+        $roleMismatch = null;
+
+        if (str_starts_with($host, 'seller.')) {
+            if ($user->role !== 'seller') {
+                $roleMismatch = 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.';
+            }
+        } elseif (str_starts_with($host, 'courier.')) {
+            if ($user->role !== 'courier') {
+                $roleMismatch = 'Role mismatch: Non-courier accounts cannot access the Courier Fleet Dispatch portal.';
+            }
+        } elseif (str_starts_with($host, 'hub.')) {
+            if (! in_array($user->role, ['logistics', 'admin'], true)) {
+                $roleMismatch = 'Role mismatch: Non-logistics accounts cannot access the Logistics Sorting Center.';
+            }
+        } elseif (str_starts_with($host, 'admin.')) {
+            if ($user->role !== 'admin') {
+                $roleMismatch = 'Role mismatch: Non-admin accounts cannot access the Platform Governance portal.';
+            }
+        } elseif ($host === $appDomain || $host === 'www.' . $appDomain) {
+            if ($user->role !== 'buyer') {
+                $roleMismatch = 'Role mismatch: Non-buyer accounts cannot access the Buyer Marketplace portal.';
+            }
+        }
+
+        if ($roleMismatch !== null) {
+            Auth::logout();
+            if ($this->hasSession()) {
+                $this->session()->invalidate();
+                $this->session()->regenerateToken();
+            }
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => $roleMismatch,
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

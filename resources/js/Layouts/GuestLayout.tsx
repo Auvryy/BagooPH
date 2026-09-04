@@ -3,15 +3,24 @@ import { Link } from '@inertiajs/react';
 import GrainOverlay from '@/Components/GrainOverlay';
 
 import BagooLogo from '@/Components/BagooLogo';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     title?: string;
     subtitle?: string;
     headerBadge?: string;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+    showMarketplaceLink?: boolean;
 }
 
-export default function GuestLayout({ children, title, subtitle, headerBadge, maxWidth = 'md' }: PropsWithChildren<Props>) {
+export default function GuestLayout({ 
+    children, 
+    title, 
+    subtitle, 
+    headerBadge, 
+    maxWidth = 'md',
+    showMarketplaceLink = true,
+}: PropsWithChildren<Props>) {
     const maxWidthClass = {
         sm: 'max-w-sm',
         md: 'max-w-md',
@@ -44,14 +53,16 @@ export default function GuestLayout({ children, title, subtitle, headerBadge, ma
                     </span>
                 </Link>
 
-                <div className="flex items-center gap-4 text-[11px]">
-                    <Link 
-                        href="/" 
-                        className="text-black/60 hover:text-black transition uppercase font-bold tracking-wider"
-                    >
-                        ← Back to Marketplace
-                    </Link>
-                </div>
+                {showMarketplaceLink && (
+                    <div className="flex items-center gap-4 text-[11px]">
+                        <a 
+                            href={getDomainUrl('buyer', '/')} 
+                            className="text-black/60 hover:text-black transition uppercase font-bold tracking-wider"
+                        >
+                            ← Back to Marketplace
+                        </a>
+                    </div>
+                )}
             </header>
 
             {/* Main Auth Container */}
