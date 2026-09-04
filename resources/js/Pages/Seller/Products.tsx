@@ -1928,19 +1928,19 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                         onClick={() => setIsCreateOpen(false)}
                     />
 
-                    {/* Right Drawer Panel */}
-                    <div className="relative w-full max-w-2xl bg-white text-slate-900 h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
+                    {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
+                    <div className="relative w-full max-w-full lg:max-w-2xl xl:max-w-3xl bg-white text-slate-900 h-full shadow-2xl border-l-0 lg:border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
                         {/* Sticky Drawer Header */}
-                        <div className="px-6 py-4.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#E00D42] flex items-center justify-center shrink-0 border border-rose-100 shadow-2xs">
-                                    <Plus className="w-5 h-5" />
+                        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-2xs">
+                            <div className="flex items-center gap-3.5 sm:gap-4">
+                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-rose-50 text-[#E00D42] flex items-center justify-center shrink-0 border border-rose-100 shadow-xs">
+                                    <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-base text-slate-900 leading-tight">
+                                    <h3 className="font-bold text-base sm:text-lg text-slate-900 leading-tight">
                                         Publish New Product Listing
                                     </h3>
-                                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                    <p className="text-xs text-slate-500 font-mono mt-1">
                                         Add catalog details, pricing, variations & gallery photos
                                     </p>
                                 </div>
@@ -1948,7 +1948,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             <button 
                                 type="button"
                                 onClick={() => setIsCreateOpen(false)} 
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
                                 title="Close sidebar"
                             >
                                 <X className="w-5 h-5" />
@@ -1957,95 +1957,116 @@ export default function SellerProducts({ products, categories, shop }: Props) {
 
                         {/* Scrollable Form & Sticky Footer */}
                         <form onSubmit={handleCreate} className="flex-1 flex flex-col min-h-0">
-                            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-xs font-mono">
-                                <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Product Title</label>
-                                    <input
-                                        type="text"
-                                        value={createForm.data.name}
-                                        onChange={(e) => createForm.setData('name', e.target.value)}
-                                        placeholder="e.g. Bagoo Urban Nomad Tactical Duffel 45L"
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Department Category</label>
-                                        <select
-                                            value={createForm.data.category_id}
-                                            onChange={(e) => createForm.setData('category_id', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        >
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                            <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-mono">
+                                {/* Top Section: Catalog Details & Pricing */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
+                                            <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-mono">
+                                                Basic Information & Inventory
+                                            </span>
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={createForm.data.sku}
-                                            onChange={(e) => createForm.setData('sku', e.target.value.toUpperCase())}
-                                            placeholder="e.g. BGO-DUFFEL-45L"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        />
+                                        <span className="text-[10px] text-slate-400 font-mono">Primary Details</span>
                                     </div>
-                                </div>
 
-                                <div className="grid grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Price (₱)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={createForm.data.price}
-                                            onChange={(e) => createForm.setData('price', e.target.value)}
-                                            required
-                                            placeholder="1299.00"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={`block font-bold uppercase mb-1 ${createSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
-                                            Slashed Price (₱)
+                                        <label className="block font-bold text-slate-700 uppercase mb-2">
+                                            Product Title <span className="text-[#E00D42]">*</span>
                                         </label>
                                         <input
-                                            type="number"
-                                            step="0.01"
-                                            value={createForm.data.compare_at_price}
-                                            onChange={(e) => createForm.setData('compare_at_price', e.target.value)}
-                                            placeholder="1799.00"
-                                            className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 ${
-                                                createSlashedPriceError
-                                                    ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
-                                                    : 'border-slate-200 focus:ring-[#E00D42]'
-                                            }`}
-                                        />
-                                        {createSlashedPriceError && (
-                                            <p className="mt-1 text-[11px] text-rose-600 font-sans flex items-center gap-1">
-                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                <span>Must be higher than listing price ({formatPrice(createForm.data.price)})</span>
-                                            </p>
-                                        )}
-                                        {createForm.errors.compare_at_price && (
-                                            <p className="mt-1 text-[11px] text-rose-600 font-sans">{createForm.errors.compare_at_price}</p>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Warehouse Stock</label>
-                                        <input
-                                            type="number"
-                                            value={createForm.data.stock}
-                                            onChange={(e) => createForm.setData('stock', e.target.value)}
+                                            type="text"
+                                            value={createForm.data.name}
+                                            onChange={(e) => createForm.setData('name', e.target.value)}
+                                            placeholder="e.g. Bagoo Urban Nomad Tactical Duffel 45L"
                                             required
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans placeholder:font-sans placeholder:text-xs placeholder:text-slate-400 transition"
                                         />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Department Category <span className="text-[#E00D42]">*</span>
+                                            </label>
+                                            <select
+                                                value={createForm.data.category_id}
+                                                onChange={(e) => createForm.setData('category_id', e.target.value)}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                            >
+                                                {categories.map((c) => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
+                                                <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={createForm.data.sku}
+                                                onChange={(e) => createForm.setData('sku', e.target.value.toUpperCase())}
+                                                placeholder="e.g. BGO-DUFFEL-45L"
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs placeholder:text-slate-400 transition uppercase"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Price (₱) <span className="text-[#E00D42]">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={createForm.data.price}
+                                                onChange={(e) => createForm.setData('price', e.target.value)}
+                                                required
+                                                placeholder="1299.00"
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs transition"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={`block font-bold uppercase mb-2 ${createSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
+                                                Slashed Price (₱)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={createForm.data.compare_at_price}
+                                                onChange={(e) => createForm.setData('compare_at_price', e.target.value)}
+                                                placeholder="1799.00"
+                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-mono text-xs ${
+                                                    createSlashedPriceError
+                                                        ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
+                                                        : 'border-slate-200 focus:ring-[#E00D42]'
+                                                }`}
+                                            />
+                                            {createSlashedPriceError && (
+                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans flex items-center gap-1">
+                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                    <span>Must be higher than listing price ({formatPrice(createForm.data.price)})</span>
+                                                </p>
+                                            )}
+                                            {createForm.errors.compare_at_price && (
+                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans">{createForm.errors.compare_at_price}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Warehouse Stock <span className="text-[#E00D42]">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={createForm.data.stock}
+                                                onChange={(e) => createForm.setData('stock', e.target.value)}
+                                                required
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs transition"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2055,23 +2076,23 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 {renderGalleryManager(true)}
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Product Description & Specs</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-2">Product Description & Specs</label>
                                     <textarea
                                         value={createForm.data.description}
                                         onChange={(e) => createForm.setData('description', e.target.value)}
                                         rows={3}
                                         required
                                         placeholder="Provide detailed material specifications, size measurements, and warranty details..."
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                     />
                                 </div>
                             </div>
 
                             {/* Sticky Action Footer */}
-                            <div className="px-6 py-4 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
+                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
                                 <div className="text-xs text-slate-500 font-mono">
                                     {createForm.data.name ? (
-                                        <span className="truncate max-w-[200px] sm:max-w-xs block font-bold text-slate-800">
+                                        <span className="truncate max-w-[140px] sm:max-w-xs block font-bold text-slate-800">
                                             {createForm.data.name}
                                         </span>
                                     ) : (
@@ -2111,19 +2132,19 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                         onClick={() => setEditingProduct(null)}
                     />
 
-                    {/* Right Drawer Panel */}
-                    <div className="relative w-full max-w-2xl bg-white text-slate-900 h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
+                    {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
+                    <div className="relative w-full max-w-full lg:max-w-2xl xl:max-w-3xl bg-white text-slate-900 h-full shadow-2xl border-l-0 lg:border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
                         {/* Sticky Drawer Header */}
-                        <div className="px-6 py-4.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100 shadow-2xs">
-                                    <Edit3 className="w-5 h-5" />
+                        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-2xs">
+                            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100 shadow-xs">
+                                    <Edit3 className="w-5 h-5 sm:w-6 sm:h-6" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h3 className="font-bold text-base text-slate-900 truncate max-w-sm">
+                                    <h3 className="font-bold text-base sm:text-lg text-slate-900 truncate max-w-sm sm:max-w-md">
                                         Edit Product: {editingProduct.name}
                                     </h3>
-                                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                    <p className="text-xs text-slate-500 font-mono mt-1">
                                         SKU: {editingProduct.sku || 'AUTO'} • ID #{editingProduct.id}
                                     </p>
                                 </div>
@@ -2131,7 +2152,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             <button 
                                 type="button"
                                 onClick={() => setEditingProduct(null)} 
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
+                                className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
                                 title="Close sidebar"
                             >
                                 <X className="w-5 h-5" />
@@ -2140,108 +2161,127 @@ export default function SellerProducts({ products, categories, shop }: Props) {
 
                         {/* Scrollable Form & Sticky Footer */}
                         <form onSubmit={handleUpdate} className="flex-1 flex flex-col min-h-0">
-                            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-xs font-mono">
-                                <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Product Title</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.data.name}
-                                        onChange={(e) => editForm.setData('name', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                    />
-                                </div>
+                            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-mono">
+                                {/* Top Section: Catalog Details & Pricing */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                                            <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-mono">
+                                                Basic Information & Inventory
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-mono">Product #{editingProduct.id}</span>
+                                    </div>
 
-                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Status</label>
-                                        <select
-                                            value={editForm.data.status}
-                                            onChange={(e) => editForm.setData('status', e.target.value as any)}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        >
-                                            <option value="active">Active Listing</option>
-                                            <option value="draft">Draft Mode</option>
-                                            <option value="archived">Archived</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Warehouse Stock</label>
-                                        <input
-                                            type="number"
-                                            value={editForm.data.stock}
-                                            onChange={(e) => editForm.setData('stock', e.target.value)}
-                                            required
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Price (₱)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={editForm.data.price}
-                                            onChange={(e) => editForm.setData('price', e.target.value)}
-                                            required
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={`block font-bold uppercase mb-1 ${editSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
-                                            Slashed Price (₱)
+                                        <label className="block font-bold text-slate-700 uppercase mb-2">
+                                            Product Title <span className="text-[#E00D42]">*</span>
                                         </label>
                                         <input
-                                            type="number"
-                                            step="0.01"
-                                            value={editForm.data.compare_at_price}
-                                            onChange={(e) => editForm.setData('compare_at_price', e.target.value)}
-                                            placeholder="1799.00"
-                                            className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 ${
-                                                editSlashedPriceError
-                                                    ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
-                                                    : 'border-slate-200 focus:ring-[#E00D42]'
-                                            }`}
-                                        />
-                                        {editSlashedPriceError && (
-                                            <p className="mt-1 text-[11px] text-rose-600 font-sans flex items-center gap-1">
-                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                <span>Must be higher than listing price ({formatPrice(editForm.data.price)})</span>
-                                            </p>
-                                        )}
-                                        {editForm.errors.compare_at_price && (
-                                            <p className="mt-1 text-[11px] text-rose-600 font-sans">{editForm.errors.compare_at_price}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-1">Department Category</label>
-                                        <select
-                                            value={editForm.data.category_id}
-                                            onChange={(e) => editForm.setData('category_id', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                        >
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                            <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
-                                        </div>
-                                        <input
                                             type="text"
-                                            value={editForm.data.sku}
-                                            onChange={(e) => editForm.setData('sku', e.target.value.toUpperCase())}
-                                            placeholder="e.g. BGO-DUFFEL-45L"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                            value={editForm.data.name}
+                                            onChange={(e) => editForm.setData('name', e.target.value)}
+                                            required
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans transition"
                                         />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">Status</label>
+                                            <select
+                                                value={editForm.data.status}
+                                                onChange={(e) => editForm.setData('status', e.target.value as any)}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                            >
+                                                <option value="active">Active Listing</option>
+                                                <option value="draft">Draft Mode</option>
+                                                <option value="archived">Archived</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Warehouse Stock <span className="text-[#E00D42]">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={editForm.data.stock}
+                                                onChange={(e) => editForm.setData('stock', e.target.value)}
+                                                required
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs transition"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Price (₱) <span className="text-[#E00D42]">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.data.price}
+                                                onChange={(e) => editForm.setData('price', e.target.value)}
+                                                required
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs transition"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={`block font-bold uppercase mb-2 ${editSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
+                                                Slashed Price (₱)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.data.compare_at_price}
+                                                onChange={(e) => editForm.setData('compare_at_price', e.target.value)}
+                                                placeholder="1799.00"
+                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-mono text-xs ${
+                                                    editSlashedPriceError
+                                                        ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
+                                                        : 'border-slate-200 focus:ring-[#E00D42]'
+                                                }`}
+                                            />
+                                            {editSlashedPriceError && (
+                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans flex items-center gap-1">
+                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                    <span>Must be higher than listing price ({formatPrice(editForm.data.price)})</span>
+                                                </p>
+                                            )}
+                                            {editForm.errors.compare_at_price && (
+                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans">{editForm.errors.compare_at_price}</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">Department Category</label>
+                                            <select
+                                                value={editForm.data.category_id}
+                                                onChange={(e) => editForm.setData('category_id', e.target.value)}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                            >
+                                                {categories.map((c) => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
+                                                <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={editForm.data.sku}
+                                                onChange={(e) => editForm.setData('sku', e.target.value.toUpperCase())}
+                                                placeholder="e.g. BGO-DUFFEL-45L"
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-mono text-xs placeholder:text-slate-400 transition uppercase"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2251,19 +2291,19 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 {renderGalleryManager(false)}
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Description</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-2">Description</label>
                                     <textarea
                                         value={editForm.data.description}
                                         onChange={(e) => editForm.setData('description', e.target.value)}
                                         rows={3}
                                         required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                     />
                                 </div>
                             </div>
 
                             {/* Sticky Action Footer */}
-                            <div className="px-6 py-4 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
+                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
                                 <div className="text-xs text-slate-500 font-mono">
                                     <span>Status: <strong className="capitalize text-slate-800">{editForm.data.status}</strong></span>
                                 </div>
