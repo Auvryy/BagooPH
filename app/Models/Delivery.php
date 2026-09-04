@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Builders\DeliveryBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Delivery extends Model
 {
@@ -37,6 +39,19 @@ class Delivery extends Model
         'delivered_at' => 'datetime',
     ];
 
+    public function newEloquentBuilder($query): DeliveryBuilder
+    {
+        return new DeliveryBuilder($query);
+    }
+
+    public function setStatusAttribute($value): void
+    {
+        if ($value instanceof \BackedEnum) {
+            $value = $value->value;
+        }
+        $this->attributes['status'] = $value !== null ? strtolower(trim((string) $value)) : null;
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
@@ -47,7 +62,7 @@ class Delivery extends Model
         return $this->belongsTo(User::class, 'courier_id');
     }
 
-    public function checkpoints(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function checkpoints(): HasMany
     {
         return $this->hasMany(DeliveryCheckpoint::class);
     }

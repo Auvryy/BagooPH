@@ -140,7 +140,7 @@ export interface Delivery {
     courier_id?: number | null;
     tracking_number: string;
     logistics_partner: string;
-    status: 'unassigned' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed';
+    status: 'unassigned' | 'assigned' | 'assigned_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'delivery_failed' | 'returned' | 'cancelled';
     pickup_store_name?: string | null;
     pickup_address: string;
     pickup_phone?: string | null;
@@ -166,7 +166,7 @@ export interface Order {
     total_amount: string | number;
     payment_method: 'card' | 'cod' | 'bank_transfer' | 'e_wallet';
     payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
-    status: 'pending' | 'processing' | 'ready_for_pickup' | 'shipped' | 'delivered' | 'cancelled';
+    status: 'placed' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'out_for_delivery' | 'delivered' | 'completed' | 'delivery_failed' | 'returned' | 'pending' | 'processing' | 'shipped' | 'cancelled';
     recipient_name: string;
     recipient_phone: string;
     shipping_address: string;
