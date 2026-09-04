@@ -31,7 +31,7 @@ class SellerProductController extends Controller
     {
         $shop = $this->getShop($request);
         $products = Product::where('shop_id', $shop->id)
-            ->with('category')
+            ->with(['category', 'images'])
             ->latest()
             ->paginate(10);
 
@@ -58,33 +58,29 @@ class SellerProductController extends Controller
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'image_files' => 'nullable|array',
+            'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'gallery_manifest' => 'nullable|string',
+        ], [
+            'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
+            'image_files.*.max' => 'Each product image must not exceed 5MB.',
+            'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
-        $imageUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-
-        if ($request->hasFile('image_file')) {
-            $path = $request->file('image_file')->store('products', 'public');
-            $imageUrl = '/storage/' . $path;
-        } elseif (! empty($validated['featured_image'])) {
-            $imageUrl = $validated['featured_image'];
-        }
-
+        $defaultFallback = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
         $slug = Str::slug($validated['name']) . '-' . rand(1000, 9999);
-        unset($validated['image_file']);
-        $validated['featured_image'] = $imageUrl;
+
+        unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
         $product = Product::create([
             ...$validated,
             'shop_id' => $shop->id,
             'slug' => $slug,
+            'featured_image' => $defaultFallback,
             'status' => 'active',
         ]);
 
-        ProductImage::create([
-            'product_id' => $product->id,
-            'image_url' => $product->featured_image,
-            'is_primary' => true,
-        ]);
+        $this->syncProductImages($product, $request, $defaultFallback);
 
         return back()->with('success', 'Product created successfully.');
     }
@@ -100,34 +96,87 @@ class SellerProductController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
             'price' => 'required|numeric|min:0.01',
-            'compare_at_price' => 'nullable|numeric',
+            'compare_at_price' => 'nullable|numeric|gt:price',
             'stock' => 'required|integer|min:0',
             'sku' => 'nullable|string|max:50',
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'image_files' => 'nullable|array',
+            'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'gallery_manifest' => 'nullable|string',
             'status' => 'required|in:active,draft,archived',
+        ], [
+            'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
+            'image_files.*.max' => 'Each product image must not exceed 5MB.',
+            'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
-        if ($request->hasFile('image_file')) {
-            $path = $request->file('image_file')->store('products', 'public');
-            $validated['featured_image'] = '/storage/' . $path;
-        } elseif (empty($validated['featured_image'])) {
-            unset($validated['featured_image']);
-        }
-
-        unset($validated['image_file']);
+        unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
         $product->update($validated);
 
-        if (! empty($validated['featured_image'])) {
-            ProductImage::updateOrCreate(
-                ['product_id' => $product->id, 'is_primary' => true],
-                ['image_url' => $product->featured_image]
-            );
-        }
+        $this->syncProductImages($product, $request);
 
         return back()->with('success', 'Product updated successfully.');
+    }
+
+    /**
+     * Resolve and sync gallery images for a product.
+     * Supports both ordered multi-image gallery manifests and legacy single-image payloads.
+     */
+    private function syncProductImages(Product $product, Request $request, ?string $fallbackUrl = null): void
+    {
+        $orderedUrls = [];
+
+        if ($request->filled('gallery_manifest')) {
+            $manifest = json_decode($request->input('gallery_manifest'), true);
+            if (is_array($manifest)) {
+                $uploadedFiles = $request->file('image_files', []);
+
+                foreach ($manifest as $item) {
+                    $type = $item['type'] ?? 'url';
+
+                    if ($type === 'file' && isset($item['file_index']) && isset($uploadedFiles[$item['file_index']])) {
+                        $file = $uploadedFiles[$item['file_index']];
+                        $path = $file->store('products', 'public');
+                        $orderedUrls[] = '/storage/' . $path;
+                    } elseif (($type === 'existing' || $type === 'url') && ! empty($item['url'])) {
+                        $orderedUrls[] = $item['url'];
+                    }
+                }
+            }
+        }
+
+        // Fallback to legacy single file or single url if manifest was empty
+        if (empty($orderedUrls)) {
+            if ($request->hasFile('image_file')) {
+                $path = $request->file('image_file')->store('products', 'public');
+                $orderedUrls[] = '/storage/' . $path;
+            } elseif ($request->filled('featured_image')) {
+                $orderedUrls[] = $request->input('featured_image');
+            } elseif ($fallbackUrl) {
+                $orderedUrls[] = $fallbackUrl;
+            } elseif ($product->featured_image) {
+                $orderedUrls[] = $product->featured_image;
+            }
+        }
+
+        if (! empty($orderedUrls)) {
+            $primaryUrl = $orderedUrls[0];
+            $product->update(['featured_image' => $primaryUrl]);
+
+            ProductImage::where('product_id', $product->id)->delete();
+
+            foreach ($orderedUrls as $index => $url) {
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'image_url' => $url,
+                    'is_primary' => ($index === 0),
+                    'sort_order' => $index,
+                ]);
+            }
+        }
     }
 
     public function destroy(Request $request, Product $product): RedirectResponse
