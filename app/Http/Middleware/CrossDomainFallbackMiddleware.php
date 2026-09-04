@@ -25,6 +25,10 @@ class CrossDomainFallbackMiddleware
         'my-orders/*',
         'catalog',
         'catalog/*',
+        'product/*',
+        'shop/*',
+        'search',
+        'search/*',
         'overview',
         'about',
     ];
@@ -39,8 +43,14 @@ class CrossDomainFallbackMiddleware
         if ($this->isWorkerSubdomain($host)) {
             foreach ($this->buyerPatterns as $pattern) {
                 if ($request->is($pattern)) {
-                    $baseDomain = env('APP_DOMAIN', 'bagooph.shop');
-                    $targetUrl = 'https://' . $baseDomain . $request->getRequestUri();
+                    if (str_contains($host, 'localhost')) {
+                        $port = $request->getPort();
+                        $portSuffix = ($port && ! in_array($port, [80, 443])) ? ":{$port}" : '';
+                        $targetUrl = 'http://localhost' . $portSuffix . $request->getRequestUri();
+                    } else {
+                        $baseDomain = env('APP_DOMAIN', 'bagooph.shop');
+                        $targetUrl = 'https://' . $baseDomain . $request->getRequestUri();
+                    }
 
                     return redirect()->away($targetUrl, 302);
                 }

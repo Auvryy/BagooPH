@@ -555,4 +555,148 @@ class SubdomainIsolationTest extends TestCase
         $this->assertAuthenticatedAs($admin);
         $response->assertRedirect(route('admin.dashboard', absolute: false));
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dimension 7: Portal Root Landing & Subdomain Isolation Across Domains
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_seller_subdomain_root_renders_seller_landing_on_localhost(): void
+    {
+        $response = $this->get('http://seller.localhost/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Seller/Landing'));
+    }
+
+    public function test_seller_subdomain_root_renders_seller_landing_on_bagooph_shop(): void
+    {
+        $response = $this->get('http://seller.bagooph.shop/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Seller/Landing'));
+    }
+
+    public function test_courier_subdomain_root_renders_courier_login_on_localhost(): void
+    {
+        $response = $this->get('http://courier.localhost/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/CourierLogin'));
+    }
+
+    public function test_courier_subdomain_root_renders_courier_login_on_bagooph_shop(): void
+    {
+        $response = $this->get('http://courier.bagooph.shop/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/CourierLogin'));
+    }
+
+    public function test_hub_subdomain_root_renders_hub_login_on_localhost(): void
+    {
+        $response = $this->get('http://hub.localhost/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/HubLogin'));
+    }
+
+    public function test_hub_subdomain_root_renders_hub_login_on_bagooph_shop(): void
+    {
+        $response = $this->get('http://hub.bagooph.shop/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/HubLogin'));
+    }
+
+    public function test_admin_subdomain_root_renders_admin_login_on_localhost(): void
+    {
+        $response = $this->get('http://admin.localhost/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/AdminLogin'));
+    }
+
+    public function test_admin_subdomain_root_renders_admin_login_on_bagooph_shop(): void
+    {
+        $response = $this->get('http://admin.bagooph.shop/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Auth/AdminLogin'));
+    }
+
+    public function test_buyer_root_renders_buyer_home_marketplace(): void
+    {
+        $response = $this->get('http://bagooph.shop/');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Buyer/Home'));
+
+        $localResponse = $this->get('http://localhost/');
+
+        $localResponse->assertStatus(200);
+        $localResponse->assertInertia(fn ($page) => $page->component('Buyer/Home'));
+    }
+
+    public function test_authenticated_seller_visiting_seller_root_redirects_to_dashboard(): void
+    {
+        $seller = User::factory()->create([
+            'role' => 'seller',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($seller)->get('http://seller.localhost/');
+        $response->assertRedirect('/dashboard');
+
+        $response2 = $this->actingAs($seller)->get('http://seller.bagooph.shop/');
+        $response2->assertRedirect('/dashboard');
+    }
+
+    public function test_authenticated_courier_visiting_courier_root_redirects_to_deliveries(): void
+    {
+        $courier = User::factory()->create([
+            'role' => 'courier',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($courier)->get('http://courier.localhost/');
+        $response->assertRedirect('/deliveries');
+    }
+
+    public function test_main_domain_path_fallbacks_render_dedicated_portals(): void
+    {
+        // /seller renders Seller/Landing
+        $sellerResponse = $this->get('/seller');
+        $sellerResponse->assertStatus(200);
+        $sellerResponse->assertInertia(fn ($page) => $page->component('Seller/Landing'));
+
+        // /courier renders CourierLogin
+        $courierResponse = $this->get('/courier');
+        $courierResponse->assertStatus(200);
+        $courierResponse->assertInertia(fn ($page) => $page->component('Auth/CourierLogin'));
+
+        // /hub renders HubLogin
+        $hubResponse = $this->get('/hub');
+        $hubResponse->assertStatus(200);
+        $hubResponse->assertInertia(fn ($page) => $page->component('Auth/HubLogin'));
+
+        // /admin renders AdminLogin
+        $adminResponse = $this->get('/admin');
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertInertia(fn ($page) => $page->component('Auth/AdminLogin'));
+    }
+
+    public function test_cross_domain_fallback_redirects_product_and_search_from_seller_subdomain(): void
+    {
+        $prodResponse = $this->get('http://seller.bagooph.shop/product/test-item');
+        $prodResponse->assertStatus(302);
+        $prodResponse->assertRedirect('https://bagooph.shop/product/test-item');
+
+        $searchResponse = $this->get('http://seller.localhost/search?q=bag');
+        $searchResponse->assertStatus(302);
+        $searchResponse->assertRedirect('http://localhost/search?q=bag');
+    }
 }

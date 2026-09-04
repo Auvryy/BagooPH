@@ -4,6 +4,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { ArrowRight, Lock, Mail, Shield, Server, Terminal, Eye, EyeOff } from 'lucide-react';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     status?: string;
@@ -159,9 +160,9 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
 
                 <div className="pt-4 border-t border-slate-200 text-center font-mono text-[11px]">
                     <span className="text-slate-500">Return to public store? </span>
-                    <Link href={route('login')} className="text-slate-900 font-bold hover:text-amber-700 underline">
+                    <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-amber-700 underline">
                         Buyer Login
-                    </Link>
+                    </a>
                 </div>
             </form>
         </GuestLayout>

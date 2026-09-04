@@ -76,6 +76,7 @@ The system has 4 primary roles (with logistics kept in mind for future extension
 4. **No Emojis in Documentation:** Do NOT use emojis in any `.md` or documentation files to maintain a professional, human-engineered codebase.
 5. **Database Seeder & Multi-Role Integrity:** `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles (`buyer@bagoo.ph`, `seller@bagoo.ph`, `courier@bagoo.ph`, `hub@bagoo.ph`, `admin@bagoo.ph` / `sarneandy6@gmail.com`) with raw string password `'password'` (avoiding double-hashing with `'password' => 'hashed'` cast). Never strip these seed accounts.
 6. **Test Database Isolation:** Automated tests must strictly execute on an isolated SQLite in-memory database (`:memory:`) and must never connect to or wipe the main PostgreSQL database.
+7. **Mandatory Verification via Automated Testing:** Whenever features, routes, controllers, or frontend components are modified, always execute the automated test suite (`./bagoo.sh test`) and asset compilation (`./bagoo.sh npm run build`) to guarantee 100% passing status and zero regressions before concluding.
 
 ---
 

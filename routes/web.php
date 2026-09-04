@@ -35,10 +35,13 @@ use Inertia\Inertia;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
-$baseDomain = env('APP_DOMAIN', 'bagooph.shop');
+$baseDomains = array_unique(array_filter([
+    env('APP_DOMAIN'),
+    'bagooph.shop',
+    'localhost',
+]));
 
-// 1. Seller Merchant Cockpit (seller.bagooph.shop)
-Route::domain("seller.{$baseDomain}")->group(function () {
+$registerSellerRoutes = function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isSeller()) {
             return redirect('/dashboard');
@@ -49,6 +52,8 @@ Route::domain("seller.{$baseDomain}")->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createSeller']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/seller/login', fn() => redirect('/login'));
+    Route::get('/seller/register', fn() => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
@@ -75,10 +80,9 @@ Route::domain("seller.{$baseDomain}")->group(function () {
         Route::get('/seller/dashboard', fn() => redirect('/dashboard'));
         Route::get('/seller/orders', fn() => redirect('/orders'));
     });
-});
+};
 
-// 2. Courier Fleet Dispatch (courier.bagooph.shop)
-Route::domain("courier.{$baseDomain}")->group(function () {
+$registerCourierRoutes = function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isCourier()) {
             return redirect('/deliveries');
@@ -89,6 +93,8 @@ Route::domain("courier.{$baseDomain}")->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createCourier']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/courier/login', fn() => redirect('/login'));
+    Route::get('/courier/register', fn() => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:courier'])->group(function () {
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
@@ -101,10 +107,9 @@ Route::domain("courier.{$baseDomain}")->group(function () {
         Route::get('/dashboard', fn() => redirect('/deliveries'));
         Route::get('/courier/deliveries', fn() => redirect('/deliveries'));
     });
-});
+};
 
-// 3. Logistics Sorting Center (hub.bagooph.shop)
-Route::domain("hub.{$baseDomain}")->group(function () {
+$registerHubRoutes = function () {
     Route::get('/', function () {
         if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
             return redirect('/dashboard');
@@ -115,6 +120,7 @@ Route::domain("hub.{$baseDomain}")->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'create']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/hub/login', fn() => redirect('/login'));
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
@@ -122,10 +128,9 @@ Route::domain("hub.{$baseDomain}")->group(function () {
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
         Route::get('/hub', fn() => redirect('/dashboard'));
     });
-});
+};
 
-// 4. Platform Governance (admin.bagooph.shop)
-Route::domain("admin.{$baseDomain}")->group(function () {
+$registerAdminRoutes = function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isAdmin()) {
             return redirect('/dashboard');
@@ -134,6 +139,7 @@ Route::domain("admin.{$baseDomain}")->group(function () {
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/admin/login', fn() => redirect('/login'));
 
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
@@ -148,15 +154,22 @@ Route::domain("admin.{$baseDomain}")->group(function () {
         Route::post('/logistics/override', [LogisticsHubController::class, 'override']);
         Route::get('/admin/dashboard', fn() => redirect('/dashboard'));
     });
-});
+};
 
-// 5. Buyer Marketplace Portal (bagooph.shop)
-Route::domain($baseDomain)->group(function () {
+$registerBuyerDomainRoutes = function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create']);
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'create']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
-});
+};
+
+foreach ($baseDomains as $domain) {
+    Route::domain("seller.{$domain}")->group($registerSellerRoutes);
+    Route::domain("courier.{$domain}")->group($registerCourierRoutes);
+    Route::domain("hub.{$domain}")->group($registerHubRoutes);
+    Route::domain("admin.{$domain}")->group($registerAdminRoutes);
+    Route::domain($domain)->group($registerBuyerDomainRoutes);
+}
 
 Route::get('/seller', function () {
     if (auth()->check() && auth()->user()->isSeller()) {
@@ -164,6 +177,22 @@ Route::get('/seller', function () {
     }
     return Inertia::render('Seller/Landing');
 })->name('seller.landing');
+
+Route::get('/courier', function () {
+    if (auth()->check() && auth()->user()->isCourier()) {
+        return redirect()->route('courier.deliveries');
+    }
+    return app(AuthenticatedSessionController::class)->createCourier();
+})->name('courier.landing');
+
+
+
+Route::get('/admin', function () {
+    if (auth()->check() && auth()->user()->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
+    return app(AuthenticatedSessionController::class)->createAdmin();
+})->name('admin.landing');
 
 /*
 |--------------------------------------------------------------------------
@@ -320,10 +349,25 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 | Logistics Hub Workstation Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:logistics,admin'])->prefix('hub')->name('hub.')->group(function () {
-    Route::get('/', [LogisticsHubWorkstationController::class, 'index'])->name('index');
-    Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
-    Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
+Route::prefix('hub')->name('hub.')->group(function () {
+    Route::get('/', function (\Illuminate\Http\Request $request) {
+        $user = auth()->user();
+        if ($user) {
+            if ($user->status === 'pending_approval' || $user->kyc_status === 'pending_approval' || $user->kyc_status === 'rejected') {
+                return redirect()->route('kyc.pending');
+            }
+            if (! $user->isLogistics() && ! $user->isAdmin()) {
+                abort(403, 'Unauthorized access for your account role (' . $user->role . ').');
+            }
+            return app(LogisticsHubWorkstationController::class)->index($request);
+        }
+        return app(AuthenticatedSessionController::class)->createHub();
+    })->name('index');
+
+    Route::middleware(['auth', 'role:logistics,admin'])->group(function () {
+        Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
+        Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
+    });
 });
 
 /*

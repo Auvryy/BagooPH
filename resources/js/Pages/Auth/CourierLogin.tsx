@@ -4,6 +4,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { ArrowRight, Lock, Mail, Truck, Navigation, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     status?: string;
@@ -164,19 +165,19 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                             <span className="block font-bold text-slate-900 text-xs">Join Bagoo Fleet</span>
                             <span className="block text-[10px] text-slate-600 font-mono">Submit Driver's License & OR/CR.</span>
                         </div>
-                        <Link
-                            href={route('courier.register')}
+                        <a
+                            href={getDomainUrl('courier', '/register')}
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[10px] font-bold uppercase rounded-lg shrink-0 transition"
                         >
                             Apply Now
-                        </Link>
+                        </a>
                     </div>
 
                     <div className="text-center font-mono text-[11px]">
                         <span className="text-slate-500">Looking for buyer portal? </span>
-                        <Link href={route('login')} className="text-slate-900 font-bold hover:text-emerald-700 underline">
+                        <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-emerald-700 underline">
                             Go to Buyer Login
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </form>

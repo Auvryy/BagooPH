@@ -4,6 +4,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { ArrowRight, Lock, Mail, Store, ShieldCheck, FileText, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     status?: string;
@@ -164,19 +165,19 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                             <span className="block font-bold text-slate-900 text-xs">Not yet a registered seller?</span>
                             <span className="block text-[10px] text-slate-600 font-mono">Submit DTI/Mayor's permit for KYC review.</span>
                         </div>
-                        <Link
-                            href={route('seller.register')}
+                        <a
+                            href={getDomainUrl('seller', '/register')}
                             className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-[10px] font-bold uppercase rounded-lg shrink-0 transition"
                         >
                             Open Shop
-                        </Link>
+                        </a>
                     </div>
 
                     <div className="text-center font-mono text-[11px]">
                         <span className="text-slate-500">Shopper looking for marketplace? </span>
-                        <Link href={route('login')} className="text-slate-900 font-bold hover:text-[#E00D42] underline">
+                        <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-[#E00D42] underline">
                             Go to Buyer Login
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </form>

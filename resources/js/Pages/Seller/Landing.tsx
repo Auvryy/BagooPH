@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import BagooLogo from '@/Components/BagooLogo';
+import { getDomainUrl } from '@/utils/domain';
 import { 
     Store, 
     ArrowRight, 
@@ -114,19 +115,19 @@ export default function SellerLanding() {
 
                         {/* CTA Actions */}
                         <div className="flex items-center gap-3 font-mono text-xs">
-                            <Link
-                                href={route('seller.login')}
+                            <a
+                                href={getDomainUrl('seller', '/login')}
                                 className="px-4 py-2.5 rounded-lg border border-black/20 hover:bg-black/5 text-slate-900 font-bold uppercase transition tracking-wider"
                             >
                                 Sign In
-                            </Link>
-                            <Link
-                                href={route('seller.register')}
+                            </a>
+                            <a
+                                href={getDomainUrl('seller', '/register')}
                                 className="px-5 py-2.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition tracking-wider shadow-sm flex items-center gap-2 group"
                             >
                                 <span>Open Store</span>
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                            </Link>
+                            </a>
                         </div>
 
                     </div>
@@ -154,20 +155,20 @@ export default function SellerLanding() {
                             </p>
 
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
-                                <Link
-                                    href={route('seller.register')}
+                                <a
+                                    href={getDomainUrl('seller', '/register')}
                                     className="px-8 py-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-mono font-bold text-sm uppercase tracking-wider shadow-lg shadow-rose-900/20 flex items-center justify-center gap-2.5 transition"
                                 >
                                     <span>Start Selling on Bagoo</span>
                                     <ArrowRight className="w-4 h-4" />
-                                </Link>
+                                </a>
 
-                                <Link
-                                    href={route('seller.login')}
+                                <a
+                                    href={getDomainUrl('seller', '/login')}
                                     className="px-8 py-4 rounded-xl bg-white hover:bg-slate-50 active:scale-[0.98] border border-slate-300 text-slate-900 font-mono font-bold text-sm uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 transition"
                                 >
                                     <span>Merchant Sign In</span>
-                                </Link>
+                                </a>
                             </div>
 
                             {/* Trust Metric Badges */}
@@ -546,18 +547,18 @@ export default function SellerLanding() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 font-mono">
-                        <Link
-                            href={route('seller.register')}
+                        <a
+                            href={getDomainUrl('seller', '/register')}
                             className="w-full sm:w-auto px-8 py-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition"
                         >
                             Open Verified Shop Now
-                        </Link>
-                        <Link
-                            href={route('seller.login')}
+                        </a>
+                        <a
+                            href={getDomainUrl('seller', '/login')}
                             className="w-full sm:w-auto px-8 py-4 bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition border border-white/10"
                         >
                             Sign In to Seller Centre
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </section>
@@ -573,9 +574,9 @@ export default function SellerLanding() {
                     </div>
 
                     <div className="flex items-center gap-6">
-                        <Link href="/" className="hover:text-white transition">Buyer Marketplace</Link>
-                        <Link href={route('courier.login')} className="hover:text-white transition">Courier Fleet</Link>
-                        <Link href={route('admin.login')} className="hover:text-white transition">Admin Console</Link>
+                        <a href={getDomainUrl('buyer', '/')} className="hover:text-white transition">Buyer Marketplace</a>
+                        <a href={getDomainUrl('courier', '/')} className="hover:text-white transition">Courier Fleet</a>
+                        <a href={getDomainUrl('admin', '/')} className="hover:text-white transition">Admin Console</a>
                         <span>&copy; {new Date().getFullYear()} BagooPH.</span>
                     </div>
                 </div>

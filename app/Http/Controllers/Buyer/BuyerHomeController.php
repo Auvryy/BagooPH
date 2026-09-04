@@ -8,14 +8,43 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class BuyerHomeController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse|SymfonyResponse
     {
         $user = $request->user();
+        $host = $request->getHost();
+
+        // Prevent worker subdomains from accidentally rendering the buyer marketplace
+        if (str_starts_with($host, 'seller.')) {
+            if ($user && $user->isSeller()) {
+                return redirect('/dashboard');
+            }
+            return Inertia::render('Seller/Landing');
+        }
+        if (str_starts_with($host, 'courier.')) {
+            if ($user && $user->isCourier()) {
+                return redirect('/deliveries');
+            }
+            return app(AuthenticatedSessionController::class)->createCourier();
+        }
+        if (str_starts_with($host, 'hub.')) {
+            if ($user && ($user->isLogistics() || $user->isAdmin())) {
+                return redirect('/dashboard');
+            }
+            return app(AuthenticatedSessionController::class)->createHub();
+        }
+        if (str_starts_with($host, 'admin.')) {
+            if ($user && $user->isAdmin()) {
+                return redirect('/dashboard');
+            }
+            return app(AuthenticatedSessionController::class)->createAdmin();
+        }
 
         // 1. Promotional Hero Carousel Banners
         $banners = [
