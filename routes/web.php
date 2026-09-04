@@ -29,42 +29,133 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Subdomain Routing (seller.bagooph.shop, courier.bagooph.shop, admin.bagooph.shop)
+| Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
-Route::domain('seller.{domain}')->group(function () {
+$baseDomain = env('APP_DOMAIN', 'bagooph.shop');
+
+// 1. Seller Merchant Cockpit (seller.bagooph.shop)
+Route::domain("seller.{$baseDomain}")->group(function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isSeller()) {
-            return redirect()->route('seller.dashboard');
+            return redirect('/dashboard');
         }
         return Inertia::render('Seller/Landing');
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createSeller']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createSeller']);
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+    Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
+        Route::get('/dashboard', [SellerDashboardController::class, 'index']);
+        Route::get('/products', [SellerProductController::class, 'index']);
+        Route::post('/products', [SellerProductController::class, 'store']);
+        Route::put('/products/{product}', [SellerProductController::class, 'update']);
+        Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
+        Route::get('/orders', [SellerOrderController::class, 'index']);
+        Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack']);
+        Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
+        Route::get('/vouchers', [SellerVoucherController::class, 'index']);
+        Route::post('/vouchers', [SellerVoucherController::class, 'store']);
+        Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle']);
+        Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
+        Route::get('/messages', [ChatController::class, 'sellerInbox']);
+        Route::get('/reviews', [SellerReviewController::class, 'index']);
+        Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply']);
+        Route::get('/disputes', [SellerDisputeController::class, 'index']);
+        Route::patch('/disputes/{dispute}/respond', [SellerDisputeController::class, 'respond']);
+        Route::get('/reports', [SellerDashboardController::class, 'reports']);
+        Route::get('/settings', [SellerDashboardController::class, 'settings']);
+        Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
+
+        Route::get('/seller/dashboard', fn() => redirect('/dashboard'));
+        Route::get('/seller/orders', fn() => redirect('/orders'));
+    });
 });
 
-Route::domain('courier.{domain}')->group(function () {
+// 2. Courier Fleet Dispatch (courier.bagooph.shop)
+Route::domain("courier.{$baseDomain}")->group(function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isCourier()) {
-            return redirect()->route('courier.deliveries');
+            return redirect('/deliveries');
         }
         return app(AuthenticatedSessionController::class)->createCourier();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createCourier']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createCourier']);
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+    Route::middleware(['auth', 'subdomain.role:courier'])->group(function () {
+        Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
+        Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
+        Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
+        Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
+        Route::get('/messages', [CourierDeliveryController::class, 'messages']);
+        Route::get('/profile', [CourierDeliveryController::class, 'profile']);
+        Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
+        Route::get('/dashboard', fn() => redirect('/deliveries'));
+        Route::get('/courier/deliveries', fn() => redirect('/deliveries'));
+    });
 });
 
-Route::domain('admin.{domain}')->group(function () {
+// 3. Logistics Sorting Center (hub.bagooph.shop)
+Route::domain("hub.{$baseDomain}")->group(function () {
+    Route::get('/', function () {
+        if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
+            return redirect('/dashboard');
+        }
+        return app(AuthenticatedSessionController::class)->createHub();
+    });
+    Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/register', [RegisteredUserController::class, 'create']);
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+    Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
+        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
+        Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
+        Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
+        Route::get('/hub', fn() => redirect('/dashboard'));
+    });
+});
+
+// 4. Platform Governance (admin.bagooph.shop)
+Route::domain("admin.{$baseDomain}")->group(function () {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isAdmin()) {
-            return redirect()->route('admin.dashboard');
+            return redirect('/dashboard');
         }
         return app(AuthenticatedSessionController::class)->createAdmin();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+        Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole']);
+        Route::get('/kyc', [AdminKycController::class, 'index']);
+        Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
+        Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
+        Route::get('/products', [AdminDashboardController::class, 'products']);
+        Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
+        Route::get('/logistics', [LogisticsHubController::class, 'index']);
+        Route::post('/logistics/override', [LogisticsHubController::class, 'override']);
+        Route::get('/admin/dashboard', fn() => redirect('/dashboard'));
+    });
+});
+
+// 5. Buyer Marketplace Portal (bagooph.shop)
+Route::domain($baseDomain)->group(function () {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/register', [RegisteredUserController::class, 'create']);
+    Route::post('/register', [RegisteredUserController::class, 'store']);
 });
 
 Route::get('/seller', function () {
@@ -105,6 +196,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
         Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
         Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
     });
