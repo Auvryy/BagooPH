@@ -86,7 +86,7 @@ class BuyerHomeController extends Controller
         // 2. 8 Quick Service Icon Actions
         $quickServices = [
             ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'color' => 'bg-emerald-500', 'tag' => '₱0 Min'],
-            ['id' => 'flash', 'name' => 'Flash Deals', 'icon' => 'Zap', 'color' => 'bg-amber-500', 'tag' => 'Up to 70%'],
+            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'color' => 'bg-amber-500', 'tag' => 'Just In'],
             ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'color' => 'bg-[#E00D42]', 'tag' => '100% Authentic'],
             ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'color' => 'bg-purple-500', 'tag' => 'Claim All'],
             ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'color' => 'bg-blue-500', 'tag' => 'Best Seller'],
@@ -94,35 +94,6 @@ class BuyerHomeController extends Controller
             ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'color' => 'bg-rose-500', 'tag' => 'Coins Back'],
             ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'color' => 'bg-yellow-500', 'tag' => 'Perks'],
         ];
-
-        // 3. ⚡ Flash Deals Section (Products with slashed prices & claimed status)
-        $flashDeals = Product::with(['shop', 'category'])
-            ->where('status', 'active')
-            ->where('stock', '>', 0)
-            ->inRandomOrder()
-            ->take(6)
-            ->get()
-            ->map(function ($product) {
-                $discount = $product->compare_at_price && $product->compare_at_price > $product->price
-                    ? round((($product->compare_at_price - $product->price) / $product->compare_at_price) * 100)
-                    : rand(25, 60);
-                
-                $comparePrice = $product->compare_at_price ?: ($product->price * (1 + ($discount / 100)));
-                $claimedPercent = rand(55, 92);
-
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'slug' => $product->slug,
-                    'price' => (float)$product->price,
-                    'compare_at_price' => (float)$comparePrice,
-                    'discount_pct' => $discount,
-                    'claimed_percent' => $claimedPercent,
-                    'stock' => $product->stock,
-                    'featured_image' => $product->featured_image,
-                    'category_name' => $product->category?->name ?? 'General',
-                ];
-            });
 
         // 4. 14 Verified Departments with Visual Data
         $categories = Category::where('is_active', true)
@@ -271,7 +242,6 @@ class BuyerHomeController extends Controller
         return Inertia::render('Buyer/Home', [
             'banners' => $banners,
             'quickServices' => $quickServices,
-            'flashDeals' => $flashDeals,
             'categories' => $categories,
             'feedProducts' => $feedProducts,
             'relatedProducts' => $relatedProducts,

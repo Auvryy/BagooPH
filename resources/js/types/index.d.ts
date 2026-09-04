@@ -86,6 +86,10 @@ export interface Product {
     compare_at_price?: string | number | null;
     stock: number;
     sku?: string | null;
+    variants?: {
+        colors?: { id: string; name: string; hex: string; in_stock?: boolean }[];
+        sizes?: { id: string; name: string; extra_price: number; stock?: number }[];
+    } | null;
     featured_image?: string | null;
     weight_kg?: string | number;
     status: 'active' | 'draft' | 'archived';

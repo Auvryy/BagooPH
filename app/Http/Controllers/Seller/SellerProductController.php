@@ -61,6 +61,7 @@ class SellerProductController extends Controller
             'image_files' => 'nullable|array',
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
+            'variants' => 'nullable',
         ], [
             'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
             'image_files.*.max' => 'Each product image must not exceed 5MB.',
@@ -69,6 +70,14 @@ class SellerProductController extends Controller
 
         $defaultFallback = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
         $slug = Str::slug($validated['name']) . '-' . rand(1000, 9999);
+
+        // Auto-generate SKU if left blank by the seller
+        $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
+        $validated['sku'] = !empty($validated['sku'])
+            ? trim($validated['sku'])
+            : 'BGO-' . $cleanPrefix . '-' . strtoupper(Str::random(5));
+
+        $validated['variants'] = $this->sanitizeVariants($request, (int)$validated['stock']);
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
@@ -105,12 +114,23 @@ class SellerProductController extends Controller
             'image_files' => 'nullable|array',
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
+            'variants' => 'nullable',
             'status' => 'required|in:active,draft,archived',
         ], [
             'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
             'image_files.*.max' => 'Each product image must not exceed 5MB.',
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
+
+        // Auto-generate SKU if left blank or reset
+        $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
+        $validated['sku'] = !empty($validated['sku'])
+            ? trim($validated['sku'])
+            : ($product->sku ?: 'BGO-' . $cleanPrefix . '-' . strtoupper(Str::random(5)));
+
+        if ($request->has('variants')) {
+            $validated['variants'] = $this->sanitizeVariants($request, (int)$validated['stock']);
+        }
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
@@ -119,6 +139,62 @@ class SellerProductController extends Controller
         $this->syncProductImages($product, $request);
 
         return back()->with('success', 'Product updated successfully.');
+    }
+
+    /**
+     * Sanitize and normalize dynamic product variations payload.
+     */
+    private function sanitizeVariants(Request $request, int $fallbackStock): ?array
+    {
+        if (!$request->has('variants')) {
+            return null;
+        }
+
+        $variantsRaw = $request->input('variants');
+        if (is_string($variantsRaw)) {
+            $variantsRaw = json_decode($variantsRaw, true);
+        }
+
+        if (!is_array($variantsRaw)) {
+            return null;
+        }
+
+        $colors = [];
+        if (!empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
+            foreach ($variantsRaw['colors'] as $idx => $color) {
+                if (is_array($color) && !empty($color['name'])) {
+                    $colors[] = [
+                        'id' => (string)($color['id'] ?? ('c_' . ($idx + 1))),
+                        'name' => trim($color['name']),
+                        'hex' => !empty($color['hex']) ? trim($color['hex']) : '#111111',
+                        'in_stock' => isset($color['in_stock']) ? (bool)$color['in_stock'] : true,
+                    ];
+                }
+            }
+        }
+
+        $sizes = [];
+        if (!empty($variantsRaw['sizes']) && is_array($variantsRaw['sizes'])) {
+            foreach ($variantsRaw['sizes'] as $idx => $size) {
+                if (is_array($size) && !empty($size['name'])) {
+                    $sizes[] = [
+                        'id' => (string)($size['id'] ?? ('s_' . ($idx + 1))),
+                        'name' => trim($size['name']),
+                        'extra_price' => isset($size['extra_price']) ? max(0, (float)$size['extra_price']) : 0,
+                        'stock' => isset($size['stock']) ? max(0, (int)$size['stock']) : $fallbackStock,
+                    ];
+                }
+            }
+        }
+
+        if (empty($colors) && empty($sizes)) {
+            return null;
+        }
+
+        return [
+            'colors' => $colors,
+            'sizes' => $sizes,
+        ];
     }
 
     /**

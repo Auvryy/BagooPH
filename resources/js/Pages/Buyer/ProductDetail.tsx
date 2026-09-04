@@ -72,8 +72,10 @@ export default function BuyerProductDetail({
     relatedProducts,
     shopStats,
 }: Props) {
-    const [selectedColor, setSelectedColor] = useState<VariationColor>(variations.colors[0] || null);
-    const [selectedSize, setSelectedSize] = useState<VariationSize>(variations.sizes[0] || null);
+    const colorsList = variations?.colors || [];
+    const sizesList = variations?.sizes || [];
+    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(colorsList[0] || null);
+    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(sizesList[0] || null);
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
     const [isAdding, setIsAdding] = useState(false);
@@ -328,15 +330,15 @@ export default function BuyerProductDetail({
                             </div>
                         </div>
 
-                        {/* 🎨 VARIATION SELECTOR 1: COLOR */}
-                        {variations.colors.length > 0 && (
+                        {/* VARIATION SELECTOR 1: COLOR */}
+                        {colorsList.length > 0 && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs font-mono">
                                     <span className="text-slate-500 font-bold uppercase">Color Edition:</span>
                                     <span className="text-slate-900 font-black">{selectedColor?.name}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {variations.colors.map((color) => (
+                                    {colorsList.map((color) => (
                                         <button
                                             key={color.id}
                                             type="button"
@@ -356,15 +358,15 @@ export default function BuyerProductDetail({
                             </div>
                         )}
 
-                        {/* 📏 VARIATION SELECTOR 2: SIZE & SPECS */}
-                        {variations.sizes.length > 0 && (
+                        {/* VARIATION SELECTOR 2: SIZE & SPECS */}
+                        {sizesList.length > 0 && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs font-mono">
                                     <span className="text-slate-500 font-bold uppercase">Specification / Size:</span>
                                     <span className="text-slate-900 font-black">{selectedSize?.name}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {variations.sizes.map((size) => (
+                                    {sizesList.map((size) => (
                                         <button
                                             key={size.id}
                                             type="button"

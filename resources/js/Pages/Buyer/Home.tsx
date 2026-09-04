@@ -19,7 +19,6 @@ import {
     Check, 
     Clock, 
     ArrowRight,
-    Flame,
     Store,
     Sparkles,
     Laptop,
@@ -62,19 +61,6 @@ interface QuickService {
     tag: string;
 }
 
-interface FlashDeal {
-    id: number;
-    name: string;
-    slug: string;
-    price: number;
-    compare_at_price: number;
-    discount_pct: number;
-    claimed_percent: number;
-    stock: number;
-    featured_image: string;
-    category_name: string;
-}
-
 interface Voucher {
     code: string;
     discount: string;
@@ -97,7 +83,6 @@ interface ActiveShipment {
 interface Props {
     banners: Banner[];
     quickServices: QuickService[];
-    flashDeals: FlashDeal[];
     categories: (Category & { products_count?: number })[];
     feedProducts: PaginatedData<Product>;
     relatedProducts?: Product[];
@@ -118,7 +103,6 @@ interface Props {
 export default function BuyerHome({
     banners,
     quickServices,
-    flashDeals,
     categories,
     feedProducts,
     relatedProducts = [],
@@ -129,7 +113,6 @@ export default function BuyerHome({
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const [addingProductId, setAddingProductId] = useState<number | null>(null);
     const [addedSuccessId, setAddedSuccessId] = useState<number | null>(null);
-    const [countdown, setCountdown] = useState({ hours: '02', minutes: '45', seconds: '30' });
     const [activeTab, setActiveTab] = useState(filters.tab || 'all');
     const [copiedVoucher, setCopiedVoucher] = useState<string | null>(null);
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
@@ -144,23 +127,7 @@ export default function BuyerHome({
         return () => clearInterval(interval);
     }, [banners.length]);
 
-    // Flash sale countdown timer
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const now = new Date();
-            const endOfDay = new Date();
-            endOfDay.setHours(23, 59, 59);
-            const diff = Math.max(0, endOfDay.getTime() - now.getTime());
 
-            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24).toString().padStart(2, '0');
-            const minutes = Math.floor((diff / (1000 * 60)) % 60).toString().padStart(2, '0');
-            const seconds = Math.floor((diff / 1000) % 60).toString().padStart(2, '0');
-
-            setCountdown({ hours, minutes, seconds });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, []);
 
     const handleAddToCart = (e: React.MouseEvent, productId: number) => {
         e.preventDefault();
@@ -418,15 +385,15 @@ export default function BuyerHome({
                         <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-900 text-white flex flex-col justify-between shadow-md relative overflow-hidden h-[120px] sm:h-[165px]">
                             <div>
                                 <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-black/30 px-2 py-0.5 rounded text-white/90">
-                                    FLASH SALE HOTLINE
+                                    CURATED COLLECTION
                                 </span>
                                 <h3 className="text-base font-black tracking-tight mt-1">
-                                    Up to 70% Slashed Prices
+                                    Verified Department Picks
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono">Starts every 3 hours with limited slots.</p>
+                                <p className="text-[11px] text-white/80 font-mono">Handcrafted and authentic merchant items.</p>
                             </div>
                             <span className="text-xs font-bold text-white/90 flex items-center gap-1">
-                                Explore Flash Deals <ChevronRight className="w-3.5 h-3.5" />
+                                Explore Top Deals <ChevronRight className="w-3.5 h-3.5" />
                             </span>
                         </div>
 
@@ -455,7 +422,7 @@ export default function BuyerHome({
                             return (
                                 <button
                                     key={service.id}
-                                    onClick={() => handleTabChange(service.id === 'flash' ? 'flash' : 'all')}
+                                    onClick={() => handleTabChange(service.id === 'new' ? 'new_arrivals' : service.id === 'top' ? 'top_sales' : 'all')}
                                     className="flex flex-col items-center group focus:outline-hidden"
                                 >
                                     <div className={`w-12 h-12 rounded-2xl ${service.color} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
@@ -468,91 +435,6 @@ export default function BuyerHome({
                                 </button>
                             );
                         })}
-                    </div>
-                </div>
-
-                {/* 4. ⚡ FLASH DEALS SECTION (WITH LIVE COUNTDOWN TIMER & PROGRESS) */}
-                <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-100 space-y-4">
-                    {/* Flash Sale Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1 text-[#E00D42] font-black text-lg tracking-tight font-mono">
-                                <Zap className="w-5 h-5 fill-[#E00D42]" />
-                                <span>FLASH DEALS</span>
-                            </div>
-
-                            {/* Countdown Clock */}
-                            <div className="flex items-center gap-1 font-mono text-xs font-black">
-                                <span className="px-2 py-1 rounded bg-black text-white">{countdown.hours}</span>
-                                <span>:</span>
-                                <span className="px-2 py-1 rounded bg-black text-white">{countdown.minutes}</span>
-                                <span>:</span>
-                                <span className="px-2 py-1 rounded bg-[#E00D42] text-white">{countdown.seconds}</span>
-                            </div>
-                        </div>
-
-                        <Link
-                            href={route('products.index')}
-                            className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase"
-                        >
-                            <span>See All Deals</span>
-                            <ChevronRight className="w-4 h-4" />
-                        </Link>
-                    </div>
-
-                    {/* Flash Sale Horizontal Products Carousel */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
-                        {flashDeals.map((deal) => (
-                            <Link
-                                key={deal.id}
-                                href={route('buyer.products.show', deal.slug)}
-                                className="group bg-slate-50 hover:bg-white rounded-xl p-2.5 border border-slate-100 hover:border-slate-300 hover:shadow-md transition flex flex-col justify-between relative"
-                            >
-                                <div className="space-y-2">
-                                    {/* Thumbnail */}
-                                    <div className="aspect-square rounded-lg bg-white overflow-hidden relative">
-                                        <img
-                                            src={deal.featured_image}
-                                            alt={deal.name}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                        />
-                                        <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#E00D42] text-white font-mono text-[9px] font-black">
-                                            -{deal.discount_pct}%
-                                        </span>
-                                    </div>
-
-                                    {/* Product Title */}
-                                    <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-[#E00D42] transition">
-                                        {deal.name}
-                                    </h4>
-
-                                    {/* Slashed Price */}
-                                    <div>
-                                        <span className="text-sm font-black text-[#E00D42]">
-                                            {formatPrice(deal.price)}
-                                        </span>
-                                        <span className="text-[10px] text-slate-400 line-through block">
-                                            {formatPrice(deal.compare_at_price)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Claimed Progress Bar */}
-                                <div className="mt-2 space-y-1">
-                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                        <div 
-                                            className="bg-gradient-to-r from-amber-500 to-[#E00D42] h-full rounded-full"
-                                            style={{ width: `${deal.claimed_percent}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 font-bold uppercase">
-                                        <span className="flex items-center gap-0.5 text-[#E00D42]">
-                                            <Flame className="w-3 h-3 fill-[#E00D42]" /> {deal.claimed_percent}% SOLD
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
                     </div>
                 </div>
 

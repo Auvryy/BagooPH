@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Category, PaginatedData, Product, Shop } from '@/types';
@@ -12,17 +13,17 @@ import {
     Search, 
     Star, 
     Layers, 
-    Image as ImageIcon,
-    Tag,
-    DollarSign,
-    Box,
-    Sparkles,
-    Upload,
-    Link,
-    AlertCircle,
-    GripVertical,
-    ChevronLeft,
-    ChevronRight
+    Image as ImageIcon, 
+    Tag, 
+    DollarSign, 
+    Box, 
+    Sparkles, 
+    Upload, 
+    Link, 
+    AlertCircle, 
+    GripVertical, 
+    ChevronLeft, 
+    ChevronRight 
 } from 'lucide-react';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -41,6 +42,25 @@ interface GalleryItem {
     url: string;
     name?: string;
     size?: number;
+}
+
+interface VariantColor {
+    id: string;
+    name: string;
+    hex: string;
+    in_stock: boolean;
+}
+
+interface VariantSize {
+    id: string;
+    name: string;
+    extra_price: number;
+    stock: number;
+}
+
+interface ProductVariants {
+    colors: VariantColor[];
+    sizes: VariantSize[];
 }
 
 interface Props {
@@ -72,6 +92,20 @@ export default function SellerProducts({ products, categories, shop }: Props) {
     const [editDragIndex, setEditDragIndex] = useState<number | null>(null);
     const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null);
 
+    // Create Modal Variants State
+    const [createVariants, setCreateVariants] = useState<ProductVariants>({ colors: [], sizes: [] });
+    const [newCreateColorName, setNewCreateColorName] = useState('');
+    const [newCreateColorHex, setNewCreateColorHex] = useState('#111111');
+    const [newCreateSizeName, setNewCreateSizeName] = useState('');
+    const [newCreateSizePrice, setNewCreateSizePrice] = useState('0');
+
+    // Edit Modal Variants State
+    const [editVariants, setEditVariants] = useState<ProductVariants>({ colors: [], sizes: [] });
+    const [newEditColorName, setNewEditColorName] = useState('');
+    const [newEditColorHex, setNewEditColorHex] = useState('#111111');
+    const [newEditSizeName, setNewEditSizeName] = useState('');
+    const [newEditSizePrice, setNewEditSizePrice] = useState('0');
+
     const formatPrice = (val: string | number | undefined | null) => {
         const num = Number(val || 0);
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
@@ -84,6 +118,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         compare_at_price: string;
         stock: string;
         sku: string;
+        variants: string;
         featured_image: string;
         image_files: File[];
         gallery_manifest: string;
@@ -95,6 +130,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         compare_at_price: '',
         stock: '25',
         sku: '',
+        variants: '',
         featured_image: '',
         image_files: [],
         gallery_manifest: '',
@@ -108,6 +144,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         compare_at_price: string;
         stock: string;
         sku: string;
+        variants: string;
         featured_image: string;
         image_files: File[];
         gallery_manifest: string;
@@ -121,6 +158,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         compare_at_price: '',
         stock: '0',
         sku: '',
+        variants: '',
         featured_image: '',
         image_files: [],
         gallery_manifest: '',
@@ -274,6 +312,11 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             createFileInputRef.current.value = '';
         }
         createForm.reset();
+        setCreateVariants({ colors: [], sizes: [] });
+        setNewCreateColorName('');
+        setNewCreateColorHex('#111111');
+        setNewCreateSizeName('');
+        setNewCreateSizePrice('0');
         setIsCreateOpen(true);
     };
 
@@ -306,6 +349,26 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             editFileInputRef.current.value = '';
         }
 
+        const variantsData: ProductVariants = {
+            colors: (product.variants?.colors || []).map(c => ({
+                id: c.id,
+                name: c.name,
+                hex: c.hex,
+                in_stock: c.in_stock ?? true,
+            })),
+            sizes: (product.variants?.sizes || []).map(s => ({
+                id: s.id,
+                name: s.name,
+                extra_price: Number(s.extra_price || 0),
+                stock: Number(s.stock || product.stock),
+            })),
+        };
+        setEditVariants(variantsData);
+        setNewEditColorName('');
+        setNewEditColorHex('#111111');
+        setNewEditSizeName('');
+        setNewEditSizePrice('0');
+
         editForm.setData({
             name: product.name,
             category_id: String(product.category_id || ''),
@@ -313,6 +376,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             compare_at_price: String(product.compare_at_price || ''),
             stock: String(product.stock),
             sku: product.sku || '',
+            variants: JSON.stringify(variantsData),
             featured_image: product.featured_image || '',
             image_files: [],
             gallery_manifest: '',
@@ -343,6 +407,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             gallery_manifest: JSON.stringify(manifest),
             image_files: filesToUpload,
             featured_image: createGallery[0]?.url || '',
+            variants: JSON.stringify(createVariants),
         }));
 
         createForm.post(route('seller.products.store'), {
@@ -351,6 +416,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 setIsCreateOpen(false);
                 createForm.reset();
                 setCreateGallery([]);
+                setCreateVariants({ colors: [], sizes: [] });
                 setCreateImageMode('file');
                 setCreateFileError(null);
                 setCreateUrlInput('');
@@ -383,6 +449,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             gallery_manifest: JSON.stringify(manifest),
             image_files: filesToUpload,
             featured_image: editGallery[0]?.url || '',
+            variants: JSON.stringify(editVariants),
             _method: 'PUT',
         }));
 
@@ -391,6 +458,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             onSuccess: () => {
                 setEditingProduct(null);
                 setEditGallery([]);
+                setEditVariants({ colors: [], sizes: [] });
                 setEditImageMode('file');
                 setEditFileError(null);
                 setEditUrlInput('');
@@ -399,6 +467,258 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 }
             },
         });
+    };
+
+    const applyPreset = (presetType: 'clothing_sizes' | 'basic_colors', isCreate: boolean) => {
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        if (presetType === 'clothing_sizes') {
+            const defaultSizes: VariantSize[] = [
+                { id: `s_${Date.now()}_1`, name: 'Small', extra_price: 0, stock: 25 },
+                { id: `s_${Date.now()}_2`, name: 'Medium', extra_price: 0, stock: 25 },
+                { id: `s_${Date.now()}_3`, name: 'Large', extra_price: 0, stock: 25 },
+                { id: `s_${Date.now()}_4`, name: 'Extra Large', extra_price: 50, stock: 20 },
+            ];
+            setVariants((prev) => ({
+                ...prev,
+                sizes: [...prev.sizes, ...defaultSizes.filter(ds => !prev.sizes.some(s => s.name.toLowerCase() === ds.name.toLowerCase()))],
+            }));
+        } else if (presetType === 'basic_colors') {
+            const defaultColors: VariantColor[] = [
+                { id: `c_${Date.now()}_1`, name: 'Stealth Black', hex: '#111111', in_stock: true },
+                { id: `c_${Date.now()}_2`, name: 'Chalk White', hex: '#F9FAFB', in_stock: true },
+                { id: `c_${Date.now()}_3`, name: 'Heather Grey', hex: '#6B7280', in_stock: true },
+                { id: `c_${Date.now()}_4`, name: 'Navy Blue', hex: '#1E3A8A', in_stock: true },
+            ];
+            setVariants((prev) => ({
+                ...prev,
+                colors: [...prev.colors, ...defaultColors.filter(dc => !prev.colors.some(c => c.name.toLowerCase() === dc.name.toLowerCase()))],
+            }));
+        }
+    };
+
+    const addColor = (isCreate: boolean) => {
+        const name = isCreate ? newCreateColorName.trim() : newEditColorName.trim();
+        const hex = isCreate ? newCreateColorHex.trim() : newEditColorHex.trim();
+        if (!name) return;
+
+        const newColor: VariantColor = {
+            id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name,
+            hex: hex || '#111111',
+            in_stock: true,
+        };
+
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        setVariants((prev) => ({ ...prev, colors: [...prev.colors, newColor] }));
+
+        if (isCreate) {
+            setNewCreateColorName('');
+            setNewCreateColorHex('#111111');
+        } else {
+            setNewEditColorName('');
+            setNewEditColorHex('#111111');
+        }
+    };
+
+    const removeColor = (id: string, isCreate: boolean) => {
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        setVariants((prev) => ({ ...prev, colors: prev.colors.filter(c => c.id !== id) }));
+    };
+
+    const addSize = (isCreate: boolean) => {
+        const name = isCreate ? newCreateSizeName.trim() : newEditSizeName.trim();
+        const extraPrice = Number(isCreate ? newCreateSizePrice : newEditSizePrice) || 0;
+        if (!name) return;
+
+        const newSize: VariantSize = {
+            id: `s_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name,
+            extra_price: extraPrice,
+            stock: 25,
+        };
+
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        setVariants((prev) => ({ ...prev, sizes: [...prev.sizes, newSize] }));
+
+        if (isCreate) {
+            setNewCreateSizeName('');
+            setNewCreateSizePrice('0');
+        } else {
+            setNewEditSizeName('');
+            setNewEditSizePrice('0');
+        }
+    };
+
+    const removeSize = (id: string, isCreate: boolean) => {
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        setVariants((prev) => ({ ...prev, sizes: prev.sizes.filter(s => s.id !== id) }));
+    };
+
+    const renderVariantManager = (isCreate: boolean) => {
+        const variants = isCreate ? createVariants : editVariants;
+        const colorName = isCreate ? newCreateColorName : newEditColorName;
+        const setColorName = isCreate ? setNewCreateColorName : setNewEditColorName;
+        const colorHex = isCreate ? newCreateColorHex : newEditColorHex;
+        const setColorHex = isCreate ? setNewCreateColorHex : setNewEditColorHex;
+        const sizeName = isCreate ? newCreateSizeName : newEditSizeName;
+        const setSizeName = isCreate ? setNewCreateSizeName : setNewEditSizeName;
+        const sizePrice = isCreate ? newCreateSizePrice : newEditSizePrice;
+        const setSizePrice = isCreate ? setNewCreateSizePrice : setNewEditSizePrice;
+
+        return (
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 font-mono text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-[#E00D42]" />
+                        <span className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                            Product Variations & Options
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
+                        <span className="text-slate-400">Presets:</span>
+                        <button
+                            type="button"
+                            onClick={() => applyPreset('clothing_sizes', isCreate)}
+                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] transition font-bold"
+                        >
+                            + Standard Sizes (S-XL)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => applyPreset('basic_colors', isCreate)}
+                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] transition font-bold"
+                        >
+                            + Classic Colors
+                        </button>
+                    </div>
+                </div>
+
+                {/* 1. Color Editions */}
+                <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase">
+                        Color Editions ({variants.colors.length})
+                    </label>
+
+                    {variants.colors.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pb-1">
+                            {variants.colors.map((c) => (
+                                <span
+                                    key={c.id}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs shadow-2xs"
+                                >
+                                    <span
+                                        className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                                        style={{ backgroundColor: c.hex }}
+                                    />
+                                    <span className="font-bold">{c.name}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeColor(c.id, isCreate)}
+                                        className="p-0.5 text-slate-400 hover:text-rose-600 transition"
+                                        title="Remove color"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex items-center">
+                            <input
+                                type="color"
+                                value={colorHex}
+                                onChange={(e) => setColorHex(e.target.value)}
+                                className="w-9 h-9 rounded-lg border border-slate-200 p-0.5 cursor-pointer bg-white"
+                                title="Pick color hex"
+                            />
+                        </div>
+                        <input
+                            type="text"
+                            value={colorName}
+                            onChange={(e) => setColorName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addColor(isCreate); } }}
+                            placeholder="e.g. Stealth Black, Crimson, Olive Green..."
+                            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-1 focus:ring-[#E00D42]"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => addColor(isCreate)}
+                            className="px-3.5 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase transition shrink-0 flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Color</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* 2. Sizes / Specifications */}
+                <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase">
+                        Sizes / Specifications ({variants.sizes.length})
+                    </label>
+
+                    {variants.sizes.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pb-1">
+                            {variants.sizes.map((s) => (
+                                <span
+                                    key={s.id}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs shadow-2xs"
+                                >
+                                    <span className="font-bold">{s.name}</span>
+                                    {s.extra_price > 0 && (
+                                        <span className="text-[10px] text-emerald-600 font-bold">
+                                            (+{formatPrice(s.extra_price)})
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSize(s.id, isCreate)}
+                                        className="p-0.5 text-slate-400 hover:text-rose-600 transition"
+                                        title="Remove size"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={sizeName}
+                            onChange={(e) => setSizeName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSize(isCreate); } }}
+                            placeholder="e.g. Small, Medium, Large, 128GB, 500ml..."
+                            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-1 focus:ring-[#E00D42]"
+                        />
+                        <div className="w-32 relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₱+</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={sizePrice}
+                                onChange={(e) => setSizePrice(e.target.value)}
+                                placeholder="Extra ₱"
+                                className="w-full pl-7 pr-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-1 focus:ring-[#E00D42]"
+                                title="Extra price modifier for this size"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => addSize(isCreate)}
+                            className="px-3.5 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase transition shrink-0 flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Size</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const renderGalleryManager = (isCreate: boolean) => {
@@ -709,7 +1029,17 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                                     />
                                                     <div className="space-y-0.5 min-w-0">
                                                         <p className="font-bold text-slate-900 text-xs font-sans truncate max-w-xs">{product.name}</p>
-                                                        <p className="text-[11px] text-slate-400 font-mono">SKU: {product.sku || 'BGO-7721-PH'}</p>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="text-[11px] text-slate-400 font-mono">SKU: {product.sku || 'AUTO'}</p>
+                                                            {product.variants && ((product.variants.colors && product.variants.colors.length > 0) || (product.variants.sizes && product.variants.sizes.length > 0)) && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[9px] font-bold">
+                                                                    {[
+                                                                        product.variants.colors?.length ? `${product.variants.colors.length} Colors` : null,
+                                                                        product.variants.sizes?.length ? `${product.variants.sizes.length} Sizes` : null
+                                                                    ].filter(Boolean).join(' • ')}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -759,10 +1089,10 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 </div>
             </div>
 
-            {/* Create Product Modal */}
-            {isCreateOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in">
-                    <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200 font-sans">
+            {/* Create Product Modal (Portaled directly to root document body for full viewport overlay) */}
+            {typeof document !== 'undefined' && isCreateOpen && createPortal(
+                <div className="fixed inset-0 bg-black/75 z-[9999] flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-[#E00D42]" />
@@ -800,11 +1130,14 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">SKU / Model Code</label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
+                                        <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                    </div>
                                     <input
                                         type="text"
                                         value={createForm.data.sku}
-                                        onChange={(e) => createForm.setData('sku', e.target.value)}
+                                        onChange={(e) => createForm.setData('sku', e.target.value.toUpperCase())}
                                         placeholder="e.g. BGO-DUFFEL-45L"
                                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                     />
@@ -862,6 +1195,9 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 </div>
                             </div>
 
+                            {/* Dynamic Product Variant & Options Builder */}
+                            {renderVariantManager(true)}
+
                             {renderGalleryManager(true)}
 
                             <div>
@@ -894,13 +1230,14 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* Edit Product Modal */}
-            {editingProduct && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in">
-                    <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200 font-sans">
+            {/* Edit Product Modal (Portaled directly to root document body for full viewport overlay) */}
+            {typeof document !== 'undefined' && editingProduct && createPortal(
+                <div className="fixed inset-0 bg-black/75 z-[9999] flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
                                 <Edit3 className="w-5 h-5 text-[#E00D42]" />
@@ -988,6 +1325,37 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Department Category</label>
+                                    <select
+                                        value={editForm.data.category_id}
+                                        onChange={(e) => editForm.setData('category_id', e.target.value)}
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                    >
+                                        {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
+                                        <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={editForm.data.sku}
+                                        onChange={(e) => editForm.setData('sku', e.target.value.toUpperCase())}
+                                        placeholder="e.g. BGO-DUFFEL-45L"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Dynamic Product Variant & Options Builder */}
+                            {renderVariantManager(false)}
+
                             {renderGalleryManager(false)}
 
                             <div>
@@ -1019,7 +1387,8 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </DashboardLayout>
     );
