@@ -118,11 +118,11 @@ trait CreatesE2EOrders
         return $order->fresh(['items.product', 'buyer']);
     }
 
-    public function createE2EDelivery(Order $order, string $status = 'unassigned', ?User $courier = null): Delivery
+    public function createE2EDelivery(Order $order, string $status = 'unassigned', ?User $courier = null, array $attributes = []): Delivery
     {
         $shop = $order->items->first()?->product?->shop;
 
-        return Delivery::factory()->create([
+        return Delivery::factory()->create(array_merge([
             'order_id' => $order->id,
             'courier_id' => $courier?->id,
             'tracking_number' => 'BGO-TRK-' . strtoupper(Str::random(8)),
@@ -134,11 +134,11 @@ trait CreatesE2EOrders
             'delivery_recipient_name' => $order->recipient_name,
             'delivery_address' => $order->shipping_address . ', ' . $order->shipping_city,
             'delivery_phone' => $order->recipient_phone,
-            'assigned_at' => in_array($status, ['assigned', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(4) : null,
+            'assigned_at' => in_array($status, ['assigned', 'assigned_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(4) : null,
             'picked_up_at' => in_array($status, ['picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(3) : null,
             'delivered_at' => $status === 'delivered' ? now() : null,
             'proof_image' => $status === 'delivered' ? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500' : null,
-        ]);
+        ], $attributes));
     }
 
     public function createE2EVoucher(Shop $shop, array $attributes = []): Voucher
