@@ -4,6 +4,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { ArrowRight, Lock, Mail, Store, Eye, EyeOff } from 'lucide-react';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     status?: string;
@@ -42,11 +43,11 @@ export default function Login({ status, canResetPassword }: Props) {
 
     return (
         <GuestLayout 
-            title="Sign In" 
-            subtitle="Access your Buyer, Seller, Courier, Hub, or Admin Dashboard"
-            headerBadge="UNIFIED ACCESS // 01"
+            title="Shopper Sign In" 
+            subtitle="Access your Bagoo Shopping Bag, Order Tracking & Member Perks"
+            headerBadge="BUYER STOREFRONT // 01"
         >
-            <Head title="Sign In — BagooPH" />
+            <Head title="Shopper Sign In — BagooPH" />
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
@@ -161,12 +162,12 @@ export default function Login({ status, canResetPassword }: Props) {
                             </div>
                         </div>
 
-                        <Link
-                            href={route('seller.register')}
+                        <a
+                            href={getDomainUrl('seller', '/register')}
                             className="px-2.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-mono text-[10px] font-bold uppercase shrink-0 transition"
                         >
                             Open Store
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </form>

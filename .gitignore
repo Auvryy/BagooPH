@@ -26,3 +26,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /.agents
+
+# AI conversation and scratch files
+ORIGINAL_REQUEST.md
+TEST_READY.md

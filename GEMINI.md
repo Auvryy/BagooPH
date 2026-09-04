@@ -76,6 +76,7 @@ The system has 4 primary roles (with logistics kept in mind for future extension
 4. **No Emojis in Documentation:** Do NOT use emojis in any `.md` or documentation files to maintain a professional, human-engineered codebase.
 5. **Database Seeder & Multi-Role Integrity:** `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles (`buyer@bagoo.ph`, `seller@bagoo.ph`, `courier@bagoo.ph`, `hub@bagoo.ph`, `admin@bagoo.ph` / `sarneandy6@gmail.com`) with raw string password `'password'` (avoiding double-hashing with `'password' => 'hashed'` cast). Never strip these seed accounts.
 6. **Test Database Isolation:** Automated tests must strictly execute on an isolated SQLite in-memory database (`:memory:`) and must never connect to or wipe the main PostgreSQL database.
+7. **Mandatory Verification via Automated Testing:** Whenever features, routes, controllers, or frontend components are modified, always execute the automated test suite (`./bagoo.sh test`) and asset compilation (`./bagoo.sh npm run build`) to guarantee 100% passing status and zero regressions before concluding.
 
 ---
 
@@ -122,3 +123,29 @@ The system has 4 primary roles (with logistics kept in mind for future extension
    - **"Admin" / "Governance" / "Commission" ->** Read `docs/ADMIN_FLOW.md` & 10% commission ledger rules.
    - **"Style" / "Theme" / "UI" ->** Read `docs/STYLE_GUIDE.md`.
 2. **Concise Progress Logging:** Keep `docs/PROGRESS.md` ultra-concise, focusing on functional outcomes rather than verbose summaries.
+
+---
+
+## 9. Authentication, Database Seeding & Password Cast Invariants
+1. **Laravel Hashed Cast Protocol:**
+   - The `User` model defines `'password' => 'hashed'` in its `casts()` method.
+   - In seeders and factories, pass raw password strings (`'password' => 'password'`). Do NOT wrap in `Hash::make()` inside `updateOrCreate()` or `$user->fill()`, as this causes double-hashing.
+2. **Mandatory Multi-Role Seed Baseline:**
+   - `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles with default password `'password'`:
+     - **Buyer:** `buyer@bagoo.ph`
+     - **Seller:** `seller@bagoo.ph` (with active `Shop` and initial category products)
+     - **Courier:** `courier@bagoo.ph` (with active `CourierProfile` and verified vehicle)
+     - **Logistics Hub:** `hub@bagoo.ph` (role `logistics`)
+     - **Platform Admin:** `admin@bagoo.ph` & `sarneandy6@gmail.com`
+
+---
+
+## 10. Curriculum Flow Authority & Production Remote Deployment Invariants
+1. **Curriculum Single Source of Truth:**
+   - Refer to `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` for all 5 roles, the 13 standardized order statuses (`PLACED` through `COMPLETED` / `RETURNED`), and sorting center mechanics.
+   - Do not invent external workflow stages or third-party dependencies.
+2. **Role Approval Authorities:**
+   - Platform Administrator approves registrations for: `Buyer`, `Seller`, and `Logistics / Sorting Center`.
+   - Logistics / Sorting Center approves and manages registrations for: `Courier` fleet riders.
+3. **Remote Production Migration Guard:**
+   - In environments where `APP_ENV=production` (e.g. Azure VM), always execute artisan migration and seed commands with the `--force` flag (`./bagoo.sh migrate --force`, `./bagoo.sh fresh --force`, or `php artisan db:seed --force`) to bypass interactive terminal blocking.

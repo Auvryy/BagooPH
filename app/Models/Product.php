@@ -21,6 +21,7 @@ class Product extends Model
         'compare_at_price',
         'stock',
         'sku',
+        'variants',
         'featured_image',
         'weight_kg',
         'status',
@@ -35,6 +36,7 @@ class Product extends Model
         'rating' => 'decimal:2',
         'stock' => 'integer',
         'sales_count' => 'integer',
+        'variants' => 'array',
     ];
 
     public function shop(): BelongsTo

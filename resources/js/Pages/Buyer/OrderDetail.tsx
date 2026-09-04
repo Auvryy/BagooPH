@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Order } from '@/types';
 import { 
@@ -90,11 +90,12 @@ export default function BuyerOrderDetail({ order }: Props) {
         });
     };
 
-    // 5-Stage Bagoo Express Delivery Milestones
-    const isPacked = ['processing', 'ready_for_pickup', 'shipped', 'delivered'].includes(order.status);
-    const isPickedUp = ['shipped', 'delivered'].includes(order.status) || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
-    const isInTransit = (order.status === 'shipped' || order.status === 'delivered') && ['in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
-    const isDelivered = order.status === 'delivered' || delivery?.status === 'delivered';
+    // Canonical 13-Stage Bagoo Delivery Milestones
+    const isPacked = ['preparing', 'processing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status);
+    const isPickedUp = ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) || ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isInTransit = ['at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) || ['at_sorting_center', 'sorted', 'assigned_to_rider', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
+    const isDelivered = ['delivered', 'completed'].includes(order.status) || delivery?.status === 'delivered';
+    const isCompleted = order.status === 'completed';
 
     // Determine the exact active next step index (0 to 4)
     let nextStepIndex = 1;
@@ -182,12 +183,32 @@ export default function BuyerOrderDetail({ order }: Props) {
                         {order.status === 'delivered' && (
                             <button
                                 type="button"
+                                onClick={() => {
+                                    if (confirm('Confirm that you have received your order in good condition?')) {
+                                        router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true });
+                                    }
+                                }}
+                                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
+                            >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Confirm Order Received</span>
+                            </button>
+                        )}
+                        {(order.status === 'delivered' || order.status === 'completed') && (
+                            <button
+                                type="button"
                                 onClick={() => setReviewModalOpen(true)}
                                 className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
                             >
                                 <Star className="w-4 h-4 fill-white" />
                                 <span>Rate & Upload Photos</span>
                             </button>
+                        )}
+                        {order.status === 'completed' && (
+                            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">
+                                <Check className="w-4 h-4 text-emerald-600" />
+                                <span>Order Completed</span>
+                            </span>
                         )}
                     </div>
                 </div>

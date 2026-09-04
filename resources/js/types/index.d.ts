@@ -86,6 +86,12 @@ export interface Product {
     compare_at_price?: string | number | null;
     stock: number;
     sku?: string | null;
+    variants?: {
+        option1_name?: string | null;
+        option2_name?: string | null;
+        colors?: { id: string; name: string; hex: string; image_url?: string | null; gallery_index?: number | null; in_stock?: boolean }[];
+        sizes?: { id: string; name: string; extra_price: number; stock?: number }[];
+    } | null;
     featured_image?: string | null;
     weight_kg?: string | number;
     status: 'active' | 'draft' | 'archived';
@@ -140,7 +146,7 @@ export interface Delivery {
     courier_id?: number | null;
     tracking_number: string;
     logistics_partner: string;
-    status: 'unassigned' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed';
+    status: 'unassigned' | 'assigned' | 'assigned_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'delivery_failed' | 'returned' | 'cancelled';
     pickup_store_name?: string | null;
     pickup_address: string;
     pickup_phone?: string | null;
@@ -166,7 +172,7 @@ export interface Order {
     total_amount: string | number;
     payment_method: 'card' | 'cod' | 'bank_transfer' | 'e_wallet';
     payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
-    status: 'pending' | 'processing' | 'ready_for_pickup' | 'shipped' | 'delivered' | 'cancelled';
+    status: 'placed' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'out_for_delivery' | 'delivered' | 'completed' | 'delivery_failed' | 'returned' | 'pending' | 'processing' | 'shipped' | 'cancelled';
     recipient_name: string;
     recipient_phone: string;
     shipping_address: string;

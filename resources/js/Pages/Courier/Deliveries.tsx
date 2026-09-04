@@ -323,13 +323,22 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                                 )}
 
                                                 {delivery.status === 'out_for_delivery' && (
-                                                    <button
-                                                        onClick={() => openStatusModal(delivery, 'delivered')}
-                                                        className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
-                                                    >
-                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                        <span>Complete Delivery & Photo Proof</span>
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openStatusModal(delivery, 'delivered')}
+                                                            className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
+                                                        >
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            <span>Complete Delivery & Photo Proof</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openStatusModal(delivery, 'failed')}
+                                                            className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold uppercase transition flex items-center gap-1.5"
+                                                        >
+                                                            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                                            <span>Delivery Failed</span>
+                                                        </button>
+                                                    </div>
                                                 )}
 
                                                 {isDelivered && (
@@ -448,6 +457,26 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                                 Photo Captured with GPS Metadata
                                             </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {(nextStatus === 'failed' || nextStatus === 'delivery_failed') && (
+                                    <div>
+                                        <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                            Delivery Failure Reason (Required)
+                                        </label>
+                                        <select
+                                            value={courierNotes}
+                                            onChange={(e) => setCourierNotes(e.target.value)}
+                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                        >
+                                            <option value="">Select reason for failed attempt...</option>
+                                            <option value="Customer unreachable / phone off">Customer unreachable / phone off</option>
+                                            <option value="Customer not present at delivery address">Customer not present at delivery address</option>
+                                            <option value="Incorrect / incomplete delivery address">Incorrect / incomplete delivery address</option>
+                                            <option value="Customer requested reschedule">Customer requested reschedule</option>
+                                            <option value="Customer refused package / cancelled COD">Customer refused package / cancelled COD</option>
+                                        </select>
                                     </div>
                                 )}
 

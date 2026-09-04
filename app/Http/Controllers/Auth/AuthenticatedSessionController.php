@@ -62,6 +62,18 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
+     * Display the logistics sorting hub login console.
+     */
+    public function createHub(): Response
+    {
+        return Inertia::render('Auth/HubLogin', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'portal' => 'logistics',
+        ]);
+    }
+
+    /**
      * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): RedirectResponse
@@ -84,6 +96,22 @@ class AuthenticatedSessionController extends Controller
 
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
             return redirect()->route('kyc.pending');
+        }
+
+        $host = $request->getHost();
+
+        // Subdomain-specific landing redirection
+        if (str_starts_with($host, 'seller.')) {
+            return redirect()->intended('/dashboard');
+        }
+        if (str_starts_with($host, 'courier.')) {
+            return redirect()->intended('/deliveries');
+        }
+        if (str_starts_with($host, 'hub.')) {
+            return redirect()->intended('/dashboard');
+        }
+        if (str_starts_with($host, 'admin.')) {
+            return redirect()->intended('/dashboard');
         }
 
         $targetRoute = match($user->role) {

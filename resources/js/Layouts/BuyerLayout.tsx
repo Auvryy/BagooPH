@@ -24,6 +24,7 @@ import {
     ShieldAlert
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
+import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
     children: React.ReactNode;
@@ -32,11 +33,22 @@ interface Props {
 
 export default function BuyerLayout({ children, categories = [] }: Props) {
     const { auth, cartCount } = usePage<PageProps>().props;
+    const user = auth.user;
+
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState(() => {
         if (typeof window !== 'undefined') {
             return new URLSearchParams(window.location.search).get('search') || '';
         }
         return '';
+    });
+    const [authModalOpen, setAuthModalOpen] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    const [authForm, setAuthForm] = useState({
+        name: '',
+        email: '',
+        password: '',
+        password_confirmation: '',
     });
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const userDropdownTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -58,28 +70,12 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
 
-    const getSubdomainUrl = (sub: string) => {
-        if (typeof window === 'undefined') return route(`${sub}.login`);
-        const { protocol, host, hostname, port } = window.location;
-        const portSuffix = port ? `:${port}` : '';
-        
-        if (hostname.startsWith(`${sub}.`)) return `${protocol}//${host}`;
-        
-        let cleanHostname = hostname;
-        ['seller.', 'courier.', 'admin.', 'www.'].forEach(prefix => {
-            if (cleanHostname.startsWith(prefix)) {
-                cleanHostname = cleanHostname.substring(prefix.length);
-            }
-        });
-
-        return `${protocol}//${sub}.${cleanHostname}${portSuffix}`;
-    };
-
-    const sellerUrl = getSubdomainUrl('seller');
-    const sellerRegisterUrl = `${sellerUrl}/register`;
-    const courierUrl = getSubdomainUrl('courier');
-    const courierRegisterUrl = `${courierUrl}/register`;
-    const adminUrl = getSubdomainUrl('admin');
+    const sellerUrl = getDomainUrl('seller', '/');
+    const sellerRegisterUrl = getDomainUrl('seller', '/register');
+    const courierUrl = getDomainUrl('courier', '/');
+    const courierRegisterUrl = getDomainUrl('courier', '/register');
+    const hubUrl = getDomainUrl('hub', '/');
+    const adminUrl = getDomainUrl('admin', '/');
 
     const trendingKeywords = [
         'Commuter Backpack',
@@ -378,7 +374,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                             <li><a href={sellerUrl} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Portal</a></li>
                             <li><a href={sellerRegisterUrl} className="hover:text-[#E00D42]">Open a Verified Store</a></li>
                             <li><a href={courierUrl} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</a></li>
-                            <li><Link href={route('hub.index')} className="hover:text-indigo-700">Logistics Sorting Hub</Link></li>
+                            <li><a href={hubUrl} className="hover:text-indigo-700 font-semibold text-slate-800">Logistics Sorting Hub</a></li>
                         </ul>
                     </div>
 

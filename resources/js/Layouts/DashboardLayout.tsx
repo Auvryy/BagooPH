@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
+import { getDomainUrl } from '@/utils/domain';
 import { 
     ShoppingBag, 
     LayoutDashboard, 
@@ -82,7 +83,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
     const copyStoreUrl = () => {
         if (user?.shop) {
-            const url = `${window.location.origin}/shop/${user.shop.slug}`;
+            const url = getDomainUrl('buyer', `/shop/${user.shop.slug}`);
             navigator.clipboard.writeText(url);
             setCopiedStoreLink(true);
             setTimeout(() => setCopiedStoreLink(false), 2000);
@@ -120,12 +121,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             ];
         }
 
-        return [
-            { name: 'Buyer Home', href: route('buyer.index'), icon: ShoppingBag, current: route().current('buyer.index') },
-            { name: 'My Orders & Tracking', href: route('buyer.orders.index'), icon: Package, current: route().current('buyer.orders.*') },
-            { name: 'Shopping Bag', href: route('buyer.cart'), icon: ShoppingCart, current: route().current('buyer.cart') },
-            { name: 'Profile & Security', href: route('profile.edit'), icon: Settings, current: route().current('profile.edit') },
-        ];
+        return [];
     };
 
     const navItems = getNavItems();
@@ -234,9 +230,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             Network Shortcuts
                         </p>
                         {user?.shop && (
-                            <Link
-                                href={route('shop.show', user.shop.slug)}
+                            <a
+                                href={getDomainUrl('buyer', `/shop/${user.shop.slug}`)}
                                 target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                             >
                                 <div className="flex items-center gap-2.5">
@@ -244,16 +241,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <span>Live Public Storefront</span>
                                 </div>
                                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                            </Link>
-                        )}
-                        {role !== 'admin' && (
-                            <Link
-                                href={route('buyer.index')}
-                                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                            >
-                                <ArrowLeft className="w-4 h-4 text-slate-400" />
-                                <span>Switch to Buyer Mode</span>
-                            </Link>
+                            </a>
                         )}
                         <Link
                             href={route('profile.edit')}
@@ -351,9 +339,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         </div>
 
                                         {role === 'seller' && user?.shop && (
-                                            <Link
-                                                href={route('shop.show', user.shop.slug)}
+                                            <a
+                                                href={getDomainUrl('buyer', `/shop/${user.shop.slug}`)}
                                                 target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                             >
                                                 <div className="flex items-center gap-2.5">
@@ -361,7 +350,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     <span>View Public Storefront</span>
                                                 </div>
                                                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                                            </Link>
+                                            </a>
                                         )}
 
                                         {role === 'seller' && (
@@ -381,16 +370,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             <ShieldCheck className="w-4 h-4 text-emerald-500" />
                                             <span>Account & Security</span>
                                         </Link>
-
-                                        {role !== 'admin' && (
-                                            <Link
-                                                href={route('buyer.index')}
-                                                className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
-                                            >
-                                                <ArrowLeft className="w-4 h-4 text-indigo-500" />
-                                                <span>Switch to Buyer Mode</span>
-                                            </Link>
-                                        )}
 
                                         <div className="border-t border-slate-200 mt-1 pt-1">
                                             <Link

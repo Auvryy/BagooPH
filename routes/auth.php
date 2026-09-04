@@ -35,6 +35,9 @@ Route::middleware('guest')->group(function () {
     Route::get('admin/login', [AuthenticatedSessionController::class, 'createAdmin'])
         ->name('admin.login');
 
+    Route::get('hub/login', [AuthenticatedSessionController::class, 'createHub'])
+        ->name('hub.login');
+
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])

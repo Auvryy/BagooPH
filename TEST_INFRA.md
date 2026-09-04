@@ -1,136 +1,196 @@
-# BagooPH End-to-End (E2E) Test Infrastructure Specification
+# BagooPH E2E Testing Infrastructure & Specification Matrix
 
-## 1. Overview
-This document defines the architecture, test helpers, tier decomposition, execution instructions, and validation standards for the BagooPH automated End-to-End (E2E) test suite.
+## 1. Architecture & Testing Philosophy
 
-The test suite exercises full multi-role data interconnectedness across all 5 user roles:
-- `buyer` (Marketplace shopping, variant selection, checkout, voucher application, order history, live tracking)
-- `seller` (Seller Cockpit `/seller/orders`, packaging approval, thermal waybill printing, ready for pickup dispatch, earnings ledger)
-- `courier` (Dispatch board `/courier/deliveries`, FCFS job claiming, barcode pickup, transit updates, proof of delivery, rider earnings)
-- `logistics` (Central Hub workstation `/hub`, incoming barcode scan, barangay sorting bin classification)
-- `admin` (KYC verification queue `/admin/users`, approve/reject governance, Commission Treasury ledger)
+BagooPH adopts an **Opaque-Box End-to-End Integration Testing Architecture**.
+- **Zero Mocking of Core Logic**: State transitions, database writes, checkpoint logging, commission calculations, and role gates run against real Laravel services and Eloquent models with `RefreshDatabase`.
+- **Subdomain-Aware HTTP Simulation**: HTTP requests faithfully simulate the 5 production subdomains via `$this->withServerVariables(['HTTP_HOST' => $subdomain])` or the dedicated `InteractsWithPortals` helper.
+- **Immutable Checkpoint Auditing**: Every valid lifecycle transition synchronously verifies audit entries in `delivery_checkpoints`.
+- **Double-Entry Financial Integrity**: Delivery completion asserts exact 10% platform commission, 90% merchant settlement, and ₱60 courier fees.
+- **Strict Role & Portal Isolation**: Access to role-specific cockpits is verified against the 5 subdomains: Buyer (`bagooph.shop`), Seller (`seller.bagooph.shop`), Courier (`courier.bagooph.shop`), Logistics Hub (`hub.bagooph.shop`), and Admin (`admin.bagooph.shop`).
 
 ---
 
-## 2. Test Architecture & Directory Structure
-
-All E2E tests are organized under `tests/Feature/E2E/` using Laravel's test framework with SQLite in-memory database (`:memory:`) and `RefreshDatabase` isolation.
+## 2. Directory Structure & Test Hierarchy
 
 ```
-tests/Feature/E2E/
-├── Support/
-│   ├── InteractsWithRoles.php
-│   ├── CreatesE2EOrders.php
-│   ├── SimulatesOrderLifecycle.php
-│   ├── AssertsDeliveryCheckpoints.php
-│   └── AssertsCommissionLedgers.php
-├── Tier1/
-│   ├── F1_KycRegistrationTest.php          (5 tests)
-│   ├── F2_KycApprovalGateTest.php          (5 tests)
-│   ├── F3_OrderCheckoutPackagingTest.php   (5 tests)
-│   ├── F4_CourierDispatchTrackingTest.php  (5 tests)
-│   ├── F5_LogisticsHubCheckpointTest.php   (5 tests)
-│   ├── F6_CommissionLedgerTest.php         (5 tests)
-│   └── F7_OrderSimulatorTest.php           (5 tests)
-├── Tier2/
-│   ├── B1_KycBoundaryTest.php              (5 tests)
-│   ├── B2_AuthGateSecurityTest.php         (5 tests)
-│   ├── B3_OrderCheckoutBoundaryTest.php    (5 tests)
-│   ├── B4_CourierDispatchRaceConditionTest.php (5 tests)
-│   ├── B5_LogisticsCheckpointValidationTest.php (5 tests)
-│   ├── B6_CommissionLedgerIdempotencyTest.php (5 tests)
-│   └── B7_SimulatorBoundaryTest.php        (5 tests)
-├── Tier3/
-│   └── CrossFeaturePairwiseTest.php        (7 tests)
-└── Tier4/
-    └── RealWorldWorkloadTest.php           (5 tests)
+tests/
+├── TestCase.php
+├── Feature/
+│   ├── E2E/
+│   │   ├── Support/
+│   │   │   ├── InteractsWithRoles.php
+│   │   │   ├── InteractsWithPortals.php
+│   │   │   ├── CreatesE2EOrders.php
+│   │   │   ├── SimulatesOrderLifecycle.php
+│   │   │   ├── AssertsDeliveryCheckpoints.php
+│   │   │   └── AssertsCommissionLedgers.php
+│   │   ├── Tier1/                               # 175 Tests (35 Features × 5 Tests)
+│   │   │   ├── F01_SubdomainRoutingTest.php
+│   │   │   ├── F02_SubdomainLoginViewsTest.php
+│   │   │   ├── F03_RoleLockedLoginBarrierTest.php
+│   │   │   ├── F04_SubdomainRegistrationTest.php
+│   │   │   ├── F05_CrossDomainFallbackTest.php
+│   │   │   ├── F06_NavigationIsolationTest.php
+│   │   │   ├── F07_Stage1PlacedTest.php
+│   │   │   ├── F08_Stage2ConfirmedTest.php
+│   │   │   ├── F09_Stage3PreparingTest.php
+│   │   │   ├── F10_Stage4ReadyForPickupTest.php
+│   │   │   ├── F11_Stage5PickedUpTest.php
+│   │   │   ├── F12_Stage6AtSortingCenterTest.php
+│   │   │   ├── F13_Stage7SortedAreaTest.php
+│   │   │   ├── F14_Stage8AssignedToRiderTest.php
+│   │   │   ├── F15_Stage9OutForDeliveryTest.php
+│   │   │   ├── F16_Stage10DeliveredTest.php
+│   │   │   ├── F17_Stage11CompletedTest.php
+│   │   │   ├── F18_Stage12DeliveryFailedTest.php
+│   │   │   ├── F19_Stage13ReturnedTest.php
+│   │   │   ├── F20_DeliveryCheckpointsTest.php
+│   │   │   ├── F21_CourierSplitTabPickupTest.php
+│   │   │   ├── F22_CourierSplitTabDeliveryTest.php
+│   │   │   ├── F23_CourierFcfsClaimingTest.php
+│   │   │   ├── F24_DeliveryFailureReasonTest.php
+│   │   │   ├── F25_DeliveryFailureResolutionTest.php
+│   │   │   ├── F26_DestinationAreaPartitioningTest.php
+│   │   │   ├── F27_ParcelSortingByAreaTest.php
+│   │   │   ├── F28_AreaMatchedRiderAssignmentTest.php
+│   │   │   ├── F29_HubRiderKycReviewTest.php
+│   │   │   ├── F30_HubRiderApprovalAreaTest.php
+│   │   │   ├── F31_HubRiderRejectionTest.php
+│   │   │   ├── F32_HubRiderActivationToggleTest.php
+│   │   │   ├── F33_HubLayoutWorkstationTest.php
+│   │   │   ├── F34_E2ESuiteExecutionTest.php
+│   │   │   └── F35_AdversarialSecurityTest.php
+│   │   ├── Tier2/                               # 175 Tests (35 Features × 5 Boundaries)
+│   │   │   ├── B01_SubdomainBoundaryTest.php
+│   │   │   ├── B02_LoginViewBoundaryTest.php
+│   │   │   ├── B03_RoleMismatchBoundaryTest.php
+│   │   │   ├── B04_KycValidationBoundaryTest.php
+│   │   │   ├── B05_CrossDomainSecurityBoundaryTest.php
+│   │   │   ├── B06_PortalIsolationBoundaryTest.php
+│   │   │   ├── B07_CheckoutBoundaryTest.php
+│   │   │   ├── B08_ConfirmationIdorBoundaryTest.php
+│   │   │   ├── B09_PackagingGuardBoundaryTest.php
+│   │   │   ├── B10_PickupStagingBoundaryTest.php
+│   │   │   ├── B11_CourierScanBoundaryTest.php
+│   │   │   ├── B12_HubIntakeBoundaryTest.php
+│   │   │   ├── B13_AreaSortingBoundaryTest.php
+│   │   │   ├── B14_RiderAreaMismatchBoundaryTest.php
+│   │   │   ├── B15_OutForDeliveryBoundaryTest.php
+│   │   │   ├── B16_DoorstepProofBoundaryTest.php
+│   │   │   ├── B17_BuyerCompletionBoundaryTest.php
+│   │   │   ├── B18_FailureReasonBoundaryTest.php
+│   │   │   ├── B19_ReturnPipelineBoundaryTest.php
+│   │   │   ├── B20_CheckpointIntegrityBoundaryTest.php
+│   │   │   ├── B21_PickupTabSecurityBoundaryTest.php
+│   │   │   ├── B22_DeliveryTabSecurityBoundaryTest.php
+│   │   │   ├── B23_FcfsRaceConditionBoundaryTest.php
+│   │   │   ├── B24_FailureModalValidationBoundaryTest.php
+│   │   │   ├── B25_ResolutionAttemptCapBoundaryTest.php
+│   │   │   ├── B26_AreaResolutionEdgeBoundaryTest.php
+│   │   │   ├── B27_HubSortingBinBoundaryTest.php
+│   │   │   ├── B28_AreaDispatchGuardBoundaryTest.php
+│   │   │   ├── B29_HubFleetReviewSecurityBoundaryTest.php
+│   │   │   ├── B30_RiderAreaApprovalBoundaryTest.php
+│   │   │   ├── B31_RiderRejectionValidationBoundaryTest.php
+│   │   │   ├── B32_CourierSuspensionBoundaryTest.php
+│   │   │   ├── B33_HubWorkstationAccessBoundaryTest.php
+│   │   │   ├── B34_TestRunnerResilienceBoundaryTest.php
+│   │   │   └── B35_AdversarialStressBoundaryTest.php
+│   │   ├── Tier3/                               # 35 Cross-Feature Tests
+│   │   │   └── CrossFeatureCombinationsTest.php
+│   │   └── Tier4/                               # 18 Real-World End-to-End Scenarios
+│   │       ├── RealWorldStandardLifecycleTest.php
+│   │       ├── RealWorldLogisticsRoutingTest.php
+│   │       └── RealWorldExceptionsAndFleetTest.php
 ```
 
 ---
 
-## 3. Shared Support Helpers & Assertions (`tests/Feature/E2E/Support/`)
+## 3. Test Runner Commands
 
-### 3.1 `InteractsWithRoles.php`
-- `actingAsBuyer(?User $user = null): static`
-- `actingAsSeller(?User $user = null): static`
-- `actingAsCourier(?User $user = null): static`
-- `actingAsLogistics(?User $user = null): static`
-- `actingAsAdmin(?User $user = null): static`
-- `createApprovedUser(string $role, array $attributes = []): User`
-- `createPendingUser(string $role, array $attributes = []): User`
-- `createRejectedUser(string $role, string $feedback = 'Invalid ID', array $attributes = []): User`
+Tests execute inside the Docker application container with SQLite in-memory database:
 
-### 3.2 `CreatesE2EOrders.php`
-- `createE2EShop(User $seller, array $attributes = []): Shop`
-- `createE2EProduct(Shop $shop, array $attributes = []): Product`
-- `createE2EOrder(User $buyer, Shop $shop, array $items = [], string $status = 'pending'): Order`
-- `createE2EDelivery(Order $order, string $status = 'unassigned', ?User $courier = null): Delivery`
-- `createE2EVoucher(Shop $shop, array $attributes = []): Voucher`
-
-### 3.3 `SimulatesOrderLifecycle.php`
-- `advanceOrderStage(Order $order): TestResponse`
-- `resetOrderStage(Order $order): TestResponse`
-- `assertOrderStage(Order $order, string $expectedOrderStatus, string $expectedDeliveryStatus): void`
-- `fastForwardToDelivered(Order $order): Order`
-
-### 3.4 `AssertsDeliveryCheckpoints.php`
-- `assertCheckpointLogged(Delivery $delivery, string $checkpointType, ?string $location = null): void`
-- `assertCheckpointSequence(Delivery $delivery, array $expectedTypes): void`
-- `assertBarcodeScanned(Delivery $delivery, string $barcode): void`
-
-### 3.5 `AssertsCommissionLedgers.php`
-- `assertCommissionSplit(Order $order, ?float $expectedGross = null): CommissionLedger`
-- `assertLedgerIdempotent(Order $order): void`
-
----
-
-## 4. Test Tiers & Feature Inventory Matrix (Total 82 Tests)
-
-| Tier | Directory | Test Files | Test Count | Description |
-|---|---|---|---|---|
-| **Tier 1** | `Tier1/` | `F1_KycRegistrationTest.php`<br>`F2_KycApprovalGateTest.php`<br>`F3_OrderCheckoutPackagingTest.php`<br>`F4_CourierDispatchTrackingTest.php`<br>`F5_LogisticsHubCheckpointTest.php`<br>`F6_CommissionLedgerTest.php`<br>`F7_OrderSimulatorTest.php` | **35 tests** (5 per feature) | Core feature coverage across all 7 features in the inventory. |
-| **Tier 2** | `Tier2/` | `B1_KycBoundaryTest.php`<br>`B2_AuthGateSecurityTest.php`<br>`B3_OrderCheckoutBoundaryTest.php`<br>`B4_CourierDispatchRaceConditionTest.php`<br>`B5_LogisticsCheckpointValidationTest.php`<br>`B6_CommissionLedgerIdempotencyTest.php`<br>`B7_SimulatorBoundaryTest.php` | **35 tests** (5 per feature) | Boundary values, negative validation, security gates, race conditions, IDOR checks, idempotency. |
-| **Tier 3** | `Tier3/` | `CrossFeaturePairwiseTest.php` | **7 tests** | Cross-feature handoffs and pairwise pipeline integration. |
-| **Tier 4** | `Tier4/` | `RealWorldWorkloadTest.php` | **5 tests** | Real-world multi-role end-to-end user workflows and exception scenarios. |
-| **Total** | | | **82 tests** | Comprehensive requirement-driven opaque-box E2E suite. |
-
----
-
-## 5. Test Execution Instructions
-
-### 5.1 Running the Entire Test Suite
 ```bash
-php artisan test --do-not-cache-result
-# or:
-./vendor/bin/phpunit --do-not-cache-result
-```
+# Run entire automated test suite
+./bagoo.sh test
 
-### 5.2 Running by Tier
-```bash
-# Run Tier 1 Feature Coverage
-php artisan test tests/Feature/E2E/Tier1 --do-not-cache-result
+# Run individual test tiers
+./bagoo.sh test --filter Tier1
+./bagoo.sh test --filter Tier2
+./bagoo.sh test --filter Tier3
+./bagoo.sh test --filter Tier4
 
-# Run Tier 2 Boundary & Security
-php artisan test tests/Feature/E2E/Tier2 --do-not-cache-result
+# Run specific feature tests
+./bagoo.sh test --filter F03_RoleLockedLoginBarrierTest
+./bagoo.sh test --filter B14_RiderAreaMismatchBoundaryTest
 
-# Run Tier 3 Cross-Feature
-php artisan test tests/Feature/E2E/Tier3 --do-not-cache-result
-
-# Run Tier 4 Real-World Workloads
-php artisan test tests/Feature/E2E/Tier4 --do-not-cache-result
-```
-
-### 5.3 Running Specific Feature Tests
-```bash
-php artisan test --filter F1_KycRegistrationTest --do-not-cache-result
-php artisan test --filter F3_OrderCheckoutPackagingTest --do-not-cache-result
-php artisan test --filter RealWorldWorkloadTest --do-not-cache-result
+# Check frontend asset compilation
+./bagoo.sh npm run build
 ```
 
 ---
 
-## 6. Acceptance Standards
-- **Zero Failures**: 100% of all 82 tests must pass.
-- **Database Isolation**: Tests must use `RefreshDatabase` and SQLite in-memory without cross-test leakage.
-- **Strict Financial Verification**: Commission ledger assertions must check exact 90% / 10% / ₱60 distribution.
-- **Strict Role Isolation**: Gating and IDOR boundary tests must assert 403 Forbidden or redirect where appropriate.
+## 4. Test Support Traits & Utilities
+
+| Trait | Purpose | Key Helper Methods |
+|---|---|---|
+| `InteractsWithPortals` | Subdomain host simulation and HTTP routing | `onPortal()`, `portalGet()`, `portalPost()`, `portalPatch()`, host header mapping |
+| `InteractsWithRoles` | User & session setup for all 5 roles | `actingAsBuyer()`, `actingAsSeller()`, `actingAsCourier()`, `actingAsLogistics()`, `actingAsAdmin()`, `createApprovedUser()`, `createPendingUser()` |
+| `CreatesE2EOrders` | Fixture generator for orders, shops, deliveries | `createE2EShop()`, `createE2EProduct()`, `createE2EOrder()`, `createE2EDelivery()`, `createE2EVoucher()` |
+| `SimulatesOrderLifecycle` | Fast-forward state machine helper | `advanceOrderStage()`, `resetOrderStage()`, `assertOrderStage()`, `fastForwardToDelivered()` |
+| `AssertsDeliveryCheckpoints` | Checkpoint verification and sequencing | `assertCheckpointLogged()`, `assertCheckpointSequence()`, `assertBarcodeScanned()` |
+| `AssertsCommissionLedgers` | Financial distribution assertions | `assertCommissionSplit()`, `assertLedgerIdempotent()` |
+
+---
+
+## 5. Comprehensive Coverage Matrix (403 Tests Total)
+
+| Feature # | Feature Name | Tier 1 (Baseline) | Tier 2 (Boundaries) | Tier 3 (Cross-Feature) | Tier 4 (Real-World) | Total Tests |
+|---|---|---|---|---|---|---|
+| 1 | 5-Domain Routing Architecture | 5 | 5 | 2 | 2 | 14 |
+| 2 | Dedicated Subdomain Login Views | 5 | 5 | 1 | 1 | 12 |
+| 3 | Role-Locked Login Barrier | 5 | 5 | 3 | 2 | 15 |
+| 4 | Dedicated Subdomain Registration | 5 | 5 | 2 | 2 | 14 |
+| 5 | Cross-Domain Fallback Redirection | 5 | 5 | 1 | 1 | 12 |
+| 6 | Subdomain Navigation Isolation | 5 | 5 | 2 | 1 | 13 |
+| 7 | PLACED (Stage 1) | 5 | 5 | 3 | 3 | 16 |
+| 8 | CONFIRMED (Stage 2) | 5 | 5 | 2 | 2 | 14 |
+| 9 | PREPARING (Stage 3) | 5 | 5 | 2 | 2 | 14 |
+| 10 | READY_FOR_PICKUP (Stage 4) | 5 | 5 | 3 | 2 | 15 |
+| 11 | PICKED_UP (Stage 5) | 5 | 5 | 3 | 3 | 16 |
+| 12 | AT_SORTING_CENTER (Stage 6) | 5 | 5 | 3 | 3 | 16 |
+| 13 | SORTED (Stage 7) | 5 | 5 | 3 | 3 | 16 |
+| 14 | ASSIGNED_TO_RIDER (Stage 8) | 5 | 5 | 3 | 3 | 16 |
+| 15 | OUT_FOR_DELIVERY (Stage 9) | 5 | 5 | 3 | 3 | 16 |
+| 16 | DELIVERED (Stage 10) | 5 | 5 | 3 | 3 | 16 |
+| 17 | COMPLETED (Stage 11) | 5 | 5 | 3 | 3 | 16 |
+| 18 | DELIVERY_FAILED (Stage 12) | 5 | 5 | 3 | 2 | 15 |
+| 19 | RETURNED (Stage 13) | 5 | 5 | 3 | 2 | 15 |
+| 20 | Delivery Checkpoints Pipeline | 5 | 5 | 4 | 3 | 17 |
+| 21 | Split Tab: Items for Pickup | 5 | 5 | 2 | 2 | 14 |
+| 22 | Split Tab: Items for Delivery | 5 | 5 | 2 | 2 | 14 |
+| 23 | FCFS Pickup Claiming | 5 | 5 | 2 | 2 | 14 |
+| 24 | Delivery Failure Modal & Reason | 5 | 5 | 2 | 2 | 14 |
+| 25 | Delivery Failure Resolution Options | 5 | 5 | 2 | 2 | 14 |
+| 26 | Destination Area Partitioning | 5 | 5 | 2 | 2 | 14 |
+| 27 | Parcel Sorting by Area | 5 | 5 | 2 | 2 | 14 |
+| 28 | Area-Matched Rider Assignment | 5 | 5 | 3 | 2 | 15 |
+| 29 | Hub Rider Fleet Review & KYC | 5 | 5 | 2 | 2 | 14 |
+| 30 | Hub Rider Approval & Area Designation | 5 | 5 | 2 | 2 | 14 |
+| 31 | Hub Rider Disapproval / Rejection | 5 | 5 | 2 | 1 | 13 |
+| 32 | Hub Rider Activation / Deactivation | 5 | 5 | 2 | 2 | 14 |
+| 33 | Dedicated Hub Layout & Pages | 5 | 5 | 1 | 2 | 13 |
+| 34 | E2E Testing Suite (Tiers 1-4) | 5 | 5 | 1 | 1 | 12 |
+| 35 | Adversarial Coverage Hardening | 5 | 5 | 1 | 1 | 12 |
+| **TOTALS** | **35 Features** | **175** | **175** | **35** | **18** | **403 Tests** |
+
+---
+
+## 6. Acceptance Standards & Invariants
+
+- **Zero Test Failures**: 100% of all 403 tests must pass under `./bagoo.sh test` with exit code 0.
+- **Strict Role Isolation**: Subdomain login barrier must return HTTP 422 for role mismatches; unauthorized paths return HTTP 403 or redirect.
+- **State Machine Integrity**: Out-of-order state transitions rejected with HTTP 422.
+- **Audit Immutability**: Synchronous write to `delivery_checkpoints` for every valid status transition.
+- **Financial Precision**: 90% merchant, 10% platform, ₱60 courier fee with zero centavo leakage.
