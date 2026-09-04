@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Category, PaginatedData, Product, Shop } from '@/types';
@@ -16,8 +16,20 @@ import {
     Tag,
     DollarSign,
     Box,
-    Sparkles
+    Sparkles,
+    Upload,
+    Link,
+    AlertCircle
 } from 'lucide-react';
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/jpg',
+    'image/webp',
+    'image/gif'
+];
 
 interface Props {
     products: PaginatedData<Product>;
@@ -30,12 +42,32 @@ export default function SellerProducts({ products, categories, shop }: Props) {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
+    const [createImageMode, setCreateImageMode] = useState<'url' | 'file'>('url');
+    const [createImagePreview, setCreateImagePreview] = useState<string | null>(null);
+    const [createFileError, setCreateFileError] = useState<string | null>(null);
+    const createFileInputRef = useRef<HTMLInputElement>(null);
+
+    const [editImageMode, setEditImageMode] = useState<'url' | 'file'>('url');
+    const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+    const [editFileError, setEditFileError] = useState<string | null>(null);
+    const editFileInputRef = useRef<HTMLInputElement>(null);
+
     const formatPrice = (val: string | number | undefined | null) => {
         const num = Number(val || 0);
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
 
-    const createForm = useForm({
+    const createForm = useForm<{
+        name: string;
+        category_id: string | number;
+        price: string;
+        compare_at_price: string;
+        stock: string;
+        sku: string;
+        featured_image: string;
+        image_file: File | null;
+        description: string;
+    }>({
         name: '',
         category_id: categories[0]?.id || '',
         price: '',
@@ -43,10 +75,23 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         stock: '25',
         sku: '',
         featured_image: '',
+        image_file: null,
         description: '',
     });
 
-    const editForm = useForm({
+    const editForm = useForm<{
+        name: string;
+        category_id: string | number;
+        price: string;
+        compare_at_price: string;
+        stock: string;
+        sku: string;
+        featured_image: string;
+        image_file: File | null;
+        description: string;
+        status: 'active' | 'draft' | 'archived';
+        _method: string;
+    }>({
         name: '',
         category_id: '',
         price: '',
@@ -54,12 +99,30 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         stock: '0',
         sku: '',
         featured_image: '',
+        image_file: null,
         description: '',
         status: 'active',
+        _method: 'PUT',
     });
+
+    const openCreate = () => {
+        setCreateFileError(null);
+        setCreateImagePreview(null);
+        setCreateImageMode('url');
+        if (createFileInputRef.current) {
+            createFileInputRef.current.value = '';
+        }
+        setIsCreateOpen(true);
+    };
 
     const openEdit = (product: Product) => {
         setEditingProduct(product);
+        setEditImageMode('url');
+        setEditImagePreview(product.featured_image || null);
+        setEditFileError(null);
+        if (editFileInputRef.current) {
+            editFileInputRef.current.value = '';
+        }
         editForm.setData({
             name: product.name,
             category_id: String(product.category_id || ''),
@@ -68,17 +131,116 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             stock: String(product.stock),
             sku: product.sku || '',
             featured_image: product.featured_image || '',
+            image_file: null,
             description: product.description,
-            status: product.status,
+            status: product.status as any,
+            _method: 'PUT',
         });
+    };
+
+    const handleCreateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        setCreateFileError(null);
+
+        if (!file) {
+            return;
+        }
+
+        // Instant validation before keeping file in state
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+            setCreateFileError(`File too large (${sizeMb} MB). Maximum allowed size is 5MB. The file was rejected immediately to prevent upload errors.`);
+            createForm.setData('image_file', null);
+            setCreateImagePreview(null);
+            if (createFileInputRef.current) {
+                createFileInputRef.current.value = '';
+            }
+            return;
+        }
+
+        if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+            setCreateFileError(`Unsupported format (${file.type || 'unknown'}). Please select a PNG, JPG, JPEG, WEBP, or GIF image.`);
+            createForm.setData('image_file', null);
+            setCreateImagePreview(null);
+            if (createFileInputRef.current) {
+                createFileInputRef.current.value = '';
+            }
+            return;
+        }
+
+        createForm.setData('image_file', file);
+        setCreateImagePreview(URL.createObjectURL(file));
+    };
+
+    const clearCreateFile = () => {
+        setCreateFileError(null);
+        createForm.setData('image_file', null);
+        setCreateImagePreview(null);
+        if (createFileInputRef.current) {
+            createFileInputRef.current.value = '';
+        }
+    };
+
+    const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        setEditFileError(null);
+
+        if (!file) {
+            return;
+        }
+
+        // Instant validation before keeping file in state
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+            setEditFileError(`File too large (${sizeMb} MB). Maximum allowed size is 5MB. The file was rejected immediately to prevent upload errors.`);
+            editForm.setData('image_file', null);
+            setEditImagePreview(editingProduct?.featured_image || null);
+            if (editFileInputRef.current) {
+                editFileInputRef.current.value = '';
+            }
+            return;
+        }
+
+        if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+            setEditFileError(`Unsupported format (${file.type || 'unknown'}). Please select a PNG, JPG, JPEG, WEBP, or GIF image.`);
+            editForm.setData('image_file', null);
+            setEditImagePreview(editingProduct?.featured_image || null);
+            if (editFileInputRef.current) {
+                editFileInputRef.current.value = '';
+            }
+            return;
+        }
+
+        editForm.setData('image_file', file);
+        setEditImagePreview(URL.createObjectURL(file));
+    };
+
+    const clearEditFile = () => {
+        setEditFileError(null);
+        editForm.setData('image_file', null);
+        setEditImagePreview(editingProduct?.featured_image || null);
+        if (editFileInputRef.current) {
+            editFileInputRef.current.value = '';
+        }
     };
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
+        if (createImageMode === 'file' && createForm.data.image_file && createForm.data.image_file.size > MAX_FILE_SIZE_BYTES) {
+            setCreateFileError('Selected image file exceeds 5MB limit. Please choose a smaller file.');
+            return;
+        }
         createForm.post(route('seller.products.store'), {
+            forceFormData: true,
             onSuccess: () => {
                 setIsCreateOpen(false);
                 createForm.reset();
+                setCreateImagePreview(null);
+                setCreateImageMode('url');
+                setCreateFileError(null);
+                if (createFileInputRef.current) {
+                    createFileInputRef.current.value = '';
+                }
             },
         });
     };
@@ -86,9 +248,20 @@ export default function SellerProducts({ products, categories, shop }: Props) {
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingProduct) return;
-        editForm.put(route('seller.products.update', editingProduct.id), {
+        if (editImageMode === 'file' && editForm.data.image_file && editForm.data.image_file.size > MAX_FILE_SIZE_BYTES) {
+            setEditFileError('Selected image file exceeds 5MB limit. Please choose a smaller file.');
+            return;
+        }
+        editForm.post(route('seller.products.update', editingProduct.id), {
+            forceFormData: true,
             onSuccess: () => {
                 setEditingProduct(null);
+                setEditImagePreview(null);
+                setEditImageMode('url');
+                setEditFileError(null);
+                if (editFileInputRef.current) {
+                    editFileInputRef.current.value = '';
+                }
             },
         });
     };
@@ -111,7 +284,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
             subtitle={`Catalog control & inventory balances for ${shop.name}`}
             actions={
                 <button
-                    onClick={() => setIsCreateOpen(true)}
+                    onClick={openCreate}
                     className="flex items-center gap-1.5 px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xl shadow-xs transition uppercase"
                 >
                     <Plus className="w-3.5 h-3.5" />
@@ -314,15 +487,120 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block font-bold text-slate-700 uppercase mb-1">Featured Image URL</label>
-                                <input
-                                    type="url"
-                                    value={createForm.data.featured_image}
-                                    onChange={(e) => createForm.setData('featured_image', e.target.value)}
-                                    placeholder="https://images.unsplash.com/..."
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                />
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="block font-bold text-slate-700 uppercase">Product Image</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-slate-500 font-medium">Source:</span>
+                                        <select
+                                            value={createImageMode}
+                                            onChange={(e) => {
+                                                const mode = e.target.value as 'url' | 'file';
+                                                setCreateImageMode(mode);
+                                                if (mode === 'url') {
+                                                    setCreateImagePreview(createForm.data.featured_image || null);
+                                                } else {
+                                                    setCreateImagePreview(createForm.data.image_file ? URL.createObjectURL(createForm.data.image_file) : null);
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 text-xs bg-slate-100 border border-slate-300 rounded-lg text-slate-800 font-sans focus:ring-1 focus:ring-[#E00D42]"
+                                        >
+                                            <option value="url">Web Image URL</option>
+                                            <option value="file">Image File (Upload)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {createImageMode === 'url' ? (
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <input
+                                                type="url"
+                                                value={createForm.data.featured_image}
+                                                onChange={(e) => {
+                                                    createForm.setData('featured_image', e.target.value);
+                                                    setCreateImagePreview(e.target.value || null);
+                                                }}
+                                                placeholder="https://images.unsplash.com/photo-..."
+                                                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                            />
+                                            <Link className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                                        </div>
+                                        <p className="text-[11px] text-slate-400">Direct image link (JPEG, PNG, WEBP, GIF)</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div 
+                                            onClick={() => createFileInputRef.current?.click()}
+                                            className={`border-2 border-dashed ${createFileError ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 hover:border-[#E00D42] bg-slate-50/50 hover:bg-slate-50'} rounded-2xl p-4 text-center cursor-pointer transition`}
+                                        >
+                                            <input
+                                                ref={createFileInputRef}
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                                                onChange={handleCreateFileChange}
+                                                className="hidden"
+                                            />
+                                            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                                <div className={`w-8 h-8 rounded-full ${createFileError ? 'bg-rose-100 text-rose-600' : 'bg-rose-50 text-[#E00D42]'} flex items-center justify-center`}>
+                                                    <Upload className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-xs">
+                                                        {createForm.data.image_file ? createForm.data.image_file.name : 'Click to select image file'}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                                        Accepted formats: PNG, JPG, JPEG, WEBP, GIF (Max 5MB)
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {createFileError && (
+                                            <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-sans">
+                                                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold">File Rejected Immediately</p>
+                                                    <p className="text-[11px]">{createFileError}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {createForm.errors.image_file && (
+                                            <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-sans">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{createForm.errors.image_file}</span>
+                                            </div>
+                                        )}
+
+                                        {createForm.data.image_file && (
+                                            <div className="flex items-center justify-between text-[11px] bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600">
+                                                <span className="truncate max-w-xs">{createForm.data.image_file.name} ({(createForm.data.image_file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={clearCreateFile}
+                                                    className="text-rose-600 hover:text-rose-800 font-bold uppercase"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {createImagePreview && (
+                                    <div className="relative inline-block mt-2">
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Image Preview</p>
+                                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                                            <img
+                                                src={createImagePreview}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                                onError={() => setCreateImagePreview(null)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -431,6 +709,124 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="block font-bold text-slate-700 uppercase">Product Image</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-slate-500 font-medium">Source:</span>
+                                        <select
+                                            value={editImageMode}
+                                            onChange={(e) => {
+                                                const mode = e.target.value as 'url' | 'file';
+                                                setEditImageMode(mode);
+                                                if (mode === 'url') {
+                                                    setEditImagePreview(editForm.data.featured_image || editingProduct?.featured_image || null);
+                                                } else {
+                                                    setEditImagePreview(editForm.data.image_file ? URL.createObjectURL(editForm.data.image_file) : (editingProduct?.featured_image || null));
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 text-xs bg-slate-100 border border-slate-300 rounded-lg text-slate-800 font-sans focus:ring-1 focus:ring-[#E00D42]"
+                                        >
+                                            <option value="url">Web Image URL</option>
+                                            <option value="file">Image File (Upload)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {editImageMode === 'url' ? (
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <input
+                                                type="url"
+                                                value={editForm.data.featured_image}
+                                                onChange={(e) => {
+                                                    editForm.setData('featured_image', e.target.value);
+                                                    setEditImagePreview(e.target.value || null);
+                                                }}
+                                                placeholder="https://images.unsplash.com/photo-..."
+                                                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                            />
+                                            <Link className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                                        </div>
+                                        <p className="text-[11px] text-slate-400">Direct image link (JPEG, PNG, WEBP, GIF)</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div 
+                                            onClick={() => editFileInputRef.current?.click()}
+                                            className={`border-2 border-dashed ${editFileError ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 hover:border-[#E00D42] bg-slate-50/50 hover:bg-slate-50'} rounded-2xl p-4 text-center cursor-pointer transition`}
+                                        >
+                                            <input
+                                                ref={editFileInputRef}
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                                                onChange={handleEditFileChange}
+                                                className="hidden"
+                                            />
+                                            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                                <div className={`w-8 h-8 rounded-full ${editFileError ? 'bg-rose-100 text-rose-600' : 'bg-rose-50 text-[#E00D42]'} flex items-center justify-center`}>
+                                                    <Upload className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-xs">
+                                                        {editForm.data.image_file ? editForm.data.image_file.name : 'Click to select new image file'}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                                        Accepted formats: PNG, JPG, JPEG, WEBP, GIF (Max 5MB)
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {editFileError && (
+                                            <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-sans">
+                                                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold">File Rejected Immediately</p>
+                                                    <p className="text-[11px]">{editFileError}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {editForm.errors.image_file && (
+                                            <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-sans">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{editForm.errors.image_file}</span>
+                                            </div>
+                                        )}
+
+                                        {editForm.data.image_file && (
+                                            <div className="flex items-center justify-between text-[11px] bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600">
+                                                <span className="truncate max-w-xs">{editForm.data.image_file.name} ({(editForm.data.image_file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={clearEditFile}
+                                                    className="text-rose-600 hover:text-rose-800 font-bold uppercase"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {editImagePreview && (
+                                    <div className="relative inline-block mt-2">
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+                                            {editForm.data.image_file ? 'New Image Preview' : 'Current Image Preview'}
+                                        </p>
+                                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                                            <img
+                                                src={editImagePreview}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                                onError={() => setEditImagePreview(null)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div>

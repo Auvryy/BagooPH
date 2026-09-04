@@ -54,7 +54,7 @@ Route::domain("seller.{$baseDomain}")->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::post('/products', [SellerProductController::class, 'store']);
-        Route::put('/products/{product}', [SellerProductController::class, 'update']);
+        Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
         Route::get('/orders', [SellerOrderController::class, 'index']);
         Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack']);
@@ -263,7 +263,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
     Route::post('/products', [SellerProductController::class, 'store'])->name('products.store');
-    Route::put('/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
+    Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
     Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack'])->name('orders.pack');

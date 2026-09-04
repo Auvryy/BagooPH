@@ -56,16 +56,27 @@ class SellerProductController extends Controller
             'stock' => 'required|integer|min:0',
             'sku' => 'nullable|string|max:50',
             'description' => 'required|string',
-            'featured_image' => 'nullable|string|url',
+            'featured_image' => 'nullable|string',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
         ]);
 
+        $imageUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $imageUrl = '/storage/' . $path;
+        } elseif (! empty($validated['featured_image'])) {
+            $imageUrl = $validated['featured_image'];
+        }
+
         $slug = Str::slug($validated['name']) . '-' . rand(1000, 9999);
+        unset($validated['image_file']);
+        $validated['featured_image'] = $imageUrl;
 
         $product = Product::create([
             ...$validated,
             'shop_id' => $shop->id,
             'slug' => $slug,
-            'featured_image' => $validated['featured_image'] ?? 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
             'status' => 'active',
         ]);
 
@@ -81,8 +92,8 @@ class SellerProductController extends Controller
     public function update(Request $request, Product $product): RedirectResponse
     {
         $shop = $this->getShop($request);
-        if ($product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
-            abort(403);
+        if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+            abort(403, 'Unauthorized product modification.');
         }
 
         $validated = $request->validate([
@@ -93,11 +104,28 @@ class SellerProductController extends Controller
             'stock' => 'required|integer|min:0',
             'sku' => 'nullable|string|max:50',
             'description' => 'required|string',
-            'featured_image' => 'nullable|string|url',
+            'featured_image' => 'nullable|string',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'status' => 'required|in:active,draft,archived',
         ]);
 
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $validated['featured_image'] = '/storage/' . $path;
+        } elseif (empty($validated['featured_image'])) {
+            unset($validated['featured_image']);
+        }
+
+        unset($validated['image_file']);
+
         $product->update($validated);
+
+        if (! empty($validated['featured_image'])) {
+            ProductImage::updateOrCreate(
+                ['product_id' => $product->id, 'is_primary' => true],
+                ['image_url' => $product->featured_image]
+            );
+        }
 
         return back()->with('success', 'Product updated successfully.');
     }
@@ -105,8 +133,8 @@ class SellerProductController extends Controller
     public function destroy(Request $request, Product $product): RedirectResponse
     {
         $shop = $this->getShop($request);
-        if ($product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
-            abort(403);
+        if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+            abort(403, 'Unauthorized product deletion.');
         }
 
         $product->delete();
