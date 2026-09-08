@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -185,9 +186,80 @@ class MarketplaceController extends Controller
             ->latest()
             ->paginate(18);
 
+        $currentUser = auth()->user();
+        $isOwner = $currentUser && ($currentUser->id === $shop->user_id || $currentUser->role === 'admin');
+
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
             'products' => $products,
+            'isOwner' => (bool) $isOwner,
         ]);
+    }
+
+    public function updateBranding(Request $request, string $slug): RedirectResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(403, 'Unauthorized');
+        }
+
+        $shop = Shop::where('slug', $slug)->firstOrFail();
+        if ($user->id !== $shop->user_id && $user->role !== 'admin') {
+            abort(403, 'Only the shop owner can update this storefront.');
+        }
+
+        $rules = [
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+        ];
+
+        if ($request->hasFile('logo')) {
+            $rules['logo'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        } elseif ($request->hasFile('logo_file')) {
+            $rules['logo_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        } else {
+            $rules['logo'] = 'nullable|string|max:1000';
+        }
+
+        if ($request->hasFile('banner')) {
+            $rules['banner'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120';
+        } elseif ($request->hasFile('banner_file')) {
+            $rules['banner_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120';
+        } else {
+            $rules['banner'] = 'nullable|string|max:1000';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($request->hasFile('logo') || $request->hasFile('logo_file')) {
+            $file = $request->file('logo') ?? $request->file('logo_file');
+            $path = $file->store('shops/logos', 'public');
+            $shop->logo = '/storage/' . $path;
+        } elseif ($request->filled('logo')) {
+            $shop->logo = $validated['logo'];
+        }
+
+        if ($request->hasFile('banner') || $request->hasFile('banner_file')) {
+            $file = $request->file('banner') ?? $request->file('banner_file');
+            $path = $file->store('shops/banners', 'public');
+            $shop->banner = '/storage/' . $path;
+        } elseif ($request->filled('banner')) {
+            $shop->banner = $validated['banner'];
+        }
+
+        if (isset($validated['name'])) $shop->name = $validated['name'];
+        if (array_key_exists('description', $validated)) $shop->description = $validated['description'];
+        if (isset($validated['phone'])) $shop->phone = $validated['phone'];
+        if (isset($validated['address'])) $shop->address = $validated['address'];
+        if (isset($validated['city'])) $shop->city = $validated['city'];
+
+        $shop->save();
+
+        return back()
+            ->with('message', 'Storefront branding and bio updated successfully.')
+            ->with('success', 'Storefront branding and bio updated successfully.');
     }
 }

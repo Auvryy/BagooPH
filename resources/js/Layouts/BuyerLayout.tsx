@@ -29,9 +29,10 @@ import { getDomainUrl } from '@/utils/domain';
 interface Props {
     children: React.ReactNode;
     categories?: Category[];
+    hideAuthButtons?: boolean;
 }
 
-export default function BuyerLayout({ children, categories = [] }: Props) {
+export default function BuyerLayout({ children, categories = [], hideAuthButtons = false }: Props) {
     const { auth, cartCount } = usePage<PageProps>().props;
     const user = auth.user;
 
@@ -266,7 +267,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : hideAuthButtons ? null : (
                                 <div className="flex items-center gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 

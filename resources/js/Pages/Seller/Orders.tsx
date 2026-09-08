@@ -64,17 +64,42 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
     const getStatusPill = (status: string) => {
         switch (status) {
             case 'pending':
-                return <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold font-sans flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> New Order (To Pack)</span>;
+                return (
+                    <span className="px-3 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-xs font-bold font-mono flex items-center gap-1.5 shadow-2xs">
+                        <Box className="w-3.5 h-3.5" />
+                        <span>To Pack (Action Required)</span>
+                    </span>
+                );
             case 'processing':
-                return <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold font-sans flex items-center gap-1.5"><Box className="w-3.5 h-3.5" /> Packed (Ready for Dispatch)</span>;
+                return (
+                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium font-mono flex items-center gap-1.5">
+                        <Box className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Packed & Labeled</span>
+                    </span>
+                );
             case 'ready_for_pickup':
-                return <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold font-sans flex items-center gap-1.5"><Box className="w-3.5 h-3.5" /> Ready for Pickup</span>;
+                return (
+                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium font-mono flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Ready for Pickup</span>
+                    </span>
+                );
             case 'shipped':
-                return <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold font-sans flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> In Transit</span>;
+                return (
+                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium font-mono flex items-center gap-1.5">
+                        <Truck className="w-3.5 h-3.5 text-slate-500" />
+                        <span>In Transit</span>
+                    </span>
+                );
             case 'delivered':
-                return <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold font-sans flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Delivered & Completed</span>;
+                return (
+                    <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium font-mono flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Delivered</span>
+                    </span>
+                );
             default:
-                return <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold font-sans uppercase">{status}</span>;
+                return <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium font-mono uppercase">{status}</span>;
         }
     };
 
@@ -235,8 +260,8 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
 
                 {/* 2. SEARCH & LIST HEADER */}
                 <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 font-sans">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Package className="w-4 h-4 text-[#E00D42]" />
+                    <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                        <Package className="w-4 h-4 text-slate-400" />
                         <span>Showing <strong>{filteredItems.length}</strong> fulfillment packages</span>
                     </div>
 
@@ -264,16 +289,20 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                         {filteredItems.map((item) => (
                             <div
                                 key={item.id}
-                                className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs hover:shadow-sm transition space-y-4 font-sans"
+                                className={`bg-white rounded-2xl border p-5 sm:p-6 shadow-2xs transition space-y-4 font-sans ${
+                                    item.order?.status === 'pending'
+                                        ? 'border-slate-300 border-l-4 border-l-[#E00D42]'
+                                        : 'border-slate-200/90'
+                                }`}
                             >
                                 {/* Order Top Header */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 text-xs">
                                     <div className="space-y-0.5">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-slate-900 text-sm">
+                                            <span className="font-bold text-slate-900 text-sm font-mono">
                                                 Order #{item.order?.order_number}
                                             </span>
-                                            <span className="text-slate-400">
+                                            <span className="text-slate-400 font-mono text-[11px]">
                                                 • {item.order?.created_at ? new Date(item.order.created_at).toLocaleDateString() : 'Today'}
                                             </span>
                                         </div>
@@ -297,10 +326,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                         />
                                         <div className="space-y-1">
                                             <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.product?.name}</h4>
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-slate-500 font-mono">
                                                 Quantity: {item.quantity} × {formatPrice(item.unit_price)}
                                             </p>
-                                            <p className="text-xs font-bold text-emerald-600">
+                                            <p className="text-xs font-bold text-slate-900 font-mono">
                                                 Gross Payout: {formatPrice(item.subtotal)}
                                             </p>
                                         </div>
@@ -312,9 +341,9 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                         <button
                                             type="button"
                                             onClick={() => setSelectedOrderForWaybill(item)}
-                                            className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                                            className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-mono"
                                         >
-                                            <Printer className="w-3.5 h-3.5 text-[#E00D42]" />
+                                            <Printer className="w-3.5 h-3.5 text-slate-500" />
                                             <span>Waybill Label</span>
                                         </button>
 
@@ -323,7 +352,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                             <button
                                                 type="button"
                                                 onClick={() => setOrderToAcceptAndPack(item)}
-                                                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                                className="px-4 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono uppercase text-xs"
                                             >
                                                 <Box className="w-3.5 h-3.5" />
                                                 <span>Pack Order</span>
@@ -335,7 +364,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                             <button
                                                 type="button"
                                                 onClick={() => handleSchedulePickup(item.order_id)}
-                                                className="px-4 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono uppercase text-xs"
                                             >
                                                 <Truck className="w-3.5 h-3.5" />
                                                 <span>Schedule Courier Pickup</span>
@@ -343,15 +372,15 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                                         )}
 
                                         {item.order?.status === 'ready_for_pickup' && (
-                                            <span className="px-3.5 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold flex items-center gap-1.5">
-                                                <Clock className="w-3.5 h-3.5" />
+                                            <span className="px-3.5 py-2.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-200 font-medium flex items-center gap-1.5 font-mono text-xs">
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
                                                 <span>Courier Collection Pending</span>
                                             </span>
                                         )}
 
                                         {item.order?.status === 'shipped' && (
-                                            <span className="px-3.5 py-2.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-semibold flex items-center gap-1.5">
-                                                <Truck className="w-3.5 h-3.5" />
+                                            <span className="px-3.5 py-2.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-200 font-medium flex items-center gap-1.5 font-mono text-xs">
+                                                <Truck className="w-3.5 h-3.5 text-slate-400" />
                                                 <span>Out with Courier</span>
                                             </span>
                                         )}
@@ -372,7 +401,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
                         {/* Modal Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div>
-                                <div className="flex items-center gap-2 text-xs font-semibold text-amber-600">
+                                <div className="flex items-center gap-2 text-xs font-bold text-[#E00D42] font-mono">
                                     <Box className="w-4 h-4" />
                                     <span>Accept Order Step</span>
                                 </div>
