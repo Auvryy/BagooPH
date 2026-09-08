@@ -9,8 +9,9 @@ interface Props {
     title?: string;
     subtitle?: string;
     headerBadge?: string;
-    maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
     showMarketplaceLink?: boolean;
+    noCard?: boolean;
 }
 
 export default function GuestLayout({ 
@@ -20,12 +21,17 @@ export default function GuestLayout({
     headerBadge, 
     maxWidth = 'md',
     showMarketplaceLink = true,
+    noCard = false,
 }: PropsWithChildren<Props>) {
     const maxWidthClass = {
         sm: 'max-w-sm',
         md: 'max-w-md',
         lg: 'max-w-lg',
         xl: 'max-w-xl',
+        '2xl': 'max-w-2xl',
+        '3xl': 'max-w-3xl',
+        '4xl': 'max-w-4xl',
+        '5xl': 'max-w-5xl',
     }[maxWidth];
     return (
         <div className="relative min-h-screen bg-[#ECEAE5] text-[#111111] font-sans selection:bg-[#E00D42] selection:text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-hidden">
@@ -67,33 +73,37 @@ export default function GuestLayout({
 
             {/* Main Auth Container */}
             <main className={`relative z-20 w-full ${maxWidthClass} mx-auto my-auto py-6`}>
-                <div className="bg-white rounded-2xl border border-black/15 p-6 sm:p-8 shadow-xl relative overflow-hidden">
-                    {/* Top Red Accent Line */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#E00D42]"></div>
+                {noCard ? (
+                    children
+                ) : (
+                    <div className="bg-white rounded-2xl border border-black/15 p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                        {/* Top Red Accent Line */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-[#E00D42]"></div>
 
-                    {/* Header Title Section */}
-                    {(title || headerBadge) && (
-                        <div className="mb-6 pb-4 border-b border-black/10">
-                            {headerBadge && (
-                                <span className="inline-block px-2 py-0.5 mb-2 rounded bg-[#E00D42]/10 text-[#E00D42] font-mono text-[9px] font-bold uppercase tracking-widest border border-[#E00D42]/20">
-                                    {headerBadge}
-                                </span>
-                            )}
-                            {title && (
-                                <h1 className="text-2xl font-black tracking-tight text-black font-sans">
-                                    {title}
-                                </h1>
-                            )}
-                            {subtitle && (
-                                <p className="text-xs text-black/60 font-mono mt-1 uppercase">
-                                    {subtitle}
-                                </p>
-                            )}
-                        </div>
-                    )}
+                        {/* Header Title Section */}
+                        {(title || headerBadge) && (
+                            <div className="mb-6 pb-4 border-b border-black/10">
+                                {headerBadge && (
+                                    <span className="inline-block px-2 py-0.5 mb-2 rounded bg-[#E00D42]/10 text-[#E00D42] font-mono text-[9px] font-bold uppercase tracking-widest border border-[#E00D42]/20">
+                                        {headerBadge}
+                                    </span>
+                                )}
+                                {title && (
+                                    <h1 className="text-2xl font-black tracking-tight text-black font-sans">
+                                        {title}
+                                    </h1>
+                                )}
+                                {subtitle && (
+                                    <p className="text-xs text-black/60 font-mono mt-1 uppercase">
+                                        {subtitle}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
-                    {children}
-                </div>
+                        {children}
+                    </div>
+                )}
             </main>
 
             {/* Bottom Minimal Footer */}
