@@ -79,9 +79,6 @@ class BuyerProfileController extends Controller
             $rules['avatar'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
         } elseif ($request->file('avatar_file') !== null) {
             $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
-        } else {
-            $rules['avatar'] = 'nullable|string|max:1000';
-            $rules['avatar_preset'] = 'nullable|string|max:1000';
         }
 
         $validated = $request->validate($rules);
@@ -108,17 +105,6 @@ class BuyerProfileController extends Controller
 
                 $path = $uploadedFile->store('avatars', 'public');
                 $user->avatar = '/storage/' . $path;
-            } elseif ($request->filled('avatar_preset') || $request->filled('avatar')) {
-                $avatarPreset = trim((string) ($request->input('avatar_preset') ?? $request->input('avatar')));
-                if ($avatarPreset !== '' && $avatarPreset !== $user->avatar) {
-                    if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-                        $oldPath = str_replace('/storage/', '', $user->avatar);
-                        if (Storage::disk('public')->exists($oldPath)) {
-                            Storage::disk('public')->delete($oldPath);
-                        }
-                    }
-                    $user->avatar = $avatarPreset;
-                }
             }
         }
 

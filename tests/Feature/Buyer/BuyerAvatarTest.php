@@ -70,48 +70,6 @@ class BuyerAvatarTest extends TestCase
         Storage::disk('public')->assertExists($storedPath);
     }
 
-    public function test_authenticated_buyer_can_select_curated_avatar_preset_string(): void
-    {
-        $buyer = User::factory()->create([
-            'role' => 'buyer',
-            'status' => 'active',
-            'avatar' => null,
-        ]);
-
-        $presetUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
-
-        $response = $this->actingAs($buyer)->post(route('buyer.profile.update'), [
-            'name' => 'Preset Enthusiast',
-            'avatar' => $presetUrl,
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
-
-        $buyer->refresh();
-        $this->assertEquals($presetUrl, $buyer->avatar);
-    }
-
-    public function test_authenticated_buyer_can_select_preset_using_avatar_preset_key(): void
-    {
-        $buyer = User::factory()->create([
-            'role' => 'buyer',
-            'status' => 'active',
-            'avatar' => null,
-        ]);
-
-        $presetUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80';
-
-        $response = $this->actingAs($buyer)->post(route('buyer.profile.update'), [
-            'name' => 'Preset Field User',
-            'avatar_preset' => $presetUrl,
-        ]);
-
-        $response->assertRedirect();
-        $buyer->refresh();
-        $this->assertEquals($presetUrl, $buyer->avatar);
-    }
-
     public function test_old_custom_avatar_is_deleted_when_replaced(): void
     {
         Storage::fake('public');

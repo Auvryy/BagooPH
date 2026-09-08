@@ -61,15 +61,6 @@ interface Props {
 
 type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
 
-const AVATAR_PRESETS = [
-    { id: 'preset-1', name: 'Nomad', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' },
-    { id: 'preset-2', name: 'Operator', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
-    { id: 'preset-3', name: 'Explorer', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80' },
-    { id: 'preset-4', name: 'Artisan', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80' },
-    { id: 'preset-5', name: 'Tactical', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80' },
-    { id: 'preset-6', name: 'Courier', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80' },
-];
-
 interface ProfileFormData {
     name: string;
     phone: string;
@@ -97,7 +88,6 @@ export default function BuyerProfile({
     const [topupSuccess, setTopupSuccess] = useState(false);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
-    const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
     // Sync addresses when initialAddresses prop updates
@@ -172,25 +162,10 @@ export default function BuyerProfile({
             avatar: file,
             remove_avatar: false,
         }));
-        setSelectedPreset(null);
-    };
-
-    const handleSelectPreset = (presetUrl: string) => {
-        setAvatarPreview(presetUrl);
-        setSelectedPreset(presetUrl);
-        setData(prev => ({
-            ...prev,
-            avatar: presetUrl,
-            remove_avatar: false,
-        }));
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
     };
 
     const handleRemoveAvatar = () => {
         setAvatarPreview(null);
-        setSelectedPreset(null);
         setData(prev => ({
             ...prev,
             avatar: null,
@@ -684,48 +659,6 @@ export default function BuyerProfile({
                                                 </div>
                                             </div>
 
-                                            {/* Curated Avatar Presets */}
-                                            <div className="pt-3 border-t border-slate-200/60 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[11px] font-bold text-slate-700 font-mono uppercase tracking-wider">
-                                                        Or choose an avatar preset
-                                                    </span>
-                                                    {selectedPreset && (
-                                                        <span className="text-[10px] text-emerald-600 font-mono font-bold">
-                                                            Preset selected
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
-                                                    {AVATAR_PRESETS.map((preset) => {
-                                                        const isSelected = selectedPreset === preset.url || (avatarPreview === preset.url && !selectedPreset);
-                                                        return (
-                                                            <button
-                                                                key={preset.id}
-                                                                type="button"
-                                                                onClick={() => handleSelectPreset(preset.url)}
-                                                                className={`relative rounded-xl p-0.5 transition-all shrink-0 cursor-pointer ${
-                                                                    isSelected
-                                                                        ? 'ring-2 ring-[#E00D42] ring-offset-2 scale-105'
-                                                                        : 'hover:scale-105 opacity-80 hover:opacity-100'
-                                                                }`}
-                                                                title={preset.name}
-                                                            >
-                                                                <img
-                                                                    src={preset.url}
-                                                                    alt={preset.name}
-                                                                    className="w-11 h-11 rounded-lg object-cover border border-slate-200 shadow-2xs"
-                                                                />
-                                                                {isSelected && (
-                                                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E00D42] text-white rounded-full flex items-center justify-center text-[9px] shadow-xs">
-                                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                                                    </span>
-                                                                )}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
