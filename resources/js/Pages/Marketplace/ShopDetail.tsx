@@ -143,24 +143,24 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
             hideAuthButtons={canManageStore}
             topBanner={
                 isPreviewMode ? (
-                    <div className="bg-slate-950 text-white border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-2.5 shadow-md sticky top-0 z-40">
+                    <div className="bg-white/95 backdrop-blur-xs text-slate-800 border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-2.5 shadow-2xs sticky top-0 z-40">
                         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 font-mono text-xs">
                             <div className="flex items-center gap-3">
                                 <span className="w-2 h-2 rounded-full bg-[#E00D42] shrink-0 animate-pulse"></span>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <p className="font-bold uppercase tracking-wider text-slate-100">Merchant Storefront Preview</p>
-                                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold">STORE VIEW</span>
+                                        <p className="font-bold uppercase tracking-wider text-slate-900">Merchant Storefront Preview</p>
+                                        <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">STORE VIEW</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-400 font-sans hidden sm:block">Viewing public buyer storefront layout.</p>
+                                    <p className="text-[11px] text-slate-500 font-sans hidden sm:block">Viewing public buyer storefront layout.</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 <a
                                     href={getDomainUrl('seller', '/dashboard')}
-                                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border border-slate-700 font-mono"
+                                    className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border border-slate-300 font-mono shadow-2xs"
                                 >
-                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
                                     <span>Back to Cockpit</span>
                                 </a>
                             </div>
