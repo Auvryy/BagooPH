@@ -36,9 +36,18 @@ class CartController extends Controller
         $cart = $this->getCart($request);
         $cart->load(['items.product.shop']);
 
+        // Default sort: Most recent product added/updated is the first row
+        $items = $cart->items->sort(function ($a, $b) {
+            $timeDiff = ($b->updated_at?->timestamp ?? 0) <=> ($a->updated_at?->timestamp ?? 0);
+            if ($timeDiff !== 0) {
+                return $timeDiff;
+            }
+            return $b->id <=> $a->id;
+        })->values();
+
         return Inertia::render('Cart/Index', [
             'cart' => $cart,
-            'items' => $cart->items,
+            'items' => $items,
             'total' => $cart->total,
         ]);
     }

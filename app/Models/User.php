@@ -117,4 +117,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(Review::class, 'buyer_id');
     }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    public function defaultAddress(): ?Address
+    {
+        return $this->addresses()->where('is_default', true)->first()
+            ?? $this->addresses()->oldest()->first();
+    }
 }

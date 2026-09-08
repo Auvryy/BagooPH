@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,30 +18,22 @@ class BuyerProfileController extends Controller
     {
         $user = $request->user();
 
-        $savedAddresses = [
-            [
-                'id' => 1,
-                'is_default' => true,
+        // Migrate legacy profile address if user has no saved addresses
+        if ($user->addresses()->count() === 0 && $user->address && $user->city) {
+            $user->addresses()->create([
                 'recipient_name' => $user->name,
                 'phone' => $user->phone ?? '+63 912 345 6789',
                 'province' => 'Metro Manila',
-                'city' => 'Taguig City',
-                'barangay' => 'Fort Bonifacio (BGC)',
-                'street' => 'Unit 1204, High Street Residences, 28th St.',
+                'city' => $user->city,
+                'barangay' => null,
+                'street' => $user->address,
+                'postal_code' => $user->postal_code,
                 'type' => 'Home',
-            ],
-            [
-                'id' => 2,
-                'is_default' => false,
-                'recipient_name' => $user->name,
-                'phone' => $user->phone ?? '+63 912 345 6789',
-                'province' => 'Metro Manila',
-                'city' => 'Makati City',
-                'barangay' => 'Bel-Air',
-                'street' => '8th Floor, Ayala Tower One, Ayala Ave.',
-                'type' => 'Office / Work',
-            ],
-        ];
+                'is_default' => true,
+            ]);
+        }
+
+        $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
 
         $wallet = [
             'balance' => 5000.00,
@@ -61,7 +55,7 @@ class BuyerProfileController extends Controller
 
         return Inertia::render('Buyer/Profile', [
             'user' => $user,
-            'addresses' => $savedAddresses,
+            'addresses' => $addresses,
             'wallet' => $wallet,
             'orders' => $orders,
             'ordersCount' => $orders->count(),
@@ -73,15 +67,126 @@ class BuyerProfileController extends Controller
     {
         $user = $request->user();
 
-        $validated = $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:30',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string|in:male,female,other',
-        ]);
+            'remove_avatar' => 'nullable|boolean',
+        ];
 
-        $user->update($validated);
+        if ($request->file('avatar') !== null) {
+            $rules['avatar'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        } elseif ($request->file('avatar_file') !== null) {
+            $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $user->avatar);
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+            $user->avatar = null;
+        } else {
+            $uploadedFile = $request->file('avatar') ?? $request->file('avatar_file');
+
+            if ($uploadedFile) {
+                // If replacing an existing custom avatar stored in public storage, delete the old file
+                if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $user->avatar);
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                }
+
+                $path = $uploadedFile->store('avatars', 'public');
+                $user->avatar = '/storage/' . $path;
+            }
+        }
+
+        $user->name = $validated['name'];
+        $user->phone = $validated['phone'] ?? null;
+        $user->save();
 
         return back()->with('success', 'Profile updated successfully.');
+    }
+
+    public function storeAddress(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'recipient_name' => 'nullable|string|max:255',
+            'phone' => 'required|string|max:50',
+            'province' => 'nullable|string|max:100',
+            'city' => 'required|string|max:100',
+            'barangay' => 'nullable|string|max:100',
+            'street' => 'required|string|max:255',
+            'postal_code' => 'nullable|string|max:20',
+            'type' => 'nullable|string|max:50',
+            'is_default' => 'nullable|boolean',
+        ]);
+
+        $hasExistingAddresses = $user->addresses()->exists();
+        $isDefault = $request->boolean('is_default');
+
+        // First address created automatically becomes default
+        if (! $hasExistingAddresses || $isDefault) {
+            $user->addresses()->update(['is_default' => false]);
+            $isDefault = true;
+        }
+
+        $user->addresses()->create([
+            'recipient_name' => $user->name, // Strictly locked to verified account name
+            'phone' => $validated['phone'],
+            'province' => $validated['province'] ?? null,
+            'city' => $validated['city'],
+            'barangay' => $validated['barangay'] ?? null,
+            'street' => $validated['street'],
+            'postal_code' => $validated['postal_code'] ?? null,
+            'type' => $validated['type'] ?? 'Home',
+            'is_default' => $isDefault,
+        ]);
+
+        return back()->with('success', 'Address added successfully.');
+    }
+
+    public function setDefaultAddress(Request $request, Address $address): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($address->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $user->addresses()->update(['is_default' => false]);
+        $address->update(['is_default' => true]);
+
+        return back()->with('success', 'Default address updated.');
+    }
+
+    public function destroyAddress(Request $request, Address $address): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($address->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $wasDefault = $address->is_default;
+        $address->delete();
+
+        if ($wasDefault) {
+            $oldest = $user->addresses()->oldest()->first();
+            if ($oldest) {
+                $oldest->update(['is_default' => true]);
+            }
+        }
+
+        return back()->with('success', 'Address deleted successfully.');
     }
 }
