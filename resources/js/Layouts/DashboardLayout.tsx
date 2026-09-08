@@ -381,7 +381,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                                         {role === 'seller' && user?.shop && (
                                             <a
-                                                href={getDomainUrl('buyer', `/shop/${user.shop.slug}`)}
+                                                href={route('seller.preview')}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"

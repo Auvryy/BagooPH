@@ -51,6 +51,7 @@ class SellerStorefrontBrandingTest extends TestCase
         $guestResponse->assertInertia(fn ($page) => $page
             ->component('Marketplace/ShopDetail')
             ->where('isOwner', false)
+            ->where('isPreview', false)
         );
 
         $buyerResponse = $this->actingAs($buyer)->get(route('shop.show', $shop->slug));
@@ -58,6 +59,48 @@ class SellerStorefrontBrandingTest extends TestCase
         $buyerResponse->assertInertia(fn ($page) => $page
             ->component('Marketplace/ShopDetail')
             ->where('isOwner', false)
+            ->where('isPreview', false)
+        );
+    }
+
+    public function test_seller_can_access_dedicated_preview_route(): void
+    {
+        $seller = User::factory()->create(['role' => 'seller']);
+        $shop = Shop::create([
+            'user_id' => $seller->id,
+            'name' => 'Artisan Craft Hub',
+            'slug' => 'artisan-craft-hub',
+            'description' => 'Original handcrafted items',
+            'is_approved' => true,
+        ]);
+
+        $response = $this->actingAs($seller)->get(route('seller.preview'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Marketplace/ShopDetail')
+            ->where('isOwner', true)
+            ->where('isPreview', true)
+            ->where('shop.name', 'Artisan Craft Hub')
+        );
+    }
+
+    public function test_accessing_shop_with_preview_query_parameter_enables_preview_flag(): void
+    {
+        $shop = Shop::create([
+            'user_id' => User::factory()->create(['role' => 'seller'])->id,
+            'name' => 'Artisan Craft Hub',
+            'slug' => 'artisan-craft-hub',
+            'description' => 'Original handcrafted items',
+            'is_approved' => true,
+        ]);
+
+        $response = $this->get(route('shop.show', ['slug' => $shop->slug, 'preview' => 'true']));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Marketplace/ShopDetail')
+            ->where('isPreview', true)
         );
     }
 

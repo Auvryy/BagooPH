@@ -172,7 +172,7 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    public function shop(string $slug): Response
+    public function shop(Request $request, string $slug): Response
     {
         $shop = Shop::with('user')
             ->withCount(['products' => function ($q) {
@@ -188,11 +188,13 @@ class MarketplaceController extends Controller
 
         $currentUser = auth()->user();
         $isOwner = $currentUser && ($currentUser->id === $shop->user_id || $currentUser->role === 'admin');
+        $isPreview = $request->has('preview') || (bool) $isOwner;
 
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
             'products' => $products,
             'isOwner' => (bool) $isOwner,
+            'isPreview' => (bool) $isPreview,
         ]);
     }
 

@@ -78,6 +78,7 @@ $registerSellerRoutes = function () {
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
         Route::get('/profile', [SellerDashboardController::class, 'profile']);
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
+        Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', fn() => redirect('/dashboard'));
         Route::get('/seller/orders', fn() => redirect('/orders'));
@@ -319,6 +320,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
     Route::get('/profile', [SellerDashboardController::class, 'profile'])->name('profile');
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
 /*

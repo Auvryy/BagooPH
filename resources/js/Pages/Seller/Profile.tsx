@@ -114,7 +114,7 @@ export default function SellerProfile({ user, shop }: Props) {
                     </Link>
                     {shop?.slug && (
                         <a
-                            href={route('shop.show', shop.slug)}
+                            href={route('seller.preview')}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xl transition shadow-xs"

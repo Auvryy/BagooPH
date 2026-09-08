@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { PaginatedData, Product, Shop } from '@/types';
+import { getDomainUrl } from '@/utils/domain';
 import { 
     Store, 
     Star, 
@@ -38,11 +39,16 @@ interface Props {
     };
     products: PaginatedData<Product>;
     isOwner?: boolean;
+    isPreview?: boolean;
 }
 
-export default function ShopDetail({ shop, products, isOwner = false }: Props) {
-    const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'true';
-    const canManageStore = isOwner || isPreview;
+export default function ShopDetail({ shop, products, isOwner = false, isPreview = false }: Props) {
+    const isQueryPreview = typeof window !== 'undefined' && (
+        new URLSearchParams(window.location.search).has('preview') ||
+        window.location.pathname.includes('/preview')
+    );
+    const isPreviewMode = Boolean(isPreview || isOwner || isQueryPreview);
+    const canManageStore = Boolean(isOwner || isPreviewMode);
 
     const bannerFileRef = useRef<HTMLInputElement | null>(null);
     const logoFileRef = useRef<HTMLInputElement | null>(null);
@@ -132,14 +138,49 @@ export default function ShopDetail({ shop, products, isOwner = false }: Props) {
     });
 
     return (
-        <BuyerLayout hideAuthButtons={canManageStore}>
+        <BuyerLayout hideHeader={isPreviewMode} hideAuthButtons={canManageStore}>
             <Head title={`${shop.name} — Verified Official Storefront`} />
+
+            {/* Top Merchant Preview Bar: rendered at the very top when header above is hidden */}
+            {isPreviewMode && (
+                <div className="bg-slate-950 text-white border-b border-slate-800 -mt-6 -mx-4 sm:-mx-6 lg:-mx-8 mb-6 px-4 sm:px-6 lg:px-8 py-3 shadow-md sticky top-0 z-40">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs">
+                        <div className="flex items-center gap-3">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42] shrink-0 animate-pulse"></span>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold uppercase tracking-wider text-slate-100">Merchant Storefront Preview</p>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold">STORE VIEW</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-sans">Viewing public buyer storefront layout. Marketplace header and sign-in removed.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setEditModalOpen(true)}
+                                className="px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-bold uppercase text-[11px] transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                            >
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>Edit Store Cover, Logo & Bio</span>
+                            </button>
+                            <a
+                                href={getDomainUrl('seller', '/dashboard')}
+                                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border border-slate-700 font-mono"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <span>Back to Cockpit</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-6 max-w-7xl mx-auto font-sans">
                 
-                {/* Back Link & Merchant Preview Bar */}
-                <div className="space-y-3 pb-2">
-                    <div className="flex items-center justify-between">
+                {/* Back Link: only shown when browsing marketplace as normal buyer */}
+                {!isPreviewMode && (
+                    <div className="pb-2">
                         <Link
                             href={route('buyer.index')}
                             className="text-xs font-mono text-slate-500 hover:text-[#E00D42] flex items-center gap-1 uppercase font-bold transition"
@@ -148,36 +189,7 @@ export default function ShopDetail({ shop, products, isOwner = false }: Props) {
                             <span>Return to Marketplace</span>
                         </Link>
                     </div>
-
-                    {canManageStore && (
-                        <div className="bg-slate-900 text-white px-4 sm:px-6 py-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs shadow-md border border-slate-800 animate-fade-in">
-                            <div className="flex items-center gap-2.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
-                                <div>
-                                    <p className="font-bold uppercase tracking-wider text-slate-100">Merchant Storefront Preview</p>
-                                    <p className="text-[11px] text-slate-400 font-sans">Viewing public storefront as seen by buyers. Guest auth controls are hidden.</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditModalOpen(true)}
-                                    className="px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-bold uppercase text-[11px] transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                                >
-                                    <Camera className="w-3.5 h-3.5" />
-                                    <span>Edit Store Cover, Logo & Bio</span>
-                                </button>
-                                <a
-                                    href={route('seller.dashboard')}
-                                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5"
-                                >
-                                    <ArrowLeft className="w-3.5 h-3.5" />
-                                    <span>Back to Cockpit</span>
-                                </a>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                )}
 
                 {/* 1. MASTER FLAGSHIP STOREFRONT PROFILE CARD */}
                 <div className="bg-white rounded-md border border-slate-300 shadow-xs overflow-hidden relative">

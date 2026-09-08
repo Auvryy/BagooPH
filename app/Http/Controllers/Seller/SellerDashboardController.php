@@ -275,4 +275,44 @@ class SellerDashboardController extends Controller
 
         return back()->with('success', 'Profile updated successfully.');
     }
+
+    public function previewStorefront(Request $request): Response
+    {
+        $user = $request->user();
+        $shop = Shop::with('user')
+            ->withCount(['products' => function ($q) {
+                $q->where('status', 'active');
+            }])
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$shop) {
+            $shop = Shop::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'name' => $user->name . "'s Store",
+                    'slug' => Str::slug($user->name . '-store-' . $user->id),
+                    'description' => 'Welcome to our official verified storefront on BagooPH.',
+                    'phone' => $user->phone ?? '+63 912 345 6789',
+                    'address' => $user->address ?? 'Warehouse 4B, Industrial Park',
+                    'city' => $user->city ?? 'Metro Manila',
+                    'status' => 'active',
+                    'rating' => 4.95,
+                ]
+            );
+        }
+
+        $products = Product::where('shop_id', $shop->id)
+            ->where('status', 'active')
+            ->with('images')
+            ->latest()
+            ->paginate(12);
+
+        return Inertia::render('Marketplace/ShopDetail', [
+            'shop' => $shop,
+            'products' => $products,
+            'isOwner' => true,
+            'isPreview' => true,
+        ]);
+    }
 }
