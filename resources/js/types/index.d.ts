@@ -131,6 +131,8 @@ export interface CartItem {
     size?: string | null;
     sku_snapshot?: string | null;
     product: Product;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Cart {

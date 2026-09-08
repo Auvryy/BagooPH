@@ -27,9 +27,32 @@ class CheckoutController extends Controller
             return redirect()->route('buyer.cart')->with('error', 'Your shopping bag is empty.');
         }
 
+        // Determine which items to checkout:
+        if ($request->filled('items')) {
+            $rawIds = is_array($request->input('items'))
+                ? $request->input('items')
+                : explode(',', (string) $request->input('items'));
+            $itemIds = array_filter(array_map('intval', $rawIds));
+            $checkoutItems = $cart->items->whereIn('id', $itemIds)->values();
+        } else {
+            // Default to the most recent item added when arriving at checkout without explicit items parameter
+            $mostRecentItem = $cart->items->sort(function ($a, $b) {
+                $timeDiff = ($b->updated_at?->timestamp ?? 0) <=> ($a->updated_at?->timestamp ?? 0);
+                if ($timeDiff !== 0) {
+                    return $timeDiff;
+                }
+                return $b->id <=> $a->id;
+            })->first();
+            $checkoutItems = $mostRecentItem ? collect([$mostRecentItem]) : $cart->items;
+        }
+
+        if ($checkoutItems->isEmpty()) {
+            return redirect()->route('buyer.cart')->with('error', 'Please select at least one item from your shopping bag to checkout.');
+        }
+
         // Calculate subtotal directly from latest product database prices
         $subtotal = 0;
-        foreach ($cart->items as $item) {
+        foreach ($checkoutItems as $item) {
             $currentProduct = Product::find($item->product_id);
             if (! $currentProduct || $currentProduct->status !== 'active') {
                 return redirect()->route('buyer.cart')->with('error', 'One or more items in your bag are currently unavailable.');
@@ -70,7 +93,7 @@ class CheckoutController extends Controller
 
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
-            'items' => $cart->items,
+            'items' => $checkoutItems,
             'subtotal' => $subtotal,
             'shippingFee' => $shippingFee,
             'total' => $total,
@@ -136,7 +159,21 @@ class CheckoutController extends Controller
             'notes' => 'nullable|string|max:500',
             'voucher_code' => 'nullable|string|max:50',
             'save_address' => 'nullable|boolean',
+            'item_ids' => 'nullable',
         ]);
+
+        $rawItemIds = $request->input('item_ids');
+        if (! empty($rawItemIds)) {
+            $itemIds = is_array($rawItemIds) ? $rawItemIds : explode(',', (string) $rawItemIds);
+            $itemIds = array_filter(array_map('intval', $itemIds));
+            $checkoutItems = $cart->items()->whereIn('id', $itemIds)->with(['product.shop'])->get();
+        } else {
+            $checkoutItems = $cart->items()->with(['product.shop'])->get();
+        }
+
+        if ($checkoutItems->isEmpty()) {
+            return redirect()->route('buyer.cart')->with('error', 'No items selected for checkout.');
+        }
 
         if ($request->boolean('save_address') && ! empty($validated['shipping_address'])) {
             $hasExisting = $user->addresses()->exists();
@@ -152,10 +189,10 @@ class CheckoutController extends Controller
         }
 
         try {
-            $order = DB::transaction(function () use ($user, $cart, $validated) {
+            $order = DB::transaction(function () use ($user, $cart, $checkoutItems, $validated) {
                 // Recompute exact total from database to prevent price manipulation
                 $subtotal = 0;
-                foreach ($cart->items as $item) {
+                foreach ($checkoutItems as $item) {
                     $product = Product::where('id', $item->product_id)->lockForUpdate()->firstOrFail();
                     
                     if ($product->status !== 'active') {
@@ -203,7 +240,7 @@ class CheckoutController extends Controller
                 ]);
 
                 $firstShop = null;
-                foreach ($cart->items as $item) {
+                foreach ($checkoutItems as $item) {
                     $product = Product::findOrFail($item->product_id);
                     
                     OrderItem::create([
@@ -241,8 +278,9 @@ class CheckoutController extends Controller
                     'estimated_delivery_at' => now()->addDays(3),
                 ]);
 
-                // Clear cart items safely
-                $cart->items()->delete();
+                // Clear only the purchased items from the shopping bag
+                $checkoutItemIds = $checkoutItems->pluck('id')->all();
+                $cart->items()->whereIn('id', $checkoutItemIds)->delete();
 
                 return $order;
             });

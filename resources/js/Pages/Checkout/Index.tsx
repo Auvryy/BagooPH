@@ -115,6 +115,7 @@ export default function CheckoutIndex({
     );
 
     const { data, setData, post, processing, errors } = useForm({
+        item_ids: items.map(i => i.id),
         recipient_name: user.name || initialAddress?.recipient_name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress ? formatAddressString(initialAddress) : (user.address || ''),

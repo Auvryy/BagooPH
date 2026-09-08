@@ -29,12 +29,46 @@ export default function CartIndex({ cart, items, total }: Props) {
     const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
     const [voucherError, setVoucherError] = useState<string | null>(null);
 
+    // Determine the most recently added or updated product in the bag
+    const getMostRecentItemId = (itemList: CartItem[]): number | null => {
+        if (!itemList || itemList.length === 0) return null;
+        const sorted = [...itemList].sort((a, b) => {
+            const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+            if (timeB !== timeA) return timeB - timeA;
+            return b.id - a.id;
+        });
+        return sorted[0]?.id ?? null;
+    };
+
+    const mostRecentId = getMostRecentItemId(items);
+
+    // Default to only checking the recent product added when opening the cart
+    const [selectedIds, setSelectedIds] = useState<number[]>(() => {
+        return mostRecentId ? [mostRecentId] : [];
+    });
+
+    const toggleItemSelection = (id: number) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === items.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(items.map(i => i.id));
+        }
+    };
+
     const updateQuantity = (item: CartItem, newQty: number) => {
         if (newQty < 1) return;
         router.patch(route('cart.update', item.id), { quantity: newQty }, { preserveScroll: true });
     };
 
     const removeItem = (item: CartItem) => {
+        setSelectedIds(prev => prev.filter(id => id !== item.id));
         router.delete(route('cart.destroy', item.id), { preserveScroll: true });
     };
 
@@ -55,8 +89,9 @@ export default function CartIndex({ cart, items, total }: Props) {
         }
     };
 
-    const subtotal = Number(total || 0);
-    const shipping = subtotal > 1500 || voucherCode.toUpperCase() === 'FREESHIP' ? 0 : (subtotal > 0 ? 50 : 0);
+    const selectedItems = items.filter(item => selectedIds.includes(item.id));
+    const subtotal = selectedItems.reduce((sum, item) => sum + (Number(item.unit_price) * item.quantity), 0);
+    const shipping = selectedItems.length === 0 ? 0 : (subtotal > 1500 || voucherCode.toUpperCase() === 'FREESHIP' ? 0 : (subtotal > 0 ? 50 : 0));
     const discount = appliedDiscount;
     const grandTotal = Math.max(0, subtotal + shipping - discount);
 
@@ -117,29 +152,53 @@ export default function CartIndex({ cart, items, total }: Props) {
                         {/* Cart Items List (Grouped by Shop) */}
                         <div className="lg:col-span-8 space-y-4">
                             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                                <div className="flex items-center gap-2 pb-3 border-b border-slate-100 text-xs font-bold text-slate-800">
-                                    <Store className="w-4 h-4 text-[#E00D42]" />
-                                    <span>Bagoo Flagship & Verified Merchants</span>
+                                <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
+                                    <label className="flex items-center gap-2.5 cursor-pointer select-none font-bold text-slate-800">
+                                        <input
+                                            type="checkbox"
+                                            checked={items.length > 0 && selectedIds.length === items.length}
+                                            onChange={toggleSelectAll}
+                                            className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42]"
+                                        />
+                                        <span>Select All ({selectedIds.length}/{items.length} items)</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <Store className="w-4 h-4 text-[#E00D42]" />
+                                        <span className="font-semibold text-slate-600">Bagoo Verified Merchants</span>
+                                    </div>
                                 </div>
 
                                 <div className="divide-y divide-slate-100">
                                     {items.map((item) => (
                                         <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                             
-                                            {/* Product Info */}
-                                            <div className="flex items-center gap-4 min-w-0">
+                                            {/* Product Info with Checkbox */}
+                                            <div className="flex items-center gap-3.5 min-w-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(item.id)}
+                                                    onChange={() => toggleItemSelection(item.id)}
+                                                    className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42] shrink-0"
+                                                />
                                                 <img
                                                     src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
                                                     alt={item.product?.name}
                                                     className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                                                 />
                                                 <div className="truncate space-y-1">
-                                                    <Link 
-                                                        href={route('buyer.products.show', item.product?.slug || '')}
-                                                        className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition truncate block"
-                                                    >
-                                                        {item.product?.name}
-                                                    </Link>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link 
+                                                            href={route('buyer.products.show', item.product?.slug || '')}
+                                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition truncate block"
+                                                        >
+                                                            {item.product?.name}
+                                                        </Link>
+                                                        {item.id === mostRecentId && (
+                                                            <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-mono">
+                                                                Recent
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="flex items-center gap-2 text-xs font-mono">
                                                         <span className="font-black text-[#E00D42]">
                                                             {formatPrice(item.unit_price)}
@@ -235,7 +294,7 @@ export default function CartIndex({ cart, items, total }: Props) {
 
                                 <div className="space-y-2 text-slate-600">
                                     <div className="flex justify-between">
-                                        <span>Merchandise Subtotal:</span>
+                                        <span>Merchandise Subtotal ({selectedItems.length} selected):</span>
                                         <span className="font-bold text-slate-900">{formatPrice(subtotal)}</span>
                                     </div>
 
@@ -261,13 +320,23 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     </span>
                                 </div>
 
-                                <Link
-                                    href={route('checkout.index')}
-                                    className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 text-xs"
-                                >
-                                    <span>Proceed to Checkout</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                </Link>
+                                {selectedIds.length === 0 ? (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="w-full py-3 bg-slate-100 border border-slate-200 text-slate-400 font-bold rounded-xl uppercase tracking-wider text-xs cursor-not-allowed text-center select-none"
+                                    >
+                                        Select Items to Checkout
+                                    </button>
+                                ) : (
+                                    <Link
+                                        href={route('checkout.index', { items: selectedIds.join(',') })}
+                                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 text-xs"
+                                    >
+                                        <span>Proceed to Checkout ({selectedIds.length})</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                )}
 
                                 <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 pt-2">
                                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
