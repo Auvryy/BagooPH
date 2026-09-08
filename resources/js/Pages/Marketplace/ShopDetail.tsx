@@ -138,43 +138,38 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
     });
 
     return (
-        <BuyerLayout hideHeader={isPreviewMode} hideAuthButtons={canManageStore}>
-            <Head title={`${shop.name} — Verified Official Storefront`} />
-
-            {/* Top Merchant Preview Bar: rendered at the very top when header above is hidden */}
-            {isPreviewMode && (
-                <div className="bg-slate-950 text-white border-b border-slate-800 -mt-6 -mx-4 sm:-mx-6 lg:-mx-8 mb-6 px-4 sm:px-6 lg:px-8 py-3 shadow-md sticky top-0 z-40">
-                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs">
-                        <div className="flex items-center gap-3">
-                            <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42] shrink-0 animate-pulse"></span>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <p className="font-bold uppercase tracking-wider text-slate-100">Merchant Storefront Preview</p>
-                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold">STORE VIEW</span>
+        <BuyerLayout 
+            hideHeader={isPreviewMode} 
+            hideAuthButtons={canManageStore}
+            topBanner={
+                isPreviewMode ? (
+                    <div className="bg-slate-950 text-white border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-2.5 shadow-md sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 font-mono text-xs">
+                            <div className="flex items-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-[#E00D42] shrink-0 animate-pulse"></span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold uppercase tracking-wider text-slate-100">Merchant Storefront Preview</p>
+                                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold">STORE VIEW</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 font-sans hidden sm:block">Viewing public buyer storefront layout.</p>
                                 </div>
-                                <p className="text-[11px] text-slate-400 font-sans">Viewing public buyer storefront layout. Marketplace header and sign-in removed.</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <a
+                                    href={getDomainUrl('seller', '/dashboard')}
+                                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border border-slate-700 font-mono"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    <span>Back to Cockpit</span>
+                                </a>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setEditModalOpen(true)}
-                                className="px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-bold uppercase text-[11px] transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono"
-                            >
-                                <Camera className="w-3.5 h-3.5" />
-                                <span>Edit Store Cover, Logo & Bio</span>
-                            </button>
-                            <a
-                                href={getDomainUrl('seller', '/dashboard')}
-                                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border border-slate-700 font-mono"
-                            >
-                                <ArrowLeft className="w-3.5 h-3.5" />
-                                <span>Back to Cockpit</span>
-                            </a>
-                        </div>
                     </div>
-                </div>
-            )}
+                ) : undefined
+            }
+        >
+            <Head title={`${shop.name} — Verified Official Storefront`} />
 
             <div className="space-y-6 max-w-7xl mx-auto font-sans">
                 
