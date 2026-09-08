@@ -101,7 +101,9 @@ class RegisteredUserController extends Controller
             ? '/storage/' . $request->file('or_cr_document')->store('kyc_documents', 'public')
             : null;
 
-        // Create User with pending_approval status
+        $isBuyer = ($role === 'buyer');
+
+        // Create User with appropriate role status
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -111,13 +113,13 @@ class RegisteredUserController extends Controller
             'address' => $validated['address'] ?? null,
             'city' => $validated['city'] ?? null,
             'postal_code' => $validated['postal_code'] ?? null,
-            'status' => 'pending_approval',
-            'kyc_status' => 'pending_approval',
+            'status' => $isBuyer ? 'active' : 'pending_approval',
+            'kyc_status' => $isBuyer ? ($idPath ? 'pending_approval' : 'none') : 'pending_approval',
             'id_document_path' => $idPath,
             'business_permit_path' => $permitPath,
             'driver_license_path' => $licensePath,
             'or_cr_path' => $orCrPath,
-            'kyc_submitted_at' => now(),
+            'kyc_submitted_at' => $idPath ? now() : ($isBuyer ? null : now()),
         ]);
 
         // Create associated role profile
@@ -145,6 +147,10 @@ class RegisteredUserController extends Controller
         }
 
         event(new Registered($user));
+
+        if ($isBuyer) {
+            return redirect()->route('login')->with('status', 'Registration successful! Please sign in to your new account.');
+        }
 
         Auth::login($user);
 

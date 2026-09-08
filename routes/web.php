@@ -223,6 +223,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
         Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+        Route::post('/kyc/upload', [CheckoutController::class, 'uploadKycDocument'])->name('kyc.upload');
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
@@ -275,6 +276,7 @@ Route::middleware('auth')->group(function () {
     // Buyer Checkout & Orders
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::post('/checkout/kyc/upload', [CheckoutController::class, 'uploadKycDocument'])->name('checkout.kyc.upload');
     Route::get('/my-orders', [OrderHistoryController::class, 'index'])->name('orders.index');
     Route::get('/my-orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
 

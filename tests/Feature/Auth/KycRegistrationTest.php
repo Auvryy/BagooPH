@@ -93,7 +93,7 @@ class KycRegistrationTest extends TestCase
         $this->assertFalse($user->courierProfile->is_available);
     }
 
-    public function test_buyer_registration_defaults_to_pending_approval(): void
+    public function test_buyer_registration_without_id_defaults_to_none_and_redirects_to_login(): void
     {
         $response = $this->post('/register', [
             'name' => 'Alex Buyer',
@@ -106,13 +106,45 @@ class KycRegistrationTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('kyc.pending', absolute: false));
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status');
 
         $user = User::where('email', 'alex.buyer@example.com')->first();
         $this->assertNotNull($user);
         $this->assertEquals('buyer', $user->role);
+        $this->assertEquals('active', $user->status);
+        $this->assertEquals('none', $user->kyc_status);
+        $this->assertNull($user->id_document_path);
+    }
+
+    public function test_buyer_registration_with_optional_id_sets_pending_and_redirects_to_login(): void
+    {
+        Storage::fake('public');
+        $idFile = UploadedFile::fake()->create('buyer_id.jpg', 500, 'image/jpeg');
+
+        $response = $this->post('/register', [
+            'name' => 'Alex Buyer 2',
+            'email' => 'alex.buyer2@example.com',
+            'phone' => '+63 917 555 6666',
+            'address' => '789 Sunrise Ave',
+            'city' => 'Quezon City',
+            'role' => 'buyer',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'id_document' => $idFile,
+        ]);
+
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status');
+
+        $user = User::where('email', 'alex.buyer2@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('buyer', $user->role);
+        $this->assertEquals('active', $user->status);
         $this->assertEquals('pending_approval', $user->kyc_status);
+        $this->assertNotNull($user->id_document_path);
     }
 
     public function test_seller_registration_requires_business_permit_and_id(): void

@@ -618,14 +618,15 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'buyer',
-            'status' => 'active',
+            'status' => 'suspended',
             'kyc_status' => 'approved',
         ]);
 
         $user = User::where('email', 'bypass@bagoo.test')->first();
         $this->assertNotNull($user);
-        $this->assertEquals('pending_approval', $user->status);
-        $this->assertEquals('pending_approval', $user->kyc_status);
+        $this->assertEquals('active', $user->status);
+        $this->assertEquals('none', $user->kyc_status);
+        $this->assertNotEquals('approved', $user->kyc_status);
     }
 
     /*
