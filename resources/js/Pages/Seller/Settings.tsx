@@ -39,14 +39,15 @@ export default function SellerSettings({ shop }: Props) {
             title="Storefront Profile & Logistics Configuration"
             subtitle="Configure public branding, dispatch pickup hub address, and seller credentials"
             actions={
-                <Link
-                    href={route('shop.show', shop.slug)}
+                <a
+                    href={route('seller.preview')}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-mono rounded-xl border border-slate-200 transition shadow-2xs"
                 >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>View Public Storefront</span>
-                </Link>
+                    <span>View Storefront Preview</span>
+                </a>
             }
         >
             <Head title="Store Settings — BagooPH Seller" />

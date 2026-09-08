@@ -76,6 +76,9 @@ $registerSellerRoutes = function () {
         Route::get('/reports', [SellerDashboardController::class, 'reports']);
         Route::get('/settings', [SellerDashboardController::class, 'settings']);
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
+        Route::get('/profile', [SellerDashboardController::class, 'profile']);
+        Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
+        Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', fn() => redirect('/dashboard'));
         Route::get('/seller/orders', fn() => redirect('/orders'));
@@ -240,6 +243,7 @@ Route::get('/products', [BuyerProductController::class, 'search'])->name('produc
 Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
+Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware('auth')->name('shop.updateBranding');
 
 // Cart (Accessible to guests and logged in users)
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -314,6 +318,9 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
+    Route::get('/profile', [SellerDashboardController::class, 'profile'])->name('profile');
+    Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
 /*

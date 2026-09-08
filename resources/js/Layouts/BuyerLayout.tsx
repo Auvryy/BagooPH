@@ -29,9 +29,18 @@ import { getDomainUrl } from '@/utils/domain';
 interface Props {
     children: React.ReactNode;
     categories?: Category[];
+    hideAuthButtons?: boolean;
+    hideHeader?: boolean;
+    topBanner?: React.ReactNode;
 }
 
-export default function BuyerLayout({ children, categories = [] }: Props) {
+export default function BuyerLayout({ 
+    children, 
+    categories = [], 
+    hideAuthButtons = false, 
+    hideHeader = false,
+    topBanner,
+}: Props) {
     const { auth, cartCount } = usePage<PageProps>().props;
     const user = auth.user;
 
@@ -89,8 +98,12 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
     return (
         <div className="min-h-screen bg-[#F4F3EF] text-[#111111] font-sans flex flex-col overflow-x-hidden w-full max-w-full selection:bg-[#E00D42] selection:text-white">
             
-            {/* 1. TOP UTILITY BAR (CLEAN & DISTINCTIVE) */}
-            <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
+            {topBanner}
+
+            {!hideHeader && (
+                <>
+                    {/* 1. TOP UTILITY BAR (CLEAN & DISTINCTIVE) */}
+                    <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-4">
                         <a href={sellerUrl} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-semibold text-white/90">
@@ -266,7 +279,7 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : hideAuthButtons ? null : (
                                 <div className="flex items-center gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 
@@ -306,9 +319,11 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                     </div>
                 </div>
             </header>
+            </>
+            )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+            <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden ${hideHeader ? 'pt-2 sm:pt-3 pb-8' : 'py-6'}`}>
                 {children}
             </main>
 
