@@ -141,7 +141,10 @@ export default function BuyerProfile({
         e.preventDefault();
         if (!newAddress.street) return;
 
-        router.post(route('buyer.addresses.store'), newAddress, {
+        router.post(route('buyer.addresses.store'), {
+            ...newAddress,
+            recipient_name: user.name,
+        }, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowAddressModal(false);
@@ -858,13 +861,19 @@ export default function BuyerProfile({
                             <form onSubmit={handleAddAddress} className="space-y-4 text-xs">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">Recipient Name</label>
+                                        <label className="block font-bold text-slate-700 mb-1 font-mono flex items-center justify-between">
+                                            <span>Recipient Name</span>
+                                            <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
+                                                <Lock className="w-3 h-3 text-slate-400" />
+                                                Verified Real Name
+                                            </span>
+                                        </label>
                                         <input
                                             type="text"
-                                            value={newAddress.recipient_name}
-                                            onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs"
-                                            required
+                                            value={user.name}
+                                            readOnly
+                                            disabled
+                                            className="w-full rounded-xl bg-slate-100 border border-slate-200 p-2.5 text-xs text-slate-600 cursor-not-allowed select-none font-medium"
                                         />
                                     </div>
                                     <div>

@@ -21,7 +21,8 @@ import {
     Upload,
     FileText,
     ShieldAlert,
-    AlertTriangle
+    AlertTriangle,
+    Lock
 } from 'lucide-react';
 
 interface VoucherItem {
@@ -114,7 +115,7 @@ export default function CheckoutIndex({
     );
 
     const { data, setData, post, processing, errors } = useForm({
-        recipient_name: initialAddress?.recipient_name || user.name || '',
+        recipient_name: user.name || initialAddress?.recipient_name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress ? formatAddressString(initialAddress) : (user.address || ''),
         shipping_city: initialAddress?.city || user.city || '',
@@ -142,7 +143,7 @@ export default function CheckoutIndex({
             if (found) {
                 setData(prev => ({
                     ...prev,
-                    recipient_name: found.recipient_name,
+                    recipient_name: user.name || found.recipient_name || '',
                     recipient_phone: found.phone,
                     shipping_address: formatAddressString(found),
                     shipping_city: found.city,
@@ -344,13 +345,19 @@ export default function CheckoutIndex({
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                                 <div>
-                                    <label className="block font-semibold text-slate-700 mb-1.5">Full Name</label>
+                                    <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                        <span>Full Name</span>
+                                        <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
+                                            <Lock className="w-3 h-3 text-slate-400" />
+                                            Verified Real Name
+                                        </span>
+                                    </label>
                                     <input
                                         type="text"
                                         value={data.recipient_name}
-                                        onChange={(e) => setData('recipient_name', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        readOnly
+                                        disabled
+                                        className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
                                     />
                                     {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
                                 </div>

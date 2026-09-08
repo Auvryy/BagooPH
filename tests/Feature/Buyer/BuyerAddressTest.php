@@ -88,7 +88,7 @@ class BuyerAddressTest extends TestCase
 
         $this->assertDatabaseHas('addresses', [
             'user_id' => $buyer->id,
-            'recipient_name' => 'Juan Dela Cruz',
+            'recipient_name' => $buyer->name,
             'phone' => '+63 917 111 2222',
             'city' => 'Taguig City',
             'street' => 'Unit 1204 High Street Residences',
@@ -140,7 +140,7 @@ class BuyerAddressTest extends TestCase
         ]);
 
         $addr1->refresh();
-        $addr2 = Address::where('user_id', $buyer->id)->where('recipient_name', 'Address 2')->first();
+        $addr2 = Address::where('user_id', $buyer->id)->where('street', 'Street 2')->first();
 
         $this->assertTrue($addr1->is_default);
         $this->assertFalse($addr2->is_default);
@@ -168,7 +168,7 @@ class BuyerAddressTest extends TestCase
         ]);
 
         $addr1->refresh();
-        $addr2 = Address::where('user_id', $buyer->id)->where('recipient_name', 'Address 2')->first();
+        $addr2 = Address::where('user_id', $buyer->id)->where('street', 'Street 2')->first();
 
         $this->assertFalse($addr1->is_default);
         $this->assertTrue($addr2->is_default);
@@ -334,9 +334,33 @@ class BuyerAddressTest extends TestCase
 
         $savedAddress = Address::where('user_id', $buyer->id)->first();
         $this->assertNotNull($savedAddress);
-        $this->assertEquals('New Address Recipient', $savedAddress->recipient_name);
+        $this->assertEquals($buyer->name, $savedAddress->recipient_name);
         $this->assertEquals('+63 918 555 6666', $savedAddress->phone);
         $this->assertEquals('99 Sunset Blvd', $savedAddress->street);
         $this->assertEquals('Pasig City', $savedAddress->city);
+    }
+
+    public function test_address_recipient_name_is_strictly_locked_to_user_real_name_ignoring_payload(): void
+    {
+        $buyer = User::factory()->create([
+            'name' => 'Maria Clara Santos',
+            'role' => 'buyer',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+
+        // Attempt to spoof recipient name via address book endpoint
+        $this->actingAs($buyer)->post('/buyer/addresses', [
+            'recipient_name' => 'Fake Spoofed Name',
+            'phone' => '+63 917 123 4567',
+            'city' => 'Quezon City',
+            'street' => '101 Katipunan Ave',
+            'type' => 'Home',
+        ]);
+
+        $address = Address::where('user_id', $buyer->id)->first();
+        $this->assertNotNull($address);
+        $this->assertEquals('Maria Clara Santos', $address->recipient_name);
+        $this->assertNotEquals('Fake Spoofed Name', $address->recipient_name);
     }
 }

@@ -141,7 +141,7 @@ class CheckoutController extends Controller
         if ($request->boolean('save_address') && ! empty($validated['shipping_address'])) {
             $hasExisting = $user->addresses()->exists();
             $user->addresses()->create([
-                'recipient_name' => $validated['recipient_name'],
+                'recipient_name' => $user->name,
                 'phone' => $validated['recipient_phone'],
                 'city' => $validated['shipping_city'],
                 'street' => $validated['shipping_address'],

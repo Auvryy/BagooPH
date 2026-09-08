@@ -83,7 +83,7 @@ class BuyerProfileController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'recipient_name' => 'required|string|max:255',
+            'recipient_name' => 'nullable|string|max:255',
             'phone' => 'required|string|max:50',
             'province' => 'nullable|string|max:100',
             'city' => 'required|string|max:100',
@@ -104,7 +104,7 @@ class BuyerProfileController extends Controller
         }
 
         $user->addresses()->create([
-            'recipient_name' => $validated['recipient_name'],
+            'recipient_name' => $user->name, // Strictly locked to verified account name
             'phone' => $validated['phone'],
             'province' => $validated['province'] ?? null,
             'city' => $validated['city'],
