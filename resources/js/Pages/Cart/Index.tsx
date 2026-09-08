@@ -10,8 +10,6 @@ import {
     ArrowRight, 
     ShieldCheck, 
     Truck, 
-    Tag, 
-    Check, 
     Store,
     ArrowLeft,
     Sparkles,
@@ -27,11 +25,6 @@ interface Props {
 }
 
 export default function CartIndex({ cart, items, total }: Props) {
-    const [voucherCode, setVoucherCode] = useState('');
-    const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
-    const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
-    const [voucherError, setVoucherError] = useState<string | null>(null);
-
     // Determine the most recently added or updated product in the bag
     const getMostRecentItemId = (itemList: CartItem[]): number | null => {
         if (!itemList || itemList.length === 0) return null;
@@ -128,28 +121,10 @@ export default function CartIndex({ cart, items, total }: Props) {
         router.delete(route('cart.destroy', item.id), { preserveScroll: true });
     };
 
-    const applyVoucher = (e: React.FormEvent) => {
-        e.preventDefault();
-        setVoucherError(null);
-        setVoucherSuccess(null);
-
-        const code = voucherCode.trim().toUpperCase();
-        if (code === 'BAGOO10' || code === 'PAYDAY70') {
-            setAppliedDiscount(200);
-            setVoucherSuccess(`Promo code ${code} applied! ₱200 discount active.`);
-        } else if (code === 'FREESHIP') {
-            setAppliedDiscount(50);
-            setVoucherSuccess(`Free shipping voucher ${code} applied!`);
-        } else {
-            setVoucherError('Invalid promo code. Try "BAGOO10" or "FREESHIP".');
-        }
-    };
-
     const selectedItems = items.filter(item => selectedIds.includes(item.id));
     const subtotal = selectedItems.reduce((sum, item) => sum + (Number(item.unit_price) * item.quantity), 0);
-    const shipping = selectedItems.length === 0 ? 0 : (subtotal > 1500 || voucherCode.toUpperCase() === 'FREESHIP' ? 0 : (subtotal > 0 ? 50 : 0));
-    const discount = appliedDiscount;
-    const grandTotal = Math.max(0, subtotal + shipping - discount);
+    const shipping = selectedItems.length === 0 ? 0 : (subtotal > 1500 ? 0 : (subtotal > 0 ? 50 : 0));
+    const grandTotal = Math.max(0, subtotal + shipping);
 
     const formatPrice = (amount?: number | string | null) => {
         const numeric = Number(amount || 0);
@@ -407,45 +382,8 @@ export default function CartIndex({ cart, items, total }: Props) {
                             </div>
                         </div>
 
-                        {/* Order Summary & Voucher Box */}
+                        {/* Order Summary */}
                         <div className="lg:col-span-4 space-y-4">
-                            
-                            {/* Voucher Applicator Card */}
-                            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3 font-sans">
-                                <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase text-slate-800">
-                                    <Tag className="w-4 h-4 text-[#E00D42]" />
-                                    <span>Apply Promo Voucher</span>
-                                </div>
-
-                                <form onSubmit={applyVoucher} className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={voucherCode}
-                                        onChange={(e) => setVoucherCode(e.target.value)}
-                                        placeholder="e.g. BAGOO10, FREESHIP"
-                                        className="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] uppercase font-mono"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-lg uppercase tracking-wider transition font-mono"
-                                    >
-                                        Apply
-                                    </button>
-                                </form>
-
-                                {voucherSuccess && (
-                                    <p className="text-xs text-emerald-600 font-mono flex items-center gap-1">
-                                        <Check className="w-3.5 h-3.5" /> {voucherSuccess}
-                                    </p>
-                                )}
-
-                                {voucherError && (
-                                    <p className="text-xs text-rose-600 font-mono">
-                                        {voucherError}
-                                    </p>
-                                )}
-                            </div>
-
                             {/* Summary Totals Card */}
                             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 font-mono text-xs">
                                 <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
@@ -464,13 +402,6 @@ export default function CartIndex({ cart, items, total }: Props) {
                                             {shipping === 0 ? 'FREE' : formatPrice(shipping)}
                                         </span>
                                     </div>
-
-                                    {discount > 0 && (
-                                        <div className="flex justify-between text-[#E00D42] font-bold">
-                                            <span>Voucher Discount:</span>
-                                            <span>-{formatPrice(discount)}</span>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
