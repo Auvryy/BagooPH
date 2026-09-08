@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { Cart, CartItem, PageProps, User } from '@/types';
+import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
     ArrowLeft, 
@@ -45,6 +45,8 @@ interface Props {
     availableVouchers?: VoucherItem[];
     kycStatus?: 'none' | 'pending_approval' | 'approved' | 'rejected';
     kycFeedback?: string | null;
+    addresses?: Address[];
+    defaultAddressId?: number | null;
 }
 
 export default function CheckoutIndex({ 
@@ -55,7 +57,9 @@ export default function CheckoutIndex({
     user, 
     availableVouchers = [],
     kycStatus = 'none',
-    kycFeedback = null
+    kycFeedback = null,
+    addresses = [],
+    defaultAddressId = null,
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -93,16 +97,61 @@ export default function CheckoutIndex({
         });
     };
 
+    // Format address string helper
+    const formatAddressString = (addr: Address) => {
+        const parts = [addr.street, addr.barangay, addr.province].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : addr.street;
+    };
+
+    // Find initial default address: prefers defaultAddressId or is_default or first
+    const initialAddress = addresses.find(a => a.id === defaultAddressId)
+        || addresses.find(a => a.is_default)
+        || addresses[0]
+        || null;
+
+    const [selectedAddressId, setSelectedAddressId] = useState<string>(
+        initialAddress ? String(initialAddress.id) : 'new'
+    );
+
     const { data, setData, post, processing, errors } = useForm({
-        recipient_name: user.name || '',
-        recipient_phone: user.phone || '',
-        shipping_address: user.address || '',
-        shipping_city: user.city || '',
-        shipping_postal_code: user.postal_code || '',
+        recipient_name: initialAddress?.recipient_name || user.name || '',
+        recipient_phone: initialAddress?.phone || user.phone || '',
+        shipping_address: initialAddress ? formatAddressString(initialAddress) : (user.address || ''),
+        shipping_city: initialAddress?.city || user.city || '',
+        shipping_postal_code: initialAddress?.postal_code || user.postal_code || '',
         payment_method: 'cod',
         notes: '',
         voucher_code: '',
+        save_address: false,
     });
+
+    const handleAddressChange = (addressId: string) => {
+        setSelectedAddressId(addressId);
+        if (addressId === 'new') {
+            setData(prev => ({
+                ...prev,
+                recipient_name: user.name || '',
+                recipient_phone: user.phone || '',
+                shipping_address: '',
+                shipping_city: '',
+                shipping_postal_code: '',
+                save_address: true,
+            }));
+        } else {
+            const found = addresses.find(a => String(a.id) === addressId);
+            if (found) {
+                setData(prev => ({
+                    ...prev,
+                    recipient_name: found.recipient_name,
+                    recipient_phone: found.phone,
+                    shipping_address: formatAddressString(found),
+                    shipping_city: found.city,
+                    shipping_postal_code: found.postal_code || '',
+                    save_address: false,
+                }));
+            }
+        }
+    };
 
     const [shippingOption, setShippingOption] = useState<'standard' | 'express'>('standard');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -262,6 +311,37 @@ export default function CheckoutIndex({
                                 </h2>
                             </div>
 
+                            {/* Saved Address Dropdown Selector */}
+                            {addresses.length > 0 && (
+                                <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                            <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                            <span>Select Saved Delivery Destination</span>
+                                        </label>
+                                        <Link 
+                                            href={route('buyer.profile', { tab: 'addresses' })} 
+                                            className="text-[11px] font-semibold text-[#E00D42] hover:underline"
+                                            target="_blank"
+                                        >
+                                            Manage Address Book
+                                        </Link>
+                                    </div>
+                                    <select
+                                        value={selectedAddressId}
+                                        onChange={(e) => handleAddressChange(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                    >
+                                        {addresses.map((addr) => (
+                                            <option key={addr.id} value={String(addr.id)}>
+                                                {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
+                                            </option>
+                                        ))}
+                                        <option value="new">+ Enter New / Different Address</option>
+                                    </select>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                                 <div>
                                     <label className="block font-semibold text-slate-700 mb-1.5">Full Name</label>
@@ -321,6 +401,18 @@ export default function CheckoutIndex({
                                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
                                 </div>
+
+                                {selectedAddressId === 'new' && (
+                                    <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.save_address}
+                                            onChange={(e) => setData('save_address', e.target.checked)}
+                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span>Save this address to my address book for future orders</span>
+                                    </label>
+                                )}
                             </div>
                         </div>
 

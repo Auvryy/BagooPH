@@ -14,6 +14,22 @@ export interface CourierProfile {
     updated_at?: string;
 }
 
+export interface Address {
+    id: number;
+    user_id: number;
+    recipient_name: string;
+    phone: string;
+    province?: string | null;
+    city: string;
+    barangay?: string | null;
+    street: string;
+    postal_code?: string | null;
+    type?: string | null;
+    is_default: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface User {
     id: number;
     name: string;
@@ -36,6 +52,7 @@ export interface User {
     email_verified_at?: string;
     shop?: Shop | null;
     courier_profile?: CourierProfile | null;
+    addresses?: Address[];
 }
 
 export interface Shop {

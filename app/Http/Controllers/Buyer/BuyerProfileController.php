@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -16,30 +17,22 @@ class BuyerProfileController extends Controller
     {
         $user = $request->user();
 
-        $savedAddresses = [
-            [
-                'id' => 1,
-                'is_default' => true,
+        // Migrate legacy profile address if user has no saved addresses
+        if ($user->addresses()->count() === 0 && $user->address && $user->city) {
+            $user->addresses()->create([
                 'recipient_name' => $user->name,
                 'phone' => $user->phone ?? '+63 912 345 6789',
                 'province' => 'Metro Manila',
-                'city' => 'Taguig City',
-                'barangay' => 'Fort Bonifacio (BGC)',
-                'street' => 'Unit 1204, High Street Residences, 28th St.',
+                'city' => $user->city,
+                'barangay' => null,
+                'street' => $user->address,
+                'postal_code' => $user->postal_code,
                 'type' => 'Home',
-            ],
-            [
-                'id' => 2,
-                'is_default' => false,
-                'recipient_name' => $user->name,
-                'phone' => $user->phone ?? '+63 912 345 6789',
-                'province' => 'Metro Manila',
-                'city' => 'Makati City',
-                'barangay' => 'Bel-Air',
-                'street' => '8th Floor, Ayala Tower One, Ayala Ave.',
-                'type' => 'Office / Work',
-            ],
-        ];
+                'is_default' => true,
+            ]);
+        }
+
+        $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
 
         $wallet = [
             'balance' => 5000.00,
@@ -61,7 +54,7 @@ class BuyerProfileController extends Controller
 
         return Inertia::render('Buyer/Profile', [
             'user' => $user,
-            'addresses' => $savedAddresses,
+            'addresses' => $addresses,
             'wallet' => $wallet,
             'orders' => $orders,
             'ordersCount' => $orders->count(),
@@ -83,5 +76,80 @@ class BuyerProfileController extends Controller
         $user->update($validated);
 
         return back()->with('success', 'Profile updated successfully.');
+    }
+
+    public function storeAddress(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'recipient_name' => 'required|string|max:255',
+            'phone' => 'required|string|max:50',
+            'province' => 'nullable|string|max:100',
+            'city' => 'required|string|max:100',
+            'barangay' => 'nullable|string|max:100',
+            'street' => 'required|string|max:255',
+            'postal_code' => 'nullable|string|max:20',
+            'type' => 'nullable|string|max:50',
+            'is_default' => 'nullable|boolean',
+        ]);
+
+        $hasExistingAddresses = $user->addresses()->exists();
+        $isDefault = $request->boolean('is_default');
+
+        // First address created automatically becomes default
+        if (! $hasExistingAddresses || $isDefault) {
+            $user->addresses()->update(['is_default' => false]);
+            $isDefault = true;
+        }
+
+        $user->addresses()->create([
+            'recipient_name' => $validated['recipient_name'],
+            'phone' => $validated['phone'],
+            'province' => $validated['province'] ?? null,
+            'city' => $validated['city'],
+            'barangay' => $validated['barangay'] ?? null,
+            'street' => $validated['street'],
+            'postal_code' => $validated['postal_code'] ?? null,
+            'type' => $validated['type'] ?? 'Home',
+            'is_default' => $isDefault,
+        ]);
+
+        return back()->with('success', 'Address added successfully.');
+    }
+
+    public function setDefaultAddress(Request $request, Address $address): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($address->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $user->addresses()->update(['is_default' => false]);
+        $address->update(['is_default' => true]);
+
+        return back()->with('success', 'Default address updated.');
+    }
+
+    public function destroyAddress(Request $request, Address $address): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($address->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $wasDefault = $address->is_default;
+        $address->delete();
+
+        if ($wasDefault) {
+            $oldest = $user->addresses()->oldest()->first();
+            if ($oldest) {
+                $oldest->update(['is_default' => true]);
+            }
+        }
+
+        return back()->with('success', 'Address deleted successfully.');
     }
 }

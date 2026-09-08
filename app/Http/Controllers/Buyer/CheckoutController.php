@@ -50,6 +50,24 @@ class CheckoutController extends Controller
 
         $kycStatus = $user->kyc_status ?? 'none';
 
+        // Fetch saved addresses, migrating user profile address if user has no saved addresses
+        if ($user->addresses()->count() === 0 && $user->address && $user->city) {
+            $user->addresses()->create([
+                'recipient_name' => $user->name,
+                'phone' => $user->phone ?? '',
+                'province' => 'Metro Manila',
+                'city' => $user->city,
+                'barangay' => null,
+                'street' => $user->address,
+                'postal_code' => $user->postal_code,
+                'type' => 'Home',
+                'is_default' => true,
+            ]);
+        }
+
+        $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
+        $defaultAddress = $user->defaultAddress();
+
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $cart->items,
@@ -60,6 +78,8 @@ class CheckoutController extends Controller
             'availableVouchers' => $availableVouchers,
             'kycStatus' => $kycStatus,
             'kycFeedback' => $user->kyc_feedback,
+            'addresses' => $addresses,
+            'defaultAddressId' => $defaultAddress?->id,
         ]);
     }
 
@@ -115,7 +135,21 @@ class CheckoutController extends Controller
             'payment_method' => 'required|string|in:card,cod,bank_transfer,e_wallet',
             'notes' => 'nullable|string|max:500',
             'voucher_code' => 'nullable|string|max:50',
+            'save_address' => 'nullable|boolean',
         ]);
+
+        if ($request->boolean('save_address') && ! empty($validated['shipping_address'])) {
+            $hasExisting = $user->addresses()->exists();
+            $user->addresses()->create([
+                'recipient_name' => $validated['recipient_name'],
+                'phone' => $validated['recipient_phone'],
+                'city' => $validated['shipping_city'],
+                'street' => $validated['shipping_address'],
+                'postal_code' => $validated['shipping_postal_code'] ?? null,
+                'type' => 'Home',
+                'is_default' => ! $hasExisting,
+            ]);
+        }
 
         try {
             $order = DB::transaction(function () use ($user, $cart, $validated) {

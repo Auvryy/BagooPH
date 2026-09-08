@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { User, Order } from '@/types';
+import { User, Order, Address } from '@/types';
 import { 
     User as UserIcon, 
     ShieldCheck, 
@@ -30,20 +30,9 @@ import {
     Store,
     MessageSquare,
     ShoppingBag,
-    Star
+    Star,
+    Trash2
 } from 'lucide-react';
-
-interface SavedAddress {
-    id: number;
-    is_default: boolean;
-    recipient_name: string;
-    phone: string;
-    province: string;
-    city: string;
-    barangay: string;
-    street: string;
-    type: string;
-}
 
 interface WalletData {
     balance: number;
@@ -61,7 +50,7 @@ interface WalletData {
 
 interface Props {
     user: User;
-    addresses: SavedAddress[];
+    addresses: Address[];
     wallet: WalletData;
     orders: Order[];
     ordersCount: number;
@@ -87,12 +76,17 @@ export default function BuyerProfile({
 }: Props) {
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
-    const [addresses, setAddresses] = useState<SavedAddress[]>(initialAddresses);
+    const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const [wallet, setWallet] = useState<WalletData>(initialWallet);
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [topupAmount, setTopupAmount] = useState<number>(1000);
     const [topupLoading, setTopupLoading] = useState(false);
     const [topupSuccess, setTopupSuccess] = useState(false);
+
+    // Sync addresses when initialAddresses prop updates
+    useEffect(() => {
+        setAddresses(initialAddresses);
+    }, [initialAddresses]);
 
     // Sync active tab if initialTab prop changes from URL navigation
     useEffect(() => {
@@ -147,35 +141,35 @@ export default function BuyerProfile({
         e.preventDefault();
         if (!newAddress.street) return;
 
-        const created: SavedAddress = {
-            id: Date.now(),
-            ...newAddress,
-        };
-
-        if (created.is_default) {
-            setAddresses(prev => prev.map(a => ({ ...a, is_default: false })).concat(created));
-        } else {
-            setAddresses(prev => [...prev, created]);
-        }
-
-        setShowAddressModal(false);
-        setNewAddress({
-            recipient_name: user.name,
-            phone: user.phone || '+63 912 345 6789',
-            province: 'Metro Manila',
-            city: 'Quezon City',
-            barangay: 'Diliman',
-            street: '',
-            type: 'Home',
-            is_default: false,
+        router.post(route('buyer.addresses.store'), newAddress, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowAddressModal(false);
+                setNewAddress({
+                    recipient_name: user.name,
+                    phone: user.phone || '+63 912 345 6789',
+                    province: 'Metro Manila',
+                    city: 'Quezon City',
+                    barangay: 'Diliman',
+                    street: '',
+                    type: 'Home',
+                    is_default: false,
+                });
+            },
         });
     };
 
     const setDefaultAddress = (id: number) => {
-        setAddresses(prev => prev.map(a => ({
-            ...a,
-            is_default: a.id === id,
-        })));
+        router.post(route('buyer.addresses.default', id), {}, {
+            preserveScroll: true,
+        });
+    };
+
+    const handleDeleteAddress = (id: number) => {
+        if (!confirm('Are you sure you want to delete this delivery address?')) return;
+        router.delete(route('buyer.addresses.destroy', id), {
+            preserveScroll: true,
+        });
     };
 
     const handleTopup = (amount: number) => {
@@ -692,23 +686,36 @@ export default function BuyerProfile({
                                                     </span>
                                                 </div>
 
-                                                {addr.is_default ? (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
-                                                        DEFAULT ADDRESS
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setDefaultAddress(addr.id)}
-                                                        className="text-[11px] font-mono text-slate-500 hover:text-slate-900 underline"
-                                                    >
-                                                        Set as Default
-                                                    </button>
-                                                )}
+                                                <div className="flex items-center gap-3">
+                                                    {addr.is_default ? (
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+                                                            DEFAULT ADDRESS
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDefaultAddress(addr.id)}
+                                                            className="text-[11px] font-mono text-slate-500 hover:text-slate-900 underline cursor-pointer"
+                                                        >
+                                                            Set as Default
+                                                        </button>
+                                                    )}
+
+                                                    {addresses.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteAddress(addr.id)}
+                                                            className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer"
+                                                            title="Delete address"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <p className="text-xs text-slate-700 font-sans">
-                                                {addr.street}, {addr.barangay}, {addr.city}, {addr.province}
+                                                {[addr.street, addr.barangay, addr.city, addr.province].filter(Boolean).join(', ')}
                                             </p>
                                         </div>
                                     ))}
