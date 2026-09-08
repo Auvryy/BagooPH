@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,14 +67,64 @@ class BuyerProfileController extends Controller
     {
         $user = $request->user();
 
-        $validated = $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:30',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string|in:male,female,other',
-        ]);
+            'remove_avatar' => 'nullable|boolean',
+        ];
 
-        $user->update($validated);
+        if ($request->file('avatar') !== null) {
+            $rules['avatar'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        } elseif ($request->file('avatar_file') !== null) {
+            $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+        } else {
+            $rules['avatar'] = 'nullable|string|max:1000';
+            $rules['avatar_preset'] = 'nullable|string|max:1000';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $user->avatar);
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+            $user->avatar = null;
+        } else {
+            $uploadedFile = $request->file('avatar') ?? $request->file('avatar_file');
+
+            if ($uploadedFile) {
+                // If replacing an existing custom avatar stored in public storage, delete the old file
+                if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $user->avatar);
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                }
+
+                $path = $uploadedFile->store('avatars', 'public');
+                $user->avatar = '/storage/' . $path;
+            } elseif ($request->filled('avatar_preset') || $request->filled('avatar')) {
+                $avatarPreset = trim((string) ($request->input('avatar_preset') ?? $request->input('avatar')));
+                if ($avatarPreset !== '' && $avatarPreset !== $user->avatar) {
+                    if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                        $oldPath = str_replace('/storage/', '', $user->avatar);
+                        if (Storage::disk('public')->exists($oldPath)) {
+                            Storage::disk('public')->delete($oldPath);
+                        }
+                    }
+                    $user->avatar = $avatarPreset;
+                }
+            }
+        }
+
+        $user->name = $validated['name'];
+        $user->phone = $validated['phone'] ?? null;
+        $user->save();
 
         return back()->with('success', 'Profile updated successfully.');
     }

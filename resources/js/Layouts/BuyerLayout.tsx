@@ -76,15 +76,6 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
     const courierRegisterUrl = getDomainUrl('courier', '/register');
     const hubUrl = getDomainUrl('hub', '/');
     const adminUrl = getDomainUrl('admin', '/');
-
-    const trendingKeywords = [
-        'Commuter Backpack',
-        'ANC Headphones',
-        'Techwear Hoodie',
-        'GaN Fast Charger',
-        'Tactical Watch',
-    ];
-
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmed = searchQuery.trim();
@@ -93,27 +84,6 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
         } else {
             router.get(route('buyer.search'));
         }
-    };
-
-    const handleQuickSearch = (keyword: string) => {
-        setSearchQuery(keyword);
-        router.get(route('buyer.search'), { search: keyword });
-    };
-
-    const handleSendChat = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!chatMessage.trim()) return;
-        
-        const userMsg = chatMessage.trim();
-        setChatHistory(prev => [...prev, { sender: 'user', text: userMsg }]);
-        setChatMessage('');
-
-        setTimeout(() => {
-            setChatHistory(prev => [
-                ...prev, 
-                { sender: 'support', text: 'Thank you for reaching out! A verified representative or merchant will attend to you shortly.' }
-            ]);
-        }, 1000);
     };
 
     return (
@@ -194,21 +164,6 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                     <span>Search</span>
                                 </button>
                             </form>
-                            
-                            {/* Trending Keyword Tags */}
-                            <div className="flex items-center gap-2 mt-2 overflow-x-auto scrollbar-none text-xs text-slate-500 font-sans">
-                                <span className="font-bold text-slate-400 shrink-0 text-[11px]">Trending:</span>
-                                {trendingKeywords.map((kw) => (
-                                    <button
-                                        key={kw}
-                                        type="button"
-                                        onClick={() => handleQuickSearch(kw)}
-                                        className="hover:text-[#E00D42] hover:underline shrink-0 transition text-slate-600 text-[11px]"
-                                    >
-                                        {kw}
-                                    </button>
-                                ))}
-                            </div>
                         </div>
 
                         {/* RIGHT ACTIONS: BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
@@ -237,13 +192,21 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                 >
                                     <Link
                                         href={route('buyer.profile', { tab: 'orders' })}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white transition font-sans text-xs font-bold shadow-xs focus:outline-hidden group border border-transparent"
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-xs font-bold shadow-2xs focus:outline-hidden group"
                                     >
-                                        <div className="w-5 h-5 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center">
-                                            {auth.user.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        {auth.user.avatar ? (
+                                            <img
+                                                src={auth.user.avatar}
+                                                alt={auth.user.name}
+                                                className="w-5 h-5 rounded-md object-cover border border-slate-200 shrink-0"
+                                            />
+                                        ) : (
+                                            <div className="w-5 h-5 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                                                {auth.user.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
                                         <span className="truncate max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
-                                        <ChevronDown className={`w-3 h-3 opacity-70 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                                        <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                     </Link>
 
                                     {/* User Hover Dropdown with Instant Seamless Overlap */}
@@ -254,9 +217,22 @@ export default function BuyerLayout({ children, categories = [] }: Props) {
                                             onMouseLeave={handleUserDropdownLeave}
                                         >
                                             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 py-2 text-slate-800 font-sans">
-                                                <div className="px-4 py-2.5 border-b border-slate-100 text-xs">
-                                                    <p className="font-bold text-slate-900 truncate">{auth.user.name}</p>
-                                                    <p className="text-[10px] text-[#E00D42] font-bold uppercase">{auth.user.role} Account</p>
+                                                <div className="px-4 py-2.5 border-b border-slate-100 text-xs flex items-center gap-2.5">
+                                                    {auth.user.avatar ? (
+                                                        <img
+                                                            src={auth.user.avatar}
+                                                            alt={auth.user.name}
+                                                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded-lg bg-[#E00D42] text-white text-xs font-black flex items-center justify-center shrink-0">
+                                                            {auth.user.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-bold text-slate-900 truncate">{auth.user.name}</p>
+                                                        <p className="text-[10px] text-[#E00D42] font-bold uppercase">{auth.user.role} Account</p>
+                                                    </div>
                                                 </div>
 
                                                 <Link 
