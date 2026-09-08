@@ -93,6 +93,7 @@ class BuyerCartSelectionTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Cart/Index')
             ->has('items', 2)
+            ->where('items.0.id', $itemB->id) // Most recent item is first row
         );
     }
 

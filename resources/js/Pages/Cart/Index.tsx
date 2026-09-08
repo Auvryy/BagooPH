@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Cart, CartItem } from '@/types';
@@ -14,7 +14,10 @@ import {
     Check, 
     Store,
     ArrowLeft,
-    Sparkles
+    Sparkles,
+    Filter,
+    ArrowUpDown,
+    Search
 } from 'lucide-react';
 
 interface Props {
@@ -47,6 +50,59 @@ export default function CartIndex({ cart, items, total }: Props) {
     const [selectedIds, setSelectedIds] = useState<number[]>(() => {
         return mostRecentId ? [mostRecentId] : [];
     });
+
+    type SortOption = 'recent' | 'oldest' | 'price_low' | 'price_high' | 'name_asc';
+    type FilterOption = 'all' | 'selected' | 'unselected';
+
+    const [sortBy, setSortBy] = useState<SortOption>('recent');
+    const [filterBy, setFilterBy] = useState<FilterOption>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
+
+    // Process displayed items according to search, filter and sort options
+    const displayedItems = useMemo(() => {
+        let result = [...items];
+
+        // 1. Search filter
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(item => 
+                item.product?.name?.toLowerCase().includes(q) ||
+                item.color?.toLowerCase().includes(q) ||
+                item.size?.toLowerCase().includes(q)
+            );
+        }
+
+        // 2. Selection filter
+        if (filterBy === 'selected') {
+            result = result.filter(item => selectedIds.includes(item.id));
+        } else if (filterBy === 'unselected') {
+            result = result.filter(item => !selectedIds.includes(item.id));
+        }
+
+        // 3. Sorting (Default: 'recent' where the recent product is the first row)
+        result.sort((a, b) => {
+            if (sortBy === 'recent') {
+                const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+                const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+                if (timeB !== timeA) return timeB - timeA;
+                return b.id - a.id;
+            } else if (sortBy === 'oldest') {
+                const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+                const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+                if (timeA !== timeB) return timeA - timeB;
+                return a.id - b.id;
+            } else if (sortBy === 'price_low') {
+                return Number(a.unit_price) - Number(b.unit_price);
+            } else if (sortBy === 'price_high') {
+                return Number(b.unit_price) - Number(a.unit_price);
+            } else if (sortBy === 'name_asc') {
+                return (a.product?.name || '').localeCompare(b.product?.name || '');
+            }
+            return 0;
+        });
+
+        return result;
+    }, [items, searchQuery, filterBy, sortBy, selectedIds]);
 
     const toggleItemSelection = (id: number) => {
         setSelectedIds(prev =>
@@ -151,6 +207,93 @@ export default function CartIndex({ cart, items, total }: Props) {
                         
                         {/* Cart Items List (Grouped by Shop) */}
                         <div className="lg:col-span-8 space-y-4">
+                            {/* Filter & Sort Controls */}
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3 font-sans">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                                    {/* Search Input in Cart */}
+                                    <div className="relative flex-1">
+                                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="Search items in your bag..."
+                                            className="w-full pl-9 pr-7 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition font-sans"
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSearchQuery('')}
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                                            >
+                                                &times;
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Sort Dropdown */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500 flex items-center gap-1 shrink-0 font-medium font-sans">
+                                            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                                            Sort:
+                                        </span>
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value as SortOption)}
+                                            className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-semibold focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] cursor-pointer font-sans"
+                                        >
+                                            <option value="recent">Recent Product First (Default)</option>
+                                            <option value="oldest">Oldest Added</option>
+                                            <option value="price_low">Price: Low to High</option>
+                                            <option value="price_high">Price: High to Low</option>
+                                            <option value="name_asc">Product Name (A-Z)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Filter Pills */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs font-sans">
+                                    <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1 mr-1">
+                                        <Filter className="w-3 h-3" />
+                                        Filter:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterBy('all')}
+                                        className={`px-2.5 py-1 rounded-lg font-semibold transition text-xs ${
+                                            filterBy === 'all'
+                                                ? 'bg-slate-900 text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        All ({items.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterBy('selected')}
+                                        className={`px-2.5 py-1 rounded-lg font-semibold transition text-xs ${
+                                            filterBy === 'selected'
+                                                ? 'bg-[#E00D42] text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        Selected ({selectedIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterBy('unselected')}
+                                        className={`px-2.5 py-1 rounded-lg font-semibold transition text-xs ${
+                                            filterBy === 'unselected'
+                                                ? 'bg-slate-700 text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        Unselected ({Math.max(0, items.length - selectedIds.length)})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Cart Items Container */}
                             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
                                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
                                     <label className="flex items-center gap-2.5 cursor-pointer select-none font-bold text-slate-800">
@@ -168,82 +311,99 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     </div>
                                 </div>
 
-                                <div className="divide-y divide-slate-100">
-                                    {items.map((item) => (
-                                        <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                            
-                                            {/* Product Info with Checkbox */}
-                                            <div className="flex items-center gap-3.5 min-w-0">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedIds.includes(item.id)}
-                                                    onChange={() => toggleItemSelection(item.id)}
-                                                    className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42] shrink-0"
-                                                />
-                                                <img
-                                                    src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
-                                                    alt={item.product?.name}
-                                                    className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
-                                                />
-                                                <div className="truncate space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <Link 
-                                                            href={route('buyer.products.show', item.product?.slug || '')}
-                                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition truncate block"
-                                                        >
-                                                            {item.product?.name}
-                                                        </Link>
-                                                        {item.id === mostRecentId && (
-                                                            <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-mono">
-                                                                Recent
+                                {displayedItems.length === 0 ? (
+                                    <div className="py-12 text-center space-y-2">
+                                        <p className="text-xs text-slate-500 font-sans">No items match your filter criteria.</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setFilterBy('all');
+                                                setSearchQuery('');
+                                                setSortBy('recent');
+                                            }}
+                                            className="text-xs text-[#E00D42] font-bold hover:underline font-mono"
+                                        >
+                                            Reset Filters
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-slate-100">
+                                        {displayedItems.map((item) => (
+                                            <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                
+                                                {/* Product Info with Checkbox */}
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(item.id)}
+                                                        onChange={() => toggleItemSelection(item.id)}
+                                                        className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42] shrink-0"
+                                                    />
+                                                    <img
+                                                        src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
+                                                        alt={item.product?.name}
+                                                        className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
+                                                    />
+                                                    <div className="truncate space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <Link 
+                                                                href={route('buyer.products.show', item.product?.slug || '')}
+                                                                className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition truncate block"
+                                                            >
+                                                                {item.product?.name}
+                                                            </Link>
+                                                            {item.id === mostRecentId && (
+                                                                <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-mono">
+                                                                    Recent
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs font-mono">
+                                                            <span className="font-black text-[#E00D42]">
+                                                                {formatPrice(item.unit_price)}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-xs font-mono">
-                                                        <span className="font-black text-[#E00D42]">
-                                                            {formatPrice(item.unit_price)}
-                                                        </span>
-                                                        <span className="text-slate-400">•</span>
-                                                        <span className="text-slate-500 text-[11px]">In Stock ({item.product?.stock ?? 45})</span>
+                                                            <span className="text-slate-400">•</span>
+                                                            <span className="text-slate-500 text-[11px]">In Stock ({item.product?.stock ?? 45})</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Quantity & Delete Controls */}
-                                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-mono text-xs">
-                                                <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+                                                {/* Quantity & Delete Controls */}
+                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-mono text-xs">
+                                                    <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateQuantity(item, item.quantity - 1)}
+                                                            className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                                        >
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                        <span className="px-3 py-1 font-bold text-slate-900">{item.quantity}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateQuantity(item, item.quantity + 1)}
+                                                            className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+
+                                                    <span className="font-bold text-slate-900 min-w-[80px] text-right">
+                                                        {formatPrice(Number(item.unit_price) * item.quantity)}
+                                                    </span>
+
                                                     <button
                                                         type="button"
-                                                        onClick={() => updateQuantity(item, item.quantity - 1)}
-                                                        className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                                        onClick={() => removeItem(item)}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
                                                     >
-                                                        <Minus className="w-3 h-3" />
-                                                    </button>
-                                                    <span className="px-3 py-1 font-bold text-slate-900">{item.quantity}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateQuantity(item, item.quantity + 1)}
-                                                        className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
-                                                    >
-                                                        <Plus className="w-3 h-3" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
-
-                                                <span className="font-bold text-slate-900 min-w-[80px] text-right">
-                                                    {formatPrice(Number(item.unit_price) * item.quantity)}
-                                                </span>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeItem(item)}
-                                                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
