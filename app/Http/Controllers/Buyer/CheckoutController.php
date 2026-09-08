@@ -48,6 +48,8 @@ class CheckoutController extends Controller
             ->latest()
             ->get();
 
+        $kycStatus = $user->kyc_status ?? 'none';
+
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $cart->items,
@@ -56,12 +58,48 @@ class CheckoutController extends Controller
             'total' => $total,
             'user' => $user,
             'availableVouchers' => $availableVouchers,
+            'kycStatus' => $kycStatus,
+            'kycFeedback' => $user->kyc_feedback,
         ]);
+    }
+
+    public function uploadKycDocument(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+        ]);
+
+        $user = $request->user();
+        $idPath = '/storage/' . $request->file('id_document')->store('kyc_documents', 'public');
+
+        $user->update([
+            'id_document_path' => $idPath,
+            'kyc_status' => 'pending_approval',
+            'kyc_submitted_at' => now(),
+        ]);
+
+        return back()->with('success', 'Valid ID uploaded successfully! Your verification is now under review.');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        // Enforce KYC verification gate before allowing order submission
+        if (! $user->isAdmin()) {
+            if ($user->kyc_status === 'pending_approval') {
+                return redirect()->route('buyer.checkout')->with('error', 'Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
+            }
+
+            if ($user->kyc_status === 'rejected') {
+                return redirect()->route('buyer.checkout')->with('error', 'Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
+            }
+
+            if ($user->kyc_status !== 'approved') {
+                return redirect()->route('buyer.checkout')->with('error', 'Identity verification is required before placing an order. Please upload a valid ID to proceed.');
+            }
+        }
+
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 
         if (! $cart || $cart->items->isEmpty()) {

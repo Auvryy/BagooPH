@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Cart, CartItem, PageProps, User } from '@/types';
@@ -17,7 +17,11 @@ import {
     Clock,
     X,
     Sparkles,
-    Gift
+    Gift,
+    Upload,
+    FileText,
+    ShieldAlert,
+    AlertTriangle
 } from 'lucide-react';
 
 interface VoucherItem {
@@ -39,15 +43,55 @@ interface Props {
     total: number;
     user: User;
     availableVouchers?: VoucherItem[];
+    kycStatus?: 'none' | 'pending_approval' | 'approved' | 'rejected';
+    kycFeedback?: string | null;
 }
 
-export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user, availableVouchers = [] }: Props) {
+export default function CheckoutIndex({ 
+    cart, 
+    items, 
+    subtotal, 
+    shippingFee, 
+    user, 
+    availableVouchers = [],
+    kycStatus = 'none',
+    kycFeedback = null
+}: Props) {
     const { flash } = usePage<PageProps>().props;
 
     const [voucherCodeInput, setVoucherCodeInput] = useState('');
     const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(null);
     const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
     const [voucherError, setVoucherError] = useState<string>('');
+
+    // Inline KYC ID upload form
+    const kycForm = useForm<{ id_document: File | null }>({
+        id_document: null,
+    });
+    const [kycFileName, setKycFileName] = useState<string | null>(null);
+    const kycFileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleKycFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            kycForm.setData('id_document', file);
+            setKycFileName(file.name);
+        }
+    };
+
+    const handleKycSubmit = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!kycForm.data.id_document) return;
+
+        kycForm.post(route('checkout.kyc.upload'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setKycFileName(null);
+                kycForm.reset();
+            },
+        });
+    };
 
     const { data, setData, post, processing, errors } = useForm({
         recipient_name: user.name || '',
@@ -128,6 +172,17 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
         e.preventDefault();
         setValidationError('');
 
+        if (kycStatus !== 'approved') {
+            if (kycStatus === 'pending_approval') {
+                setValidationError('Order placement is paused while your ID verification is under review.');
+            } else if (kycStatus === 'rejected') {
+                setValidationError('Your ID was rejected. Please re-upload a valid ID to proceed with checkout.');
+            } else {
+                setValidationError('Identity verification required. Please upload your ID to enable purchasing.');
+            }
+            return;
+        }
+
         if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim() || !data.shipping_city.trim()) {
             setValidationError('Please complete all required recipient and address fields.');
             return;
@@ -137,6 +192,10 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
     };
 
     const submitFinalOrder = () => {
+        if (kycStatus !== 'approved') {
+            setShowConfirmModal(false);
+            return;
+        }
         post(route('checkout.store'), {
             onFinish: () => setShowConfirmModal(false),
         });
@@ -172,6 +231,20 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                         <span>Back to My Bag</span>
                     </Link>
                 </div>
+
+                {/* Flash Messages */}
+                {flash?.success && (
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5 font-sans">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{flash.success}</span>
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2.5 font-sans">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{flash.error}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handlePromptConfirmation} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
@@ -518,12 +591,92 @@ export default function CheckoutIndex({ cart, items, subtotal, shippingFee, user
                                 </div>
                             )}
 
+                            {/* KYC Verification Alert & Upload */}
+                            {kycStatus !== 'approved' && (
+                                <div className={`p-4 rounded-xl border space-y-3 ${
+                                    kycStatus === 'pending_approval'
+                                        ? 'bg-amber-50/90 border-amber-200 text-amber-900'
+                                        : kycStatus === 'rejected'
+                                        ? 'bg-rose-50/90 border-rose-200 text-rose-900'
+                                        : 'bg-indigo-50/90 border-indigo-200 text-indigo-900'
+                                }`}>
+                                    <div className="flex items-start gap-2.5">
+                                        {kycStatus === 'pending_approval' ? (
+                                            <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                        ) : kycStatus === 'rejected' ? (
+                                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                        ) : (
+                                            <ShieldAlert className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                                        )}
+                                        <div className="space-y-1">
+                                            <h4 className="font-bold text-xs">
+                                                {kycStatus === 'pending_approval' && 'ID Verification Pending'}
+                                                {kycStatus === 'rejected' && 'ID Verification Action Required'}
+                                                {kycStatus === 'none' && 'Government ID Required'}
+                                            </h4>
+                                            <p className="text-[11px] leading-relaxed opacity-90">
+                                                {kycStatus === 'pending_approval' && 'Your ID is currently under compliance review. Browsing and carting are enabled, but purchasing is paused until verified.'}
+                                                {kycStatus === 'rejected' && (kycFeedback || 'Your previous document could not be verified. Please re-upload a clear government ID.')}
+                                                {kycStatus === 'none' && 'To comply with marketplace security, please submit a valid government ID to unlock checkout.'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {(kycStatus === 'none' || kycStatus === 'rejected') && (
+                                        <div className="pt-2 border-t border-indigo-200/50 space-y-2">
+                                            <input
+                                                ref={kycFileInputRef}
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/webp,application/pdf"
+                                                onChange={handleKycFileSelect}
+                                                className="hidden"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => kycFileInputRef.current?.click()}
+                                                className="w-full py-2 px-3 border border-dashed border-indigo-300 hover:border-indigo-400 bg-white rounded-lg text-center flex items-center justify-center gap-1.5 cursor-pointer transition text-[11px] font-semibold text-indigo-700 shadow-2xs"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" />
+                                                <span className="truncate">{kycFileName ? kycFileName : 'Upload Government ID (PNG, JPG, PDF)'}</span>
+                                            </button>
+                                            {kycForm.errors.id_document && (
+                                                <p className="text-rose-600 text-[11px]">{kycForm.errors.id_document}</p>
+                                            )}
+                                            {kycFileName && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleKycSubmit}
+                                                    disabled={kycForm.processing}
+                                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold rounded-lg text-xs transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+                                                >
+                                                    <span>{kycForm.processing ? 'Submitting ID...' : 'Submit ID for Verification'}</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
-                                disabled={processing}
-                                className="w-full py-3.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+                                disabled={processing || kycStatus !== 'approved'}
+                                className={`w-full py-3.5 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs ${
+                                    kycStatus !== 'approved'
+                                        ? 'bg-slate-400 cursor-not-allowed opacity-80'
+                                        : 'bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] cursor-pointer'
+                                }`}
                             >
-                                <span>{processing ? 'Processing Order...' : 'Review & Place Order'}</span>
+                                <span>
+                                    {processing
+                                        ? 'Processing Order...'
+                                        : kycStatus === 'pending_approval'
+                                        ? 'Purchases Paused (Awaiting ID Approval)'
+                                        : kycStatus === 'rejected'
+                                        ? 'Action Required: Re-upload ID'
+                                        : kycStatus === 'none'
+                                        ? 'Upload Valid ID to Enable Purchasing'
+                                        : 'Review & Place Order'}
+                                </span>
                             </button>
 
                             <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 font-sans">
