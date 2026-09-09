@@ -23,64 +23,6 @@ import {
     Flame
 } from 'lucide-react';
 
-interface MovingCard {
-    id: string;
-    index: string;
-    category: string;
-    headline: string;
-    highlightTag: string;
-    specs: string[];
-    image: string;
-}
-
-const MOVING_CARDS: MovingCard[] = [
-    {
-        id: 'streetwear',
-        index: '01 // STREETWEAR',
-        category: 'LOCAL APPAREL DROPS',
-        headline: 'From your bedroom to nationwide doorsteps.',
-        highlightTag: '10% FLAT COMMISSION',
-        specs: ['Zero Listing Deposit', 'Instant Store URL'],
-        image: 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?q=80&w=1000&auto=format&fit=crop'
-    },
-    {
-        id: 'artisan',
-        index: '02 // ARTISAN CRAFTS',
-        category: 'CAMPUS BAKES & POTTERY',
-        headline: 'Handmade with care. Delivered with cash.',
-        highlightTag: 'DOORSTEP COD',
-        specs: ['Direct Cash Remittance', 'Zero Payment Hold'],
-        image: 'https://images.unsplash.com/photo-1556742049-0a67e557b447?q=80&w=1000&auto=format&fit=crop'
-    },
-    {
-        id: 'fleet',
-        index: '03 // FLEET DISPATCH',
-        category: 'DOORSTEP COURIER LOGISTICS',
-        headline: 'Never queue at a courier branch again.',
-        highlightTag: '1-CLICK WAYBILL',
-        specs: ['Rider Pickup at Gate', 'Live Transit Checkpoints'],
-        image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=1000&auto=format&fit=crop'
-    },
-    {
-        id: 'vintage',
-        index: '04 // VINTAGE THRIFT',
-        category: 'CURATED PRELOVED FINDS',
-        headline: 'Turn thrifted gems into daily cash revenue.',
-        highlightTag: 'ZERO OVERHEAD',
-        specs: ['Simple Photo Uploads', 'Manage SKU Inventory'],
-        image: 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=1000&auto=format&fit=crop'
-    },
-    {
-        id: 'stationery',
-        index: '05 // STUDIO PRINTS',
-        category: 'INDIE ART & CUSTOM STICKERS',
-        headline: 'Print on demand, pack, and hand to courier.',
-        highlightTag: 'DIRECT TO BUYER',
-        specs: ['100% Retained Rights', 'Instant Label Printing'],
-        image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=1000&auto=format&fit=crop'
-    }
-];
-
 export default function SellerLanding() {
     // Section-by-section unique scroll entrance triggers
     const [heroLoaded, setHeroLoaded] = useState(false);
@@ -239,7 +181,7 @@ export default function SellerLanding() {
                 </div>
 
                 {/* 2. HERO SECTION — STAGGERED UNIQUE SCROLL / LOAD ANIMATIONS */}
-                <section className="pt-20 pb-20 sm:pt-28 sm:pb-32 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-8">
+                <section className="pt-16 pb-12 sm:pt-24 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-8">
                     
                     {/* Precision Status Dot (Scale-in Animation) */}
                     <div 
@@ -317,82 +259,342 @@ export default function SellerLanding() {
 
                 </section>
 
-                {/* 3. SECTION 2: INFINITE MOVING VISUAL CARDS TRACK WITH SCROLL ENTRANCE */}
-                <section id="showcase" ref={showcaseRef} className="pb-28 pt-4 overflow-hidden">
+                {/* 3. SECTION 2: PEEKING DESKTOP MERCHANT COCKPIT & CORE CAPABILITIES */}
+                <section id="showcase" ref={showcaseRef} className="relative pb-24 pt-0 -mt-2 sm:-mt-6 lg:-mt-10">
                     
-                    {/* Section Header (Smooth Slide-up on Scroll) */}
-                    <div 
-                        className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 space-y-2 transition-all duration-700 ease-out transform ${
-                            showcaseInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                        }`}
-                    >
-                        <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block">
-                            ARCHIVAL SHOWCASE // LIVE TRACK
-                        </span>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                            Built for local brands that move fast.
-                        </h2>
-                    </div>
+                    {/* Ambient Radial Underglow behind Desktop Window */}
+                    <div className="pointer-events-none absolute left-1/2 -top-12 -translate-x-1/2 w-full max-w-5xl h-72 bg-gradient-to-b from-[#E00D42]/15 via-red-950/10 to-transparent blur-3xl -z-10" />
 
-                    {/* Edge-to-Edge Masked Infinite Moving Visual Carousel Track */}
-                    <div 
-                        className={`relative w-full overflow-hidden transition-all duration-1000 delay-150 ease-out transform ${
-                            showcaseInView ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-                        }`}
-                        style={{
-                            maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
-                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)'
-                        }}
-                    >
-                        <div className="flex gap-6 animate-marquee-slow hover:[animation-play-state:paused] w-max py-2">
-                            {MOVING_CARDS.concat(MOVING_CARDS).map((card, idx) => (
-                                <div
-                                    key={`${card.id}-${idx}`}
-                                    className="w-[340px] sm:w-[380px] h-[460px] shrink-0 group bg-[#0C0D0E] border border-white/[0.08] hover:border-white/30 rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl relative transition-all duration-500 hover:-translate-y-1.5 cursor-pointer"
-                                >
-                                    {/* Full-Bleed Photographic Background with Gradient Scrim */}
-                                    <div className="absolute inset-0 z-0">
-                                        <img 
-                                            src={card.image} 
-                                            alt={card.headline} 
-                                            className="w-full h-full object-cover object-center opacity-40 group-hover:scale-105 group-hover:opacity-55 transition-all duration-700 ease-out" 
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0C0D0E] via-[#0C0D0E]/60 to-[#0C0D0E]/20" />
+                    {/* 2.5D Perspective Container */}
+                    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 [perspective:1200px] [perspective-origin:center_top]">
+                        
+                        {/* Section Micro Label */}
+                        <div className="text-center mb-6 space-y-1">
+                            <span className="font-mono text-[11px] text-[#E00D42] uppercase tracking-widest block font-semibold">
+                                COCKPIT PREVIEW // DESKTOP STANDARD
+                            </span>
+                            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
+                                Everything you need to fulfill orders in one window.
+                            </h2>
+                        </div>
+
+                        {/* Desktop Application Chassis Window Frame */}
+                        <div 
+                            className={`relative rounded-2xl p-[1px] bg-gradient-to-b from-white/20 via-white/8 to-white/0 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] transition-all duration-1000 ease-out transform [transform-style:preserve-3d] ${
+                                showcaseInView 
+                                    ? 'opacity-100 [transform:rotateX(0deg)_scale(1)]' 
+                                    : 'opacity-90 [transform:rotateX(12deg)_scale(0.97)]'
+                            }`}
+                        >
+                            {/* Inner Chassis Container */}
+                            <div className="relative overflow-hidden rounded-[15px] bg-[#0A0D14] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]">
+                                
+                                {/* 1. macOS / Studio Title Bar */}
+                                <div className="flex h-11 items-center justify-between border-b border-white/[0.08] bg-[#0E1118]/90 px-4 backdrop-blur-md select-none">
+                                    {/* Traffic Light Dots */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="h-3 w-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/40" />
+                                        <span className="h-3 w-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/40" />
+                                        <span className="h-3 w-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/40" />
                                     </div>
 
-                                    {/* Card Top Pill Metadata */}
-                                    <div className="relative z-10 p-6 flex items-center justify-between">
-                                        <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 font-mono text-[10px] text-white/80 uppercase tracking-widest">
-                                            {card.index}
-                                        </span>
-                                        <span className="px-2.5 py-1 rounded-full bg-[#E00D42]/20 border border-[#E00D42]/40 text-[#E00D42] font-mono text-[9px] font-bold uppercase tracking-wider backdrop-blur-md">
-                                            {card.highlightTag}
-                                        </span>
+                                    {/* Center Environment Metadata Pill */}
+                                    <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1 text-xs text-slate-300 font-mono">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34D399] animate-pulse" />
+                                        <span className="hidden sm:inline">Bagoo Cockpit // Node MNL-01 •</span>
+                                        <span>Cash on Delivery Active</span>
                                     </div>
 
-                                    {/* Card Bottom Content (Ultra-Minimal: Zero Fluff, 1 Punchy Line + Specs) */}
-                                    <div className="relative z-10 p-6 space-y-4">
-                                        <span className="font-mono text-[10px] text-white/40 uppercase tracking-widest block">
-                                            {card.category}
+                                    {/* Right Utility Pills */}
+                                    <div className="flex items-center gap-2 font-mono text-[11px]">
+                                        <span className="hidden md:inline-flex px-2 py-0.5 rounded bg-[#E00D42]/20 border border-[#E00D42]/40 text-[#E00D42] font-semibold">
+                                            10% FLAT COMMISSION
                                         </span>
-                                        <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
-                                            {card.headline}
-                                        </h3>
-                                        
-                                        {/* Micro Spec Badges */}
-                                        <div className="pt-3 border-t border-white/[0.08] flex items-center gap-2 font-mono text-[10px] text-white/60">
-                                            {card.specs.map((s, sIdx) => (
-                                                <span key={sIdx} className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
-                                                    {s}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white/50">
+                                            A6 THERMAL READY
+                                        </span>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
 
+                                {/* 2. Cockpit Workspace Body */}
+                                <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] bg-[#07090E]">
+                                    
+                                    {/* Left Navigation Rail */}
+                                    <aside className="hidden md:flex flex-col border-r border-white/[0.06] bg-[#0A0D14] p-4 text-xs font-mono justify-between">
+                                        <div className="space-y-4">
+                                            {/* Merchant Identity Card */}
+                                            <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5">
+                                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/20 border border-[#E00D42]/30 flex items-center justify-center font-bold text-[#E00D42]">
+                                                    B
+                                                </div>
+                                                <div className="leading-tight overflow-hidden">
+                                                    <p className="font-bold text-white truncate">Manila Studio</p>
+                                                    <p className="text-[10px] text-white/40">Verified Seller #042</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Navigation Links */}
+                                            <nav className="flex flex-col gap-1 text-white/60">
+                                                <div className="flex items-center justify-between rounded-lg bg-white/[0.08] px-3 py-2 font-bold text-white">
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
+                                                        Overview
+                                                    </span>
+                                                    <span className="text-[10px] text-emerald-400">Live</span>
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-white/[0.03] text-white/60">
+                                                    <span>Orders Queue</span>
+                                                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white font-bold">18</span>
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-white/[0.03] text-white/60">
+                                                    <span>Thermal Waybills</span>
+                                                    <span className="rounded bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 text-[10px] font-bold">Batch</span>
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-white/[0.03] text-white/60">
+                                                    <span>COD Remittance</span>
+                                                    <span className="text-[10px] text-white/50">₱44.0k</span>
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-white/[0.03] text-white/60">
+                                                    <span>Courier Dispatch</span>
+                                                    <span className="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px]">Gate Handover</span>
+                                                </div>
+                                            </nav>
+                                        </div>
+
+                                        {/* Courier Cut-off Widget */}
+                                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-[11px] space-y-1.5">
+                                            <div className="flex justify-between text-white/50">
+                                                <span>Rider Doorstep Pickup</span>
+                                                <span className="text-emerald-400 font-bold">4:30 PM</span>
+                                            </div>
+                                            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                                                <div className="h-full w-[78%] rounded-full bg-[#E00D42]" />
+                                            </div>
+                                            <span className="text-[10px] text-white/40 block">1h 14m remaining for today</span>
+                                        </div>
+                                    </aside>
+
+                                    {/* Cockpit Main Pane */}
+                                    <main className="p-4 sm:p-6 flex flex-col gap-6">
+                                        
+                                        {/* Top Action & Filter Strip */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                                            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-mono">
+                                                <span className="rounded-lg bg-white/[0.08] px-3 py-1.5 text-white font-bold border border-white/10 whitespace-nowrap">
+                                                    All Orders (18)
+                                                </span>
+                                                <span className="rounded-lg px-3 py-1.5 text-white/50 hover:bg-white/[0.03] whitespace-nowrap">
+                                                    To Pack (4)
+                                                </span>
+                                                <span className="rounded-lg px-3 py-1.5 text-white/50 hover:bg-white/[0.03] whitespace-nowrap">
+                                                    Ready for Pickup (6)
+                                                </span>
+                                                <span className="rounded-lg px-3 py-1.5 text-white/50 hover:bg-white/[0.03] whitespace-nowrap">
+                                                    Out for Delivery (5)
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold transition shadow-sm cursor-default">
+                                                    <Printer className="w-3.5 h-3.5" />
+                                                    <span>Print 6 Waybills (A6)</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* 4 Bento Metrics Cards */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 font-mono">
+                                            
+                                            {/* Metric 1: Gross Sales */}
+                                            <div className="rounded-xl border border-white/[0.08] bg-[#0C0D0E] p-4 space-y-1">
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider block">
+                                                    Gross COD Sales
+                                                </span>
+                                                <p className="text-xl font-bold text-white">₱48,920.00</p>
+                                                <span className="inline-block text-[10px] text-emerald-400 font-sans">
+                                                    +16.4% this week
+                                                </span>
+                                            </div>
+
+                                            {/* Metric 2: Net Cash in Pocket */}
+                                            <div className="rounded-xl border border-white/[0.08] bg-[#0C0D0E] p-4 space-y-1">
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider block">
+                                                    Net Take-Home (90%)
+                                                </span>
+                                                <p className="text-xl font-bold text-emerald-400">₱44,028.00</p>
+                                                <span className="inline-block text-[10px] text-white/40 font-sans">
+                                                    Physical COD remittance
+                                                </span>
+                                            </div>
+
+                                            {/* Metric 3: Platform Fee */}
+                                            <div className="rounded-xl border border-white/[0.08] bg-[#0C0D0E] p-4 space-y-1">
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider block">
+                                                    Platform Fee (10%)
+                                                </span>
+                                                <p className="text-xl font-bold text-white/80">-₱4,892.00</p>
+                                                <span className="inline-block text-[10px] text-white/40 font-sans">
+                                                    Zero listing or hidden fees
+                                                </span>
+                                            </div>
+
+                                            {/* Metric 4: Courier Pickup Status */}
+                                            <div className="rounded-xl border border-white/[0.08] bg-[#0C0D0E] p-4 space-y-1">
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider block">
+                                                    Doorstep Handover
+                                                </span>
+                                                <p className="text-xl font-bold text-white">6 Ready</p>
+                                                <span className="inline-block text-[10px] text-amber-300 font-sans">
+                                                    Rider Juan arriving in 12m
+                                                </span>
+                                            </div>
+
+                                        </div>
+
+                                        {/* High-Density Live Orders Queue Table */}
+                                        <div className="rounded-xl border border-white/[0.08] bg-[#090A0E] overflow-hidden">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left text-xs font-mono">
+                                                    <thead className="border-b border-white/[0.08] bg-white/[0.02] text-[10px] uppercase tracking-wider text-white/40">
+                                                        <tr>
+                                                            <th className="py-2.5 px-3.5">Tracking ID</th>
+                                                            <th className="py-2.5 px-3.5">Item & Buyer</th>
+                                                            <th className="py-2.5 px-3.5">Destination</th>
+                                                            <th className="py-2.5 px-3.5">Doorstep COD</th>
+                                                            <th className="py-2.5 px-3.5">Fulfillment State</th>
+                                                            <th className="py-2.5 px-3.5 text-right">Waybill</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-white/[0.04] text-white/80">
+                                                        <tr className="hover:bg-white/[0.02] transition">
+                                                            <td className="py-3 px-3.5 text-white font-bold">BGO-MNL-4821</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="text-white font-medium block font-sans">Heavyweight Drop Tee (L)</span>
+                                                                <span className="text-[10px] text-white/40">Buyer: Clarisse S.</span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-white/60 font-sans">Quezon City, NCR</td>
+                                                            <td className="py-3 px-3.5 text-white font-bold">₱1,250.00</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px]">
+                                                                    <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                                                                    Ready for Pickup
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-right">
+                                                                <span className="text-[11px] text-[#E00D42] hover:underline cursor-default">
+                                                                    Print A6
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+
+                                                        <tr className="hover:bg-white/[0.02] transition">
+                                                            <td className="py-3 px-3.5 text-white font-bold">BGO-MNL-4822</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="text-white font-medium block font-sans">Ceramic Pour-over Mug</span>
+                                                                <span className="text-[10px] text-white/40">Buyer: Marco V.</span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-white/60 font-sans">Cebu City, Central Visayas</td>
+                                                            <td className="py-3 px-3.5 text-white font-bold">₱890.00</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px]">
+                                                                    <span className="w-1 h-1 rounded-full bg-blue-400" />
+                                                                    Waybill Printed
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-right">
+                                                                <span className="text-[11px] text-white/50 hover:text-white cursor-default">
+                                                                    Reprint
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+
+                                                        <tr className="hover:bg-white/[0.02] transition">
+                                                            <td className="py-3 px-3.5 text-white font-bold">BGO-MNL-4823</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="text-white font-medium block font-sans">Studio Sticker Pack x5</span>
+                                                                <span className="text-[10px] text-white/40">Buyer: Denise T.</span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-white/60 font-sans">Davao City, Region XI</td>
+                                                            <td className="py-3 px-3.5 text-white font-bold">₱650.00</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px]">
+                                                                    <span className="w-1 h-1 rounded-full bg-purple-400" />
+                                                                    Out for Delivery
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-right">
+                                                                <span className="text-[11px] text-white/50 hover:text-white cursor-default">
+                                                                    Rider Mark D.
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+
+                                                        <tr className="hover:bg-white/[0.02] transition">
+                                                            <td className="py-3 px-3.5 text-white font-bold">BGO-MNL-4824</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="text-white font-medium block font-sans">Canvas Messenger Bag</span>
+                                                                <span className="text-[10px] text-white/40">Buyer: Rafael L.</span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-white/60 font-sans">Manila, NCR</td>
+                                                            <td className="py-3 px-3.5 text-white font-bold">₱2,100.00</td>
+                                                            <td className="py-3 px-3.5">
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px]">
+                                                                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                                                                    Delivered • ₱1,890 Remitted
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-3.5 text-right">
+                                                                <span className="text-[11px] text-emerald-400 cursor-default font-sans">
+                                                                    Settled
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                    </main>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Feature Explanations Bento Grid Directly Connected Below Mockup */}
+                        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 font-mono">
+                            
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
+                                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
+                                    01
+                                </div>
+                                <h3 className="text-base font-bold text-white">1-Click Thermal Waybills</h3>
+                                <p className="text-xs text-white/50 font-sans leading-relaxed">
+                                    Generate standardized A6 shipping barcode waybills in seconds. Compatible with USB and Bluetooth thermal printers for rapid doorstep handovers.
+                                </p>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
+                                <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 border border-[#E00D42]/20 flex items-center justify-center text-[#E00D42] font-bold text-xs">
+                                    02
+                                </div>
+                                <h3 className="text-base font-bold text-white">Automated COD Ledger</h3>
+                                <p className="text-xs text-white/50 font-sans leading-relaxed">
+                                    Eliminate manual payment screenshot audits. Couriers collect physical cash at the doorstep and earnings are automatically credited after the 10% fee.
+                                </p>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
+                                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">
+                                    03
+                                </div>
+                                <h3 className="text-base font-bold text-white">Doorstep Fleet Pickup</h3>
+                                <p className="text-xs text-white/50 font-sans leading-relaxed">
+                                    Never queue at a freight courier branch again. Dedicated local riders collect packages directly from your home gate, studio, or campus lobby.
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
                 </section>
 
                 {/* 4. PANEL FIG 0.1: MINIMALIST TRANSPARENT ECONOMICS (SIDE-BY-SIDE SLIDE-IN SCROLL ANIMATION) */}
