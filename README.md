@@ -94,3 +94,18 @@ users (role: admin | seller | buyer | courier | logistics)
 ```
 
 - **Logistics Extensibility**: `deliveries` contains `logistics_partner`, `tracking_number`, `pickup_address`, `delivery_address`, status history, and notes. This allows assigning deliveries to internal couriers or external 3rd-party freight and logistics APIs.
+
+---
+
+## Design System & UI/UX Standards ("The Bagoo Minimalist Standard")
+
+BagooPH follows a high-end, dark minimalist design system inspired by modern industrial and software interfaces (Linear, Apple Pro, Vercel, Teenage Engineering):
+
+### Core Philosophy
+- **Dark, Architectural Canvas**: Deep obsidian foundations (`#08090A` / `#000000`) paired with elevated card surfaces (`#0C0D0E`) and hairline glass borders (`rgba(255, 255, 255, 0.08)`).
+- **Surgical Crimson Red (`#E00D42`) Restraint**: Red is the primary brand accent, applied with precision—status beacons, active slider thumbs, telemetry pings, and subtle border highlights. Never used for overwhelming background fills.
+- **Visual-First, Low Word Count**: Marketing fluff and corporate jargon are replaced by editorial photography, interactive parameter switchers, and real-time state telemetry.
+- **Authentic Local Commerce**: Grounded in the reality of Philippine campus creators and independent micro-merchants utilizing Cash on Delivery (COD) and doorstep courier collection.
+- **Scroll-Driven Motion**: Hardware-accelerated CSS and IntersectionObserver transitions for staggered card entrances and subtle hover elevations without heavy 3D WebGL overhead.
+- **Zero Emojis Invariant**: Professional typography and Lucide iconography strictly without emojis.
+
