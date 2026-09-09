@@ -479,10 +479,10 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 4. PANEL FIG 0.1: WHY US & PRODUCT IMAGE CAROUSEL (LITERALLY MINIMAL) */}
-                <section id="economics" ref={economicsRef} className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
+                <section id="economics" ref={economicsRef} className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
                     isLight ? 'border-slate-200' : 'border-white/[0.06]'
                 }`}>
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
                         
                         {/* LEFT COLUMN: WHY US - LITERALLY MINIMAL */}
                         <div 
@@ -542,21 +542,19 @@ export default function SellerLanding() {
 
                         {/* RIGHT COLUMN: 3D AUTO-SWAPPING PRODUCT IMAGE CAROUSEL (1.6s) */}
                         <div 
-                            className={`lg:col-span-7 relative h-[380px] sm:h-[440px] rounded-2xl border overflow-hidden flex items-center justify-center transition-all duration-1000 ease-out transform ${
-                                isLight 
-                                    ? 'bg-slate-50/60 border-slate-200/80 shadow-lg' 
-                                    : 'bg-[#0A0D14]/80 border-white/[0.08] shadow-2xl'
-                            } ${economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                            className={`lg:col-span-7 relative h-[380px] sm:h-[420px] overflow-hidden flex items-center justify-center transition-all duration-1000 ease-out transform ${
+                                economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                            }`}
                         >
                             {/* Ambient subtle radial glow */}
-                            <div className="pointer-events-none absolute inset-0 bg-radial from-[#E00D42]/8 via-transparent to-transparent blur-2xl" />
+                            <div className="pointer-events-none absolute inset-0 bg-radial from-[#E00D42]/6 via-transparent to-transparent blur-3xl" />
 
-                            {/* Edge Fade Gradients */}
-                            <div className={`pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r z-30 ${
-                                isLight ? 'from-slate-50/90 to-transparent' : 'from-[#0A0D14]/90 to-transparent'
+                            {/* Seamless Edge Dissolve into Page Canvas */}
+                            <div className={`pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r z-30 ${
+                                isLight ? 'from-[#FAFAFA] to-transparent' : 'from-[#08090A] to-transparent'
                             }`} />
-                            <div className={`pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l z-30 ${
-                                isLight ? 'from-slate-50/90 to-transparent' : 'from-[#0A0D14]/90 to-transparent'
+                            <div className={`pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l z-30 ${
+                                isLight ? 'from-[#FAFAFA] to-transparent' : 'from-[#08090A] to-transparent'
                             }`} />
 
                             {/* Carousel Slides Track */}
@@ -579,11 +577,11 @@ export default function SellerLanding() {
                                         opacityClass = 'opacity-100 shadow-2xl';
                                         zIndex = 20;
                                     } else if (isLeft) {
-                                        transformStyle = 'translateX(-64%) scale(0.8)';
+                                        transformStyle = 'translateX(-60%) scale(0.8)';
                                         opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
                                         zIndex = 10;
                                     } else if (isRight) {
-                                        transformStyle = 'translateX(64%) scale(0.8)';
+                                        transformStyle = 'translateX(60%) scale(0.8)';
                                         opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
                                         zIndex = 10;
                                     } else {
@@ -600,7 +598,7 @@ export default function SellerLanding() {
                                                 transform: transformStyle,
                                                 zIndex,
                                             }}
-                                            className={`absolute w-[230px] sm:w-[270px] aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-700 ease-in-out cursor-pointer select-none ${
+                                            className={`absolute w-[220px] sm:w-[260px] aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-700 ease-in-out cursor-pointer select-none ${
                                                 isLight 
                                                     ? 'border-slate-200 bg-white' 
                                                     : 'border-white/10 bg-[#121214]'
@@ -640,7 +638,7 @@ export default function SellerLanding() {
                             </div>
 
                             {/* Bottom Pagination Dots */}
-                            <div className="absolute bottom-3.5 flex items-center gap-1.5 z-30">
+                            <div className="absolute bottom-2 flex items-center gap-1.5 z-30">
                                 {CAROUSEL_PRODUCTS.map((_, i) => (
                                     <button
                                         key={i}
