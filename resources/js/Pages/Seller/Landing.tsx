@@ -210,11 +210,11 @@ export default function SellerLanding() {
                 </div>
 
                 {/* 2. HERO SECTION — STAGGERED UNIQUE SCROLL / LOAD ANIMATIONS */}
-                <section className="pt-16 pb-12 sm:pt-24 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-8">
+                <section className="pt-14 pb-6 sm:pt-20 sm:pb-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center flex flex-col items-center">
                     
                     {/* Precision Status Dot */}
                     <div 
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border transition-all duration-700 ease-out transform bg-slate-100/90 border-slate-300/80 text-slate-800 font-medium ${heroLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border transition-all duration-700 ease-out transform bg-slate-100/90 border-slate-300/80 text-slate-800 font-medium mb-6 sm:mb-7 ${heroLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
                     >
                         <span className="w-2 h-2 rounded-full bg-[#E00D42] shadow-[0_0_8px_#E00D42]" />
                         <span className="font-mono text-[11px] uppercase tracking-widest">
@@ -224,22 +224,22 @@ export default function SellerLanding() {
 
                     {/* Bold Editorial Headline */}
                     <h1 
-                        className={`text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-[-0.04em] leading-[0.98] max-w-4xl mx-auto transition-all duration-700 delay-150 ease-out transform text-[#0F172A] ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                        className={`text-5xl sm:text-6xl md:text-7xl lg:text-[5.25rem] xl:text-8xl font-extrabold tracking-[-0.04em] leading-[1.02] max-w-5xl mx-auto transition-all duration-700 delay-150 ease-out transform text-[#0F172A] mb-5 sm:mb-6 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                     >
-                        Commerce, stripped <br />
+                        <span className="sm:whitespace-nowrap">Commerce, stripped</span> <br />
                         <span className="text-slate-600">down to essentials.</span>
                     </h1>
 
                     {/* Single Minimal Line of Copy */}
                     <p 
-                        className={`text-base sm:text-lg font-sans max-w-xl mx-auto leading-relaxed transition-all duration-700 delay-300 ease-out transform text-slate-700 font-normal ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                        className={`text-base sm:text-lg font-sans max-w-xl mx-auto leading-relaxed transition-all duration-700 delay-300 ease-out transform text-slate-700 font-normal mb-5 sm:mb-6 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
                     >
                         10% flat commission. Direct Cash on Delivery remittance. Doorstep courier pickup for independent Philippine creators.
                     </p>
 
                     {/* Minimalist Dual CTAs */}
                     <div 
-                        className={`flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2 transition-all duration-700 delay-450 ease-out transform ${
+                        className={`flex flex-col sm:flex-row items-center justify-center gap-3.5 transition-all duration-700 delay-450 ease-out transform mb-4 sm:mb-6 ${
                             heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                         }`}
                     >
@@ -261,7 +261,7 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 3. SECTION 2: PEEKING DESKTOP MERCHANT COCKPIT & CORE CAPABILITIES */}
-                <section id="showcase" ref={showcaseRef} className="relative pb-24 pt-2 -mt-4 sm:-mt-8 lg:-mt-12">
+                <section id="showcase" ref={showcaseRef} className="relative pb-24 pt-0">
                     
                     {/* Ambient Radial Underglow behind Desktop Window */}
                     <div className="pointer-events-none absolute left-1/2 -top-12 -translate-x-1/2 w-full max-w-5xl h-72 bg-gradient-to-b from-[#E00D42]/12 via-red-950/5 to-transparent blur-3xl -z-10" />
