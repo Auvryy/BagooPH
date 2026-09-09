@@ -91,50 +91,70 @@ export default function SellerLanding() {
         };
     }, []);
 
-    // Interactive Economics Spline Graph State (Linear-Style Cursor Tracking)
-    const [graphProgress, setGraphProgress] = useState(0.60); // Initial resting point (~180 orders)
-    const [isGraphHovered, setIsGraphHovered] = useState(false);
-    const itemPrice = 500; // Benchmark selling price in PHP (standard retail item)
+    // Section 3 Product Carousel State & Products (Auto-swaps every 1.6s)
+    const CAROUSEL_PRODUCTS = [
+        {
+            id: 'tee',
+            name: 'Heavyweight Boxy Graphic Tee',
+            category: 'Streetwear',
+            price: '₱850',
+            payout: '₱765 (90%)',
+            image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80',
+        },
+        {
+            id: 'shoes',
+            name: 'Cushioned Urban Trail Runners',
+            category: 'Footwear',
+            price: '₱2,750',
+            payout: '₱2,475 (90%)',
+            image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+        },
+        {
+            id: 'bag',
+            name: 'Modular Commute Pack 24L',
+            category: 'Bags & EDC',
+            price: '₱1,450',
+            payout: '₱1,305 (90%)',
+            image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80',
+        },
+        {
+            id: 'audio',
+            name: 'ANC Wireless Studio Headphones',
+            category: 'Audio Gear',
+            price: '₱3,200',
+            payout: '₱2,880 (90%)',
+            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80',
+        },
+        {
+            id: 'watch',
+            name: 'Minimalist Tactical Field Watch',
+            category: 'Accessories',
+            price: '₱1,850',
+            payout: '₱1,665 (90%)',
+            image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+        },
+        {
+            id: 'hoodie',
+            name: 'Weatherproof Techwear Shell',
+            category: 'Outerwear',
+            price: '₱2,100',
+            payout: '₱1,890 (90%)',
+            image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80',
+        },
+    ];
 
-    // Active calculations based on dynamic graph scrubber position (0 to 300 orders)
-    const activeOrders = Math.max(5, Math.round(graphProgress * 300));
-    const activeGross = activeOrders * itemPrice;
-    const activePlatformFee = Math.round(activeGross * 0.10); // Official 10% Flat Platform Commission
-    const activeNet = activeGross - activePlatformFee; // Sellers retain 90%
-    const maxGross = 300 * itemPrice;
+    const [activeCarouselIdx, setActiveCarouselIdx] = useState(0);
 
-    // SVG Coordinate Geometry (viewBox: 0 0 800 320)
-    // Plot bounds: Left=85, Right=755 (width=670), Top=45, Baseline=250 (height=205)
-    const curX = Math.round(85 + (activeOrders / 300) * 670);
-    const curYGross = Math.round(250 - (activeGross / maxGross) * 205);
-    const curYNet = Math.round(250 - (activeNet / maxGross) * 205);
+    // Auto-swap every 1.6 seconds as requested
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setActiveCarouselIdx((prev) => (prev + 1) % CAROUSEL_PRODUCTS.length);
+        }, 1600);
+        return () => clearInterval(timer);
+    }, [CAROUSEL_PRODUCTS.length]);
 
-    // Handle interactive mouse / touch scrub across graph
-    const handleGraphScrub = (clientX: number, rect: DOMRect) => {
-        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
-        const svgX = (x / rect.width) * 800;
-        const clampedSvgX = Math.max(85, Math.min(755, svgX));
-        const pct = (clampedSvgX - 85) / 670;
-        setGraphProgress(pct);
-        setIsGraphHovered(true);
-    };
-
-    // FAQ Accordion
+    // FAQ Accordion State
     const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-    const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            maximumFractionDigits: 0,
-        }).format(val);
-    };
-
-    const formatShortCurrency = (val: number) => {
-        if (val >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
-        if (val >= 1000) return `₱${Math.round(val / 1000)}k`;
-        return `₱${val}`;
-    };
 
     const faqs = [
         {
@@ -458,449 +478,184 @@ export default function SellerLanding() {
                     </div>
                 </section>
 
-                {/* 4. PANEL FIG 0.1: WHY US & INTERACTIVE SPLINE GRAPH (2-COLUMN EDITORIAL LAYOUT) */}
+                {/* 4. PANEL FIG 0.1: WHY US & PRODUCT IMAGE CAROUSEL (LITERALLY MINIMAL) */}
                 <section id="economics" ref={economicsRef} className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
                     isLight ? 'border-slate-200' : 'border-white/[0.06]'
                 }`}>
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
                         
-                        {/* LEFT COLUMN: WHY US - EDITORIAL VALUE PROPOSITION */}
+                        {/* LEFT COLUMN: WHY US - LITERALLY MINIMAL */}
                         <div 
                             className={`lg:col-span-5 space-y-6 transition-all duration-700 ease-out transform ${
                                 economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                             }`}
                         >
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-bold">
                                     FIG 0.1 — WHY US
                                 </span>
-                                <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
+                                <h2 className={`text-4xl sm:text-5xl font-extrabold tracking-tight ${
                                     isLight ? 'text-slate-900' : 'text-white'
                                 }`}>
-                                    Keep 90% of your gross sales.
+                                    Keep 90%.<br />
+                                    No cuts.
                                 </h2>
+                                <p className={`text-sm sm:text-base font-sans ${
+                                    isLight ? 'text-slate-600' : 'text-white/50'
+                                }`}>
+                                    Legacy platforms take 25% to 35%. Bagoo takes a flat 10%. You keep the rest.
+                                </p>
                             </div>
 
-                            <p className={`text-sm sm:text-base font-sans leading-relaxed ${
-                                isLight ? 'text-slate-600' : 'text-white/60'
-                            }`}>
-                                Traditional e-commerce platforms quietly strip 25% to 35% of your earnings through payment gateway fees, listing surcharges, and voucher deductions. Bagoo operates on a single transparent rule: a flat 10% platform fee.
-                            </p>
-
-                            {/* 3 Why Us Value Cards */}
-                            <div className="space-y-3 pt-1">
-                                <div className={`p-4 rounded-xl border transition ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200/80 shadow-sm' 
-                                        : 'bg-white/[0.03] border-white/[0.08]'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-md bg-[#E00D42]/10 flex items-center justify-center text-[#E00D42] font-mono font-bold text-xs shrink-0 mt-0.5">
-                                            01
-                                        </div>
-                                        <div>
-                                            <h4 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                10% Flat Fee • Zero Hidden Surcharges
-                                            </h4>
-                                            <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
-                                                No payment processing cuts, no listing costs, no mandatory voucher taxes.
-                                            </p>
-                                        </div>
-                                    </div>
+                            {/* 3 Ultra-minimal bullets */}
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
+                                    <span className={isLight ? 'text-slate-900 font-semibold' : 'text-white font-medium'}>
+                                        10% Flat Fee • Zero Hidden Surcharges
+                                    </span>
                                 </div>
-
-                                <div className={`p-4 rounded-xl border transition ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200/80 shadow-sm' 
-                                        : 'bg-white/[0.03] border-white/[0.08]'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-mono font-bold text-xs shrink-0 mt-0.5">
-                                            02
-                                        </div>
-                                        <div>
-                                            <h4 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                Direct Cash on Delivery Remittance
-                                            </h4>
-                                            <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
-                                                Cash collected at the buyer's doorstep by our rider fleet is credited straight to your balance.
-                                            </p>
-                                        </div>
-                                    </div>
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className={isLight ? 'text-slate-900 font-semibold' : 'text-white font-medium'}>
+                                        Direct Doorstep COD Remittance
+                                    </span>
                                 </div>
-
-                                <div className={`p-4 rounded-xl border transition ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200/80 shadow-sm' 
-                                        : 'bg-white/[0.03] border-white/[0.08]'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-500 font-mono font-bold text-xs shrink-0 mt-0.5">
-                                            03
-                                        </div>
-                                        <div>
-                                            <h4 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                Transparent Unit Economics
-                                            </h4>
-                                            <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
-                                                A ₱500 item puts exactly ₱450 net cash in your pocket. Bagoo retains only ₱50 (10%).
-                                            </p>
-                                        </div>
-                                    </div>
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                    <span className={isLight ? 'text-slate-900 font-semibold' : 'text-white font-medium'}>
+                                        Sell ₱500 • Keep ₱450 Cash
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="pt-1">
+                            <div className="pt-2">
                                 <a 
                                     href={getDomainUrl('seller', '/register')}
                                     className="inline-flex items-center gap-2 font-mono text-xs font-bold text-[#E00D42] hover:underline"
                                 >
-                                    <span>Open your merchant store today</span>
+                                    <span>Start selling today</span>
                                     <ArrowRight className="w-3.5 h-3.5" />
                                 </a>
                             </div>
                         </div>
 
-                        {/* RIGHT COLUMN: INTERACTIVE VISUAL GRAPH CARD */}
+                        {/* RIGHT COLUMN: 3D AUTO-SWAPPING PRODUCT IMAGE CAROUSEL (1.6s) */}
                         <div 
-                            className={`lg:col-span-7 border rounded-2xl p-5 sm:p-7 space-y-5 relative overflow-hidden transition-all duration-1000 ease-out transform ${
+                            className={`lg:col-span-7 relative h-[380px] sm:h-[440px] rounded-2xl border overflow-hidden flex items-center justify-center transition-all duration-1000 ease-out transform ${
                                 isLight 
-                                    ? 'bg-white border-slate-200 shadow-xl' 
-                                    : 'bg-[#0C0D0E] border-white/[0.08] shadow-2xl'
+                                    ? 'bg-slate-50/60 border-slate-200/80 shadow-lg' 
+                                    : 'bg-[#0A0D14]/80 border-white/[0.08] shadow-2xl'
                             } ${economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                         >
-                            {/* Top Telemetry Header */}
-                            <div className={`flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b ${
-                                isLight ? 'border-slate-100' : 'border-white/[0.08]'
-                            }`}>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#E00D42] font-semibold">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42] animate-pulse" />
-                                        <span>Interactive Payout Simulator (@ ₱500 / item)</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-3">
-                                        <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono ${
-                                            isLight ? 'text-slate-900' : 'text-white'
-                                        }`}>
-                                            {formatCurrency(activeNet)}
-                                        </span>
-                                        <span className={`text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full ${
-                                            isLight 
-                                                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium' 
-                                                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                                        }`}>
-                                            90% Net Payout
-                                        </span>
-                                    </div>
-                                    <p className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
-                                        {activeOrders} units sold • {formatCurrency(activeGross)} Gross COD • -{formatCurrency(activePlatformFee)} (10% fee)
-                                    </p>
-                                </div>
+                            {/* Ambient subtle radial glow */}
+                            <div className="pointer-events-none absolute inset-0 bg-radial from-[#E00D42]/8 via-transparent to-transparent blur-2xl" />
 
-                                {/* Graph Legend */}
-                                <div className={`flex flex-col sm:items-end gap-1.5 font-mono text-[10px] shrink-0 ${
-                                    isLight ? 'text-slate-500' : 'text-white/40'
-                                }`}>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="w-3 h-1 rounded-full bg-[#E00D42]" />
-                                        <span>Solid Red: <strong>90% Net Take-Home</strong></span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="w-3 h-0.5 border-b border-dashed border-slate-400" />
-                                        <span>Dashed: <strong>100% Gross COD</strong></span>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Edge Fade Gradients */}
+                            <div className={`pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r z-30 ${
+                                isLight ? 'from-slate-50/90 to-transparent' : 'from-[#0A0D14]/90 to-transparent'
+                            }`} />
+                            <div className={`pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l z-30 ${
+                                isLight ? 'from-slate-50/90 to-transparent' : 'from-[#0A0D14]/90 to-transparent'
+                            }`} />
 
-                            {/* Interactive SVG Coordinate Canvas */}
-                            <div className="relative select-none pt-1">
-                                <svg
-                                    viewBox="0 0 800 320"
-                                    className="w-full h-64 sm:h-72 cursor-crosshair overflow-visible"
-                                    onMouseMove={(e) => handleGraphScrub(e.clientX, e.currentTarget.getBoundingClientRect())}
-                                    onMouseLeave={() => setIsGraphHovered(false)}
-                                    onTouchMove={(e) => {
-                                        if (e.touches[0]) handleGraphScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
-                                    }}
-                                    onTouchEnd={() => setIsGraphHovered(false)}
-                                >
-                                    <defs>
-                                        {/* Area glow gradient for 90% Net curve */}
-                                        <linearGradient id="activeAreaGlow" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#E00D42" stopOpacity={isLight ? "0.2" : "0.32"} />
-                                            <stop offset="70%" stopColor="#E00D42" stopOpacity={isLight ? "0.04" : "0.08"} />
-                                            <stop offset="100%" stopColor="#E00D42" stopOpacity="0" />
-                                        </linearGradient>
+                            {/* Carousel Slides Track */}
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                {CAROUSEL_PRODUCTS.map((prod, idx) => {
+                                    const n = CAROUSEL_PRODUCTS.length;
+                                    let diff = ((idx - activeCarouselIdx) % n + n) % n;
+                                    if (diff > n / 2) diff -= n;
 
-                                        {/* Stroke gradient for illuminated curve */}
-                                        <linearGradient id="activeStrokeGrad" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="0%" stopColor="#FF6B8B" />
-                                            <stop offset="100%" stopColor="#E00D42" />
-                                        </linearGradient>
+                                    const isCenter = diff === 0;
+                                    const isLeft = diff === -1;
+                                    const isRight = diff === 1;
 
-                                        {/* Clip path revealing illuminated lines strictly up to curX */}
-                                        <clipPath id="graphProgressClip">
-                                            <rect x="0" y="0" width={curX} height="320" />
-                                        </clipPath>
-                                    </defs>
+                                    let transformStyle = '';
+                                    let opacityClass = 'opacity-0 pointer-events-none';
+                                    let zIndex = 0;
 
-                                    {/* Y-Axis Label */}
-                                    <text 
-                                        x="85" 
-                                        y="24" 
-                                        textAnchor="start" 
-                                        className="font-mono text-[10px] font-bold tracking-wider fill-[#E00D42]"
-                                    >
-                                        Y AXIS: REVENUE & TAKE-HOME (₱)
-                                    </text>
+                                    if (isCenter) {
+                                        transformStyle = 'translateX(0%) scale(1)';
+                                        opacityClass = 'opacity-100 shadow-2xl';
+                                        zIndex = 20;
+                                    } else if (isLeft) {
+                                        transformStyle = 'translateX(-64%) scale(0.8)';
+                                        opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
+                                        zIndex = 10;
+                                    } else if (isRight) {
+                                        transformStyle = 'translateX(64%) scale(0.8)';
+                                        opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
+                                        zIndex = 10;
+                                    } else {
+                                        transformStyle = `translateX(${diff > 0 ? '120%' : '-120%'}) scale(0.5)`;
+                                        opacityClass = 'opacity-0 pointer-events-none';
+                                        zIndex = 0;
+                                    }
 
-                                    {/* Y-Axis Vertical Line */}
-                                    <line 
-                                        x1="85" 
-                                        y1="35" 
-                                        x2="85" 
-                                        y2="250" 
-                                        stroke={isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.2)"} 
-                                        strokeWidth="1.5" 
-                                    />
-
-                                    {/* Horizontal Guidelines & Y-Axis Graduations */}
-                                    {/* Line 1: Peak Gross at 300 orders */}
-                                    <line x1="85" y1="45" x2="755" y2="45" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} strokeDasharray="3 3" />
-                                    <text x="76" y="49" textAnchor="end" className="font-mono text-[10px] fill-slate-500 font-medium">
-                                        {formatShortCurrency(maxGross)}
-                                    </text>
-
-                                    {/* Line 2: 2/3 Gross */}
-                                    <line x1="85" y1="113" x2="755" y2="113" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} strokeDasharray="3 3" />
-                                    <text x="76" y="117" textAnchor="end" className="font-mono text-[10px] fill-slate-500 font-medium">
-                                        {formatShortCurrency(Math.round(maxGross * 2 / 3))}
-                                    </text>
-
-                                    {/* Line 3: 1/3 Gross */}
-                                    <line x1="85" y1="182" x2="755" y2="182" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} strokeDasharray="3 3" />
-                                    <text x="76" y="186" textAnchor="end" className="font-mono text-[10px] fill-slate-500 font-medium">
-                                        {formatShortCurrency(Math.round(maxGross * 1 / 3))}
-                                    </text>
-
-                                    {/* Line 4: Baseline ₱0 */}
-                                    <text x="76" y="254" textAnchor="end" className="font-mono text-[10px] fill-slate-500 font-medium">
-                                        ₱0
-                                    </text>
-
-                                    {/* X-Axis Baseline Horizontal Line */}
-                                    <line 
-                                        x1="85" 
-                                        y1="250" 
-                                        x2="755" 
-                                        y2="250" 
-                                        stroke={isLight ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"} 
-                                        strokeWidth="1.5" 
-                                    />
-
-                                    {/* X-Axis Graduation Ticks and Numbers */}
-                                    {[0, 50, 100, 150, 200, 250, 300].map((val) => {
-                                        const tickX = Math.round(85 + (val / 300) * 670);
-                                        return (
-                                            <g key={val}>
-                                                <line 
-                                                    x1={tickX} 
-                                                    y1="250" 
-                                                    x2={tickX} 
-                                                    y2="256" 
-                                                    stroke={isLight ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.25)"} 
-                                                    strokeWidth="1.5" 
-                                                />
-                                                <text 
-                                                    x={tickX} 
-                                                    y="270" 
-                                                    textAnchor="middle" 
-                                                    className="font-mono text-[10px] fill-slate-500 font-medium"
-                                                >
-                                                    {val}
-                                                </text>
-                                            </g>
-                                        );
-                                    })}
-
-                                    {/* X-Axis Label */}
-                                    <text 
-                                        x="420" 
-                                        y="298" 
-                                        textAnchor="middle" 
-                                        className="font-mono text-[10px] font-bold tracking-wider fill-slate-500 uppercase"
-                                    >
-                                        X AXIS: MONTHLY ORDERS / UNITS SOLD (@ ₱500/ITEM)
-                                    </text>
-
-                                    {/* 100% Gross COD Line (Muted Full Track) */}
-                                    <line
-                                        x1="85"
-                                        y1="250"
-                                        x2="755"
-                                        y2="45"
-                                        stroke={isLight ? "rgba(15,23,42,0.18)" : "rgba(255,255,255,0.2)"}
-                                        strokeWidth="2"
-                                        strokeDasharray="4 4"
-                                    />
-                                    <text 
-                                        x="755" 
-                                        y="38" 
-                                        textAnchor="end" 
-                                        className="font-mono text-[9px] fill-slate-400 font-medium"
-                                    >
-                                        100% Gross COD ({formatShortCurrency(maxGross)})
-                                    </text>
-
-                                    {/* 90% Net Take-Home Line (Muted Full Track) */}
-                                    <line
-                                        x1="85"
-                                        y1="250"
-                                        x2="755"
-                                        y2="65"
-                                        stroke={isLight ? "rgba(224,13,66,0.18)" : "rgba(224,13,66,0.25)"}
-                                        strokeWidth="2.5"
-                                    />
-                                    <text 
-                                        x="755" 
-                                        y="80" 
-                                        textAnchor="end" 
-                                        className="font-mono text-[9px] fill-[#E00D42] font-bold"
-                                    >
-                                        90% Net Payout ({formatShortCurrency(maxGross * 0.9)})
-                                    </text>
-
-                                    {/* Milestone Reference Dots along 90% Net Line */}
-                                    {[50, 100, 150, 200, 250].map((m) => {
-                                        const mx = Math.round(85 + (m / 300) * 670);
-                                        const my = Math.round(250 - ((m * itemPrice * 0.9) / maxGross) * 205);
-                                        return (
-                                            <circle
-                                                key={m}
-                                                cx={mx}
-                                                cy={my}
-                                                r="3"
-                                                fill={isLight ? "#FFFFFF" : "#0C0D0E"}
-                                                stroke="#E00D42"
-                                                strokeWidth="1.5"
-                                                opacity="0.7"
+                                    return (
+                                        <div
+                                            key={prod.id}
+                                            onClick={() => setActiveCarouselIdx(idx)}
+                                            style={{
+                                                transform: transformStyle,
+                                                zIndex,
+                                            }}
+                                            className={`absolute w-[230px] sm:w-[270px] aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-700 ease-in-out cursor-pointer select-none ${
+                                                isLight 
+                                                    ? 'border-slate-200 bg-white' 
+                                                    : 'border-white/10 bg-[#121214]'
+                                            } ${opacityClass}`}
+                                        >
+                                            <img
+                                                src={prod.image}
+                                                alt={prod.name}
+                                                className="w-full h-full object-cover"
+                                                loading="eager"
                                             />
-                                        );
-                                    })}
+                                            
+                                            {/* Vignette Overlay & Minimal Labels */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-between p-4">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 font-mono text-[9px] text-white/90 font-semibold uppercase tracking-wider">
+                                                        {prod.category}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded-full bg-[#E00D42] font-mono text-[9px] text-white font-bold tracking-wider">
+                                                        90% PAYOUT
+                                                    </span>
+                                                </div>
 
-                                    {/* Active Illuminated Segment (Clipped to curX) */}
-                                    <g clipPath="url(#graphProgressClip)">
-                                        {/* Area Fill beneath 90% Net line */}
-                                        <polygon
-                                            points={`85,250 85,250 755,65 755,250`}
-                                            fill="url(#activeAreaGlow)"
-                                        />
-                                        {/* Glowing 90% Net Stroke */}
-                                        <line
-                                            x1="85"
-                                            y1="250"
-                                            x2="755"
-                                            y2="65"
-                                            stroke="url(#activeStrokeGrad)"
-                                            strokeWidth="3.5"
-                                            strokeLinecap="round"
-                                        />
-                                        {/* Highlighted 100% Gross Stroke */}
-                                        <line
-                                            x1="85"
-                                            y1="250"
-                                            x2="755"
-                                            y2="45"
-                                            stroke={isLight ? "rgba(15,23,42,0.55)" : "rgba(255,255,255,0.65)"}
-                                            strokeWidth="2"
-                                            strokeDasharray="4 4"
-                                            strokeLinecap="round"
-                                        />
-                                    </g>
-
-                                    {/* Vertical Scrubber Guide Line */}
-                                    <line
-                                        x1={curX}
-                                        y1="35"
-                                        x2={curX}
-                                        y2="250"
-                                        stroke={isLight ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.3)"}
-                                        strokeWidth="1.5"
-                                        strokeDasharray="3 3"
-                                    />
-
-                                    {/* Cursor Indicator Dots */}
-                                    <circle
-                                        cx={curX}
-                                        cy={curYGross}
-                                        r="4"
-                                        fill={isLight ? "#FFFFFF" : "#0A0D14"}
-                                        stroke={isLight ? "rgba(15,23,42,0.8)" : "rgba(255,255,255,0.9)"}
-                                        strokeWidth="2"
-                                    />
-                                    <circle
-                                        cx={curX}
-                                        cy={curYNet}
-                                        r="12"
-                                        fill="#E00D42"
-                                        opacity="0.25"
-                                    />
-                                    <circle
-                                        cx={curX}
-                                        cy={curYNet}
-                                        r="6"
-                                        fill="#E00D42"
-                                        stroke="#FFFFFF"
-                                        strokeWidth="2.5"
-                                    />
-
-                                    {/* Dynamic Cursor Tooltip Badge */}
-                                    {(() => {
-                                        const tooltipX = Math.max(130, Math.min(670, curX));
-                                        const tooltipY = Math.max(30, curYNet - 38);
-                                        return (
-                                            <g transform={`translate(${tooltipX}, ${tooltipY})`} className="pointer-events-none">
-                                                <rect
-                                                    x="-105"
-                                                    y="-22"
-                                                    width="210"
-                                                    height="40"
-                                                    rx="8"
-                                                    fill={isLight ? "#0F172A" : "#18181B"}
-                                                    stroke={isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.2)"}
-                                                    strokeWidth="1"
-                                                    filter="drop-shadow(0 4px 8px rgba(0,0,0,0.25))"
-                                                />
-                                                <text
-                                                    x="0"
-                                                    y="-6"
-                                                    textAnchor="middle"
-                                                    fill="#FFFFFF"
-                                                    className="font-mono text-[10px] font-bold"
-                                                >
-                                                    {activeOrders} units @ ₱{itemPrice} = {formatCurrency(activeNet)}
-                                                </text>
-                                                <text
-                                                    x="0"
-                                                    y="10"
-                                                    textAnchor="middle"
-                                                    fill="#94A3B8"
-                                                    className="font-mono text-[9px]"
-                                                >
-                                                    Gross: {formatCurrency(activeGross)} • 10% fee: -{formatCurrency(activePlatformFee)}
-                                                </text>
-                                            </g>
-                                        );
-                                    })()}
-                                </svg>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-white font-bold text-sm leading-snug drop-shadow-sm">
+                                                        {prod.name}
+                                                    </h4>
+                                                    <div className="flex items-center justify-between font-mono text-xs pt-0.5">
+                                                        <span className="text-white/80 font-semibold">{prod.price}</span>
+                                                        <span className="text-emerald-400 font-bold text-[11px]">{prod.payout}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            {/* Bottom Scrubber Instruction Hint */}
-                            <div className={`flex items-center justify-between text-[11px] font-mono pt-1 ${
-                                isLight ? 'text-slate-400' : 'text-white/30'
-                            }`}>
-                                <span>Hover or drag across graph to simulate sales volume</span>
-                                <span className="text-[#E00D42] font-semibold">{activeOrders} / 300 units</span>
+                            {/* Bottom Pagination Dots */}
+                            <div className="absolute bottom-3.5 flex items-center gap-1.5 z-30">
+                                {CAROUSEL_PRODUCTS.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setActiveCarouselIdx(i)}
+                                        className={`h-1 rounded-full transition-all duration-300 ${
+                                            i === activeCarouselIdx 
+                                                ? 'w-5 bg-[#E00D42]' 
+                                                : isLight 
+                                                    ? 'w-1.5 bg-slate-300 hover:bg-slate-400' 
+                                                    : 'w-1.5 bg-white/20 hover:bg-white/40'
+                                        }`}
+                                        aria-label={`Product slide ${i + 1}`}
+                                    />
+                                ))}
                             </div>
 
                         </div>
