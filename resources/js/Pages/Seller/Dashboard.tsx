@@ -526,17 +526,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <Package className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 whitespace-nowrap">
-                                                To Pack
-                                            </span>
-                                            {stats.pendingPackCount > 0 && (
-                                                <span className="px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono shrink-0">
-                                                    Action Needed
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 font-mono truncate">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 block leading-tight">
+                                            To Pack
+                                        </span>
+                                        <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
                                             Awaiting packaging
                                         </p>
                                     </div>
@@ -571,16 +564,9 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
                                             Returns & Cancels
                                         </span>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            {(stats.returnCount || 0) > 0 && (
-                                                <span className="px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
-                                                    Urgent
-                                                </span>
-                                            )}
-                                            <span className="text-[10px] text-slate-500 font-mono truncate">
-                                                {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
-                                            </span>
-                                        </div>
+                                        <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                                            {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
+                                        </p>
                                     </div>
                                 </div>
                                 <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-mono text-sm font-black shrink-0 ${
