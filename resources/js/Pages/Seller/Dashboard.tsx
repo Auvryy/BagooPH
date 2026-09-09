@@ -488,7 +488,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                     </div>
 
                     {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS + PIPELINE SUMMARY */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 xl:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 xl:p-6 border border-slate-200/90 shadow-2xs flex flex-col">
                         {/* Header */}
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
@@ -505,25 +505,25 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
                         </div>
 
-                        {/* Action Cards & Pipeline Box */}
-                        <div className="flex-1 flex flex-col justify-between gap-3 pt-3.5 font-sans">
+                        {/* Action Cards & Pipeline Box - Flex-1 evenly fills height with zero whitespace */}
+                        <div className="flex-1 flex flex-col gap-3 pt-3.5 font-sans">
                             
                             {/* 1. TO PACK */}
                             <Link
                                 href={route('seller.orders.index', { status: 'to_pack' })}
-                                className={`p-3.5 xl:p-4 rounded-xl transition flex items-center justify-between gap-2.5 xl:gap-3 group ${
+                                className={`flex-1 p-4 xl:p-5 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-50/70 border-2 border-amber-400/90 shadow-2xs hover:bg-amber-100/60 ring-1 ring-amber-400/20'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
                             >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                    <div className={`w-11 h-11 xl:w-12 xl:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                                         stats.pendingPackCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
                                             : 'bg-amber-100 text-amber-700'
                                     }`}>
-                                        <Package className="w-5 h-5" />
+                                        <Package className="w-5 h-5 xl:w-6 xl:h-6" />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -541,7 +541,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`w-9 h-9 xl:w-10 xl:h-10 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
+                                <span className={`w-10 h-10 xl:w-11 xl:h-11 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -553,25 +553,25 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* 2. RETURNS & CANCELLATIONS */}
                             <Link
                                 href={route('seller.disputes.index')}
-                                className={`p-3.5 xl:p-4 rounded-xl transition flex items-center justify-between gap-2.5 xl:gap-3 group ${
+                                className={`flex-1 p-4 xl:p-5 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-50/70 border-2 border-rose-400/90 shadow-2xs hover:bg-rose-100/60 ring-1 ring-rose-400/20'
                                         : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
                                 }`}
                             >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                    <div className={`w-11 h-11 xl:w-12 xl:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                                         (stats.returnCount || 0) > 0
                                             ? 'bg-rose-500 text-white shadow-xs'
                                             : 'bg-rose-100 text-rose-700'
                                     }`}>
-                                        <RotateCcw className="w-5 h-5" />
+                                        <RotateCcw className="w-5 h-5 xl:w-6 xl:h-6" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block whitespace-nowrap" title="Returns & Cancellations">
+                                        <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
                                             Returns & Cancels
                                         </span>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="flex items-center gap-1.5 mt-1">
                                             {(stats.returnCount || 0) > 0 && (
                                                 <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
                                                     Urgent
@@ -583,7 +583,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         </div>
                                     </div>
                                 </div>
-                                <span className={`w-9 h-9 xl:w-10 xl:h-10 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
+                                <span className={`w-10 h-10 xl:w-11 xl:h-11 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -593,8 +593,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
 
                             {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
-                                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200/60 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            <div className="p-3.5 xl:p-4 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
+                                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/60 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                     <span>Logistics Pipeline</span>
                                     <span className="text-slate-500">Live Status</span>
                                 </div>
