@@ -147,16 +147,19 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition group ${
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
                                     item.current 
-                                        ? 'bg-slate-900 text-white shadow-xs' 
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                        ? 'bg-[#E00D42] text-white shadow-xs font-bold' 
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5">
-                                    <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-[#E00D42]' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                    <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                     <span>{item.name}</span>
                                 </div>
+                                {item.current && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
+                                )}
                             </Link>
                         ))}
                     </div>
@@ -183,20 +186,23 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             )}
                             <Link
                                 href={route('seller.settings')}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition group ${
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
                                     route().current('seller.settings*') || route().current('seller.profile*')
-                                        ? 'bg-slate-900 text-white shadow-xs'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                        ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5">
                                     <Settings className={`w-4 h-4 shrink-0 ${
                                         route().current('seller.settings*') || route().current('seller.profile*')
-                                            ? 'text-[#E00D42]'
+                                            ? 'text-white'
                                             : 'text-slate-400 group-hover:text-slate-900'
                                     }`} />
                                     <span>Settings</span>
                                 </div>
+                                {(route().current('seller.settings*') || route().current('seller.profile*')) && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
+                                )}
                             </Link>
                         </div>
                     )}
