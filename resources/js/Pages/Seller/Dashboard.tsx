@@ -18,8 +18,7 @@ import {
     ArrowUpRight,
     ChevronRight,
     ExternalLink,
-    RotateCcw,
-    ChevronDown
+    RotateCcw
 } from 'lucide-react';
 
 interface Props {
@@ -138,8 +137,6 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
         setIsHoveringChart(false);
         setHoveredIdx(null);
     };
-
-    const [showOtherStages, setShowOtherStages] = useState(false);
 
     return (
         <DashboardLayout
@@ -490,47 +487,48 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
                     </div>
 
-                    {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 'TO PACK' PROMINENTLY HIGHLIGHTED */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <Box className="w-4 h-4 text-[#E00D42]" />
-                                    <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
-                                        Fulfillment
-                                    </h3>
-                                </div>
-                                <Link 
-                                    href={route('seller.orders.index')} 
-                                    className="text-[11px] font-bold font-mono text-[#E00D42] hover:underline uppercase"
-                                >
-                                    View Orders ➔
-                                </Link>
+                    {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS */}
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Box className="w-4 h-4 text-[#E00D42]" />
+                                <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
+                                    Fulfillment Actions
+                                </h3>
                             </div>
+                            <Link 
+                                href={route('seller.orders.index')} 
+                                className="text-[11px] font-bold font-mono text-[#E00D42] hover:underline uppercase"
+                            >
+                                View Orders ➔
+                            </Link>
+                        </div>
 
-                            {/* Vertical Stack of 4 Boxed Cards */}
-                            <div className="space-y-2.5 pt-3.5 font-sans">
-                                
-                                {/* 1. TO PACK - PROMINENTLY HIGHLIGHTED */}
-                                <Link
-                                    href={route('seller.orders.index', { status: 'to_pack' })}
-                                    className={`p-3.5 rounded-xl transition flex items-center justify-between group ${
-                                        stats.pendingPackCount > 0
-                                            ? 'bg-amber-50/80 border-2 border-amber-400/90 shadow-xs hover:bg-amber-100/70 ring-1 ring-amber-400/30'
-                                            : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
-                                    }`}
-                                >
+                        {/* Two Primary Action Cards filling the height evenly */}
+                        <div className="flex-1 flex flex-col justify-between gap-4 py-4 font-sans">
+                            
+                            {/* 1. TO PACK - PROMINENTLY HIGHLIGHTED */}
+                            <Link
+                                href={route('seller.orders.index', { status: 'to_pack' })}
+                                className={`flex-1 p-4 rounded-xl transition flex flex-col justify-between group ${
+                                    stats.pendingPackCount > 0
+                                        ? 'bg-amber-50/70 border-2 border-amber-400/90 shadow-2xs hover:bg-amber-100/60 ring-1 ring-amber-400/20'
+                                        : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
+                                }`}
+                            >
+                                <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                             stats.pendingPackCount > 0
                                                 ? 'bg-amber-500 text-white shadow-xs'
                                                 : 'bg-amber-100 text-amber-700'
                                         }`}>
-                                            <Package className="w-4 h-4" />
+                                            <Package className="w-5 h-5" />
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-xs font-black text-slate-900 uppercase font-mono group-hover:text-amber-900">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-amber-900">
                                                     To Pack
                                                 </span>
                                                 {stats.pendingPackCount > 0 && (
@@ -539,166 +537,82 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-[10px] text-slate-500 font-mono truncate">
+                                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">
                                                 Awaiting packaging
                                             </p>
                                         </div>
                                     </div>
-                                    <span className={`px-2.5 py-1 rounded-lg font-mono text-sm font-black shrink-0 ${
+                                    <span className={`px-3 py-1 rounded-xl font-mono text-base font-black shrink-0 ${
                                         stats.pendingPackCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
                                             : 'bg-slate-200 text-slate-700'
                                     }`}>
                                         {stats.pendingPackCount}
                                     </span>
-                                </Link>
+                                </div>
 
-                                {/* 2. RETURNS & CANCELLATIONS - DIRECTLY ON TOP WITH TO PACK */}
-                                <Link
-                                    href={route('seller.disputes.index')}
-                                    className={`p-3.5 rounded-xl transition flex items-center justify-between group ${
-                                        (stats.returnCount || 0) > 0
-                                            ? 'bg-rose-50/80 border-2 border-rose-400/90 shadow-xs hover:bg-rose-100/70 ring-1 ring-rose-400/30'
-                                            : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
-                                    }`}
-                                >
+                                <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-amber-200/40 text-[11px] font-mono">
+                                    <span className="text-slate-400">Next step: Print waybills</span>
+                                    <span className="font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                                        Pack Orders ➔
+                                    </span>
+                                </div>
+                            </Link>
+
+                            {/* 2. RETURNS & CANCELLATIONS */}
+                            <Link
+                                href={route('seller.disputes.index')}
+                                className={`flex-1 p-4 rounded-xl transition flex flex-col justify-between group ${
+                                    (stats.returnCount || 0) > 0
+                                        ? 'bg-rose-50/70 border-2 border-rose-400/90 shadow-2xs hover:bg-rose-100/60 ring-1 ring-rose-400/20'
+                                        : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
+                                }`}
+                            >
+                                <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                             (stats.returnCount || 0) > 0
                                                 ? 'bg-rose-500 text-white shadow-xs'
                                                 : 'bg-rose-100 text-rose-700'
                                         }`}>
-                                            <RotateCcw className="w-4 h-4" />
+                                            <RotateCcw className="w-5 h-5" />
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-xs font-black text-slate-900 uppercase font-mono group-hover:text-rose-900">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs sm:text-sm font-black text-slate-900 uppercase font-mono group-hover:text-rose-900">
                                                     Returns & Cancellations
                                                 </span>
                                                 {(stats.returnCount || 0) > 0 && (
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono">
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
                                                         Urgent
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-[10px] text-slate-500 font-mono truncate">
+                                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">
                                                 Claims requiring seller review
                                             </p>
                                         </div>
                                     </div>
-                                    <span className={`px-2.5 py-1 rounded-lg font-mono text-sm font-black shrink-0 ${
+                                    <span className={`px-3 py-1 rounded-xl font-mono text-base font-black shrink-0 ${
                                         (stats.returnCount || 0) > 0
                                             ? 'bg-rose-500 text-white shadow-xs'
                                             : 'bg-slate-200 text-slate-700'
                                     }`}>
                                         {stats.returnCount || 0}
                                     </span>
-                                </Link>
-
-                                {/* 3. COLLAPSIBLE DROPDOWN FOR PIPELINE STAGES (READY FOR PICKUP, IN TRANSIT, DELIVERED) */}
-                                <div className="pt-0.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowOtherStages(!showOtherStages)}
-                                        className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 hover:border-slate-300 transition text-xs font-mono font-bold text-slate-600 hover:text-slate-900 group cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Layers className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition" />
-                                            <span>{showOtherStages ? 'Hide Pipeline Stages' : 'Other Pipeline Stages'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {!showOtherStages && (
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 font-mono">
-                                                    <span className="text-indigo-600">{stats.readyPickupCount} Ready</span>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-blue-600">{stats.shippedCount} Transit</span>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-emerald-600">{stats.completedCount} Done</span>
-                                                </div>
-                                            )}
-                                            <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform duration-200 ${showOtherStages ? 'rotate-180' : ''}`} />
-                                        </div>
-                                    </button>
-
-                                    {/* Dropped-down Stages */}
-                                    {showOtherStages && (
-                                        <div className="mt-2.5 space-y-2 pt-1 transition-all">
-                                            {/* READY FOR PICKUP */}
-                                            <Link
-                                                href={route('seller.orders.index', { status: 'to_pickup' })}
-                                                className="p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/80 hover:border-indigo-300 transition flex items-center justify-between group"
-                                            >
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <span className="text-xs font-bold text-slate-800 uppercase font-mono group-hover:text-indigo-900">
-                                                            Ready for Pickup
-                                                        </span>
-                                                        <p className="text-[10px] text-slate-400 font-mono truncate">
-                                                            Awaiting courier handover
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <span className="px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono text-xs font-black">
-                                                    {stats.readyPickupCount}
-                                                </span>
-                                            </Link>
-
-                                            {/* IN TRANSIT */}
-                                            <Link
-                                                href={route('seller.orders.index', { status: 'in_transit' })}
-                                                className="p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 hover:border-blue-300 transition flex items-center justify-between group"
-                                            >
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                                                        <Truck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <span className="text-xs font-bold text-slate-800 uppercase font-mono group-hover:text-blue-900">
-                                                            In Transit
-                                                        </span>
-                                                        <p className="text-[10px] text-slate-400 font-mono truncate">
-                                                            With courier fleet
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <span className="px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-mono text-xs font-black">
-                                                    {stats.shippedCount}
-                                                </span>
-                                            </Link>
-
-                                            {/* DELIVERED */}
-                                            <Link
-                                                href={route('seller.orders.index', { status: 'delivered' })}
-                                                className="p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50/50 border border-slate-200/80 hover:border-emerald-300 transition flex items-center justify-between group"
-                                            >
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <span className="text-xs font-bold text-slate-800 uppercase font-mono group-hover:text-emerald-900">
-                                                            Delivered
-                                                        </span>
-                                                        <p className="text-[10px] text-slate-400 font-mono truncate">
-                                                            Confirmed & payout ready
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono text-xs font-black">
-                                                    {stats.completedCount}
-                                                </span>
-                                            </Link>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
+
+                                <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-rose-200/40 text-[11px] font-mono">
+                                    <span className="text-slate-400">Avoid platform penalties</span>
+                                    <span className="font-bold text-rose-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                                        Review Claims ➔
+                                    </span>
+                                </div>
+                            </Link>
                         </div>
 
                         {/* Dispatch Telemetry Footer */}
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono shrink-0">
                             <span className="text-slate-400">Dispatch SLA:</span>
                             <span className="font-bold text-emerald-600">98.4% Compliance</span>
                         </div>
