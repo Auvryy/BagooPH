@@ -115,10 +115,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all' }
 
     return (
         <DashboardLayout
-            title="Order Fulfillment & Waybill Dispatch Hub"
-            subtitle="Pack packages, generate thermal shipping labels, and track couriers"
+            title="Orders"
+            subtitle="Manage customer orders and fulfillment"
         >
-            <Head title="Order Management — BagooPH Seller" />
+            <Head title="Orders — BagooPH Seller" />
 
             {/* PRINTABLE WAYBILL / SHIPPING LABEL MODAL */}
             {selectedOrderForWaybill && (

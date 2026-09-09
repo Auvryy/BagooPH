@@ -17,7 +17,8 @@ import {
     Layers,
     ArrowUpRight,
     ChevronRight,
-    ExternalLink
+    ExternalLink,
+    RotateCcw
 } from 'lucide-react';
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
         readyPickupCount: number;
         shippedCount: number;
         completedCount: number;
+        returnCount: number;
     };
     dailySales: Array<{
         date: string;
@@ -138,25 +140,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
     return (
         <DashboardLayout
-            title="Merchant Dashboard"
-            subtitle={
-                <div className="flex flex-wrap items-center gap-2 font-mono">
-                    <span className="text-slate-800 font-bold">{shop.name}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Online
-                    </span>
-                    {pendingActions > 0 && (
-                        <>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-slate-500 text-[11px]">
-                                <strong className="text-slate-900">{pendingActions}</strong> orders to fulfill
-                            </span>
-                        </>
-                    )}
-                </div>
-            }
+            title="Dashboard"
             actions={
                 <div className="flex items-center gap-2">
                     <Link
@@ -177,7 +161,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                 </div>
             }
         >
-            <Head title="Merchant Dashboard — BagooPH" />
+            <Head title="Dashboard — BagooPH" />
 
             <div className="space-y-6 font-sans">
                 
@@ -478,7 +462,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 textAnchor="middle"
                                                 className="uppercase tracking-wider"
                                             >
-                                                {pt.date.slice(0, 3)}
+                                                {pt.date}
                                             </text>
                                         </g>
                                     );
@@ -632,6 +616,48 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     </div>
                                     <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono text-xs font-black">
                                         {stats.completedCount}
+                                    </span>
+                                </Link>
+
+                                {/* 5. RETURNS & CANCELLATIONS */}
+                                <Link
+                                    href={route('seller.disputes.index')}
+                                    className={`p-3 rounded-xl transition flex items-center justify-between group ${
+                                        (stats.returnCount || 0) > 0
+                                            ? 'bg-rose-50/80 border border-rose-300 shadow-xs hover:bg-rose-100/70 ring-1 ring-rose-300/40'
+                                            : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/80 hover:border-rose-300'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                            (stats.returnCount || 0) > 0
+                                                ? 'bg-rose-500 text-white shadow-xs'
+                                                : 'bg-rose-100 text-rose-700'
+                                        }`}>
+                                            <RotateCcw className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs font-bold text-slate-800 uppercase font-mono group-hover:text-rose-900">
+                                                    Returns & Cancellations
+                                                </span>
+                                                {(stats.returnCount || 0) > 0 && (
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono">
+                                                        Urgent
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                Claims requiring seller review
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`px-2.5 py-0.5 rounded-lg font-mono text-xs font-black ${
+                                        (stats.returnCount || 0) > 0
+                                            ? 'bg-rose-500 text-white shadow-xs'
+                                            : 'bg-slate-100 border border-slate-200 text-slate-600'
+                                    }`}>
+                                        {stats.returnCount || 0}
                                     </span>
                                 </Link>
                             </div>

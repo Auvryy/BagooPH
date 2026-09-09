@@ -101,8 +101,8 @@ export default function SellerProfile({ user, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Merchant Profile & Identity"
-            subtitle="Manage your personal seller identity, contact credentials, and profile photo"
+            title="Profile"
+            subtitle="Manage your personal merchant identity and credentials"
             actions={
                 <div className="flex items-center gap-2.5">
                     <Link
@@ -130,6 +130,24 @@ export default function SellerProfile({ user, shop }: Props) {
 
             <div className="max-w-4xl space-y-6 font-sans">
                 
+                {/* Unified Settings Navigation Tabs */}
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-mono text-xs">
+                    <Link
+                        href={route('seller.settings')}
+                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    >
+                        <Store className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Store Details & Branding</span>
+                    </Link>
+                    <Link
+                        href={route('seller.profile')}
+                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-slate-900 text-white shadow-xs"
+                    >
+                        <UserIcon className="w-3.5 h-3.5" />
+                        <span>Merchant Account & Profile</span>
+                    </Link>
+                </div>
+
                 {/* Verification Status Banner */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs">
                     <div className="flex items-center gap-3">

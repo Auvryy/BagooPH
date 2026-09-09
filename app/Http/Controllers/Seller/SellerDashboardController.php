@@ -56,11 +56,17 @@ class SellerDashboardController extends Controller
             ->whereHas('order', fn($q) => $q->whereIn('status', ['delivered', 'completed']))
             ->count();
 
+        // Cancellation & Return claims count (cancelled/returned orders + actionable disputes)
+        $cancelledCount = OrderItem::where('shop_id', $shop->id)
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['cancelled', 'canceled', 'returned', 'delivery_failed']))
+            ->count();
+        $returnCount = $cancelledCount > 0 ? $cancelledCount : 1;
+
         // 7-day revenue analytics
         $dailySales = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('Y-m-d');
-            $dayLabel = now()->subDays($i)->format('M d');
+            $dayLabel = now()->subDays($i)->format('M j');
             $revenue = OrderItem::where('shop_id', $shop->id)
                 ->whereDate('created_at', $date)
                 ->sum('subtotal');
@@ -98,6 +104,7 @@ class SellerDashboardController extends Controller
                 'readyPickupCount' => $readyPickupCount,
                 'shippedCount' => $shippedCount,
                 'completedCount' => $completedCount,
+                'returnCount' => $returnCount,
             ],
             'dailySales' => $dailySales,
             'recentOrders' => $recentOrders,

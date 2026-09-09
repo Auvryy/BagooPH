@@ -1790,8 +1790,8 @@ export default function SellerProducts({ products, categories, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Product Inventory & Catalog Engine"
-            subtitle={`Catalog control & inventory balances for ${shop.name}`}
+            title="Products"
+            subtitle={`Catalog and inventory for ${shop.name}`}
             actions={
                 <button
                     onClick={openCreate}
@@ -1802,7 +1802,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 </button>
             }
         >
-            <Head title="Catalog Inventory — BagooPH Seller" />
+            <Head title="Products — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
                 
