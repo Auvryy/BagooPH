@@ -94,8 +94,6 @@ export default function SellerLanding() {
     const activeGross = activeOrders * activeItemPrice;
     const activePlatformFee = Math.round(activeGross * 0.10); // Official 10% Flat Platform Commission
     const activeNet = activeGross - activePlatformFee; // Sellers retain 90%
-    const activeCompetitorLoss = Math.round(activeGross * 0.20); // Competitors 18-22% (~20%)
-    const activeSaved = activeCompetitorLoss - activePlatformFee;
 
     // SVG Coordinate Points at t = graphProgress (viewBox 0 0 800 280)
     // Gross COD curve: P0(40,220), P1(260,210), P2(500,110), P3(760,35)
@@ -425,33 +423,33 @@ export default function SellerLanding() {
                         {/* 3. Feature Explanations Bento Grid Directly Connected Below Mockup */}
                         <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 font-mono">
                             
-                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
-                                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-2.5 hover:border-white/20 transition">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
                                     01
                                 </div>
-                                <h3 className="text-base font-bold text-white">1-Click Thermal Waybills</h3>
+                                <h3 className="text-base font-bold text-white pt-1">Thermal Waybills</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Generate standardized A6 shipping barcode waybills in seconds. Compatible with USB and Bluetooth thermal printers for rapid doorstep handovers.
+                                    Print standard A6 barcodes in one click. Zero manual handwriting.
                                 </p>
                             </div>
 
-                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
-                                <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 border border-[#E00D42]/20 flex items-center justify-center text-[#E00D42] font-bold text-xs">
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-2.5 hover:border-white/20 transition">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 border border-[#E00D42]/20 flex items-center justify-center text-[#E00D42] font-bold text-xs">
                                     02
                                 </div>
-                                <h3 className="text-base font-bold text-white">Automated COD Ledger</h3>
+                                <h3 className="text-base font-bold text-white pt-1">Direct COD Ledger</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Eliminate manual payment screenshot audits. Couriers collect physical cash at the doorstep and earnings are automatically credited after the 10% fee.
+                                    Cash collected at doorstep. 90% remitted straight to your balance.
                                 </p>
                             </div>
 
-                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition">
-                                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">
+                            <div className="p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-2.5 hover:border-white/20 transition">
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">
                                     03
                                 </div>
-                                <h3 className="text-base font-bold text-white">Doorstep Fleet Pickup</h3>
+                                <h3 className="text-base font-bold text-white pt-1">Doorstep Pickup</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Never queue at a freight courier branch again. Dedicated local riders collect packages directly from your home gate, studio, or campus lobby.
+                                    Dedicated riders collect from your door. Never queue at branches.
                                 </p>
                             </div>
 
@@ -477,9 +475,9 @@ export default function SellerLanding() {
                                     Keep 90% of your gross sales.
                                 </h2>
                             </div>
-                            <p className="text-white/50 text-xs sm:text-sm font-sans max-w-xs">
-                                Drag or hover across the curve to audit gross COD volume against your guaranteed 90% cash take-home.
-                            </p>
+                            <div className="font-mono text-xs text-white/40">
+                                10% Flat Fee • Zero Hidden Deductions
+                            </div>
                         </div>
 
                         {/* Linear-Style Interactive Graph Card Container */}
@@ -488,40 +486,23 @@ export default function SellerLanding() {
                                 economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                             }`}
                         >
-                            {/* Top Telemetry HUD Strip */}
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/[0.08]">
-                                <div>
-                                    <div className="flex items-center gap-2 font-mono text-[11px] text-white/50 uppercase tracking-wider">
-                                        <span className="w-2 h-2 rounded-full bg-[#E00D42] shadow-[0_0_8px_#E00D42]" />
-                                        <span>Simulated Monthly Volume:</span>
-                                        <strong className="text-white font-bold">{activeOrders} Orders</strong>
+                            {/* Top Telemetry HUD Strip — Minimized to 1 Focal Metric */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 font-mono text-[11px] text-white/40 uppercase tracking-wider">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
+                                        <span>Estimated Payout for {activeOrders} Orders</span>
                                     </div>
-                                    <div className="flex items-baseline gap-3 mt-1.5">
-                                        <span className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-mono">
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight font-mono">
                                             {formatCurrency(activeNet)}
                                         </span>
-                                        <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                        <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                             90% Net Take-Home
                                         </span>
                                     </div>
-                                    <span className="text-[11px] text-white/40 font-sans block mt-1">
-                                        Physical Cash on Delivery collected by courier and credited to your verified merchant ledger
-                                    </span>
-                                </div>
-
-                                {/* Right Fee Breakdown Chips */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
-                                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                                        <span className="text-[10px] text-white/40 uppercase block">Gross COD</span>
-                                        <span className="text-sm font-bold text-white mt-0.5 block">{formatCurrency(activeGross)}</span>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                                        <span className="text-[10px] text-white/40 uppercase block">Bagoo 10% Fee</span>
-                                        <span className="text-sm font-bold text-[#E00D42] mt-0.5 block">-{formatCurrency(activePlatformFee)}</span>
-                                    </div>
-                                    <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20">
-                                        <span className="text-[10px] text-emerald-400/80 uppercase block">Saved vs Competitors</span>
-                                        <span className="text-sm font-bold text-emerald-400 mt-0.5 block">+{formatCurrency(activeSaved)}</span>
+                                    <div className="font-mono text-xs text-white/40 pt-0.5">
+                                        {formatCurrency(activeGross)} Gross COD <span className="text-white/20">•</span> 10% Platform Fee (-{formatCurrency(activePlatformFee)})
                                     </div>
                                 </div>
                             </div>
@@ -636,49 +617,18 @@ export default function SellerLanding() {
                                         stroke="#FFFFFF"
                                         strokeWidth="2.5"
                                     />
-
-                                    {/* Floating Dynamic Scrubber Callout Tag */}
-                                    <g transform={`translate(${Math.max(65, Math.min(735, curX))}, ${Math.max(20, curYNet - 26)})`}>
-                                        <rect
-                                            x="-55"
-                                            y="-12"
-                                            width="110"
-                                            height="22"
-                                            rx="11"
-                                            fill="#101216"
-                                            stroke="rgba(255,255,255,0.18)"
-                                            strokeWidth="1"
-                                        />
-                                        <text
-                                            x="0"
-                                            y="1"
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
-                                            fill="#FFFFFF"
-                                            fontSize="10"
-                                            fontFamily="monospace"
-                                            fontWeight="bold"
-                                        >
-                                            {formatCurrency(activeNet)} NET
-                                        </text>
-                                    </g>
                                 </svg>
 
-                                {/* Legend & Micro Instructions */}
-                                <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/[0.06] font-mono text-[11px] text-white/50">
-                                    <div className="flex items-center gap-6">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]" />
-                                            <span className="text-white font-medium">90% Net Cash Remittance</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-0.5 bg-white/40" />
-                                            <span>Gross COD Volume</span>
-                                        </div>
+                                {/* Clean Legend — Zero Bottom Random Words */}
+                                <div className="flex items-center gap-6 pt-3 border-t border-white/[0.06] font-mono text-[11px] text-white/50">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]" />
+                                        <span className="text-white font-medium">90% Net Cash Remittance</span>
                                     </div>
-                                    <span className="text-white/30 hidden sm:inline">
-                                        Drag or hover across curve to inspect real-time payout
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-0.5 bg-white/40" />
+                                        <span>Gross COD Volume</span>
+                                    </div>
                                 </div>
 
                             </div>
@@ -716,7 +666,7 @@ export default function SellerLanding() {
                             
                             {/* Step 01 */}
                             <div 
-                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-4 hover:border-white/20 transition-all duration-700 delay-100 ease-out transform ${
+                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition-all duration-700 delay-100 ease-out transform ${
                                     workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                                 }`}
                             >
@@ -728,33 +678,33 @@ export default function SellerLanding() {
                                 </div>
                                 <h3 className="text-base font-bold text-white">Upload 1 Valid ID</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Register in 60 seconds. Upload just 1 valid ID (Student ID or Government ID) and your pickup address. Fast 1-click admin approval gets your shop live with zero DTI paperwork.
+                                    Upload 1 valid ID (Student or Govt ID) and pickup address. 1-click admin approval with zero DTI paperwork.
                                 </p>
                             </div>
 
                             {/* Step 02 */}
                             <div 
-                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-4 hover:border-white/20 transition-all duration-700 delay-300 ease-out transform ${
+                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition-all duration-700 delay-300 ease-out transform ${
                                     workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                                 }`}
                             >
                                 <span className="text-4xl font-extrabold text-white/20 block">02</span>
                                 <h3 className="text-base font-bold text-white">Handover to Rider</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Attach the 1-click thermal waybill. Local couriers collect parcels right from your door or campus.
+                                    Print 1-click thermal waybill. Couriers collect directly from your door.
                                 </p>
                             </div>
 
                             {/* Step 03 */}
                             <div 
-                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-4 hover:border-white/20 transition-all duration-700 delay-500 ease-out transform ${
+                                className={`p-6 rounded-2xl bg-[#0C0D0E] border border-white/[0.08] space-y-3 hover:border-white/20 transition-all duration-700 delay-500 ease-out transform ${
                                     workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                                 }`}
                             >
                                 <span className="text-4xl font-extrabold text-emerald-400/40 block">03</span>
                                 <h3 className="text-base font-bold text-white">Collect Cash</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Courier delivers to the customer, collects Cash on Delivery, and remits funds straight to your ledger.
+                                    Courier delivers parcel, collects COD, and remits 90% direct to your ledger.
                                 </p>
                             </div>
 
