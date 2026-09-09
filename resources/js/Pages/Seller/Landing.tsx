@@ -73,18 +73,47 @@ export default function SellerLanding() {
         };
     }, []);
 
-    // Interactive Economics Slider (Official 10% flat platform commission criteria)
-    const [salesVolume, setSalesVolume] = useState(80);
-    const [itemPrice, setItemPrice] = useState(500);
+    // Interactive Economics Spline Graph State (Linear-Style Cursor Tracking)
+    const [graphProgress, setGraphProgress] = useState(0.62); // Initial resting point (approx 62% along the curve)
+    const [isGraphHovered, setIsGraphHovered] = useState(false);
+
+    // Cubic Bezier interpolation: B(t) for P0, P1, P2, P3
+    const getBezierPoint = (t: number, p0: number, p1: number, p2: number, p3: number) => {
+        const oneMinusT = 1 - t;
+        return (
+            Math.pow(oneMinusT, 3) * p0 +
+            3 * Math.pow(oneMinusT, 2) * t * p1 +
+            3 * oneMinusT * Math.pow(t, 2) * p2 +
+            Math.pow(t, 3) * p3
+        );
+    };
+
+    // Active calculations based on dynamic graph scrubber position
+    const activeOrders = Math.round(15 + graphProgress * 285); // 15 to 300 orders
+    const activeItemPrice = 500;
+    const activeGross = activeOrders * activeItemPrice;
+    const activePlatformFee = Math.round(activeGross * 0.10); // Official 10% Flat Platform Commission
+    const activeNet = activeGross - activePlatformFee; // Sellers retain 90%
+    const activeCompetitorLoss = Math.round(activeGross * 0.20); // Competitors 18-22% (~20%)
+    const activeSaved = activeCompetitorLoss - activePlatformFee;
+
+    // SVG Coordinate Points at t = graphProgress (viewBox 0 0 800 280)
+    // Gross COD curve: P0(40,220), P1(260,210), P2(500,110), P3(760,35)
+    // 90% Net Take-home curve: P0(40,232), P1(260,224), P2(500,135), P3(760,62)
+    const curX = Math.round(getBezierPoint(graphProgress, 40, 260, 500, 760));
+    const curYGross = Math.round(getBezierPoint(graphProgress, 220, 210, 110, 35));
+    const curYNet = Math.round(getBezierPoint(graphProgress, 232, 224, 135, 62));
+
+    // Handle interactive mouse / touch scrub across graph
+    const handleGraphScrub = (clientX: number, rect: DOMRect) => {
+        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+        const pct = Math.max(0.04, Math.min(0.96, x / rect.width));
+        setGraphProgress(pct);
+        setIsGraphHovered(true);
+    };
 
     // FAQ Accordion
     const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-    // Official Criteria: 10% Flat Platform Commission
-    const grossTotal = salesVolume * itemPrice;
-    const platformFee = Math.round(grossTotal * 0.10); // Exactly 10% official platform commission
-    const netTakeHome = grossTotal - platformFee; // Sellers retain 90%
-    const competitorLoss = Math.round(grossTotal * 0.20); // Competitors 18-22% (~20%)
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('en-PH', {
@@ -96,8 +125,8 @@ export default function SellerLanding() {
 
     const faqs = [
         {
-            q: "Can I sell without a DTI registration or business permit?",
-            a: "Yes. BagooPH is built for student creators, campus artisans, and micro-merchants. You only need basic store details, your contact number, and a pickup address to start publishing products."
+            q: "What do I need to apply as a seller? Is approval difficult?",
+            a: "Applying is fast and frictionless. You only need 1 valid ID (a Student ID for campus creators or any government-issued ID), basic contact info, and your pickup address. Zero DTI, SEC, or BIR paperwork is required. Once submitted, our admin reviews and approves your merchant store in 1 click."
         },
         {
             q: "What is BagooPH's official platform commission fee?",
@@ -233,6 +262,19 @@ export default function SellerLanding() {
                         >
                             <span>Merchant Sign In</span>
                         </a>
+                    </div>
+
+                    {/* Fast Onboarding Reassurance Row */}
+                    <div 
+                        className={`inline-flex flex-wrap items-center justify-center gap-2.5 font-mono text-[11px] text-white/45 pt-1 transition-all duration-700 delay-500 ease-out transform ${
+                            heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                        }`}
+                    >
+                        <span className="text-emerald-400 font-semibold">1 Valid ID Only</span>
+                        <span className="text-white/20">•</span>
+                        <span>1-Click Admin Approval</span>
+                        <span className="text-white/20">•</span>
+                        <span>Zero DTI / BIR Hurdles</span>
                     </div>
 
                 </section>
@@ -418,9 +460,9 @@ export default function SellerLanding() {
                     </div>
                 </section>
 
-                {/* 4. PANEL FIG 0.1: MINIMALIST TRANSPARENT ECONOMICS (SIDE-BY-SIDE SLIDE-IN SCROLL ANIMATION) */}
+                {/* 4. PANEL FIG 0.1: INTERACTIVE SPLINE GRAPH (LINEAR-STYLE CURSOR TRACKING & 90% RETENTION) */}
                 <section id="economics" ref={economicsRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-white/[0.06]">
-                    <div className="space-y-12">
+                    <div className="space-y-10">
                         
                         <div 
                             className={`flex flex-col sm:flex-row sm:items-end justify-between gap-4 transition-all duration-700 ease-out transform ${
@@ -428,7 +470,7 @@ export default function SellerLanding() {
                             }`}
                         >
                             <div>
-                                <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block">
+                                <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-semibold">
                                     FIG 0.1 — TRANSPARENT ECONOMICS
                                 </span>
                                 <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-1">
@@ -436,81 +478,209 @@ export default function SellerLanding() {
                                 </h2>
                             </div>
                             <p className="text-white/50 text-xs sm:text-sm font-sans max-w-xs">
-                                Transparent 10% flat platform commission on delivered orders. Zero listing fees, zero setup surcharges.
+                                Drag or hover across the curve to audit gross COD volume against your guaranteed 90% cash take-home.
                             </p>
                         </div>
 
-                        {/* Minimalist Dual Column with Opposing Slide-In Animations */}
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-[#0C0D0E] p-6 sm:p-10 rounded-2xl border border-white/[0.08] overflow-hidden">
-                            
-                            {/* Sliders Column (Slide in from Left) */}
-                            <div 
-                                className={`md:col-span-6 space-y-6 font-mono transition-all duration-800 delay-150 ease-out transform ${
-                                    economicsInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'
-                                }`}
-                            >
+                        {/* Linear-Style Interactive Graph Card Container */}
+                        <div 
+                            className={`bg-[#0C0D0E] border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden transition-all duration-1000 ease-out transform ${
+                                economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                            }`}
+                        >
+                            {/* Top Telemetry HUD Strip */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/[0.08]">
                                 <div>
-                                    <div className="flex justify-between text-xs text-white/50 mb-2">
-                                        <span>AVERAGE ITEM PRICE</span>
-                                        <span className="text-white font-bold">{formatCurrency(itemPrice)}</span>
+                                    <div className="flex items-center gap-2 font-mono text-[11px] text-white/50 uppercase tracking-wider">
+                                        <span className="w-2 h-2 rounded-full bg-[#E00D42] shadow-[0_0_8px_#E00D42]" />
+                                        <span>Simulated Monthly Volume:</span>
+                                        <strong className="text-white font-bold">{activeOrders} Orders</strong>
                                     </div>
-                                    <input 
-                                        type="range"
-                                        min="150"
-                                        max="3000"
-                                        step="50"
-                                        value={itemPrice}
-                                        onChange={e => setItemPrice(Number(e.target.value))}
-                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#E00D42]"
-                                    />
+                                    <div className="flex items-baseline gap-3 mt-1.5">
+                                        <span className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-mono">
+                                            {formatCurrency(activeNet)}
+                                        </span>
+                                        <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                            90% Net Take-Home
+                                        </span>
+                                    </div>
+                                    <span className="text-[11px] text-white/40 font-sans block mt-1">
+                                        Physical Cash on Delivery collected by courier and credited to your verified merchant ledger
+                                    </span>
                                 </div>
 
-                                <div>
-                                    <div className="flex justify-between text-xs text-white/50 mb-2">
-                                        <span>MONTHLY COMPLETED ORDERS</span>
-                                        <span className="text-white font-bold">{salesVolume} orders</span>
+                                {/* Right Fee Breakdown Chips */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
+                                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                        <span className="text-[10px] text-white/40 uppercase block">Gross COD</span>
+                                        <span className="text-sm font-bold text-white mt-0.5 block">{formatCurrency(activeGross)}</span>
                                     </div>
-                                    <input 
-                                        type="range"
-                                        min="10"
-                                        max="400"
-                                        step="10"
-                                        value={salesVolume}
-                                        onChange={e => setSalesVolume(Number(e.target.value))}
-                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#E00D42]"
-                                    />
+                                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                        <span className="text-[10px] text-white/40 uppercase block">Bagoo 10% Fee</span>
+                                        <span className="text-sm font-bold text-[#E00D42] mt-0.5 block">-{formatCurrency(activePlatformFee)}</span>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20">
+                                        <span className="text-[10px] text-emerald-400/80 uppercase block">Saved vs Competitors</span>
+                                        <span className="text-sm font-bold text-emerald-400 mt-0.5 block">+{formatCurrency(activeSaved)}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Telemetry Output Column (Slide in from Right) */}
-                            <div 
-                                className={`md:col-span-6 font-mono space-y-4 p-6 rounded-xl bg-white/[0.02] border border-white/[0.06] transition-all duration-800 delay-300 ease-out transform ${
-                                    economicsInView ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'
-                                }`}
-                            >
-                                <div>
-                                    <span className="text-[10px] text-white/40 uppercase tracking-wider block">
-                                        Net Cash in Your Pocket (90%)
-                                    </span>
-                                    <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mt-1 block">
-                                        {formatCurrency(netTakeHome)}
+                            {/* Interactive SVG Spline Canvas */}
+                            <div className="relative select-none">
+                                
+                                <svg
+                                    viewBox="0 0 800 280"
+                                    className="w-full h-56 sm:h-72 cursor-crosshair overflow-visible"
+                                    onMouseMove={(e) => handleGraphScrub(e.clientX, e.currentTarget.getBoundingClientRect())}
+                                    onMouseLeave={() => setIsGraphHovered(false)}
+                                    onTouchMove={(e) => {
+                                        if (e.touches[0]) handleGraphScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
+                                    }}
+                                    onTouchEnd={() => setIsGraphHovered(false)}
+                                >
+                                    <defs>
+                                        {/* Area glow gradient for 90% curve */}
+                                        <linearGradient id="activeAreaGlow" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#E00D42" stopOpacity="0.32" />
+                                            <stop offset="60%" stopColor="#E00D42" stopOpacity="0.08" />
+                                            <stop offset="100%" stopColor="#E00D42" stopOpacity="0" />
+                                        </linearGradient>
+
+                                        {/* Stroke gradient for illuminated curve */}
+                                        <linearGradient id="activeStrokeGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stopColor="#FF6B8B" />
+                                            <stop offset="100%" stopColor="#E00D42" />
+                                        </linearGradient>
+
+                                        {/* Clip path revealing illuminated curve strictly up to curX */}
+                                        <clipPath id="graphProgressClip">
+                                            <rect x="0" y="0" width={curX} height="280" />
+                                        </clipPath>
+                                    </defs>
+
+                                    {/* Horizontal Guidelines */}
+                                    <line x1="40" y1="60" x2="760" y2="60" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                                    <line x1="40" y1="135" x2="760" y2="135" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                                    <line x1="40" y1="210" x2="760" y2="210" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+
+                                    {/* Muted Background Tracks (Full width) */}
+                                    <path
+                                        d="M 40,220 C 260,210 500,110 760,35"
+                                        fill="none"
+                                        stroke="rgba(255,255,255,0.18)"
+                                        strokeWidth="2"
+                                        strokeDasharray="4 4"
+                                    />
+                                    <path
+                                        d="M 40,232 C 260,224 500,135 760,62"
+                                        fill="none"
+                                        stroke="rgba(255,255,255,0.12)"
+                                        strokeWidth="2.5"
+                                    />
+
+                                    {/* Illuminated Active Segment (Clipped to curX) */}
+                                    <g clipPath="url(#graphProgressClip)">
+                                        <path
+                                            d="M 40,232 C 260,224 500,135 760,62 L 760,270 L 40,270 Z"
+                                            fill="url(#activeAreaGlow)"
+                                        />
+                                        <path
+                                            d="M 40,232 C 260,224 500,135 760,62"
+                                            fill="none"
+                                            stroke="url(#activeStrokeGrad)"
+                                            strokeWidth="3.5"
+                                            strokeLinecap="round"
+                                        />
+                                        <path
+                                            d="M 40,220 C 260,210 500,110 760,35"
+                                            fill="none"
+                                            stroke="rgba(255,255,255,0.55)"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                        />
+                                    </g>
+
+                                    {/* Vertical Scrubber Guide Line */}
+                                    <line
+                                        x1={curX}
+                                        y1="20"
+                                        x2={curX}
+                                        y2="265"
+                                        stroke="rgba(255,255,255,0.25)"
+                                        strokeWidth="1.5"
+                                        strokeDasharray="3 3"
+                                    />
+
+                                    {/* Cursor Indicator Dots */}
+                                    <circle
+                                        cx={curX}
+                                        cy={curYGross}
+                                        r="4"
+                                        fill="#0A0D14"
+                                        stroke="rgba(255,255,255,0.9)"
+                                        strokeWidth="2"
+                                    />
+                                    <circle
+                                        cx={curX}
+                                        cy={curYNet}
+                                        r="12"
+                                        fill="#E00D42"
+                                        opacity="0.3"
+                                    />
+                                    <circle
+                                        cx={curX}
+                                        cy={curYNet}
+                                        r="6"
+                                        fill="#E00D42"
+                                        stroke="#FFFFFF"
+                                        strokeWidth="2.5"
+                                    />
+
+                                    {/* Floating Dynamic Scrubber Callout Tag */}
+                                    <g transform={`translate(${Math.max(65, Math.min(735, curX))}, ${Math.max(20, curYNet - 26)})`}>
+                                        <rect
+                                            x="-55"
+                                            y="-12"
+                                            width="110"
+                                            height="22"
+                                            rx="11"
+                                            fill="#101216"
+                                            stroke="rgba(255,255,255,0.18)"
+                                            strokeWidth="1"
+                                        />
+                                        <text
+                                            x="0"
+                                            y="1"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                            fill="#FFFFFF"
+                                            fontSize="10"
+                                            fontFamily="monospace"
+                                            fontWeight="bold"
+                                        >
+                                            {formatCurrency(activeNet)} NET
+                                        </text>
+                                    </g>
+                                </svg>
+
+                                {/* Legend & Micro Instructions */}
+                                <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/[0.06] font-mono text-[11px] text-white/50">
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]" />
+                                            <span className="text-white font-medium">90% Net Cash Remittance</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2 h-0.5 bg-white/40" />
+                                            <span>Gross COD Volume</span>
+                                        </div>
+                                    </div>
+                                    <span className="text-white/30 hidden sm:inline">
+                                        Drag or hover across curve to inspect real-time payout
                                     </span>
                                 </div>
 
-                                <div className="space-y-1.5 text-xs text-white/50 border-t border-white/10 pt-3">
-                                    <div className="flex justify-between">
-                                        <span>Gross Doorstep COD:</span>
-                                        <span className="text-white">{formatCurrency(grossTotal)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>10% Platform Commission:</span>
-                                        <span className="text-[#E00D42]">-{formatCurrency(platformFee)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="p-2.5 rounded bg-white/[0.03] border border-white/[0.08] text-[11px] text-white/60">
-                                    Standard 18-22% competitor platforms deduct: <strong className="text-emerald-400">+{formatCurrency(competitorLoss - platformFee)} more</strong>
-                                </div>
                             </div>
 
                         </div>
@@ -527,9 +697,15 @@ export default function SellerLanding() {
                                 workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                             }`}
                         >
-                            <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block">
-                                FIG 0.2 — EXECUTION PROTOCOL
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-semibold">
+                                    FIG 0.2 — FAST ONBOARDING & EXECUTION
+                                </span>
+                                <span className="text-white/20">•</span>
+                                <span className="font-mono text-[11px] text-emerald-400 uppercase tracking-wider font-semibold">
+                                    1 Valid ID • 1-Click Admin Approval
+                                </span>
+                            </div>
                             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-1">
                                 From link to cash in three beats.
                             </h2>
@@ -544,10 +720,15 @@ export default function SellerLanding() {
                                     workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                                 }`}
                             >
-                                <span className="text-4xl font-extrabold text-white/20 block">01</span>
-                                <h3 className="text-base font-bold text-white">Create Shop Link</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-4xl font-extrabold text-white/20 block">01</span>
+                                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono font-bold">
+                                        1 VALID ID ONLY
+                                    </span>
+                                </div>
+                                <h3 className="text-base font-bold text-white">Upload 1 Valid ID</h3>
                                 <p className="text-xs text-white/50 font-sans leading-relaxed">
-                                    Register in 60 seconds with your brand name and pickup address. No upfront capital or paperwork hurdles.
+                                    Register in 60 seconds. Upload just 1 valid ID (Student ID or Government ID) and your pickup address. Fast 1-click admin approval gets your shop live with zero DTI paperwork.
                                 </p>
                             </div>
 
