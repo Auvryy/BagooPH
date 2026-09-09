@@ -201,7 +201,7 @@ export default function SellerLanding() {
                             <div className="flex items-center gap-1.5 font-mono text-sm tracking-tight">
                                 <span className={`font-bold transition-colors ${isLight ? 'text-slate-900' : 'text-white'}`}>Bagoo</span>
                                 <span className="text-[#E00D42] font-black">PH</span>
-                                <span className={`text-[10px] uppercase tracking-widest pl-1 font-semibold transition-colors ${isLight ? 'text-slate-400' : 'text-white/30'}`}>
+                                <span className={`text-[10px] uppercase tracking-widest pl-1 font-semibold transition-colors ${isLight ? 'text-slate-500' : 'text-white/30'}`}>
                                     SELLER
                                 </span>
                             </div>
@@ -209,7 +209,7 @@ export default function SellerLanding() {
 
                         {/* Minimal Navigation Anchors */}
                         <nav className={`hidden md:flex items-center gap-7 font-mono text-xs tracking-wider uppercase transition-colors ${
-                            isLight ? 'text-slate-500' : 'text-white/50'
+                            isLight ? 'text-slate-600 font-medium' : 'text-white/50'
                         }`}>
                             <a href="#showcase" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Showcase</a>
                             <a href="#economics" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Economics</a>
@@ -246,7 +246,7 @@ export default function SellerLanding() {
                             <a
                                 href={getDomainUrl('seller', '/login')}
                                 className={`font-mono text-xs uppercase tracking-wider transition px-3 py-1.5 ${
-                                    isLight ? 'text-slate-600 hover:text-slate-900' : 'text-white/60 hover:text-white'
+                                    isLight ? 'text-slate-700 hover:text-slate-900 font-medium' : 'text-white/60 hover:text-white'
                                 }`}
                             >
                                 Sign In
@@ -274,7 +274,7 @@ export default function SellerLanding() {
                     <div 
                         className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border transition-all duration-700 ease-out transform ${
                             isLight 
-                                ? 'bg-slate-100/80 border-slate-200 text-slate-700' 
+                                ? 'bg-slate-100/90 border-slate-300/80 text-slate-800 font-medium' 
                                 : 'bg-white/[0.03] border-white/[0.08] text-white/70'
                         } ${heroLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
                     >
@@ -291,13 +291,13 @@ export default function SellerLanding() {
                         } ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                     >
                         Commerce, stripped <br />
-                        <span className={isLight ? 'text-slate-400' : 'text-white/40'}>down to essentials.</span>
+                        <span className={isLight ? 'text-slate-600' : 'text-white/40'}>down to essentials.</span>
                     </h1>
 
                     {/* Single Minimal Line of Copy */}
                     <p 
                         className={`text-base sm:text-lg font-sans max-w-xl mx-auto leading-relaxed transition-all duration-700 delay-300 ease-out transform ${
-                            isLight ? 'text-slate-600' : 'text-white/60'
+                            isLight ? 'text-slate-700 font-normal' : 'text-white/60'
                         } ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
                     >
                         10% flat commission. Direct Cash on Delivery remittance. Doorstep courier pickup for independent Philippine creators.
@@ -324,25 +324,12 @@ export default function SellerLanding() {
                             href={getDomainUrl('seller', '/login')}
                             className={`w-full sm:w-auto px-7 py-3.5 rounded-full border font-mono text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
                                 isLight 
-                                    ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700 shadow-xs' 
+                                    ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-900 font-semibold shadow-xs' 
                                     : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/[0.12] text-white/80 hover:text-white'
                             }`}
                         >
                             <span>Merchant Sign In</span>
                         </a>
-                    </div>
-
-                    {/* Fast Onboarding Reassurance Row */}
-                    <div 
-                        className={`inline-flex flex-wrap items-center justify-center gap-2.5 font-mono text-[11px] pt-1 transition-all duration-700 delay-500 ease-out transform ${
-                            isLight ? 'text-slate-500' : 'text-white/45'
-                        } ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
-                    >
-                        <span className={`${isLight ? 'text-emerald-600' : 'text-emerald-400'} font-semibold`}>1 Valid ID Only</span>
-                        <span className={isLight ? 'text-slate-300' : 'text-white/20'}>•</span>
-                        <span>1-Click Admin Approval</span>
-                        <span className={isLight ? 'text-slate-300' : 'text-white/20'}>•</span>
-                        <span>Zero DTI / BIR Hurdles</span>
                     </div>
 
                 </section>
@@ -368,64 +355,64 @@ export default function SellerLanding() {
                                     : 'opacity-90 [transform:rotateX(12deg)_scale(0.97)]'
                             }`}
                         >
-                            {/* Inner Chassis Container */}
-                            <div className={`relative overflow-hidden rounded-[15px] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] ${
-                                isLight ? 'bg-white' : 'bg-[#0A0D14]'
+                            <div className={`relative rounded-[15px] overflow-hidden ${
+                                isLight ? 'bg-slate-100' : 'bg-[#08090A]'
                             }`}>
                                 
-                                {/* 1. macOS / Studio Title Bar */}
-                                <div className={`flex h-10 sm:h-11 items-center justify-between border-b px-4 backdrop-blur-md select-none transition-colors ${
+                                {/* Window Titlebar */}
+                                <div className={`flex items-center justify-between px-4 py-3 border-b ${
                                     isLight 
                                         ? 'border-slate-200 bg-slate-100/95 text-slate-700' 
-                                        : 'border-white/[0.08] bg-[#0E1118]/90 text-white/60'
+                                        : 'border-white/[0.08] bg-[#0A0D14]/90 text-white/70'
                                 }`}>
-                                    {/* Traffic Light Dots */}
                                     <div className="flex items-center gap-2">
-                                        <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F56] border border-[#E0443E]/40" />
-                                        <span className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E] border border-[#DEA123]/40" />
-                                        <span className="h-2.5 w-2.5 rounded-full bg-[#27C93F] border border-[#1AAB29]/40" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
                                     </div>
-
-                                    {/* Center Environment Metadata Pill */}
-                                    <div className={`flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-mono transition-colors ${
+                                    
+                                    {/* URL Pill Indicator */}
+                                    <div className={`flex items-center gap-2 px-3 py-0.5 rounded-full border font-mono text-[11px] ${
                                         isLight 
                                             ? 'border-slate-300/80 bg-white text-slate-700' 
                                             : 'border-white/[0.08] bg-white/[0.03] text-slate-300'
                                     }`}>
-                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#34D399] animate-pulse" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                         <span>bagoo.shop/seller/cockpit</span>
                                     </div>
 
-                                    {/* Right Utility Pills */}
-                                    <div className="flex items-center gap-2 font-mono text-[11px]">
-                                        <span className="hidden sm:inline-flex px-2 py-0.5 rounded bg-[#E00D42]/15 border border-[#E00D42]/30 text-[#E00D42] font-semibold">
+                                    {/* Live Status Indicators */}
+                                    <div className="flex items-center gap-2 font-mono text-[10px]">
+                                        <span className="hidden sm:inline px-2 py-0.5 rounded bg-[#E00D42]/10 border border-[#E00D42]/20 text-[#E00D42] font-bold">
                                             10% FLAT COMMISSION
                                         </span>
-                                        <span className={`px-2 py-0.5 rounded border transition-colors ${
+                                        <span className={`px-2 py-0.5 rounded border uppercase font-mono ${
                                             isLight 
                                                 ? 'bg-white border-slate-200 text-slate-500' 
-                                                : 'bg-white/[0.04] border-white/10 text-white/50'
+                                                : 'bg-white/[0.04] border-white/10 text-white/40'
                                         }`}>
                                             MNL-01 LIVE
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* 2. High-Resolution Live Seller Cockpit Screenshot */}
-                                <div className={`relative overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-slate-950'}`}>
+                                {/* Actual Dashboard Screenshot */}
+                                <div className="relative aspect-[16/10] sm:aspect-[16/9.5] w-full overflow-hidden bg-slate-900">
                                     <img 
                                         src="/images/seller-cockpit-preview.png" 
-                                        alt="BagooPH Merchant Command Cockpit"
-                                        className="w-full h-auto object-cover select-none block"
+                                        alt="BagooPH Merchant Command Cockpit Dashboard" 
+                                        className="w-full h-full object-cover object-top select-none"
                                         loading="eager"
                                     />
+                                    {/* Hairline Inner Highlight Rim */}
+                                    <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
                                 </div>
 
                             </div>
                         </div>
 
-                        {/* 3. Feature Explanations Bento Grid Directly Connected Below Mockup */}
-                        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 font-mono">
+                        {/* Three Minimalist Feature Cards Beneath Peeking Window */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
                             
                             <div className={`p-6 rounded-2xl border space-y-2.5 transition ${
                                 isLight 
@@ -436,7 +423,7 @@ export default function SellerLanding() {
                                     01
                                 </div>
                                 <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Thermal Waybills</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Print standard A6 barcodes in one click. Zero manual handwriting.
                                 </p>
                             </div>
@@ -450,7 +437,7 @@ export default function SellerLanding() {
                                     02
                                 </div>
                                 <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Direct COD Ledger</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Cash collected at doorstep. 90% remitted straight to your balance.
                                 </p>
                             </div>
@@ -464,7 +451,7 @@ export default function SellerLanding() {
                                     03
                                 </div>
                                 <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Doorstep Pickup</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Dedicated riders collect from your door. Never queue at branches.
                                 </p>
                             </div>
@@ -495,7 +482,7 @@ export default function SellerLanding() {
                                     Keep 90% of your gross sales.
                                 </h2>
                             </div>
-                            <div className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
+                            <div className={`font-mono text-xs ${isLight ? 'text-slate-700 font-medium' : 'text-white/40'}`}>
                                 10% Flat Fee • Zero Hidden Deductions
                             </div>
                         </div>
@@ -514,7 +501,7 @@ export default function SellerLanding() {
                             }`}>
                                 <div className="space-y-1">
                                     <div className={`flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider ${
-                                        isLight ? 'text-slate-400' : 'text-white/40'
+                                        isLight ? 'text-slate-600 font-medium' : 'text-white/40'
                                     }`}>
                                         <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
                                         <span>Estimated Payout for {activeOrders} Orders</span>
@@ -527,16 +514,16 @@ export default function SellerLanding() {
                                         </span>
                                         <span className={`text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full ${
                                             isLight 
-                                                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                                                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium' 
                                                 : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                                         }`}>
                                             90% Net Take-Home
                                         </span>
                                     </div>
                                     <div className={`font-mono text-xs pt-0.5 ${
-                                        isLight ? 'text-slate-500' : 'text-white/40'
+                                        isLight ? 'text-slate-700 font-medium' : 'text-white/40'
                                     }`}>
-                                        {formatCurrency(activeGross)} Gross COD <span className={isLight ? 'text-slate-300' : 'text-white/20'}>•</span> 10% Platform Fee (-{formatCurrency(activePlatformFee)})
+                                        {formatCurrency(activeGross)} Gross COD <span className={isLight ? 'text-slate-400' : 'text-white/20'}>•</span> 10% Platform Fee (-{formatCurrency(activePlatformFee)})
                                     </div>
                                 </div>
                             </div>
@@ -675,9 +662,9 @@ export default function SellerLanding() {
                                 <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-semibold">
                                     FIG 0.2 — FAST ONBOARDING & EXECUTION
                                 </span>
-                                <span className={isLight ? 'text-slate-300' : 'text-white/20'}>•</span>
+                                <span className={isLight ? 'text-slate-400' : 'text-white/20'}>•</span>
                                 <span className={`font-mono text-[11px] uppercase tracking-wider font-semibold ${
-                                    isLight ? 'text-emerald-600' : 'text-emerald-400'
+                                    isLight ? 'text-emerald-700' : 'text-emerald-400'
                                 }`}>
                                     1 Valid ID • 1-Click Admin Approval
                                 </span>
@@ -713,7 +700,7 @@ export default function SellerLanding() {
                                     </span>
                                 </div>
                                 <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Upload 1 Valid ID</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Upload 1 valid ID (Student or Govt ID) and pickup address. 1-click admin approval with zero DTI paperwork.
                                 </p>
                             </div>
@@ -730,7 +717,7 @@ export default function SellerLanding() {
                                     isLight ? 'text-slate-300' : 'text-white/20'
                                 }`}>02</span>
                                 <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Handover to Rider</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Print 1-click thermal waybill. Couriers collect directly from your door.
                                 </p>
                             </div>
@@ -744,10 +731,10 @@ export default function SellerLanding() {
                                 } ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                             >
                                 <span className={`text-4xl font-extrabold block ${
-                                    isLight ? 'text-emerald-500/40' : 'text-emerald-400/40'
+                                    isLight ? 'text-emerald-600/40' : 'text-emerald-400/40'
                                 }`}>03</span>
                                 <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Collect Cash</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
+                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
                                     Courier delivers parcel, collects COD, and remits 90% direct to your ledger.
                                 </p>
                             </div>
@@ -802,15 +789,15 @@ export default function SellerLanding() {
                                                 {faq.q}
                                             </span>
                                             {isOpen ? (
-                                                <ChevronUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-white/40'}`} />
+                                                <ChevronUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-600' : 'text-white/40'}`} />
                                             ) : (
-                                                <ChevronDown className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-400' : 'text-white/40'}`} />
+                                                <ChevronDown className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-600' : 'text-white/40'}`} />
                                             )}
                                         </button>
                                         {isOpen && (
                                             <div className={`px-5 pb-5 text-xs sm:text-sm leading-relaxed border-t pt-3 ${
                                                 isLight 
-                                                    ? 'text-slate-600 border-slate-100' 
+                                                    ? 'text-slate-700 border-slate-100' 
                                                     : 'text-white/50 border-white/[0.04]'
                                             }`}>
                                                 {faq.a}
@@ -849,11 +836,11 @@ export default function SellerLanding() {
                             isLight ? 'text-slate-900' : 'text-white'
                         }`}>
                             Build your brand. <br />
-                            <span className={isLight ? 'text-slate-400' : 'text-white/40'}>Get paid in cash.</span>
+                            <span className={isLight ? 'text-slate-600' : 'text-white/40'}>Get paid in cash.</span>
                         </h2>
 
                         <p className={`text-sm max-w-sm mx-auto font-sans ${
-                            isLight ? 'text-slate-600' : 'text-white/60'
+                            isLight ? 'text-slate-700 font-normal' : 'text-white/60'
                         }`}>
                             Start listing your catalog today on BagooPH with 10% flat commission and reliable doorstep fulfillment.
                         </p>
@@ -873,7 +860,7 @@ export default function SellerLanding() {
                                 href={getDomainUrl('seller', '/login')}
                                 className={`w-full sm:w-auto px-7 py-3.5 rounded-full font-mono text-xs uppercase tracking-wider transition ${
                                     isLight
-                                        ? 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800'
+                                        ? 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-semibold'
                                         : 'bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white'
                                 }`}
                             >
@@ -886,7 +873,7 @@ export default function SellerLanding() {
                 {/* 8. MONOCHROME STUDIO FOOTER */}
                 <footer className={`border-t py-10 px-4 sm:px-6 lg:px-8 font-mono text-xs ${
                     isLight 
-                        ? 'bg-slate-100 border-slate-200 text-slate-500' 
+                        ? 'bg-slate-100 border-slate-200 text-slate-600' 
                         : 'bg-[#050607] border-white/[0.06] text-white/40'
                 }`}>
                     <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -900,9 +887,9 @@ export default function SellerLanding() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-6">
-                            <a href={getDomainUrl('buyer', '/')} className={`transition ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Marketplace</a>
-                            <a href={getDomainUrl('courier', '/')} className={`transition ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Courier</a>
-                            <a href={getDomainUrl('admin', '/')} className={`transition ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Admin</a>
+                            <a href={getDomainUrl('buyer', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Marketplace</a>
+                            <a href={getDomainUrl('courier', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Courier</a>
+                            <a href={getDomainUrl('admin', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Admin</a>
                             <span>&copy; {new Date().getFullYear()}</span>
                         </div>
                     </div>
