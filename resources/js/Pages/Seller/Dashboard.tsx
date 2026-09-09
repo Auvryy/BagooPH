@@ -488,7 +488,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                     </div>
 
                     {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs flex flex-col">
                         {/* Header */}
                         <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
@@ -506,115 +506,91 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
 
                         {/* Two Primary Action Cards filling the height evenly */}
-                        <div className="flex-1 flex flex-col justify-between gap-4 py-4 font-sans">
+                        <div className="flex-1 flex flex-col gap-4 pt-4 font-sans">
                             
                             {/* 1. TO PACK - PROMINENTLY HIGHLIGHTED */}
                             <Link
                                 href={route('seller.orders.index', { status: 'to_pack' })}
-                                className={`flex-1 p-4 rounded-xl transition flex flex-col justify-between group ${
+                                className={`flex-1 p-5 rounded-xl transition flex items-center justify-between group ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-50/70 border-2 border-amber-400/90 shadow-2xs hover:bg-amber-100/60 ring-1 ring-amber-400/20'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                            stats.pendingPackCount > 0
-                                                ? 'bg-amber-500 text-white shadow-xs'
-                                                : 'bg-amber-100 text-amber-700'
-                                        }`}>
-                                            <Package className="w-5 h-5" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-amber-900">
-                                                    To Pack
-                                                </span>
-                                                {stats.pendingPackCount > 0 && (
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono">
-                                                        Action Needed
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                                                Awaiting packaging
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-xl font-mono text-base font-black shrink-0 ${
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
                                         stats.pendingPackCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
-                                            : 'bg-slate-200 text-slate-700'
+                                            : 'bg-amber-100 text-amber-700'
                                     }`}>
-                                        {stats.pendingPackCount}
-                                    </span>
+                                        <Package className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-amber-900">
+                                                To Pack
+                                            </span>
+                                            {stats.pendingPackCount > 0 && (
+                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono">
+                                                    Action Needed
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                            Awaiting packaging
+                                        </p>
+                                    </div>
                                 </div>
-
-                                <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-amber-200/40 text-[11px] font-mono">
-                                    <span className="text-slate-400">Next step: Print waybills</span>
-                                    <span className="font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-                                        Pack Orders ➔
-                                    </span>
-                                </div>
+                                <span className={`px-4 py-2 rounded-xl font-mono text-xl font-black shrink-0 ${
+                                    stats.pendingPackCount > 0
+                                        ? 'bg-amber-500 text-white shadow-xs'
+                                        : 'bg-slate-200 text-slate-700'
+                                }`}>
+                                    {stats.pendingPackCount}
+                                </span>
                             </Link>
 
                             {/* 2. RETURNS & CANCELLATIONS */}
                             <Link
                                 href={route('seller.disputes.index')}
-                                className={`flex-1 p-4 rounded-xl transition flex flex-col justify-between group ${
+                                className={`flex-1 p-5 rounded-xl transition flex items-center justify-between group ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-50/70 border-2 border-rose-400/90 shadow-2xs hover:bg-rose-100/60 ring-1 ring-rose-400/20'
                                         : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
                                 }`}
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                            (stats.returnCount || 0) > 0
-                                                ? 'bg-rose-500 text-white shadow-xs'
-                                                : 'bg-rose-100 text-rose-700'
-                                        }`}>
-                                            <RotateCcw className="w-5 h-5" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs sm:text-sm font-black text-slate-900 uppercase font-mono group-hover:text-rose-900">
-                                                    Returns & Cancellations
-                                                </span>
-                                                {(stats.returnCount || 0) > 0 && (
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
-                                                        Urgent
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                                                Claims requiring seller review
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-xl font-mono text-base font-black shrink-0 ${
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
                                         (stats.returnCount || 0) > 0
                                             ? 'bg-rose-500 text-white shadow-xs'
-                                            : 'bg-slate-200 text-slate-700'
+                                            : 'bg-rose-100 text-rose-700'
                                     }`}>
-                                        {stats.returnCount || 0}
-                                    </span>
+                                        <RotateCcw className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-rose-900">
+                                                Returns & Cancellations
+                                            </span>
+                                            {(stats.returnCount || 0) > 0 && (
+                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
+                                                    Urgent
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                            Claims requiring review
+                                        </p>
+                                    </div>
                                 </div>
-
-                                <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-rose-200/40 text-[11px] font-mono">
-                                    <span className="text-slate-400">Avoid platform penalties</span>
-                                    <span className="font-bold text-rose-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-                                        Review Claims ➔
-                                    </span>
-                                </div>
+                                <span className={`px-4 py-2 rounded-xl font-mono text-xl font-black shrink-0 ${
+                                    (stats.returnCount || 0) > 0
+                                        ? 'bg-rose-500 text-white shadow-xs'
+                                        : 'bg-slate-200 text-slate-700'
+                                }`}>
+                                    {stats.returnCount || 0}
+                                </span>
                             </Link>
-                        </div>
-
-                        {/* Dispatch Telemetry Footer */}
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono shrink-0">
-                            <span className="text-slate-400">Dispatch SLA:</span>
-                            <span className="font-bold text-emerald-600">98.4% Compliance</span>
                         </div>
                     </div>
                 </div>
