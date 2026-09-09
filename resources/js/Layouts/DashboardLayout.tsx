@@ -36,6 +36,7 @@ interface Props {
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
+    const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -63,30 +64,70 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const getNavItems = () => {
         if (role === 'admin') {
             return [
-                { name: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard, current: route().current('admin.dashboard') },
-                { name: 'KYC Queue', href: route('admin.kyc.index'), icon: ShieldCheck, current: route().current('admin.kyc.*') },
-                { name: 'Users', href: route('admin.users'), icon: Users, current: route().current('admin.users*') },
-                { name: 'Products', href: route('admin.products'), icon: Package, current: route().current('admin.products*') },
-                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: route().current('admin.logistics*') },
+                { name: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard, current: component === 'Admin/Dashboard' || route().current('admin.dashboard') || url === '/admin/dashboard' || url === '/admin' },
+                { name: 'KYC Queue', href: route('admin.kyc.index'), icon: ShieldCheck, current: component.startsWith('Admin/Kyc') || route().current('admin.kyc.*') || url.startsWith('/admin/kyc') },
+                { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || route().current('admin.users*') || url.startsWith('/admin/users') },
+                { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
+                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
             ];
         }
 
         if (role === 'seller') {
             return [
-                { name: 'Dashboard', href: route('seller.dashboard'), icon: LayoutDashboard, current: route().current('seller.dashboard') },
-                { name: 'Products', href: route('seller.products.index'), icon: Package, current: route().current('seller.products.*') },
-                { name: 'Orders', href: route('seller.orders.index'), icon: ShoppingCart, current: route().current('seller.orders.*') },
-                { name: 'Vouchers', href: route('seller.vouchers.index'), icon: Tag, current: route().current('seller.vouchers.*') },
-                { name: 'Messages', href: route('seller.messages.index'), icon: MessageSquare, current: route().current('seller.messages.*') },
-                { name: 'Reviews', href: route('seller.reviews.index'), icon: Star, current: route().current('seller.reviews.*') },
-                { name: 'Disputes & Returns', href: route('seller.disputes.index'), icon: ShieldAlert, current: route().current('seller.disputes.*') },
-                { name: 'Finances', href: route('seller.reports'), icon: TrendingUp, current: route().current('seller.reports') },
+                { 
+                    name: 'Dashboard', 
+                    href: route('seller.dashboard'), 
+                    icon: LayoutDashboard, 
+                    current: component === 'Seller/Dashboard' || route().current('seller.dashboard') || route().current('dashboard') || url === '/seller/dashboard' || url === '/dashboard' || url === '/seller'
+                },
+                { 
+                    name: 'Products', 
+                    href: route('seller.products.index'), 
+                    icon: Package, 
+                    current: component.startsWith('Seller/Product') || route().current('seller.products.*') || url.startsWith('/seller/products') 
+                },
+                { 
+                    name: 'Orders', 
+                    href: route('seller.orders.index'), 
+                    icon: ShoppingCart, 
+                    current: component.startsWith('Seller/Order') || route().current('seller.orders.*') || url.startsWith('/seller/orders') 
+                },
+                { 
+                    name: 'Vouchers', 
+                    href: route('seller.vouchers.index'), 
+                    icon: Tag, 
+                    current: component.startsWith('Seller/Voucher') || route().current('seller.vouchers.*') || url.startsWith('/seller/vouchers') 
+                },
+                { 
+                    name: 'Messages', 
+                    href: route('seller.messages.index'), 
+                    icon: MessageSquare, 
+                    current: component.startsWith('Seller/Messages') || route().current('seller.messages.*') || url.startsWith('/seller/messages') 
+                },
+                { 
+                    name: 'Reviews', 
+                    href: route('seller.reviews.index'), 
+                    icon: Star, 
+                    current: component.startsWith('Seller/Reviews') || route().current('seller.reviews.*') || url.startsWith('/seller/reviews') 
+                },
+                { 
+                    name: 'Disputes & Returns', 
+                    href: route('seller.disputes.index'), 
+                    icon: ShieldAlert, 
+                    current: component.startsWith('Seller/Dispute') || route().current('seller.disputes.*') || url.startsWith('/seller/disputes') 
+                },
+                { 
+                    name: 'Finances', 
+                    href: route('seller.reports'), 
+                    icon: TrendingUp, 
+                    current: component.startsWith('Seller/Reports') || route().current('seller.reports') || url.startsWith('/seller/reports') 
+                },
             ];
         }
 
         if (role === 'courier' || role === 'logistics') {
             return [
-                { name: 'Deliveries', href: route('courier.deliveries'), icon: Truck, current: route().current('courier.deliveries') },
+                { name: 'Deliveries', href: route('courier.deliveries'), icon: Truck, current: component.startsWith('Courier/Deliveries') || route().current('courier.deliveries') || url.startsWith('/courier/deliveries') },
             ];
         }
 
@@ -184,26 +225,31 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                                 </a>
                             )}
-                            <Link
-                                href={route('seller.settings')}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
-                                    route().current('seller.settings*') || route().current('seller.profile*')
-                                        ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <Settings className={`w-4 h-4 shrink-0 ${
-                                        route().current('seller.settings*') || route().current('seller.profile*')
-                                            ? 'text-white'
-                                            : 'text-slate-400 group-hover:text-slate-900'
-                                    }`} />
-                                    <span>Settings</span>
-                                </div>
-                                {(route().current('seller.settings*') || route().current('seller.profile*')) && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
-                                )}
-                            </Link>
+                            {(() => {
+                                const isSettingsActive = component.startsWith('Seller/Settings') || component.startsWith('Seller/Profile') || route().current('seller.settings*') || route().current('seller.profile*') || url.startsWith('/seller/settings') || url.startsWith('/seller/profile');
+                                return (
+                                    <Link
+                                        href={route('seller.settings')}
+                                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
+                                            isSettingsActive
+                                                ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2.5">
+                                            <Settings className={`w-4 h-4 shrink-0 ${
+                                                isSettingsActive
+                                                    ? 'text-white'
+                                                    : 'text-slate-400 group-hover:text-slate-900'
+                                            }`} />
+                                            <span>Settings</span>
+                                        </div>
+                                        {isSettingsActive && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
+                                        )}
+                                    </Link>
+                                );
+                            })()}
                         </div>
                     )}
                 </nav>

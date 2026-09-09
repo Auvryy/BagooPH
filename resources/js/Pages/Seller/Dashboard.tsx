@@ -73,8 +73,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
     // SVG Line Graph Geometry Constants
     const svgWidth = 680;
-    const svgHeight = 220;
-    const padding = { top: 30, right: 30, bottom: 40, left: 45 };
+    const svgHeight = 150;
+    const padding = { top: 18, right: 20, bottom: 28, left: 38 };
     const plotWidth = svgWidth - padding.left - padding.right;
     const plotHeight = svgHeight - padding.top - padding.bottom;
 
@@ -171,7 +171,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
                                 <span className="font-bold uppercase">Gross Sales</span>
-                                <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                <span className="inline-flex items-center gap-0.5 text-slate-700 text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                     <TrendingUp className="w-3 h-3" /> +16.4%
                                 </span>
                             </div>
@@ -183,7 +183,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
                             <span className="text-slate-400">Net Take-Home (90%):</span>
-                            <span className="font-bold text-emerald-600">{formatPrice(stats.totalRevenue * 0.9)}</span>
+                            <span className="font-bold text-slate-900">{formatPrice(stats.totalRevenue * 0.9)}</span>
                         </div>
                     </div>
 
@@ -221,7 +221,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
                             <span className="text-slate-400">Inventory Status:</span>
-                            <span className={`font-bold ${stats.lowStockCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            <span className={`font-bold ${stats.lowStockCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
                                 {stats.lowStockCount > 0 ? `${stats.lowStockCount} low stock` : 'In stock'}
                             </span>
                         </div>
@@ -244,7 +244,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
                             <span className="text-slate-400">Dispatch Rating:</span>
-                            <span className="font-bold text-emerald-600">Top Rated Seller</span>
+                            <span className="font-bold text-slate-700">Top Rated Seller</span>
                         </div>
                     </div>
                 </div>
@@ -253,10 +253,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     {/* LEFT (8 COLS): INTERACTIVE SPLINE LINE GRAPH */}
-                    <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="lg:col-span-8 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         
                         {/* Chart Header & Controls */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
@@ -304,8 +304,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </div>
                         </div>
 
-                        {/* Interactive Line Chart Canvas */}
-                        <div className="relative pt-6 pb-2">
+                        {/* Interactive Line Chart Canvas - Sleek, Lower Height */}
+                        <div className="relative pt-3 pb-1">
                             
                             {/* Live Hover Tooltip */}
                             {isHoveringChart && activePoint && (
@@ -319,13 +319,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 >
                                     <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-slate-800 text-[10px] text-slate-400">
                                         <span>{activePoint.date}</span>
-                                        <span className="text-emerald-400 font-bold">{activePoint.units} sold</span>
+                                        <span className="text-slate-300 font-bold">{activePoint.units} sold</span>
                                     </div>
                                     <div className="mt-1.5 space-y-0.5">
                                         <p className="text-base font-black text-white font-mono">
                                             {formatPrice(activePoint.revenue)}
                                         </p>
-                                        <p className="text-[10px] text-emerald-400">
+                                        <p className="text-[10px] text-slate-300">
                                             Net (90%): {formatPrice(activePoint.revenue * 0.9)}
                                         </p>
                                     </div>
@@ -336,7 +336,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* SVG Spline Container */}
                             <svg
                                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                                className="w-full h-48 sm:h-56 select-none cursor-crosshair overflow-visible"
+                                className="w-full h-32 select-none cursor-crosshair overflow-visible"
                                 onMouseMove={handleChartMouseMove}
                                 onMouseLeave={handleChartMouseLeave}
                             >
@@ -360,7 +360,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 </defs>
 
                                 {/* Horizontal Grid Lines */}
-                                {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                                {[0, 0.5, 1].map((ratio, idx) => {
                                     const y = padding.top + ratio * plotHeight;
                                     return (
                                         <g key={idx}>
@@ -373,10 +373,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 strokeWidth="1"
                                             />
                                             <text
-                                                x={padding.left - 8}
+                                                x={padding.left - 6}
                                                 y={y + 3}
                                                 fill="#94a3b8"
-                                                fontSize="9"
+                                                fontSize="8.5"
                                                 fontFamily="monospace"
                                                 textAnchor="end"
                                             >
@@ -437,7 +437,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 <circle
                                                     cx={pt.x}
                                                     cy={pt.y}
-                                                    r="9"
+                                                    r="8"
                                                     fill="#E00D42"
                                                     fillOpacity="0.2"
                                                 />
@@ -446,7 +446,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             <circle
                                                 cx={pt.x}
                                                 cy={pt.y}
-                                                r={isActive ? "5" : "3.5"}
+                                                r={isActive ? "4.5" : "3"}
                                                 fill={isActive ? "#E00D42" : "#94a3b8"}
                                                 stroke="#ffffff"
                                                 strokeWidth="2"
@@ -454,10 +454,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             {/* X-axis date text */}
                                             <text
                                                 x={pt.x}
-                                                y={svgHeight - padding.bottom + 18}
+                                                y={svgHeight - padding.bottom + 16}
                                                 fill={isActive ? "#E00D42" : "#64748b"}
                                                 fontWeight={isActive ? "bold" : "normal"}
-                                                fontSize="10"
+                                                fontSize="9.5"
                                                 fontFamily="monospace"
                                                 textAnchor="middle"
                                                 className="uppercase tracking-wider"
@@ -470,27 +470,27 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </svg>
                         </div>
 
-                        {/* Bottom Telemetry Strip: Clean 2-Stat Summary (No Daily Quota Clutter) */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 font-mono text-xs">
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-                                <span className="text-[10px] text-slate-400 uppercase block">Selected Date Revenue</span>
-                                <p className="text-base font-black text-slate-900 font-sans mt-0.5">
+                        {/* Bottom Telemetry Strip: Clean Single-Row Bar (Minimalist, Zero Bulk) */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-mono text-xs">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-tight">Selected Date Revenue:</span>
+                                <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice(activePoint?.revenue || 0)}
-                                </p>
+                                </span>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-                                <span className="text-[10px] text-slate-400 uppercase block">Estimated Net Payout (90%)</span>
-                                <p className="text-base font-black text-emerald-600 font-sans mt-0.5">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-tight">Estimated Net (90%):</span>
+                                <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice((activePoint?.revenue || 0) * 0.9)}
-                                </p>
+                                </span>
                             </div>
                         </div>
                     </div>
 
                     {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS + PIPELINE SUMMARY */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 xl:p-6 border border-slate-200/90 shadow-2xs flex flex-col">
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         {/* Header */}
-                        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <Box className="w-4 h-4 text-[#E00D42]" />
                                 <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
@@ -505,43 +505,43 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
                         </div>
 
-                        {/* Action Cards & Pipeline Box - Flex-1 evenly fills height with zero whitespace */}
-                        <div className="flex-1 flex flex-col gap-3 pt-3.5 font-sans">
+                        {/* Action Cards & Pipeline Box - Sleek, thin, and compact */}
+                        <div className="space-y-2.5 pt-3 font-sans">
                             
                             {/* 1. TO PACK */}
                             <Link
                                 href={route('seller.orders.index', { status: 'to_pack' })}
-                                className={`flex-1 p-4 xl:p-5 rounded-xl transition flex items-center justify-between gap-3 group ${
+                                className={`p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     stats.pendingPackCount > 0
-                                        ? 'bg-amber-50/70 border-2 border-amber-400/90 shadow-2xs hover:bg-amber-100/60 ring-1 ring-amber-400/20'
+                                        ? 'bg-amber-50/70 border border-amber-300 shadow-2xs hover:bg-amber-100/60'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
                             >
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={`w-11 h-11 xl:w-12 xl:h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                         stats.pendingPackCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
                                             : 'bg-amber-100 text-amber-700'
                                     }`}>
-                                        <Package className="w-5 h-5 xl:w-6 xl:h-6" />
+                                        <Package className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 whitespace-nowrap">
+                                            <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 whitespace-nowrap">
                                                 To Pack
                                             </span>
                                             {stats.pendingPackCount > 0 && (
-                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono shrink-0">
+                                                <span className="px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono shrink-0">
                                                     Action Needed
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                                        <p className="text-[10px] text-slate-500 font-mono truncate">
                                             Awaiting packaging
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`w-10 h-10 xl:w-11 xl:h-11 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
+                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-mono text-sm font-black shrink-0 ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -553,37 +553,37 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* 2. RETURNS & CANCELLATIONS */}
                             <Link
                                 href={route('seller.disputes.index')}
-                                className={`flex-1 p-4 xl:p-5 rounded-xl transition flex items-center justify-between gap-3 group ${
+                                className={`p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     (stats.returnCount || 0) > 0
-                                        ? 'bg-rose-50/70 border-2 border-rose-400/90 shadow-2xs hover:bg-rose-100/60 ring-1 ring-rose-400/20'
+                                        ? 'bg-rose-50/70 border border-rose-300 shadow-2xs hover:bg-rose-100/60'
                                         : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
                                 }`}
                             >
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={`w-11 h-11 xl:w-12 xl:h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                         (stats.returnCount || 0) > 0
                                             ? 'bg-rose-500 text-white shadow-xs'
                                             : 'bg-rose-100 text-rose-700'
                                     }`}>
-                                        <RotateCcw className="w-5 h-5 xl:w-6 xl:h-6" />
+                                        <RotateCcw className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
                                             Returns & Cancels
                                         </span>
-                                        <div className="flex items-center gap-1.5 mt-1">
+                                        <div className="flex items-center gap-1.5 mt-0.5">
                                             {(stats.returnCount || 0) > 0 && (
-                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
+                                                <span className="px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
                                                     Urgent
                                                 </span>
                                             )}
-                                            <span className="text-[11px] text-slate-500 font-mono truncate">
+                                            <span className="text-[10px] text-slate-500 font-mono truncate">
                                                 {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <span className={`w-10 h-10 xl:w-11 xl:h-11 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
+                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-mono text-sm font-black shrink-0 ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -593,8 +593,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
 
                             {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}
-                            <div className="p-3.5 xl:p-4 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
-                                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/60 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
+                                <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
                                     <span>Logistics Pipeline</span>
                                     <span className="text-slate-500">Live Status</span>
                                 </div>
@@ -604,13 +604,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Orders ready for courier pickup"
                                     >
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Ready
                                         </span>
-                                        <span className="text-base font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.readyPickupCount}
                                         </span>
-                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             pickup
                                         </span>
                                     </Link>
@@ -620,13 +620,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Orders currently in transit with courier"
                                     >
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Transit
                                         </span>
-                                        <span className="text-base font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.shippedCount}
                                         </span>
-                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             on way
                                         </span>
                                     </Link>
@@ -636,13 +636,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Delivered orders"
                                     >
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Delivered
                                         </span>
-                                        <span className="text-base font-black text-emerald-600 font-mono block mt-0.5 group-hover:text-emerald-700">
+                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.completedCount}
                                         </span>
-                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             received
                                         </span>
                                     </Link>
