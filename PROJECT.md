@@ -3,44 +3,33 @@
 ## Architecture
 - **Framework**: Laravel 11/12 + Inertia.js 2.0 (React 18, TypeScript, Tailwind CSS, Lucide React).
 - **Database**: PostgreSQL 16 (production/docker) & SQLite (testing/PHPUnit).
-- **User Roles (5 Roles)**:
-  1. `buyer`: Marketplace shopping, variant selection, checkout, voucher application, order history, live order tracking timeline.
-  2. `seller`: Seller Cockpit (`/seller/orders`), packaging approval, thermal waybill printing, ready for pickup dispatch, earnings ledger.
-  3. `courier`: Courier Dispatch Board (`/courier/deliveries`), FCFS job claiming, pickup barcode scan, transit updates, doorstep drop-off with photo proof, rider earnings ledger.
-  4. `logistics`: Central Logistics Hub (`/hub`), incoming barcode scan intake, barangay sorting bin classification, fleet telemetry.
-  5. `admin`: Platform governance (`/admin/dashboard`, `/admin/users`), KYC verification queue (document inspection, Approve/Reject with feedback), Commission Treasury ledger.
+- **User Roles & Actors (6 Actors)**:
+  1. `buyer`: Buyer Registration -> Admin Approval -> Login -> Marketplace shopping, checkout, live tracking, Confirm Order Received -> Completed.
+  2. `seller`: Seller Cockpit (`/seller/orders`), receive order notice, check stock, accept/confirm order, prepare order, pack product, print shipping label, mark ready for pickup, handover to rider, confirm rider pickup (Status: PICKED_UP).
+  3. `courier_pickup`: Rider/Courier (Pickup), accept pickup assignment, collect parcel from seller, scan/confirm parcel, deliver parcel to Sorting Center.
+  4. `courier_delivery`: Rider/Courier (Delivery), receive assignment from Sorting Center, pick up parcel from Sorting Center, out for delivery, deliver parcel to customer (DELIVERED -> Buyer Confirms Receipt -> COMPLETED, or DELIVERY_FAILED -> Reason Recorded -> Reschedule / RETURNED).
+  5. `sorting_center`: Central Logistics Sorting Hub (`/hub`), 8-step intake & routing pipeline, sort by destination area (Area A, Area B, Area C), assign parcel to area rider.
+  6. `admin`: Platform governance (`/admin`), registration approval authority (Buyer, Seller, Courier, Hub), 10% Platform Commission treasury.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Multi-Role KYC Registration & Schema Extensions | Add KYC fields (`kyc_status`, `id_document`, `business_permit`, `driver_license`, `or_cr_document`, `kyc_feedback`), create `courier_profiles` table, variant fields in `cart_items`/`order_items`, fix `delivery_phone` field mapping. | M1 | ORIGINAL_REQUEST R4, DB Survey |
-| 2 | Auth & Role KYC Approval Gate & Admin Verification Queue | Set new accounts to `pending_approval`, enforce access gate in `RoleMiddleware` & login flow, provide `/pending-approval` holding page, create Admin KYC Queue with document preview & Approve/Reject actions. | M1 | ORIGINAL_REQUEST R4, UI Survey |
-| 3 | Unified 7-Stage Order Checkout & Packaging Lifecycle | Standardize 7 stages (`pending` ➔ `packaging` ➔ `ready_for_pickup` ➔ `picked_up` ➔ `in_transit` ➔ `out_for_delivery` ➔ `delivered`), Buyer checkout with variant persistence, Seller review & "Packaging" approval, thermal waybill generation. | M2 | ORIGINAL_REQUEST R1, UI Survey |
-| 4 | Courier Dispatch Board & Live Buyer Tracking | FCFS courier job claiming on "Ready for Pickup", rider delivery milestone execution with proof photo upload, real-time Buyer tracking timeline on `/buyer/orders/{id}`. | M2 | ORIGINAL_REQUEST R1, Ops Survey |
-| 5 | Logistics Sorting Hub (`/hub`) & Barcode Scan Checkpoints | Create `delivery_checkpoints` audit trail table, dedicated `/hub` sorting workstation for logistics role, tactile Barcode Scanner modal for Seller release, Courier pickup, Hub barangay sorting, and doorstep handover. | M3 | ORIGINAL_REQUEST R3, UI Survey |
-| 6 | 10% Platform Commission & Financial Split Ledger | Create `commission_ledgers` table, execute atomic revenue distribution upon delivery (90% Seller, 10% Platform Treasury, ₱60 Courier Rider), and wire up wallet/earnings views across all roles. | M4 | ORIGINAL_REQUEST R5, DB Survey |
-| 7 | Interactive "Fast-Forward" Order Progression Simulator | Centralized `OrderSimulationController` (`/simulator/orders/{order}/advance`), embedded `<FastForwardControl />` widget across Buyer, Seller, Courier, Hub, and Admin screens with 1-click stage progression and complete lifecycle jump. | M5 | ORIGINAL_REQUEST R2, Ops Survey |
-
-## Milestones
-| # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| M1 | Multi-Role KYC Schema, Registration & Admin Approval Gate | Schema migrations for KYC & courier profiles, registration document uploads, `RoleMiddleware` status gating, `/pending-approval` screen, Admin KYC verification queue with Approve/Reject modal. | None | DONE |
-| M2 | Unified 7-Stage Order Lifecycle, Packaging & Waybill Dispatch | Order checkout with variant persistence (status `pending`), Seller Cockpit packaging approval & thermal waybill, Courier Dispatch Board claiming, and live Buyer tracking timeline. | M1 | IN_PROGRESS |
-| M3 | Logistics Sorting Hub & Tactile Barcode/Location Checkpoints | `delivery_checkpoints` table, dedicated `/hub` sorting dashboard, tactile `<BarcodeScannerModal />` for packaging release, courier pickup, hub barangay sorting, and doorstep delivery. | M2 | PLANNED |
-| M4 | 10% Platform Commission & Financial Split Ledger | `commission_ledgers` schema & model, atomic 90%/10%/₱60 distribution service triggered on order `delivered` status, Seller/Courier/Admin wallet & earnings ledger reconciliation. | M2 | PLANNED |
-| M5 | Interactive "Fast-Forward" Order Progression Simulator | `OrderSimulationController` advance/reset endpoints, tactile floating `<FastForwardControl />` component integrated in Buyer, Seller, Courier, Hub, and Admin views. | M2, M3, M4 | PLANNED |
-| M-FINAL | E2E Test Suite Execution & Adversarial Coverage Hardening | Phase 1: 100% pass of E2E test suite (Tiers 1-4). Phase 2: Tier 5 Adversarial coverage hardening via Challenger -> Worker -> Reviewer loop. | M1, M2, M3, M4, M5 | PLANNED |
+| 1 | Multi-Role Registration & Admin Approval Gate | Mandatory Admin Approval gate across Buyer, Seller, Courier, and Logistics Hub before login access. | M1 | Official Curriculum PDF |
+| 2 | Canonical 13-Stage Order Lifecycle | Standardize 13 canonical stages (`PLACED` -> `CONFIRMED` -> `PREPARING` -> `READY_FOR_PICKUP` -> `PICKED_UP` -> `AT_SORTING_CENTER` -> `SORTED` -> `ASSIGNED_TO_RIDER` -> `OUT_FOR_DELIVERY` -> `DELIVERED` -> `COMPLETED`, with failure branch `DELIVERY_FAILED` -> `RETURNED`). | M2 | Official Curriculum PDF |
+| 3 | Split Courier Operations (Pickup vs Delivery) | Dedicated Pickup Fleet (Seller -> Sorting Center) and Delivery Fleet (Sorting Center -> Doorstep). | M3 | Official Curriculum PDF |
+| 4 | Sorting Center Area Routing & Rider Dispatch | Destination Area partitioning (Area A, Area B, Area C) and rider assignment engine. | M3 | Official Curriculum PDF |
+| 5 | Buyer "Confirm Order Received" Finalization | Dedicated transaction completion trigger advancing order from `DELIVERED` to `COMPLETED`. | M4 | Official Curriculum PDF |
+| 6 | 10% Flat Platform Commission Treasury | Automatic revenue distribution upon order completion (90% Seller net payout, 10% Platform Commission). | M4 | Curriculum Standards |
 
 ## Interface Contracts
-### Auth & KYC Gate ↔ Role Portals
+### Auth & Admin Approval Gate ↔ Portals
 - `User.kyc_status`: `pending_approval`, `approved`, `rejected`
-- `RoleMiddleware`: redirects unapproved users to `route('kyc.pending')`
-- `AdminKYCController`:
-  - `POST /admin/kyc/{user}/approve`: sets `kyc_status = 'approved'`, `status = 'active'`
-  - `POST /admin/kyc/{user}/reject`: sets `kyc_status = 'rejected'`, `kyc_feedback = $request->reason`
+- Mandatory gate: Registration -> Admin Approval -> Login (Applies to Buyer, Seller, Courier, Hub)
+- `RoleMiddleware`: redirects unapproved accounts to `/pending-approval` holding screen.
 
-### Order Lifecycle ↔ Courier & Logistics
-- `OrderStatus`: `pending`, `packaging`, `ready_for_pickup`, `picked_up`, `in_transit`, `out_for_delivery`, `delivered`, `cancelled`
+### Canonical 13-Stage Order Lifecycle
+- `OrderStatus`: `placed`, `confirmed`, `preparing`, `ready_for_pickup`, `picked_up`, `at_sorting_center`, `sorted`, `assigned_to_rider`, `out_for_delivery`, `delivered`, `completed`, `delivery_failed`, `returned`
+- `Process Summary`: Buyer orders → Seller prepares → Rider picks up → Sorting Center sorts → Sorting Center assigns Rider → Rider delivers → Buyer confirms → Order completed.
 - `DeliveryStatus`: `unassigned`, `assigned`, `picked_up`, `in_transit`, `out_for_delivery`, `delivered`, `failed`
 - `DeliveryCheckpoint`: `delivery_id`, `checkpoint_type`, `location_name`, `barcode_scanned`, `notes`, `scanned_by_id`, `created_at`
 
