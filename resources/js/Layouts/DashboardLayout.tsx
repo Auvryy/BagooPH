@@ -43,7 +43,7 @@ import {
 interface Props {
     children: React.ReactNode;
     title: string;
-    subtitle?: string;
+    subtitle?: React.ReactNode;
     actions?: React.ReactNode;
 }
 
@@ -293,7 +293,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <h1 className="text-base font-black text-slate-900 tracking-tight">{title}</h1>
                                 <span className="hidden sm:inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold uppercase">PRO</span>
                             </div>
-                            {subtitle && <p className="text-[11px] text-slate-500 font-medium">{subtitle}</p>}
+                            {subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2">{subtitle}</div>}
                         </div>
                     </div>
 

@@ -39,21 +39,21 @@ class SellerDashboardController extends Controller
         $totalSales = OrderItem::where('shop_id', $shop->id)->sum('quantity');
         $totalRevenue = OrderItem::where('shop_id', $shop->id)->sum('subtotal');
 
-        // Order Pipeline metrics
+        // Order Pipeline metrics (Canonical 13-stage lifecycle support)
         $pendingPackCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->where('status', 'processing'))
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing']))
             ->count();
 
         $readyPickupCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->where('status', 'ready_for_pickup'))
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['ready_for_pickup']))
             ->count();
 
         $shippedCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->where('status', 'shipped'))
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped']))
             ->count();
 
         $completedCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->where('status', 'delivered'))
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['delivered', 'completed']))
             ->count();
 
         // 7-day revenue analytics
