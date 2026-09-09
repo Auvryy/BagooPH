@@ -4,44 +4,11 @@ import BagooLogo from '@/Components/BagooLogo';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     ArrowRight, 
-    Check, 
-    Truck, 
-    Boxes, 
     ChevronDown, 
-    ChevronUp, 
-    Sliders, 
-    Sparkles, 
-    Package, 
-    Clock, 
-    ShoppingBag,
-    Coins,
-    MapPin,
-    Layers,
-    Tag,
-    ArrowUpRight,
-    Flame,
-    Sun,
-    Moon
+    ChevronUp
 } from 'lucide-react';
 
 export default function SellerLanding() {
-    // Theme Switcher State: White Mode (Light) vs Dark Mode
-    const [isLight, setIsLight] = useState<boolean>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('bagooph_seller_theme');
-            if (saved !== null) return saved === 'light';
-        }
-        return true; // Initialize in White Mode (Light Mode) for user evaluation
-    });
-
-    const toggleTheme = () => {
-        const next = !isLight;
-        setIsLight(next);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('bagooph_seller_theme', next ? 'light' : 'dark');
-        }
-    };
-
     // Section-by-section unique scroll entrance triggers
     const [heroLoaded, setHeroLoaded] = useState(false);
     const [showcaseInView, setShowcaseInView] = useState(false);
@@ -91,53 +58,70 @@ export default function SellerLanding() {
         };
     }, []);
 
-    // Interactive Economics Spline Graph State (Linear-Style Cursor Tracking)
-    const [graphProgress, setGraphProgress] = useState(0.62); // Initial resting point (approx 62% along the curve)
-    const [isGraphHovered, setIsGraphHovered] = useState(false);
+    // Section 3 Product Carousel State & Unique Local Merchant Products (Auto-swaps every 1.6s)
+    const CAROUSEL_PRODUCTS = [
+        {
+            id: 'leather-bag',
+            name: 'Handcrafted Artisan Leather Bag',
+            category: 'Leathercraft',
+            price: '₱2,450',
+            payout: '₱2,205 (90%)',
+            image: '/images/carousel/leather-bag.jpg',
+        },
+        {
+            id: 'craft-coffee',
+            name: 'Cordillera Single-Origin Roast',
+            category: 'Specialty Coffee',
+            price: '₱580',
+            payout: '₱522 (90%)',
+            image: '/images/carousel/craft-coffee.jpg',
+        },
+        {
+            id: 'ceramic-mug',
+            name: 'Speckled Stoneware Ceramic Mug',
+            category: 'Ceramics & Studio',
+            price: '₱650',
+            payout: '₱585 (90%)',
+            image: '/images/carousel/ceramic-mug.jpg',
+        },
+        {
+            id: 'crossbody-sling',
+            name: 'Technical Everyday Carry Sling',
+            category: 'Bags & EDC',
+            price: '₱1,450',
+            payout: '₱1,305 (90%)',
+            image: '/images/carousel/crossbody-sling.jpg',
+        },
+        {
+            id: 'botanical-candle',
+            name: 'Botanical Soy Wax Amber Candle',
+            category: 'Apothecary',
+            price: '₱480',
+            payout: '₱432 (90%)',
+            image: '/images/carousel/botanical-candle.jpg',
+        },
+        {
+            id: 'streetwear-tee',
+            name: 'Heavyweight Washed Boxy Tee',
+            category: 'Streetwear',
+            price: '₱850',
+            payout: '₱765 (90%)',
+            image: '/images/carousel/streetwear-tee.jpg',
+        },
+    ];
 
-    // Cubic Bezier interpolation: B(t) for P0, P1, P2, P3
-    const getBezierPoint = (t: number, p0: number, p1: number, p2: number, p3: number) => {
-        const oneMinusT = 1 - t;
-        return (
-            Math.pow(oneMinusT, 3) * p0 +
-            3 * Math.pow(oneMinusT, 2) * t * p1 +
-            3 * oneMinusT * Math.pow(t, 2) * p2 +
-            Math.pow(t, 3) * p3
-        );
-    };
+    const [activeCarouselIdx, setActiveCarouselIdx] = useState(0);
 
-    // Active calculations based on dynamic graph scrubber position
-    const activeOrders = Math.round(15 + graphProgress * 285); // 15 to 300 orders
-    const activeItemPrice = 500;
-    const activeGross = activeOrders * activeItemPrice;
-    const activePlatformFee = Math.round(activeGross * 0.10); // Official 10% Flat Platform Commission
-    const activeNet = activeGross - activePlatformFee; // Sellers retain 90%
+    // Auto-swap every 1.6 seconds as requested
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setActiveCarouselIdx((prev) => (prev + 1) % CAROUSEL_PRODUCTS.length);
+        }, 1600);
+        return () => clearInterval(timer);
+    }, [CAROUSEL_PRODUCTS.length]);
 
-    // SVG Coordinate Points at t = graphProgress (viewBox 0 0 800 280)
-    // Gross COD curve: P0(40,220), P1(260,210), P2(500,110), P3(760,35)
-    // 90% Net Take-home curve: P0(40,232), P1(260,224), P2(500,135), P3(760,62)
-    const curX = Math.round(getBezierPoint(graphProgress, 40, 260, 500, 760));
-    const curYGross = Math.round(getBezierPoint(graphProgress, 220, 210, 110, 35));
-    const curYNet = Math.round(getBezierPoint(graphProgress, 232, 224, 135, 62));
-
-    // Handle interactive mouse / touch scrub across graph
-    const handleGraphScrub = (clientX: number, rect: DOMRect) => {
-        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
-        const pct = Math.max(0.04, Math.min(0.96, x / rect.width));
-        setGraphProgress(pct);
-        setIsGraphHovered(true);
-    };
-
-    // FAQ Accordion
+    // FAQ Accordion State
     const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-    const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            maximumFractionDigits: 0,
-        }).format(val);
-    };
 
     const faqs = [
         {
@@ -159,28 +143,22 @@ export default function SellerLanding() {
     ];
 
     return (
-        <div className={`min-h-screen ${isLight ? 'bg-[#FAFAFA] text-[#0F172A]' : 'bg-[#08090A] text-[#F7F8F8]'} font-sans selection:bg-[#E00D42] selection:text-white relative overflow-hidden transition-colors duration-300`}>
+        <div className="min-h-screen bg-[#FAFAFA] text-[#0F172A] font-sans selection:bg-[#E00D42] selection:text-white relative overflow-hidden">
             <Head title="BagooPH — Seller Standard | Minimalist Cash on Delivery Commerce" />
 
             {/* Subtle Ambient Radial Lighting */}
             <div 
-                className={`fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] pointer-events-none z-0 transition-opacity duration-500 ${
-                    isLight ? 'opacity-40' : 'opacity-20'
-                }`}
+                className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] pointer-events-none z-0 opacity-40"
                 style={{
-                    background: isLight 
-                        ? 'radial-gradient(circle at 50% 0%, rgba(224, 13, 66, 0.08) 0%, rgba(250, 250, 250, 0) 70%)'
-                        : 'radial-gradient(circle at 50% 0%, rgba(224, 13, 66, 0.25) 0%, rgba(8, 9, 10, 0) 70%)'
+                    background: 'radial-gradient(circle at 50% 0%, rgba(224, 13, 66, 0.08) 0%, rgba(250, 250, 250, 0) 70%)'
                 }}
             />
 
             {/* Subtle Geometric Wireframe Grid Lines */}
             <div 
-                className={`fixed inset-0 pointer-events-none z-0 ${isLight ? 'opacity-[0.035]' : 'opacity-[0.025]'}`}
+                className="fixed inset-0 pointer-events-none z-0 opacity-[0.035]"
                 style={{
-                    backgroundImage: isLight
-                        ? 'linear-gradient(to right, #000000 1px, transparent 1px), linear-gradient(to bottom, #000000 1px, transparent 1px)'
-                        : 'linear-gradient(to right, #FFFFFF 1px, transparent 1px), linear-gradient(to bottom, #FFFFFF 1px, transparent 1px)',
+                    backgroundImage: 'linear-gradient(to right, #000000 1px, transparent 1px), linear-gradient(to bottom, #000000 1px, transparent 1px)',
                     backgroundSize: '48px 48px'
                 }}
             />
@@ -189,75 +167,39 @@ export default function SellerLanding() {
 
                 {/* 1. FLOATING MINIMALIST PILL NAVIGATION */}
                 <div className="sticky top-5 z-50 max-w-5xl mx-auto px-4 w-full">
-                    <header className={`backdrop-blur-xl border rounded-full px-5 py-3 shadow-2xl flex items-center justify-between transition-colors duration-300 ${
-                        isLight 
-                            ? 'bg-white/85 border-slate-200 shadow-slate-200/50' 
-                            : 'bg-[#0E1012]/80 border-white/[0.08]'
-                    }`}>
+                    <header className="backdrop-blur-xl border rounded-full px-5 py-3 shadow-2xl flex items-center justify-between bg-white/85 border-slate-200 shadow-slate-200/50">
                         
                         {/* Brand Signature */}
                         <Link href="/" className="flex items-center gap-2.5 group">
                             <BagooLogo className="w-7 h-7 group-hover:scale-105 transition-transform duration-200" rounded="rounded-lg" />
                             <div className="flex items-center gap-1.5 font-mono text-sm tracking-tight">
-                                <span className={`font-bold transition-colors ${isLight ? 'text-slate-900' : 'text-white'}`}>Bagoo</span>
+                                <span className="font-bold text-slate-900">Bagoo</span>
                                 <span className="text-[#E00D42] font-black">PH</span>
-                                <span className={`text-[10px] uppercase tracking-widest pl-1 font-semibold transition-colors ${isLight ? 'text-slate-500' : 'text-white/30'}`}>
+                                <span className="text-[10px] uppercase tracking-widest pl-1 font-semibold text-slate-500">
                                     SELLER
                                 </span>
                             </div>
                         </Link>
 
                         {/* Minimal Navigation Anchors */}
-                        <nav className={`hidden md:flex items-center gap-7 font-mono text-xs tracking-wider uppercase transition-colors ${
-                            isLight ? 'text-slate-600 font-medium' : 'text-white/50'
-                        }`}>
-                            <a href="#showcase" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Showcase</a>
-                            <a href="#economics" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Economics</a>
-                            <a href="#workflow" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>Flow</a>
-                            <a href="#faq" className={`transition-colors ${isLight ? 'hover:text-slate-900' : 'hover:text-white'}`}>FAQ</a>
+                        <nav className="hidden md:flex items-center gap-7 font-mono text-xs tracking-wider uppercase text-slate-600 font-medium">
+                            <a href="#showcase" className="hover:text-slate-900 transition-colors">Showcase</a>
+                            <a href="#economics" className="hover:text-slate-900 transition-colors">Economics</a>
+                            <a href="#workflow" className="hover:text-slate-900 transition-colors">Flow</a>
+                            <a href="#faq" className="hover:text-slate-900 transition-colors">FAQ</a>
                         </nav>
 
                         {/* Discrete Actions */}
                         <div className="flex items-center gap-2.5">
-                            {/* Theme Toggle Button */}
-                            <button
-                                type="button"
-                                onClick={toggleTheme}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs uppercase tracking-wider transition ${
-                                    isLight 
-                                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80' 
-                                        : 'bg-white/[0.05] hover:bg-white/[0.1] text-white/70 hover:text-white border border-white/[0.1]'
-                                }`}
-                                title="Toggle White Mode / Dark Mode"
-                            >
-                                {isLight ? (
-                                    <>
-                                        <Moon className="w-3.5 h-3.5 text-slate-700" />
-                                        <span>Dark</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sun className="w-3.5 h-3.5 text-amber-400" />
-                                        <span>White</span>
-                                    </>
-                                )}
-                            </button>
-
                             <a
                                 href={getDomainUrl('seller', '/login')}
-                                className={`font-mono text-xs uppercase tracking-wider transition px-3 py-1.5 ${
-                                    isLight ? 'text-slate-700 hover:text-slate-900 font-medium' : 'text-white/60 hover:text-white'
-                                }`}
+                                className="font-mono text-xs uppercase tracking-wider transition px-3 py-1.5 text-slate-700 hover:text-slate-900 font-medium"
                             >
                                 Sign In
                             </a>
                             <a
                                 href={getDomainUrl('seller', '/register')}
-                                className={`px-4 py-2 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-sm active:scale-95 flex items-center gap-1.5 ${
-                                    isLight 
-                                        ? 'bg-[#0F172A] hover:bg-black text-white shadow-slate-300' 
-                                        : 'bg-white hover:bg-slate-100 text-black'
-                                }`}
+                                className="px-4 py-2 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-sm active:scale-95 flex items-center gap-1.5 bg-[#0F172A] hover:bg-black text-white shadow-slate-300"
                             >
                                 <span>Open Store</span>
                                 <ArrowRight className="w-3 h-3" />
@@ -272,11 +214,7 @@ export default function SellerLanding() {
                     
                     {/* Precision Status Dot */}
                     <div 
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border transition-all duration-700 ease-out transform ${
-                            isLight 
-                                ? 'bg-slate-100/90 border-slate-300/80 text-slate-800 font-medium' 
-                                : 'bg-white/[0.03] border-white/[0.08] text-white/70'
-                        } ${heroLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border transition-all duration-700 ease-out transform bg-slate-100/90 border-slate-300/80 text-slate-800 font-medium ${heroLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
                     >
                         <span className="w-2 h-2 rounded-full bg-[#E00D42] shadow-[0_0_8px_#E00D42]" />
                         <span className="font-mono text-[11px] uppercase tracking-widest">
@@ -286,19 +224,15 @@ export default function SellerLanding() {
 
                     {/* Bold Editorial Headline */}
                     <h1 
-                        className={`text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-[-0.04em] leading-[0.98] max-w-4xl mx-auto transition-all duration-700 delay-150 ease-out transform ${
-                            isLight ? 'text-[#0F172A]' : 'text-white'
-                        } ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                        className={`text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-[-0.04em] leading-[0.98] max-w-4xl mx-auto transition-all duration-700 delay-150 ease-out transform text-[#0F172A] ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                     >
                         Commerce, stripped <br />
-                        <span className={isLight ? 'text-slate-600' : 'text-white/40'}>down to essentials.</span>
+                        <span className="text-slate-600">down to essentials.</span>
                     </h1>
 
                     {/* Single Minimal Line of Copy */}
                     <p 
-                        className={`text-base sm:text-lg font-sans max-w-xl mx-auto leading-relaxed transition-all duration-700 delay-300 ease-out transform ${
-                            isLight ? 'text-slate-700 font-normal' : 'text-white/60'
-                        } ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                        className={`text-base sm:text-lg font-sans max-w-xl mx-auto leading-relaxed transition-all duration-700 delay-300 ease-out transform text-slate-700 font-normal ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
                     >
                         10% flat commission. Direct Cash on Delivery remittance. Doorstep courier pickup for independent Philippine creators.
                     </p>
@@ -311,22 +245,14 @@ export default function SellerLanding() {
                     >
                         <a
                             href={getDomainUrl('seller', '/register')}
-                            className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
-                                isLight 
-                                    ? 'bg-[#0F172A] hover:bg-black text-white shadow-slate-300' 
-                                    : 'bg-white hover:bg-slate-100 text-black'
-                            }`}
+                            className="w-full sm:w-auto px-8 py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-black text-white shadow-slate-300"
                         >
                             <span>Launch Your Store — Free</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                         </a>
                         <a
                             href={getDomainUrl('seller', '/login')}
-                            className={`w-full sm:w-auto px-7 py-3.5 rounded-full border font-mono text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
-                                isLight 
-                                    ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-900 font-semibold shadow-xs' 
-                                    : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/[0.12] text-white/80 hover:text-white'
-                            }`}
+                            className="w-full sm:w-auto px-7 py-3.5 rounded-full border font-mono text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 bg-white hover:bg-slate-50 border-slate-300 text-slate-900 font-semibold shadow-xs"
                         >
                             <span>Merchant Sign In</span>
                         </a>
@@ -345,26 +271,16 @@ export default function SellerLanding() {
 
                         {/* Desktop Application Chassis Window Frame */}
                         <div 
-                            className={`relative rounded-2xl p-[1px] transition-all duration-1000 ease-out transform [transform-style:preserve-3d] ${
-                                isLight 
-                                    ? 'bg-gradient-to-b from-slate-300 via-slate-200 to-slate-300 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.06)]' 
-                                    : 'bg-gradient-to-b from-white/20 via-white/8 to-white/0 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)]'
-                            } ${
+                            className={`relative rounded-2xl p-[1px] transition-all duration-1000 ease-out transform bg-gradient-to-b from-slate-300 via-slate-200 to-slate-300 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.06)] ${
                                 showcaseInView 
-                                    ? 'opacity-100 [transform:rotateX(0deg)_scale(1)]' 
-                                    : 'opacity-90 [transform:rotateX(12deg)_scale(0.97)]'
+                                    ? 'opacity-100 translate-y-0 scale-100' 
+                                    : 'opacity-90 translate-y-2 scale-[0.99]'
                             }`}
                         >
-                            <div className={`relative rounded-[15px] overflow-hidden ${
-                                isLight ? 'bg-slate-100' : 'bg-[#08090A]'
-                            }`}>
+                            <div className="relative rounded-[15px] overflow-hidden bg-slate-100">
                                 
                                 {/* Window Titlebar */}
-                                <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                                    isLight 
-                                        ? 'border-slate-200 bg-slate-100/95 text-slate-700' 
-                                        : 'border-white/[0.08] bg-[#0A0D14]/90 text-white/70'
-                                }`}>
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-100/95 text-slate-700">
                                     <div className="flex items-center gap-2">
                                         <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
                                         <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
@@ -372,11 +288,7 @@ export default function SellerLanding() {
                                     </div>
                                     
                                     {/* URL Pill Indicator */}
-                                    <div className={`flex items-center gap-2 px-3 py-0.5 rounded-full border font-mono text-[11px] ${
-                                        isLight 
-                                            ? 'border-slate-300/80 bg-white text-slate-700' 
-                                            : 'border-white/[0.08] bg-white/[0.03] text-slate-300'
-                                    }`}>
+                                    <div className="flex items-center gap-2 px-3 py-0.5 rounded-full border font-mono text-[11px] border-slate-300/80 bg-white text-slate-700">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                         <span>bagoo.shop/seller/cockpit</span>
                                     </div>
@@ -386,18 +298,14 @@ export default function SellerLanding() {
                                         <span className="hidden sm:inline px-2 py-0.5 rounded bg-[#E00D42]/10 border border-[#E00D42]/20 text-[#E00D42] font-bold">
                                             10% FLAT COMMISSION
                                         </span>
-                                        <span className={`px-2 py-0.5 rounded border uppercase font-mono ${
-                                            isLight 
-                                                ? 'bg-white border-slate-200 text-slate-500' 
-                                                : 'bg-white/[0.04] border-white/10 text-white/40'
-                                        }`}>
+                                        <span className="px-2 py-0.5 rounded border uppercase font-mono bg-white border-slate-200 text-slate-500">
                                             MNL-01 LIVE
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Actual Dashboard Screenshot */}
-                                <div className="relative aspect-[16/10] sm:aspect-[16/9.5] w-full overflow-hidden bg-slate-900">
+                                <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900">
                                     <img 
                                         src="/images/seller-cockpit-preview.png" 
                                         alt="BagooPH Merchant Command Cockpit Dashboard" 
@@ -414,44 +322,32 @@ export default function SellerLanding() {
                         {/* Three Minimalist Feature Cards Beneath Peeking Window */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
                             
-                            <div className={`p-6 rounded-2xl border space-y-2.5 transition ${
-                                isLight 
-                                    ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                    : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                            }`}>
+                            <div className="p-6 rounded-2xl border space-y-2.5 transition bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md">
                                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold text-xs">
                                     01
                                 </div>
-                                <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Thermal Waybills</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <h3 className="text-base font-bold pt-1 text-slate-900">Thermal Waybills</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Print standard A6 barcodes in one click. Zero manual handwriting.
                                 </p>
                             </div>
 
-                            <div className={`p-6 rounded-2xl border space-y-2.5 transition ${
-                                isLight 
-                                    ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                    : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                            }`}>
+                            <div className="p-6 rounded-2xl border space-y-2.5 transition bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 border border-[#E00D42]/20 flex items-center justify-center text-[#E00D42] font-bold text-xs">
                                     02
                                 </div>
-                                <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Direct COD Ledger</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <h3 className="text-base font-bold pt-1 text-slate-900">Direct COD Ledger</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Cash collected at doorstep. 90% remitted straight to your balance.
                                 </p>
                             </div>
 
-                            <div className={`p-6 rounded-2xl border space-y-2.5 transition ${
-                                isLight 
-                                    ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                    : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                            }`}>
+                            <div className="p-6 rounded-2xl border space-y-2.5 transition bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md">
                                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-xs">
                                     03
                                 </div>
-                                <h3 className={`text-base font-bold pt-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>Doorstep Pickup</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <h3 className="text-base font-bold pt-1 text-slate-900">Doorstep Pickup</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Dedicated riders collect from your door. Never queue at branches.
                                 </p>
                             </div>
@@ -461,185 +357,166 @@ export default function SellerLanding() {
                     </div>
                 </section>
 
-                {/* 4. PANEL FIG 0.1: INTERACTIVE SPLINE GRAPH (LINEAR-STYLE CURSOR TRACKING & 90% RETENTION) */}
-                <section id="economics" ref={economicsRef} className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
-                    isLight ? 'border-slate-200' : 'border-white/[0.06]'
-                }`}>
-                    <div className="space-y-10">
+                {/* 4. PANEL FIG 0.1: WHY US & PRODUCT IMAGE CAROUSEL (LITERALLY MINIMAL) */}
+                <section id="economics" ref={economicsRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
                         
+                        {/* LEFT COLUMN: WHY US - LITERALLY MINIMAL */}
                         <div 
-                            className={`flex flex-col sm:flex-row sm:items-end justify-between gap-4 transition-all duration-700 ease-out transform ${
+                            className={`lg:col-span-5 space-y-6 transition-all duration-700 ease-out transform ${
                                 economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                             }`}
                         >
-                            <div>
-                                <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-semibold">
-                                    FIG 0.1 — TRANSPARENT ECONOMICS
+                            <div className="space-y-3">
+                                <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-bold">
+                                    FIG 0.1 — WHY US
                                 </span>
-                                <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight mt-1 ${
-                                    isLight ? 'text-slate-900' : 'text-white'
-                                }`}>
-                                    Keep 90% of your gross sales.
+                                <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
+                                    Keep 90%.<br />
+                                    No cuts.
                                 </h2>
+                                <p className="text-sm sm:text-base font-sans text-slate-600">
+                                    Legacy platforms take 25% to 35%. Bagoo takes a flat 10%. You keep the rest.
+                                </p>
                             </div>
-                            <div className={`font-mono text-xs ${isLight ? 'text-slate-700 font-medium' : 'text-white/40'}`}>
-                                10% Flat Fee • Zero Hidden Deductions
-                            </div>
-                        </div>
 
-                        {/* Linear-Style Interactive Graph Card Container */}
-                        <div 
-                            className={`border rounded-2xl p-6 sm:p-8 space-y-6 relative overflow-hidden transition-all duration-1000 ease-out transform ${
-                                isLight 
-                                    ? 'bg-white border-slate-200 shadow-xl' 
-                                    : 'bg-[#0C0D0E] border-white/[0.08] shadow-2xl'
-                            } ${economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                        >
-                            {/* Top Telemetry HUD Strip — Minimized to 1 Focal Metric */}
-                            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b ${
-                                isLight ? 'border-slate-100' : 'border-white/[0.08]'
-                            }`}>
-                                <div className="space-y-1">
-                                    <div className={`flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider ${
-                                        isLight ? 'text-slate-600 font-medium' : 'text-white/40'
-                                    }`}>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
-                                        <span>Estimated Payout for {activeOrders} Orders</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-3">
-                                        <span className={`text-4xl sm:text-5xl font-extrabold tracking-tight font-mono ${
-                                            isLight ? 'text-slate-900' : 'text-white'
-                                        }`}>
-                                            {formatCurrency(activeNet)}
-                                        </span>
-                                        <span className={`text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full ${
-                                            isLight 
-                                                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium' 
-                                                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                                        }`}>
-                                            90% Net Take-Home
-                                        </span>
-                                    </div>
-                                    <div className={`font-mono text-xs pt-0.5 ${
-                                        isLight ? 'text-slate-700 font-medium' : 'text-white/40'
-                                    }`}>
-                                        {formatCurrency(activeGross)} Gross COD <span className={isLight ? 'text-slate-400' : 'text-white/20'}>•</span> 10% Platform Fee (-{formatCurrency(activePlatformFee)})
-                                    </div>
+                            {/* 3 Ultra-minimal bullets */}
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
+                                    <span className="text-slate-900 font-semibold">
+                                        10% Flat Fee • Zero Hidden Surcharges
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-slate-900 font-semibold">
+                                        Direct Doorstep COD Remittance
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                    <span className="text-slate-900 font-semibold">
+                                        Sell ₱500 • Keep ₱450 Cash
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Interactive SVG Spline Canvas */}
-                            <div className="relative select-none">
-                                
-                                <svg
-                                    viewBox="0 0 800 280"
-                                    className="w-full h-56 sm:h-72 cursor-crosshair overflow-visible"
-                                    onMouseMove={(e) => handleGraphScrub(e.clientX, e.currentTarget.getBoundingClientRect())}
-                                    onMouseLeave={() => setIsGraphHovered(false)}
-                                    onTouchMove={(e) => {
-                                        if (e.touches[0]) handleGraphScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
-                                    }}
-                                    onTouchEnd={() => setIsGraphHovered(false)}
+                            <div className="pt-2">
+                                <a 
+                                    href={getDomainUrl('seller', '/register')}
+                                    className="inline-flex items-center gap-2 font-mono text-xs font-bold text-[#E00D42] hover:underline"
                                 >
-                                    <defs>
-                                        {/* Area glow gradient for 90% curve */}
-                                        <linearGradient id="activeAreaGlow" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#E00D42" stopOpacity={isLight ? "0.2" : "0.32"} />
-                                            <stop offset="60%" stopColor="#E00D42" stopOpacity={isLight ? "0.05" : "0.08"} />
-                                            <stop offset="100%" stopColor="#E00D42" stopOpacity="0" />
-                                        </linearGradient>
+                                    <span>Start selling today</span>
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        </div>
 
-                                        {/* Stroke gradient for illuminated curve */}
-                                        <linearGradient id="activeStrokeGrad" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="0%" stopColor="#FF6B8B" />
-                                            <stop offset="100%" stopColor="#E00D42" />
-                                        </linearGradient>
+                        {/* RIGHT COLUMN: 3D AUTO-SWAPPING PRODUCT IMAGE CAROUSEL (1.6s) */}
+                        <div 
+                            className={`lg:col-span-7 relative h-[380px] sm:h-[420px] overflow-hidden flex items-center justify-center transition-all duration-1000 ease-out transform ${
+                                economicsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                            }`}
+                        >
+                            {/* Ambient subtle radial glow */}
+                            <div className="pointer-events-none absolute inset-0 bg-radial from-[#E00D42]/6 via-transparent to-transparent blur-3xl" />
 
-                                        {/* Clip path revealing illuminated curve strictly up to curX */}
-                                        <clipPath id="graphProgressClip">
-                                            <rect x="0" y="0" width={curX} height="280" />
-                                        </clipPath>
-                                    </defs>
+                            {/* Seamless Edge Dissolve into Page Canvas */}
+                            <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r z-30 from-[#FAFAFA] to-transparent" />
+                            <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l z-30 from-[#FAFAFA] to-transparent" />
 
-                                    {/* Horizontal Guidelines */}
-                                    <line x1="40" y1="60" x2="760" y2="60" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} strokeDasharray="3 3" />
-                                    <line x1="40" y1="135" x2="760" y2="135" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} strokeDasharray="3 3" />
-                                    <line x1="40" y1="210" x2="760" y2="210" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} strokeDasharray="3 3" />
+                            {/* Carousel Slides Track */}
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                {CAROUSEL_PRODUCTS.map((prod, idx) => {
+                                    const n = CAROUSEL_PRODUCTS.length;
+                                    let diff = ((idx - activeCarouselIdx) % n + n) % n;
+                                    if (diff > n / 2) diff -= n;
 
-                                    {/* Muted Background Tracks (Full width) */}
-                                    <path
-                                        d="M 40,220 C 260,210 500,110 760,35"
-                                        fill="none"
-                                        stroke={isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.18)"}
-                                        strokeWidth="2"
-                                        strokeDasharray="4 4"
+                                    const isCenter = diff === 0;
+                                    const isLeft = diff === -1;
+                                    const isRight = diff === 1;
+
+                                    let transformStyle = '';
+                                    let opacityClass = 'opacity-0 pointer-events-none';
+                                    let zIndex = 0;
+
+                                    if (isCenter) {
+                                        transformStyle = 'translateX(0%) scale(1)';
+                                        opacityClass = 'opacity-100 shadow-2xl';
+                                        zIndex = 20;
+                                    } else if (isLeft) {
+                                        transformStyle = 'translateX(-60%) scale(0.8)';
+                                        opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
+                                        zIndex = 10;
+                                    } else if (isRight) {
+                                        transformStyle = 'translateX(60%) scale(0.8)';
+                                        opacityClass = 'opacity-25 hover:opacity-40 shadow-lg';
+                                        zIndex = 10;
+                                    } else {
+                                        transformStyle = `translateX(${diff > 0 ? '120%' : '-120%'}) scale(0.5)`;
+                                        opacityClass = 'opacity-0 pointer-events-none';
+                                        zIndex = 0;
+                                    }
+
+                                    return (
+                                        <div
+                                            key={prod.id}
+                                            onClick={() => setActiveCarouselIdx(idx)}
+                                            style={{
+                                                transform: transformStyle,
+                                                zIndex,
+                                            }}
+                                            className={`absolute w-[220px] sm:w-[260px] aspect-[4/5] rounded-2xl overflow-hidden transition-all duration-700 ease-in-out cursor-pointer select-none ${opacityClass}`}
+                                        >
+                                            <img
+                                                src={prod.image}
+                                                alt={prod.name}
+                                                className="w-full h-full object-cover"
+                                                loading="eager"
+                                            />
+                                            
+                                            {/* Vignette Overlay & Minimal Labels - No white borders */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-between p-4">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md font-mono text-[9px] text-white/90 font-semibold uppercase tracking-wider">
+                                                        {prod.category}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded-full bg-[#E00D42] font-mono text-[9px] text-white font-bold tracking-wider">
+                                                        90% PAYOUT
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <h4 className="text-white font-bold text-sm leading-snug drop-shadow-sm">
+                                                        {prod.name}
+                                                    </h4>
+                                                    <div className="flex items-center justify-between font-mono text-xs pt-0.5">
+                                                        <span className="text-white/80 font-semibold">{prod.price}</span>
+                                                        <span className="text-emerald-400 font-bold text-[11px]">{prod.payout}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Bottom Pagination Dots */}
+                            <div className="absolute bottom-2 flex items-center gap-1.5 z-30">
+                                {CAROUSEL_PRODUCTS.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setActiveCarouselIdx(i)}
+                                        className={`h-1 rounded-full transition-all duration-300 ${
+                                            i === activeCarouselIdx 
+                                                ? 'w-5 bg-[#E00D42]' 
+                                                : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                                        }`}
+                                        aria-label={`Product slide ${i + 1}`}
                                     />
-                                    <path
-                                        d="M 40,232 C 260,224 500,135 760,62"
-                                        fill="none"
-                                        stroke={isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)"}
-                                        strokeWidth="2.5"
-                                    />
-
-                                    {/* Illuminated Active Segment (Clipped to curX) */}
-                                    <g clipPath="url(#graphProgressClip)">
-                                        <path
-                                            d="M 40,232 C 260,224 500,135 760,62 L 760,270 L 40,270 Z"
-                                            fill="url(#activeAreaGlow)"
-                                        />
-                                        <path
-                                            d="M 40,232 C 260,224 500,135 760,62"
-                                            fill="none"
-                                            stroke="url(#activeStrokeGrad)"
-                                            strokeWidth="3.5"
-                                            strokeLinecap="round"
-                                        />
-                                        <path
-                                            d="M 40,220 C 260,210 500,110 760,35"
-                                            fill="none"
-                                            stroke={isLight ? "rgba(15,23,42,0.5)" : "rgba(255,255,255,0.55)"}
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                        />
-                                    </g>
-
-                                    {/* Vertical Scrubber Guide Line */}
-                                    <line
-                                        x1={curX}
-                                        y1="20"
-                                        x2={curX}
-                                        y2="265"
-                                        stroke={isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.25)"}
-                                        strokeWidth="1.5"
-                                        strokeDasharray="3 3"
-                                    />
-
-                                    {/* Cursor Indicator Dots */}
-                                    <circle
-                                        cx={curX}
-                                        cy={curYGross}
-                                        r="4"
-                                        fill={isLight ? "#FFFFFF" : "#0A0D14"}
-                                        stroke={isLight ? "rgba(15,23,42,0.8)" : "rgba(255,255,255,0.9)"}
-                                        strokeWidth="2"
-                                    />
-                                    <circle
-                                        cx={curX}
-                                        cy={curYNet}
-                                        r="12"
-                                        fill="#E00D42"
-                                        opacity="0.3"
-                                    />
-                                    <circle
-                                        cx={curX}
-                                        cy={curYNet}
-                                        r="6"
-                                        fill="#E00D42"
-                                        stroke="#FFFFFF"
-                                        strokeWidth="2.5"
-                                    />
-                                </svg>
-
+                                ))}
                             </div>
 
                         </div>
@@ -648,9 +525,7 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 5. PANEL FIG 0.2: THE 3-BEAT EXECUTION ARC (CASCADING SEQUENTIAL DROP ANIMATION) */}
-                <section id="workflow" ref={workflowRef} className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
-                    isLight ? 'border-slate-200' : 'border-white/[0.06]'
-                }`}>
+                <section id="workflow" ref={workflowRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200">
                     <div className="space-y-12">
                         
                         <div 
@@ -662,16 +537,12 @@ export default function SellerLanding() {
                                 <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest block font-semibold">
                                     FIG 0.2 — FAST ONBOARDING & EXECUTION
                                 </span>
-                                <span className={isLight ? 'text-slate-400' : 'text-white/20'}>•</span>
-                                <span className={`font-mono text-[11px] uppercase tracking-wider font-semibold ${
-                                    isLight ? 'text-emerald-700' : 'text-emerald-400'
-                                }`}>
+                                <span className="text-slate-400">•</span>
+                                <span className="font-mono text-[11px] uppercase tracking-wider font-semibold text-emerald-700">
                                     1 Valid ID • 1-Click Admin Approval
                                 </span>
                             </div>
-                            <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight mt-1 ${
-                                isLight ? 'text-slate-900' : 'text-white'
-                            }`}>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-1 text-slate-900">
                                 From link to cash in three beats.
                             </h2>
                         </div>
@@ -681,60 +552,38 @@ export default function SellerLanding() {
                             
                             {/* Step 01 */}
                             <div 
-                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-100 ease-out transform ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                        : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                                } ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-100 ease-out transform bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className={`text-4xl font-extrabold block ${
-                                        isLight ? 'text-slate-300' : 'text-white/20'
-                                    }`}>01</span>
-                                    <span className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${
-                                        isLight 
-                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-                                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                    }`}>
+                                    <span className="text-4xl font-extrabold block text-slate-300">01</span>
+                                    <span className="px-2 py-0.5 rounded border text-[10px] font-mono font-bold bg-emerald-50 border-emerald-200 text-emerald-700">
                                         1 VALID ID ONLY
                                     </span>
                                 </div>
-                                <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Upload 1 Valid ID</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <h3 className="text-base font-bold text-slate-900">Upload 1 Valid ID</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Upload 1 valid ID (Student or Govt ID) and pickup address. 1-click admin approval with zero DTI paperwork.
                                 </p>
                             </div>
 
                             {/* Step 02 */}
                             <div 
-                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-300 ease-out transform ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                        : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                                } ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-300 ease-out transform bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                             >
-                                <span className={`text-4xl font-extrabold block ${
-                                    isLight ? 'text-slate-300' : 'text-white/20'
-                                }`}>02</span>
-                                <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Handover to Rider</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <span className="text-4xl font-extrabold block text-slate-300">02</span>
+                                <h3 className="text-base font-bold text-slate-900">Handover to Rider</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Print 1-click thermal waybill. Couriers collect directly from your door.
                                 </p>
                             </div>
 
                             {/* Step 03 */}
                             <div 
-                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-500 ease-out transform ${
-                                    isLight 
-                                        ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md' 
-                                        : 'bg-[#0C0D0E] border-white/[0.08] hover:border-white/20'
-                                } ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                                className={`p-6 rounded-2xl border space-y-3 transition-all duration-700 delay-500 ease-out transform bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md ${workflowInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                             >
-                                <span className={`text-4xl font-extrabold block ${
-                                    isLight ? 'text-emerald-600/40' : 'text-emerald-400/40'
-                                }`}>03</span>
-                                <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Collect Cash</h3>
-                                <p className={`text-xs font-sans leading-relaxed ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+                                <span className="text-4xl font-extrabold block text-emerald-600/40">03</span>
+                                <h3 className="text-base font-bold text-slate-900">Collect Cash</h3>
+                                <p className="text-xs font-sans leading-relaxed text-slate-600">
                                     Courier delivers parcel, collects COD, and remits 90% direct to your ledger.
                                 </p>
                             </div>
@@ -745,9 +594,7 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 6. MINIMALIST FAQ ACCORDION (RIPPLE FADE-IN ANIMATION) */}
-                <section id="faq" ref={faqRef} className={`max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t w-full ${
-                    isLight ? 'border-slate-200' : 'border-white/[0.06]'
-                }`}>
+                <section id="faq" ref={faqRef} className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200 w-full">
                     <div className="space-y-8">
                         
                         <div 
@@ -758,9 +605,7 @@ export default function SellerLanding() {
                             <span className="font-mono text-xs text-[#E00D42] uppercase tracking-widest">
                                 FIG 0.3 — INQUIRIES
                             </span>
-                            <h2 className={`text-3xl font-extrabold tracking-tight ${
-                                isLight ? 'text-slate-900' : 'text-white'
-                            }`}>
+                            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
                                 Questions answered.
                             </h2>
                         </div>
@@ -772,34 +617,24 @@ export default function SellerLanding() {
                                 return (
                                     <div 
                                         key={index}
-                                        className={`border rounded-xl overflow-hidden transition-all duration-700 ease-out transform ${
-                                            isLight 
-                                                ? 'bg-white border-slate-200 shadow-sm' 
-                                                : 'bg-[#0C0D0E] border-white/[0.08]'
-                                        } ${faqInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${delays[index]}`}
+                                        className={`border rounded-xl overflow-hidden transition-all duration-700 ease-out transform bg-white border-slate-200 shadow-sm ${faqInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${delays[index]}`}
                                     >
                                         <button
                                             type="button"
                                             onClick={() => setOpenFaq(isOpen ? null : index)}
                                             className="w-full p-5 text-left flex items-center justify-between gap-4 focus:outline-hidden"
                                         >
-                                            <span className={`font-bold text-sm sm:text-base ${
-                                                isLight ? 'text-slate-900' : 'text-white/90'
-                                            }`}>
+                                            <span className="font-bold text-sm sm:text-base text-slate-900">
                                                 {faq.q}
                                             </span>
                                             {isOpen ? (
-                                                <ChevronUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-600' : 'text-white/40'}`} />
+                                                <ChevronUp className="w-4 h-4 shrink-0 text-slate-600" />
                                             ) : (
-                                                <ChevronDown className={`w-4 h-4 shrink-0 ${isLight ? 'text-slate-600' : 'text-white/40'}`} />
+                                                <ChevronDown className="w-4 h-4 shrink-0 text-slate-600" />
                                             )}
                                         </button>
                                         {isOpen && (
-                                            <div className={`px-5 pb-5 text-xs sm:text-sm leading-relaxed border-t pt-3 ${
-                                                isLight 
-                                                    ? 'text-slate-700 border-slate-100' 
-                                                    : 'text-white/50 border-white/[0.04]'
-                                            }`}>
+                                            <div className="px-5 pb-5 text-xs sm:text-sm leading-relaxed border-t border-slate-100 pt-3 text-slate-700">
                                                 {faq.a}
                                             </div>
                                         )}
@@ -812,18 +647,14 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 7. CLOSING STATEMENT CTA (EXPANDING RADIAL GLOW & SCALE ANIMATION) */}
-                <section id="closing" ref={closingRef} className={`py-28 border-t relative overflow-hidden text-center px-4 ${
-                    isLight ? 'border-slate-200' : 'border-white/[0.06]'
-                }`}>
+                <section id="closing" ref={closingRef} className="py-28 border-t border-slate-200 relative overflow-hidden text-center px-4">
                     {/* Radial Ambient Glow (Expands on Scroll) */}
                     <div 
                         className={`absolute inset-0 pointer-events-none transition-all duration-1000 ease-out transform ${
                             closingInView ? 'opacity-25 scale-100' : 'opacity-0 scale-75'
                         }`}
                         style={{
-                            background: isLight 
-                                ? 'radial-gradient(circle at 50% 50%, rgba(224, 13, 66, 0.15) 0%, transparent 65%)' 
-                                : 'radial-gradient(circle at 50% 50%, rgba(224, 13, 66, 0.3) 0%, transparent 60%)'
+                            background: 'radial-gradient(circle at 50% 50%, rgba(224, 13, 66, 0.15) 0%, transparent 65%)'
                         }}
                     />
 
@@ -832,37 +663,25 @@ export default function SellerLanding() {
                             closingInView ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
                         }`}
                     >
-                        <h2 className={`text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] ${
-                            isLight ? 'text-slate-900' : 'text-white'
-                        }`}>
+                        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] text-slate-900">
                             Build your brand. <br />
-                            <span className={isLight ? 'text-slate-600' : 'text-white/40'}>Get paid in cash.</span>
+                            <span className="text-slate-600">Get paid in cash.</span>
                         </h2>
 
-                        <p className={`text-sm max-w-sm mx-auto font-sans ${
-                            isLight ? 'text-slate-700 font-normal' : 'text-white/60'
-                        }`}>
+                        <p className="text-sm max-w-sm mx-auto font-sans text-slate-700 font-normal">
                             Start listing your catalog today on BagooPH with 10% flat commission and reliable doorstep fulfillment.
                         </p>
 
                         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <a
                                 href={getDomainUrl('seller', '/register')}
-                                className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition active:scale-95 ${
-                                    isLight
-                                        ? 'bg-[#E00D42] hover:bg-[#C00A38] text-white shadow-lg shadow-rose-500/20'
-                                        : 'bg-white hover:bg-slate-200 text-black'
-                                }`}
+                                className="w-full sm:w-auto px-8 py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider transition active:scale-95 bg-[#E00D42] hover:bg-[#C00A38] text-white shadow-lg shadow-rose-500/20"
                             >
                                 Open Store Free
                             </a>
                             <a
                                 href={getDomainUrl('seller', '/login')}
-                                className={`w-full sm:w-auto px-7 py-3.5 rounded-full font-mono text-xs uppercase tracking-wider transition ${
-                                    isLight
-                                        ? 'bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-semibold'
-                                        : 'bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white'
-                                }`}
+                                className="w-full sm:w-auto px-7 py-3.5 rounded-full font-mono text-xs uppercase tracking-wider transition bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-semibold"
                             >
                                 Merchant Sign In
                             </a>
@@ -871,15 +690,11 @@ export default function SellerLanding() {
                 </section>
 
                 {/* 8. MONOCHROME STUDIO FOOTER */}
-                <footer className={`border-t py-10 px-4 sm:px-6 lg:px-8 font-mono text-xs ${
-                    isLight 
-                        ? 'bg-slate-100 border-slate-200 text-slate-600' 
-                        : 'bg-[#050607] border-white/[0.06] text-white/40'
-                }`}>
+                <footer className="border-t border-slate-200 bg-slate-100 text-slate-600 py-10 px-4 sm:px-6 lg:px-8 font-mono text-xs">
                     <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-2.5">
                             <BagooLogo className="w-6 h-6" rounded="rounded-md" />
-                            <span className={`font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            <span className="font-bold tracking-tight text-slate-900">
                                 Bagoo<span className="text-[#E00D42]">PH</span>
                             </span>
                             <span>•</span>
@@ -887,9 +702,9 @@ export default function SellerLanding() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-6">
-                            <a href={getDomainUrl('buyer', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Marketplace</a>
-                            <a href={getDomainUrl('courier', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Courier</a>
-                            <a href={getDomainUrl('admin', '/')} className={`transition ${isLight ? 'text-slate-600 hover:text-slate-900 font-medium' : 'hover:text-white'}`}>Admin</a>
+                            <a href={getDomainUrl('buyer', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Marketplace</a>
+                            <a href={getDomainUrl('courier', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Courier</a>
+                            <a href={getDomainUrl('admin', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Admin</a>
                             <span>&copy; {new Date().getFullYear()}</span>
                         </div>
                     </div>
