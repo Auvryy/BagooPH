@@ -113,10 +113,10 @@ export default function SellerMessages({ conversations, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Customer Inquiries & Live Chat Hub"
-            subtitle={`Direct shopper communication portal for ${shop.name}`}
+            title="Messages"
+            subtitle="Customer inquiries and live chat"
         >
-            <Head title="Customer Messages — BagooPH Seller" />
+            <Head title="Messages — BagooPH Seller" />
 
             <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs h-[75vh] flex overflow-hidden font-sans">
                 

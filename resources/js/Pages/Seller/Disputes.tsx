@@ -55,10 +55,10 @@ export default function SellerDisputes({ disputes, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Dispute & Return Resolution"
-            subtitle="Review customer defect claims, authorize replacements, and manage returns"
+            title="Disputes & Returns"
+            subtitle="Customer returns, refunds, and resolution"
         >
-            <Head title="Disputes & Returns — Merchant Cockpit" />
+            <Head title="Disputes & Returns — BagooPH Seller" />
 
             <div className="space-y-6">
                 

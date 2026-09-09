@@ -81,8 +81,8 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Store Vouchers & Promotions Engine"
-            subtitle={`Issue custom promo codes and discounts for ${shop.name}`}
+            title="Vouchers"
+            subtitle="Manage discount codes and promotions"
             actions={
                 <button
                     onClick={() => setIsCreateOpen(true)}
@@ -93,7 +93,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                 </button>
             }
         >
-            <Head title="Vouchers & Promotions — BagooPH Seller" />
+            <Head title="Vouchers — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
                 

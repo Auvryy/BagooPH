@@ -52,8 +52,8 @@ export default function SellerReports({ shop, filters, report, orderItems }: Pro
 
     return (
         <DashboardLayout
-            title="Financial Statement & Payout Reconciliation"
-            subtitle={`Gross earnings and platform commission ledger for ${shop.name}`}
+            title="Finances"
+            subtitle={`Earnings and payout history for ${shop.name}`}
             actions={
                 <button
                     type="button"
@@ -65,7 +65,7 @@ export default function SellerReports({ shop, filters, report, orderItems }: Pro
                 </button>
             }
         >
-            <Head title="Financial Reports — BagooPH Seller" />
+            <Head title="Finances — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
                 

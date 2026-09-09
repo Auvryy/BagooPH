@@ -111,10 +111,10 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
 
     return (
         <DashboardLayout
-            title="Customer Reviews & Ratings"
-            subtitle="Manage buyer feedback, review comments, and publish merchant replies"
+            title="Reviews"
+            subtitle="Customer reviews and ratings"
         >
-            <Head title="Customer Reviews — Merchant Cockpit" />
+            <Head title="Reviews — BagooPH Seller" />
 
             <div className="space-y-6">
                 
