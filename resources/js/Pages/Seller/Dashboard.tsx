@@ -487,10 +487,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
                     </div>
 
-                    {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs flex flex-col">
+                    {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS + PIPELINE SUMMARY */}
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 xl:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         {/* Header */}
-                        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <Box className="w-4 h-4 text-[#E00D42]" />
                                 <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
@@ -505,43 +505,43 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
                         </div>
 
-                        {/* Two Primary Action Cards filling the height evenly */}
-                        <div className="flex-1 flex flex-col gap-4 pt-4 font-sans">
+                        {/* Action Cards & Pipeline Box */}
+                        <div className="flex-1 flex flex-col justify-between gap-3 pt-3.5 font-sans">
                             
-                            {/* 1. TO PACK - PROMINENTLY HIGHLIGHTED */}
+                            {/* 1. TO PACK */}
                             <Link
                                 href={route('seller.orders.index', { status: 'to_pack' })}
-                                className={`flex-1 p-5 rounded-xl transition flex items-center justify-between group ${
+                                className={`p-3.5 xl:p-4 rounded-xl transition flex items-center justify-between gap-2.5 xl:gap-3 group ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-50/70 border-2 border-amber-400/90 shadow-2xs hover:bg-amber-100/60 ring-1 ring-amber-400/20'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
                             >
-                                <div className="flex items-center gap-4 min-w-0">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                         stats.pendingPackCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
                                             : 'bg-amber-100 text-amber-700'
                                     }`}>
-                                        <Package className="w-6 h-6" />
+                                        <Package className="w-5 h-5" />
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-amber-900">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 whitespace-nowrap">
                                                 To Pack
                                             </span>
                                             {stats.pendingPackCount > 0 && (
-                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono">
+                                                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-200/90 text-amber-950 font-mono shrink-0">
                                                     Action Needed
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                        <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
                                             Awaiting packaging
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`px-4 py-2 rounded-xl font-mono text-xl font-black shrink-0 ${
+                                <span className={`w-9 h-9 xl:w-10 xl:h-10 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -553,37 +553,37 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* 2. RETURNS & CANCELLATIONS */}
                             <Link
                                 href={route('seller.disputes.index')}
-                                className={`flex-1 p-5 rounded-xl transition flex items-center justify-between group ${
+                                className={`p-3.5 xl:p-4 rounded-xl transition flex items-center justify-between gap-2.5 xl:gap-3 group ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-50/70 border-2 border-rose-400/90 shadow-2xs hover:bg-rose-100/60 ring-1 ring-rose-400/20'
                                         : 'bg-slate-50 hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-400'
                                 }`}
                             >
-                                <div className="flex items-center gap-4 min-w-0">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                         (stats.returnCount || 0) > 0
                                             ? 'bg-rose-500 text-white shadow-xs'
                                             : 'bg-rose-100 text-rose-700'
                                     }`}>
-                                        <RotateCcw className="w-6 h-6" />
+                                        <RotateCcw className="w-5 h-5" />
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-black text-slate-900 uppercase font-mono group-hover:text-rose-900">
-                                                Returns & Cancellations
-                                            </span>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-xs xl:text-sm font-black text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block whitespace-nowrap" title="Returns & Cancellations">
+                                            Returns & Cancels
+                                        </span>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
                                             {(stats.returnCount || 0) > 0 && (
                                                 <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-rose-200 text-rose-950 font-mono shrink-0">
                                                     Urgent
                                                 </span>
                                             )}
+                                            <span className="text-[11px] text-slate-500 font-mono truncate">
+                                                {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
+                                            </span>
                                         </div>
-                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
-                                            Claims requiring review
-                                        </p>
                                     </div>
                                 </div>
-                                <span className={`px-4 py-2 rounded-xl font-mono text-xl font-black shrink-0 ${
+                                <span className={`w-9 h-9 xl:w-10 xl:h-10 flex items-center justify-center rounded-xl font-mono text-base xl:text-lg font-black shrink-0 ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -591,6 +591,63 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     {stats.returnCount || 0}
                                 </span>
                             </Link>
+
+                            {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
+                                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200/60 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                    <span>Logistics Pipeline</span>
+                                    <span className="text-slate-500">Live Status</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1 divide-x divide-slate-200/80 text-center">
+                                    <Link
+                                        href={route('seller.orders.index', { status: 'to_pickup' })}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
+                                        title="Orders ready for courier pickup"
+                                    >
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            Ready
+                                        </span>
+                                        <span className="text-base font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                            {stats.readyPickupCount}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                            pickup
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href={route('seller.orders.index', { status: 'in_transit' })}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
+                                        title="Orders currently in transit with courier"
+                                    >
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            Transit
+                                        </span>
+                                        <span className="text-base font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                            {stats.shippedCount}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                            on way
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href={route('seller.orders.index', { status: 'delivered' })}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
+                                        title="Delivered orders"
+                                    >
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            Delivered
+                                        </span>
+                                        <span className="text-base font-black text-emerald-600 font-mono block mt-0.5 group-hover:text-emerald-700">
+                                            {stats.completedCount}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 block -mt-0.5">
+                                            received
+                                        </span>
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
