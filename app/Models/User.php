@@ -14,6 +14,12 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
+        'middle_name',
+        'sex',
+        'birthday',
+        'age',
         'email',
         'password',
         'role',
@@ -21,6 +27,9 @@ class User extends Authenticatable
         'avatar',
         'address',
         'city',
+        'province',
+        'municipality',
+        'barangay',
         'postal_code',
         'status',
         'kyc_status',
@@ -43,6 +52,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birthday' => 'date',
+            'age' => 'integer',
             'kyc_submitted_at' => 'datetime',
             'kyc_reviewed_at' => 'datetime',
         ];

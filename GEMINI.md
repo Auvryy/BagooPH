@@ -149,3 +149,22 @@ The system has 4 primary roles (with logistics kept in mind for future extension
    - Logistics / Sorting Center approves and manages registrations for: `Courier` fleet riders.
 3. **Remote Production Migration Guard:**
    - In environments where `APP_ENV=production` (e.g. Azure VM), always execute artisan migration and seed commands with the `--force` flag (`./bagoo.sh migrate --force`, `./bagoo.sh fresh --force`, or `php artisan db:seed --force`) to bypass interactive terminal blocking.
+
+---
+
+## 11. Minimalist Split-Screen Authentication & Auth UI Design Standard
+1. **Strictly Zero Gradients:**
+   - Never use CSS gradient classes (`bg-gradient-*`, `from-*`, `via-*`, `to-*`), radial ambient glows, or translucent gradient card borders on authentication screens.
+   - Use pure, solid surfaces: `#FFFFFF` (form/card), `#F8FAFC` (showcase canvas and page background), `#0F172A` (text), and solid role accents (`#E00D42` Buyer/Seller, `#059669` Courier, `#D97706` Admin, `#4F46E5` Hub).
+2. **Zero Clutter & Minimalist Copy Standard:**
+   - Keep forms clean and concise. No verbose marketing paragraphs, live store companion cards, or fee calculation simulators on auth screens.
+   - No artificial pill tags (e.g., "FAST 1-CLICK APPROVAL").
+3. **No Demo Buttons or Telemetry Strips:**
+   - Never include `[DEMO AUTO-FILL]` or `[1-CLICK DEMO FILL]` banners on authentication forms.
+   - Never include 3-box indicator strips ("Live GPS", "Instant Payout", "LTO Verified") on auth views.
+4. **Full-Viewport Split Screen with Dynamic Spatial Swap:**
+   - Wrap auth pages in the `GuestLayout` split-screen shell:
+     - **Login (`formPosition="left"`):** Form anchored on the **LEFT** (`lg:col-span-5`), 3D studio visual showcase on the **RIGHT** (`lg:col-span-7`).
+     - **Register (`formPosition="right"`):** Dynamic spatial swap! 3D studio visual showcase on the **LEFT** (representing verified credentials/ID with official `<BagooLogo />` badge overlay), registration form anchored on the **RIGHT** (`lg:col-span-5`).
+5. **Strictly Zero Emojis:**
+   - Strictly zero emojis in code, comments, docstrings, and UI copy.

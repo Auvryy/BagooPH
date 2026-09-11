@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import PhoneInput from '@/Components/PhoneInput';
+import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import { User, Order, Address } from '@/types';
 import { 
     User as UserIcon, 
@@ -688,12 +690,11 @@ export default function BuyerProfile({
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="block font-bold text-slate-700 mb-1.5 font-mono">Mobile Contact</label>
-                                                <input
-                                                    type="text"
+                                                <PhoneInput
                                                     value={data.phone}
-                                                    onChange={(e) => setData('phone', e.target.value)}
-                                                    placeholder="+63 9XX XXX XXXX"
-                                                    className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs font-mono focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                                    onChange={(val) => setData('phone', val)}
+                                                    placeholder="917 123 4567"
+                                                    accentColor="primary"
                                                 />
                                             </div>
 
@@ -1023,64 +1024,38 @@ export default function BuyerProfile({
                                     </div>
                                     <div>
                                         <label className="block font-bold text-slate-700 mb-1 font-mono">Phone Number</label>
-                                        <input
-                                            type="text"
+                                        <PhoneInput
                                             value={newAddress.phone}
-                                            onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs font-mono"
+                                            onChange={(val) => setNewAddress({ ...newAddress, phone: val })}
+                                            placeholder="917 123 4567"
+                                            accentColor="primary"
                                             required
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">Province</label>
-                                        <select
-                                            value={newAddress.province}
-                                            onChange={(e) => setNewAddress({ ...newAddress, province: e.target.value })}
-                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2 text-xs"
-                                        >
-                                            <option value="Metro Manila">Metro Manila</option>
-                                            <option value="Cebu">Cebu</option>
-                                            <option value="Davao del Sur">Davao del Sur</option>
-                                            <option value="Laguna">Laguna</option>
-                                            <option value="Cavite">Cavite</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">City</label>
-                                        <input
-                                            type="text"
-                                            value={newAddress.city}
-                                            onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2 text-xs"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">Barangay</label>
-                                        <input
-                                            type="text"
-                                            value={newAddress.barangay}
-                                            onChange={(e) => setNewAddress({ ...newAddress, barangay: e.target.value })}
-                                            className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2 text-xs"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">Street Name, Building, House No.</label>
-                                    <input
-                                        type="text"
-                                        value={newAddress.street}
-                                        onChange={(e) => setNewAddress({ ...newAddress, street: e.target.value })}
-                                        placeholder="e.g. Unit 402, High Street Tower, 26th St."
-                                        className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs"
-                                        required
-                                    />
-                                </div>
+                                <PhilippineAddressSelector
+                                    values={{
+                                        province: newAddress.province,
+                                        city: newAddress.city,
+                                        municipality: newAddress.city,
+                                        barangay: newAddress.barangay,
+                                        address: newAddress.street,
+                                    }}
+                                    onChange={(addr) => {
+                                        setNewAddress(prev => ({
+                                            ...prev,
+                                            province: addr.province,
+                                            city: addr.city || addr.municipality,
+                                            barangay: addr.barangay,
+                                            street: addr.address,
+                                        }));
+                                    }}
+                                    accentColor="primary"
+                                    required={true}
+                                    streetLabel="Street Name, Building, House No."
+                                    streetPlaceholder="e.g. Unit 402, High Street Tower, 26th St."
+                                />
 
                                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                                     <label className="flex items-center gap-2 font-mono text-xs cursor-pointer">

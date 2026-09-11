@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Shield, Server, Terminal, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
@@ -46,27 +46,9 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
             title="Governance Console" 
             subtitle="Platform Infrastructure & Administrative Authorization"
             headerBadge="GOVERNANCE // 00"
+            maxWidth="md"
         >
             <Head title="Platform Governance Login — BagooPH" />
-
-            {/* Admin Console Indicators */}
-            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
-                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
-                    <Shield className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
-                    <span className="font-bold block text-amber-950">KYC Gate</span>
-                    <span className="text-amber-700 text-[9px]">Document Audit</span>
-                </div>
-                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
-                    <Server className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
-                    <span className="font-bold block text-amber-950">Ledger Audit</span>
-                    <span className="text-amber-700 text-[9px]">Commission 10%</span>
-                </div>
-                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200 text-center">
-                    <Terminal className="w-3.5 h-3.5 text-amber-600 mx-auto mb-1" />
-                    <span className="font-bold block text-amber-950">Dispute Arb</span>
-                    <span className="text-amber-700 text-[9px]">Escrow Release</span>
-                </div>
-            </div>
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">

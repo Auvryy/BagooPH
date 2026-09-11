@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Truck, Navigation, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
@@ -43,30 +43,22 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
 
     return (
         <GuestLayout 
-            title="Courier Dispatch" 
-            subtitle="Fleet Navigation & Real-time Doorstep Delivery Portal"
-            headerBadge="DISPATCH PORTAL // 03"
+            formPosition="left"
+            imageSrc="/images/auth/courier_login.jpg"
+            imageAlt="Bagoo Express Courier Fleet Visual"
+            imageBadge="Fleet Dispatch"
+            imageHeadline="Courier Navigation & Dispatch"
+            imageDescription="Access assigned doorstep pickups, sorting hub drops, and real-time delivery handovers across Metro Manila."
+            title="Courier Sign In"
+            subtitle="Sign in to your rider account to access the delivery queue"
+            alternatePortal={{
+                label: 'Buyer Marketplace',
+                subtext: 'Looking to shop?',
+                href: getDomainUrl('buyer', '/login'),
+                buttonText: 'Buyer Login →',
+            }}
         >
             <Head title="Courier Dispatch Sign In — BagooPH" />
-
-            {/* Rider Specs Strip */}
-            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
-                <div className="p-2 rounded-lg bg-emerald-50/50 border border-emerald-200 text-center">
-                    <Navigation className="w-3.5 h-3.5 text-emerald-600 mx-auto mb-1" />
-                    <span className="font-bold block text-emerald-950">Live GPS</span>
-                    <span className="text-emerald-700 text-[9px]">Turn-by-turn</span>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-50/50 border border-emerald-200 text-center">
-                    <Truck className="w-3.5 h-3.5 text-emerald-600 mx-auto mb-1" />
-                    <span className="font-bold block text-emerald-950">Instant Payout</span>
-                    <span className="text-emerald-700 text-[9px]">Per Drop Settlement</span>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-50/50 border border-emerald-200 text-center">
-                    <ShieldAlert className="w-3.5 h-3.5 text-emerald-600 mx-auto mb-1" />
-                    <span className="font-bold block text-emerald-950">LTO Verified</span>
-                    <span className="text-emerald-700 text-[9px]">Insured Fleet</span>
-                </div>
-            </div>
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
@@ -74,19 +66,19 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
+            <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                        Rider Email Address
+                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                        Rider Email Address *
                     </label>
                     <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             id="email"
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                             placeholder="rider@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -99,26 +91,26 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                            Password
+                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                            Password *
                         </label>
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}
-                                className="text-[10px] text-slate-500 hover:text-emerald-700 transition"
+                                className="text-xs text-slate-500 hover:text-emerald-600 transition"
                             >
                                 Forgot password?
                             </Link>
                         )}
                     </div>
                     <div className="relative">
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             id="password"
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -127,7 +119,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition cursor-pointer"
                             title={showPassword ? 'Hide password' : 'Show password'}
                         >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -143,7 +135,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Keep rider logged in</span>
+                        <span className="text-xs text-slate-700">Keep rider signed in</span>
                     </label>
                 </div>
 
@@ -151,34 +143,24 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{processing ? 'Connecting Fleet...' : 'Access Dispatch Dashboard'}</span>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Onboarding Link */}
-                <div className="pt-4 border-t border-slate-200 space-y-3 font-sans text-xs">
-                    <div className="p-3 rounded-lg bg-[#ECEAE5] border border-black/10 flex items-center justify-between gap-3">
-                        <div>
-                            <span className="block font-bold text-slate-900 text-xs">Join Bagoo Fleet</span>
-                            <span className="block text-[10px] text-slate-600 font-mono">Submit Driver's License & OR/CR.</span>
-                        </div>
-                        <a
+                {/* Switcher & Portal Links */}
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center font-sans">
+                    <p className="text-xs text-slate-600">
+                        Join Bagoo Express Fleet?{' '}
+                        <a 
                             href={getDomainUrl('courier', '/register')}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[10px] font-bold uppercase rounded-lg shrink-0 transition"
+                            className="text-emerald-700 font-semibold hover:underline ml-1"
                         >
-                            Apply Now
+                            Apply as Driver
                         </a>
-                    </div>
-
-                    <div className="text-center font-mono text-[11px]">
-                        <span className="text-slate-500">Looking for buyer portal? </span>
-                        <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-emerald-700 underline">
-                            Go to Buyer Login
-                        </a>
-                    </div>
+                    </p>
                 </div>
             </form>
         </GuestLayout>
