@@ -51,6 +51,12 @@ export default function Login({ status, canResetPassword }: Props) {
             imageDescription="Enjoy doorstep cash on delivery inspection, verified local stores, and seamless order tracking."
             title="Log In"
             subtitle="Enter your email and password to access your account"
+            alternatePortal={{
+                label: 'Merchant Portal',
+                subtext: 'Are you a merchant?',
+                href: getDomainUrl('seller', '/login'),
+                buttonText: 'Seller Centre →',
+            }}
         >
             <Head title="Log In — BagooPH" />
 
@@ -145,7 +151,7 @@ export default function Login({ status, canResetPassword }: Props) {
                 </div>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-slate-200 text-center space-y-3">
+            <div className="mt-8 pt-6 border-t border-slate-200 text-center">
                 <p className="text-xs text-slate-600">
                     Don't have an account?{' '}
                     <Link 
@@ -154,16 +160,6 @@ export default function Login({ status, canResetPassword }: Props) {
                     >
                         Sign Up
                     </Link>
-                </p>
-
-                <p className="text-xs text-slate-500">
-                    Selling on Bagoo?{' '}
-                    <a
-                        href={getDomainUrl('seller', '/login')}
-                        className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
-                    >
-                        Seller Sign In →
-                    </a>
                 </p>
             </div>
         </GuestLayout>

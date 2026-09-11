@@ -51,6 +51,12 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
             imageDescription="Access assigned doorstep pickups, sorting hub drops, and real-time delivery handovers across Metro Manila."
             title="Courier Sign In"
             subtitle="Sign in to your rider account to access the delivery queue"
+            alternatePortal={{
+                label: 'Buyer Marketplace',
+                subtext: 'Looking to shop?',
+                href: getDomainUrl('buyer', '/login'),
+                buttonText: 'Buyer Login →',
+            }}
         >
             <Head title="Courier Dispatch Sign In — BagooPH" />
 
@@ -145,24 +151,14 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                 </div>
 
                 {/* Switcher & Portal Links */}
-                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2 font-sans">
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center font-sans">
                     <p className="text-xs text-slate-600">
                         Join Bagoo Express Fleet?{' '}
                         <a 
                             href={getDomainUrl('courier', '/register')}
-                            className="text-emerald-700 font-semibold hover:underline"
+                            className="text-emerald-700 font-semibold hover:underline ml-1"
                         >
                             Apply as Driver
-                        </a>
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                        Looking for marketplace?{' '}
-                        <a 
-                            href={getDomainUrl('buyer', '/login')} 
-                            className="text-slate-800 font-semibold hover:text-emerald-700 hover:underline"
-                        >
-                            Buyer Login →
                         </a>
                     </p>
                 </div>

@@ -158,6 +158,12 @@ export default function SellerRegister() {
             imageDescription="Register your brand or boutique to reach thousands of buyers across Metro Manila with automated door-to-door courier dispatch."
             title="Register as Seller"
             subtitle="Open your store on BagooPH with 10% flat platform commission"
+            alternatePortal={{
+                label: 'Buyer Marketplace',
+                subtext: 'Looking to shop?',
+                href: getDomainUrl('buyer', '/login'),
+                buttonText: 'Buyer Storefront →',
+            }}
         >
             <Head title="Seller Registration — BagooPH" />
 
@@ -589,7 +595,7 @@ export default function SellerRegister() {
                 )}
 
                 {/* Footer Switcher */}
-                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2">
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center">
                     <p className="text-xs text-slate-600">
                         Already have a seller account?{' '}
                         <Link 
@@ -598,16 +604,6 @@ export default function SellerRegister() {
                         >
                             Sign In to Seller Centre
                         </Link>
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                        Looking to shop?{' '}
-                        <a 
-                            href={getDomainUrl('buyer', '/register')}
-                            className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
-                        >
-                            Create Buyer Account →
-                        </a>
                     </p>
                 </div>
             </form>

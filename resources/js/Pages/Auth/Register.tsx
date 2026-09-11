@@ -174,6 +174,12 @@ export default function Register() {
             imageDescription="Create your verified account for 100% cash on delivery inspection, secure checkouts, and priority buyer protection."
             title="Create an Account"
             subtitle="Join BagooPH in two quick steps to start shopping local Filipino brands"
+            alternatePortal={{
+                label: 'Merchant Portal',
+                subtext: 'Want to become a seller?',
+                href: getDomainUrl('seller', '/register'),
+                buttonText: 'Register Store →',
+            }}
         >
             <Head title="Create an Account — BagooPH" />
 
@@ -555,7 +561,7 @@ export default function Register() {
                 )}
             </form>
 
-            <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2">
+            <div className="mt-6 pt-5 border-t border-slate-200 text-center">
                 <p className="text-xs text-slate-600">
                     Already have an account?{' '}
                     <Link 
@@ -564,16 +570,6 @@ export default function Register() {
                     >
                         Log In
                     </Link>
-                </p>
-
-                <p className="text-xs text-slate-500">
-                    Want to become a seller?{' '}
-                    <a
-                        href={getDomainUrl('seller', '/register')}
-                        className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
-                    >
-                        Register Store →
-                    </a>
                 </p>
             </div>
         </GuestLayout>

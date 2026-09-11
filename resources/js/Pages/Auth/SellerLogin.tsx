@@ -57,6 +57,12 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
             imageDescription="Access live inventory, incoming customer orders, thermal waybills, and real-time COD remittances."
             title="Seller Sign In"
             subtitle="Sign in to your merchant account to manage your store"
+            alternatePortal={{
+                label: 'Buyer Marketplace',
+                subtext: 'Looking to shop?',
+                href: getDomainUrl('buyer', '/login'),
+                buttonText: 'Buyer Login →',
+            }}
         >
             <Head title="Seller Centre Sign In — BagooPH" />
 
@@ -151,24 +157,14 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                 </div>
 
                 {/* Switcher & Onboarding Links */}
-                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2 font-sans">
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center font-sans">
                     <p className="text-xs text-slate-600">
                         New merchant?{' '}
                         <a 
                             href={getDomainUrl('seller', '/register')}
-                            className="text-[#E00D42] font-semibold hover:underline"
+                            className="text-[#E00D42] font-semibold hover:underline ml-1"
                         >
                             Register Your Store
-                        </a>
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                        Looking for marketplace?{' '}
-                        <a 
-                            href={getDomainUrl('buyer', '/login')} 
-                            className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
-                        >
-                            Buyer Login →
                         </a>
                     </p>
                 </div>

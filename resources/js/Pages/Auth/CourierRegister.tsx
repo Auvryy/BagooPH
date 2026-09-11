@@ -193,6 +193,12 @@ export default function CourierRegister() {
             imageDescription="Submit your valid driver's license and vehicle registration (OR/CR) to receive active parcel delivery and pickup routes."
             title="Join Courier Fleet"
             subtitle="Apply as a verified dispatch rider across Metro Manila"
+            alternatePortal={{
+                label: 'Buyer Marketplace',
+                subtext: 'Looking to shop?',
+                href: getDomainUrl('buyer', '/login'),
+                buttonText: 'Buyer Storefront →',
+            }}
         >
             <Head title="Courier Registration — BagooPH" />
 
@@ -707,7 +713,7 @@ export default function CourierRegister() {
                 )}
 
                 {/* Footer Switcher */}
-                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2">
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center">
                     <p className="text-xs text-slate-600">
                         Already registered as a driver?{' '}
                         <Link 
@@ -716,16 +722,6 @@ export default function CourierRegister() {
                         >
                             Sign In to Courier Dispatch
                         </Link>
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                        Looking to shop?{' '}
-                        <a 
-                            href={getDomainUrl('buyer', '/register')}
-                            className="text-slate-800 font-semibold hover:text-emerald-700 hover:underline"
-                        >
-                            Create Buyer Account →
-                        </a>
                     </p>
                 </div>
             </form>
