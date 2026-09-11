@@ -49,15 +49,34 @@ class RegisteredUserController extends Controller
     {
         $role = $request->input('role', 'buyer');
 
+        // Merge composite name if first_name or last_name is provided without a full name
+        if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
+            $compositeName = trim(
+                ($request->input('first_name', '') . ' ' .
+                ($request->input('middle_name') ? $request->input('middle_name') . ' ' : '') .
+                $request->input('last_name', ''))
+            );
+            $request->merge(['name' => $compositeName]);
+        }
+
         // Base validation rules
         $rules = [
             'name' => 'required|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'sex' => 'nullable|string|max:50',
+            'birthday' => 'nullable|date',
+            'age' => 'nullable|integer|min:0|max:150',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => 'nullable|string|in:buyer,seller,courier',
             'phone' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:255',
+            'municipality' => 'nullable|string|max:255',
+            'barangay' => 'nullable|string|max:255',
             'postal_code' => 'nullable|string|max:20',
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
@@ -103,15 +122,35 @@ class RegisteredUserController extends Controller
 
         $isBuyer = ($role === 'buyer');
 
+        // Auto-calculate age from birthday if needed
+        $birthday = $validated['birthday'] ?? null;
+        $age = $validated['age'] ?? null;
+        if ($birthday && ! $age) {
+            try {
+                $age = \Carbon\Carbon::parse($birthday)->age;
+            } catch (\Exception $e) {
+                $age = null;
+            }
+        }
+
         // Create User with appropriate role status
         $user = User::create([
             'name' => $validated['name'],
+            'first_name' => $validated['first_name'] ?? null,
+            'last_name' => $validated['last_name'] ?? null,
+            'middle_name' => $validated['middle_name'] ?? null,
+            'sex' => $validated['sex'] ?? null,
+            'birthday' => $birthday,
+            'age' => $age,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $role,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
-            'city' => $validated['city'] ?? null,
+            'city' => $validated['city'] ?? $validated['municipality'] ?? null,
+            'province' => $validated['province'] ?? null,
+            'municipality' => $validated['municipality'] ?? null,
+            'barangay' => $validated['barangay'] ?? null,
             'postal_code' => $validated['postal_code'] ?? null,
             'status' => $isBuyer ? 'active' : 'pending_approval',
             'kyc_status' => $isBuyer ? ($idPath ? 'pending_approval' : 'none') : 'pending_approval',

@@ -29,4 +29,36 @@ class RegistrationTest extends TestCase
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('status');
     }
+
+    public function test_buyer_registration_with_demographic_fields(): void
+    {
+        $response = $this->post('/register', [
+            'first_name' => 'Maria',
+            'middle_name' => 'Santos',
+            'last_name' => 'Dela Cruz',
+            'email' => 'maria.delacruz@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'sex' => 'Female',
+            'birthday' => '2000-05-15',
+            'phone' => '+63 917 123 4567',
+            'city' => 'Quezon City',
+            'address' => 'Unit 401 Katipunan Ave',
+        ]);
+
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+
+        $user = \App\Models\User::where('email', 'maria.delacruz@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('Maria Santos Dela Cruz', $user->name);
+        $this->assertEquals('Maria', $user->first_name);
+        $this->assertEquals('Santos', $user->middle_name);
+        $this->assertEquals('Dela Cruz', $user->last_name);
+        $this->assertEquals('Female', $user->sex);
+        $this->assertEquals('2000-05-15', $user->birthday->format('Y-m-d'));
+        $this->assertGreaterThanOrEqual(24, $user->age);
+        $this->assertEquals('Quezon City', $user->city);
+        $this->assertEquals('Unit 401 Katipunan Ave', $user->address);
+    }
 }
