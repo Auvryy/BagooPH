@@ -14,14 +14,7 @@ class OrderHistoryController extends Controller
 {
     public function index(Request $request): Response
     {
-        $orders = Order::where('buyer_id', $request->user()->id)
-            ->with(['items.product', 'delivery.courier'])
-            ->latest()
-            ->paginate(10);
-
-        return Inertia::render('Buyer/Orders', [
-            'orders' => $orders,
-        ]);
+        return app(BuyerProfileController::class)->index($request);
     }
 
     public function show(Request $request, Order $order): Response
