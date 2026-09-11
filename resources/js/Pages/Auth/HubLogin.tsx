@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Box, MapPin, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
     status?: string;
@@ -46,27 +46,9 @@ export default function HubLogin({ status, canResetPassword }: Props) {
             subtitle="Intake Scanning, Destination Area Sorting & Rider Dispatch"
             headerBadge="LOGISTICS HUB // 04"
             showMarketplaceLink={false}
+            maxWidth="md"
         >
             <Head title="Logistics Sorting Hub Sign In — BagooPH" />
-
-            {/* Hub Metrics Strip */}
-            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
-                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
-                    <Box className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
-                    <span className="font-bold block text-indigo-950">Intake Scan</span>
-                    <span className="text-indigo-700 text-[9px]">Waybill Optical</span>
-                </div>
-                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
-                    <MapPin className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
-                    <span className="font-bold block text-indigo-950">Area Bins</span>
-                    <span className="text-indigo-700 text-[9px]">Zones A / B / C</span>
-                </div>
-                <div className="p-2 rounded-lg bg-indigo-50/50 border border-indigo-200 text-center">
-                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
-                    <span className="font-bold block text-indigo-950">Rider Fleet</span>
-                    <span className="text-indigo-700 text-[9px]">KYC & Area Match</span>
-                </div>
-            </div>
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">

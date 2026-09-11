@@ -14,14 +14,13 @@ import {
     X, 
     Phone, 
     MapPin, 
-    Sparkles, 
-    ShieldCheck, 
-    Check, 
     Building2, 
     FileCheck2,
     Eye,
-    EyeOff
+    EyeOff,
+    Check
 } from 'lucide-react';
+import { getDomainUrl } from '@/utils/domain';
 
 export default function SellerRegister() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -122,7 +121,7 @@ export default function SellerRegister() {
         const newErrors: Record<string, string> = {};
         if (!data.phone.trim()) newErrors.phone = 'Mobile phone number is required';
         if (!data.city.trim()) newErrors.city = 'City or municipality is required';
-        if (!data.address.trim()) newErrors.address = 'Warehouse/pickup address is required';
+        if (!data.address.trim()) newErrors.address = 'Warehouse or pickup address is required';
         setStepErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -150,18 +149,21 @@ export default function SellerRegister() {
     };
 
     return (
-        <GuestLayout 
-            title="Open Verified Store" 
-            subtitle="Sell across 14 departments with 10% flat fees & automated waybills"
-            headerBadge="MERCHANT STUDIO // 02"
-            maxWidth="lg"
+        <GuestLayout
+            formPosition="right"
+            imageSrc="/images/auth/seller_register.jpg"
+            imageAlt="BagooPH Merchant Verification Visual"
+            imageBadge="Merchant Verification"
+            imageHeadline="Verified Seller Registration"
+            imageDescription="Register your brand or boutique to reach thousands of buyers across Metro Manila with automated door-to-door courier dispatch."
+            title="Register as Seller"
+            subtitle="Open your store on BagooPH with 10% flat platform commission"
         >
             <Head title="Seller Registration — BagooPH" />
 
-            {/* NUMBERED STEPS HEADER */}
+            {/* Step Progress Indicators */}
             <div className="mb-6 pb-2 border-b border-slate-100">
-                <div className="flex items-center justify-center gap-2 sm:gap-4 font-mono">
-                    
+                <div className="flex items-center justify-between font-mono">
                     {/* Step 1 */}
                     <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
@@ -176,11 +178,11 @@ export default function SellerRegister() {
                         <span className={`text-[11px] font-bold uppercase hidden sm:inline ${
                             currentStep === 1 ? 'text-slate-900' : currentStep > 1 ? 'text-slate-600' : 'text-slate-400'
                         }`}>
-                            Store Info
+                            Store Basics
                         </span>
                     </div>
 
-                    <div className={`w-8 sm:w-12 h-px transition-colors ${currentStep > 1 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
+                    <div className={`flex-1 mx-3 h-px transition-colors ${currentStep > 1 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
 
                     {/* Step 2 */}
                     <div className="flex items-center gap-2">
@@ -196,11 +198,11 @@ export default function SellerRegister() {
                         <span className={`text-[11px] font-bold uppercase hidden sm:inline ${
                             currentStep === 2 ? 'text-slate-900' : currentStep > 2 ? 'text-slate-600' : 'text-slate-400'
                         }`}>
-                            Location
+                            Pickup Address
                         </span>
                     </div>
 
-                    <div className={`w-8 sm:w-12 h-px transition-colors ${currentStep > 2 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
+                    <div className={`flex-1 mx-3 h-px transition-colors ${currentStep > 2 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
 
                     {/* Step 3 */}
                     <div className="flex items-center gap-2">
@@ -214,31 +216,29 @@ export default function SellerRegister() {
                         <span className={`text-[11px] font-bold uppercase hidden sm:inline ${
                             currentStep === 3 ? 'text-slate-900' : 'text-slate-400'
                         }`}>
-                            KYC & Security
+                            Permits & Key
                         </span>
                     </div>
-
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
-                
-                {/* STEP 1: STORE & IDENTITY */}
+            <form onSubmit={submit} className="space-y-4">
+                {/* STEP 1: STORE BASICS */}
                 {currentStep === 1 && (
-                    <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-4">
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Store / Merchant Business Name *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Store / Brand Name *
                             </label>
                             <div className="relative">
-                                <Store className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <Store className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                 <input
                                     id="shop_name"
                                     type="text"
                                     name="shop_name"
                                     value={data.shop_name}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                                    placeholder="e.g. Apex Apparel Studio"
+                                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
+                                    placeholder="e.g. Apex Apparel Manila"
                                     autoFocus
                                     onChange={(e) => {
                                         setData('shop_name', e.target.value);
@@ -253,19 +253,18 @@ export default function SellerRegister() {
                         </div>
 
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Owner / Authorized Representative Name *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Merchant Contact Name *
                             </label>
                             <div className="relative">
-                                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                 <input
                                     id="name"
                                     type="text"
                                     name="name"
                                     value={data.name}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                                    placeholder="e.g. Juan Dela Cruz"
-                                    autoComplete="name"
+                                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
+                                    placeholder="e.g. Maria Santos"
                                     onChange={(e) => {
                                         setData('name', e.target.value);
                                         if (stepErrors.name) setStepErrors(prev => ({ ...prev, name: '' }));
@@ -279,17 +278,17 @@ export default function SellerRegister() {
                         </div>
 
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Merchant Email Address *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Merchant Login Email *
                             </label>
                             <div className="relative">
-                                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                 <input
                                     id="email"
                                     type="email"
                                     name="email"
                                     value={data.email}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                     placeholder="merchant@domain.com"
                                     autoComplete="username"
                                     onChange={(e) => {
@@ -304,91 +303,88 @@ export default function SellerRegister() {
                             )}
                         </div>
 
-                        <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 text-xs font-sans text-slate-600 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-[#E00D42] shrink-0" />
-                            <span>Your store will receive a <strong>Verified Merchant Badge</strong> upon completing business KYC.</span>
-                        </div>
-
                         <div className="pt-2">
                             <button
                                 type="button"
                                 onClick={handleNext}
-                                className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <span>Continue to Location & Contact</span>
+                                <span>Continue to Pickup Address</span>
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* STEP 2: LOCATION & CONTACT */}
+                {/* STEP 2: PICKUP & DISPATCH ADDRESS */}
                 {currentStep === 2 && (
-                    <div className="space-y-4 animate-fade-in">
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Mobile Contact Phone *
-                            </label>
-                            <div className="relative">
-                                <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input
-                                    id="phone"
-                                    type="tel"
-                                    name="phone"
-                                    value={data.phone}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                                    placeholder="+63 917 123 4567"
-                                    autoFocus
-                                    onChange={(e) => {
-                                        setData('phone', e.target.value);
-                                        if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
-                                    }}
-                                    required
-                                />
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                    Mobile Phone Number *
+                                </label>
+                                <div className="relative">
+                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="phone"
+                                        type="tel"
+                                        name="phone"
+                                        value={data.phone}
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
+                                        placeholder="+63 917 123 4567"
+                                        autoFocus
+                                        onChange={(e) => {
+                                            setData('phone', e.target.value);
+                                            if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.phone || errors.phone) && (
+                                    <InputError message={stepErrors.phone || errors.phone} className="mt-1" />
+                                )}
                             </div>
-                            {(stepErrors.phone || errors.phone) && (
-                                <InputError message={stepErrors.phone || errors.phone} className="mt-1" />
-                            )}
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                    City / Municipality *
+                                </label>
+                                <div className="relative">
+                                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="city"
+                                        type="text"
+                                        name="city"
+                                        value={data.city}
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
+                                        placeholder="e.g. Quezon City, Manila"
+                                        onChange={(e) => {
+                                            setData('city', e.target.value);
+                                            if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                {(stepErrors.city || errors.city) && (
+                                    <InputError message={stepErrors.city || errors.city} className="mt-1" />
+                                )}
+                            </div>
                         </div>
 
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                City / Municipality *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Warehouse / Pickup Address *
                             </label>
                             <div className="relative">
-                                <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input
-                                    id="city"
-                                    type="text"
-                                    name="city"
-                                    value={data.city}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                                    placeholder="e.g. Quezon City, Manila"
-                                    onChange={(e) => {
-                                        setData('city', e.target.value);
-                                        if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
-                                    }}
-                                    required
-                                />
-                            </div>
-                            {(stepErrors.city || errors.city) && (
-                                <InputError message={stepErrors.city || errors.city} className="mt-1" />
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Complete Warehouse / Store Pickup Address *
-                            </label>
-                            <div className="relative">
-                                <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 <textarea
                                     id="address"
                                     name="address"
                                     rows={2}
                                     value={data.address}
-                                    className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
-                                    placeholder="Building, Unit No., Street, Barangay"
+                                    className="w-full pl-10 pr-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
+                                    placeholder="Unit No., Building, Street, Barangay"
                                     onChange={(e) => {
                                         setData('address', e.target.value);
                                         if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
@@ -399,8 +395,8 @@ export default function SellerRegister() {
                             {(stepErrors.address || errors.address) && (
                                 <InputError message={stepErrors.address || errors.address} className="mt-1" />
                             )}
-                            <p className="text-[10px] text-slate-500 font-sans mt-1">
-                                This address will be used by Bagoo Express couriers for 45-minute doorstep order pickup.
+                            <p className="text-xs text-slate-500 mt-1">
+                                Bagoo Express riders will collect packaged orders directly from this address.
                             </p>
                         </div>
 
@@ -408,31 +404,30 @@ export default function SellerRegister() {
                             <button
                                 type="button"
                                 onClick={handlePrev}
-                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition uppercase tracking-wider flex items-center justify-center gap-1.5"
+                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <ArrowLeft className="w-4 h-4" />
                                 <span>Back</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={handleNext}
-                                className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2"
+                                className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <span>Continue to KYC & Security</span>
+                                <span>Continue to Verification</span>
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* STEP 3: KYC DOCUMENTS & SECURITY */}
+                {/* STEP 3: PERMITS & SECURITY */}
                 {currentStep === 3 && (
-                    <div className="space-y-4 animate-fade-in">
-                        
-                        {/* 1. DTI / Mayor's Permit Upload */}
+                    <div className="space-y-4">
+                        {/* 1. Business Permit / DTI Upload */}
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Business Permit / DTI / SEC Certificate *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Business Permit / DTI / Student ID *
                             </label>
                             <input
                                 type="file"
@@ -444,22 +439,22 @@ export default function SellerRegister() {
                             {!permitFileName ? (
                                 <div 
                                     onClick={() => permitInputRef.current?.click()}
-                                    className="border-2 border-dashed border-slate-300 hover:border-[#E00D42] hover:bg-rose-50/40 rounded-lg p-3.5 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                                    className="border border-dashed border-slate-300 hover:border-slate-400 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-slate-50"
                                 >
-                                    <Upload className="w-4 h-4 text-[#E00D42]" />
-                                    <span className="text-[11px] text-slate-700 font-bold">Upload DTI/SEC/Mayor's Permit (JPG, PNG, PDF max 10MB)</span>
+                                    <Upload className="w-4 h-4 text-slate-500" />
+                                    <span className="text-xs text-slate-700 font-medium">Upload DTI, Mayor's Permit, or Student ID</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                     <div className="flex items-center gap-2 truncate">
                                         <FileCheck2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                        <span className="font-bold truncate text-[11px] text-slate-900">{permitFileName}</span>
-                                        <span className="text-[10px] text-slate-500 shrink-0">({permitFileSize})</span>
+                                        <span className="font-semibold truncate text-slate-900">{permitFileName}</span>
+                                        <span className="text-[10px] text-slate-400 shrink-0">({permitFileSize})</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={removePermitFile}
-                                        className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition"
+                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition cursor-pointer"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -470,10 +465,10 @@ export default function SellerRegister() {
                             )}
                         </div>
 
-                        {/* 2. Government ID Upload */}
+                        {/* 2. Valid Government ID Upload */}
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                Valid Government ID of Representative *
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                Valid Government / Student ID *
                             </label>
                             <input
                                 type="file"
@@ -485,22 +480,22 @@ export default function SellerRegister() {
                             {!idFileName ? (
                                 <div 
                                     onClick={() => idInputRef.current?.click()}
-                                    className="border-2 border-dashed border-slate-300 hover:border-[#E00D42] hover:bg-rose-50/40 rounded-lg p-3.5 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-white"
+                                    className="border border-dashed border-slate-300 hover:border-slate-400 rounded-lg p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-slate-50"
                                 >
-                                    <Upload className="w-4 h-4 text-slate-400" />
-                                    <span className="text-[11px] text-slate-700">Upload Valid ID (Passport, UMID, Driver's License)</span>
+                                    <Upload className="w-4 h-4 text-slate-500" />
+                                    <span className="text-xs text-slate-700 font-medium">Upload Valid Government ID</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                     <div className="flex items-center gap-2 truncate">
-                                        <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
-                                        <span className="font-bold truncate text-[11px] text-slate-900">{idFileName}</span>
-                                        <span className="text-[10px] text-slate-500 shrink-0">({idFileSize})</span>
+                                        <FileText className="w-4 h-4 text-slate-700 shrink-0" />
+                                        <span className="font-semibold truncate text-slate-900">{idFileName}</span>
+                                        <span className="text-[10px] text-slate-400 shrink-0">({idFileSize})</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={removeIdFile}
-                                        className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition"
+                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition cursor-pointer"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -514,17 +509,17 @@ export default function SellerRegister() {
                         {/* Password & Confirm Password */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
                                     Password *
                                 </label>
                                 <div className="relative">
-                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
                                         value={data.password}
-                                        className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
                                         autoComplete="new-password"
                                         onChange={(e) => setData('password', e.target.value)}
@@ -533,7 +528,7 @@ export default function SellerRegister() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition cursor-pointer"
                                         title={showPassword ? 'Hide password' : 'Show password'}
                                     >
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -543,17 +538,17 @@ export default function SellerRegister() {
                             </div>
 
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
                                     Confirm Password *
                                 </label>
                                 <div className="relative">
-                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
                                         value={data.password_confirmation}
-                                        className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                        className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
                                         autoComplete="new-password"
                                         onChange={(e) => setData('password_confirmation', e.target.value)}
@@ -562,7 +557,7 @@ export default function SellerRegister() {
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition cursor-pointer"
                                         title={showConfirmPassword ? 'Hide password' : 'Show password'}
                                     >
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -572,44 +567,48 @@ export default function SellerRegister() {
                             </div>
                         </div>
 
-                        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-sans text-emerald-900 space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold font-mono text-[11px]">
-                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                <span>BagooPH Merchant Guarantee</span>
-                            </div>
-                            <p className="text-[11px]">10% flat commission on settled orders. No monthly subscription or listing fees.</p>
-                        </div>
-
                         <div className="flex items-center gap-3 pt-2">
                             <button
                                 type="button"
                                 onClick={handlePrev}
-                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition uppercase tracking-wider flex items-center justify-center gap-1.5"
+                                className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <ArrowLeft className="w-4 h-4" />
                                 <span>Back</span>
                             </button>
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-sm transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                                className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                             >
-                                <span>{processing ? 'Submitting Application...' : 'Complete & Open Store'}</span>
+                                <span>{processing ? 'Registering...' : 'Complete Registration'}</span>
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Switcher & Portal Link */}
-                <div className="pt-4 border-t border-slate-200 text-center font-mono text-[11px] space-y-1">
-                    <span className="text-slate-500">Already have a merchant account? </span>
-                    <Link 
-                        href={route('seller.login')} 
-                        className="text-slate-900 font-bold hover:text-[#E00D42] underline underline-offset-2"
-                    >
-                        Sign In to Seller Centre
-                    </Link>
+                {/* Footer Switcher */}
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2">
+                    <p className="text-xs text-slate-600">
+                        Already have a seller account?{' '}
+                        <Link 
+                            href={route('seller.login')} 
+                            className="text-[#E00D42] font-semibold hover:underline"
+                        >
+                            Sign In to Seller Centre
+                        </Link>
+                    </p>
+
+                    <p className="text-xs text-slate-500">
+                        Looking to shop?{' '}
+                        <a 
+                            href={getDomainUrl('buyer', '/register')}
+                            className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
+                        >
+                            Create Buyer Account →
+                        </a>
+                    </p>
                 </div>
             </form>
         </GuestLayout>

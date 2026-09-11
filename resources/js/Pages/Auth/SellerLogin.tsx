@@ -3,7 +3,13 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
-import { ArrowRight, Lock, Mail, Store, ShieldCheck, FileText, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { 
+    ArrowRight, 
+    Lock, 
+    Mail, 
+    Eye, 
+    EyeOff 
+} from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
@@ -43,30 +49,16 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
 
     return (
         <GuestLayout 
-            title="Seller Centre" 
-            subtitle="Merchant Command & Inventory Fulfillment Cockpit"
-            headerBadge="MERCHANT PORTAL // 02"
+            formPosition="left"
+            imageSrc="/images/auth/seller_login.jpg"
+            imageAlt="BagooPH Merchant Storefront Visual"
+            imageBadge="Seller Centre"
+            imageHeadline="Manage Your Storefront"
+            imageDescription="Access live inventory, incoming customer orders, thermal waybills, and real-time COD remittances."
+            title="Seller Sign In"
+            subtitle="Sign in to your merchant account to manage your store"
         >
             <Head title="Seller Centre Sign In — BagooPH" />
-
-            {/* Merchant Highlights Strip */}
-            <div className="grid grid-cols-3 gap-2 mb-4 font-mono text-[10px]">
-                <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-center">
-                    <DollarSign className="w-3.5 h-3.5 text-[#E00D42] mx-auto mb-1" />
-                    <span className="font-bold block text-slate-800">10% Flat Fee</span>
-                    <span className="text-slate-500 text-[9px]">Zero Hidden Fees</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-center">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600 mx-auto mb-1" />
-                    <span className="font-bold block text-slate-800">Thermal Labels</span>
-                    <span className="text-slate-500 text-[9px]">1-Click Waybills</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-center">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 mx-auto mb-1" />
-                    <span className="font-bold block text-slate-800">Verified Badge</span>
-                    <span className="text-slate-500 text-[9px]">Fast KYC Activation</span>
-                </div>
-            </div>
 
             {status && (
                 <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
@@ -74,19 +66,19 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
+            <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
-                        Merchant Email Address
+                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                        Merchant Email *
                     </label>
                     <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             id="email"
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                             placeholder="merchant@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -99,26 +91,26 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                            Password
+                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                            Password *
                         </label>
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}
-                                className="text-[10px] text-slate-500 hover:text-[#E00D42] transition"
+                                className="text-xs text-slate-500 hover:text-[#E00D42] transition"
                             >
                                 Forgot password?
                             </Link>
                         )}
                     </div>
                     <div className="relative">
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             id="password"
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -127,7 +119,7 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition cursor-pointer"
                             title={showPassword ? 'Hide password' : 'Show password'}
                         >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -143,7 +135,7 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Keep merchant signed in</span>
+                        <span className="text-xs text-slate-700">Keep me signed in</span>
                     </label>
                 </div>
 
@@ -151,34 +143,34 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        className="w-full py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
-                        <span>{processing ? 'Connecting Cockpit...' : 'Enter Seller Cockpit'}</span>
-                        <ArrowRight className="w-4 h-4 text-[#E00D42]" />
+                        <span>{processing ? 'Signing In...' : 'Sign In to Seller Centre'}</span>
+                        <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Onboarding Link */}
-                <div className="pt-4 border-t border-slate-200 space-y-3 font-sans text-xs">
-                    <div className="p-3 rounded-lg bg-[#ECEAE5] border border-black/10 flex items-center justify-between gap-3">
-                        <div>
-                            <span className="block font-bold text-slate-900 text-xs">Not yet a registered seller?</span>
-                            <span className="block text-[10px] text-slate-600 font-mono">Submit DTI/Mayor's permit for KYC review.</span>
-                        </div>
-                        <a
+                {/* Switcher & Onboarding Links */}
+                <div className="mt-6 pt-5 border-t border-slate-200 text-center space-y-2 font-sans">
+                    <p className="text-xs text-slate-600">
+                        New merchant?{' '}
+                        <a 
                             href={getDomainUrl('seller', '/register')}
-                            className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-[10px] font-bold uppercase rounded-lg shrink-0 transition"
+                            className="text-[#E00D42] font-semibold hover:underline"
                         >
-                            Open Shop
+                            Register Your Store
                         </a>
-                    </div>
+                    </p>
 
-                    <div className="text-center font-mono text-[11px]">
-                        <span className="text-slate-500">Shopper looking for marketplace? </span>
-                        <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-[#E00D42] underline">
-                            Go to Buyer Login
+                    <p className="text-xs text-slate-500">
+                        Looking for marketplace?{' '}
+                        <a 
+                            href={getDomainUrl('buyer', '/login')} 
+                            className="text-slate-800 font-semibold hover:text-[#E00D42] hover:underline"
+                        >
+                            Buyer Login →
                         </a>
-                    </div>
+                    </p>
                 </div>
             </form>
         </GuestLayout>
