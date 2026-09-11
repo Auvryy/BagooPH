@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Head, useForm, Link, router } from '@inertiajs/react';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
-import { User, Order, Address } from '@/types';
+import { User, Order, Address, PageProps } from '@/types';
 import { 
     User as UserIcon, 
     ShieldCheck, 
@@ -80,7 +80,35 @@ export default function BuyerProfile({
     ordersCount = 0,
     initialTab = 'orders' 
 }: Props) {
-    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+    const page = usePage<PageProps>();
+    const { flash } = page.props;
+    const url = page.url;
+
+    // Helper to extract tab from any URL string or fallback
+    const getTabFromUrl = (targetUrl?: string): TabType | null => {
+        try {
+            const urlObj = new URL(targetUrl || (typeof window !== 'undefined' ? window.location.href : ''), 'http://localhost');
+            const tabParam = urlObj.searchParams.get('tab') as TabType | null;
+            if (tabParam && ['orders', 'account', 'addresses', 'wallet', 'vouchers'].includes(tabParam)) {
+                return tabParam;
+            }
+            if (urlObj.pathname.endsWith('/orders')) {
+                return 'orders';
+            }
+        } catch {
+            // fallback
+        }
+        return null;
+    };
+
+    const [activeTab, setActiveTab] = useState<TabType>(() => {
+        if (typeof window !== 'undefined') {
+            const fromUrl = getTabFromUrl(window.location.href);
+            if (fromUrl) return fromUrl;
+        }
+        return initialTab || 'orders';
+    });
+
     const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const [wallet, setWallet] = useState<WalletData>(initialWallet);
@@ -92,12 +120,57 @@ export default function BuyerProfile({
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+    // Tab switcher that updates URL history client-side without full-page network reloads
+    const handleTabChange = (tabId: TabType) => {
+        if (activeTab === tabId && typeof window !== 'undefined' && (window.location.search.includes(`tab=${tabId}`) || (tabId === 'orders' && window.location.pathname.endsWith('/orders')))) {
+            return;
+        }
+
+        setActiveTab(tabId);
+
+        const targetUrl = route('buyer.profile', { tab: tabId });
+        try {
+            router.push({
+                url: targetUrl,
+                props: (currentProps: any) => ({
+                    ...currentProps,
+                    initialTab: tabId,
+                }),
+                preserveState: true,
+                preserveScroll: true,
+            });
+        } catch {
+            if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', targetUrl);
+            }
+        }
+    };
+
+    // Synchronize tab state with URL on browser Back / Forward (popstate)
+    useEffect(() => {
+        const handlePopState = () => {
+            const tabFromUrl = getTabFromUrl(window.location.href);
+            setActiveTab(tabFromUrl || initialTab || 'orders');
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [initialTab]);
+
+    // Synchronize tab state if Inertia's page URL changes
+    useEffect(() => {
+        const tabFromUrl = getTabFromUrl(url);
+        if (tabFromUrl) {
+            setActiveTab(tabFromUrl);
+        }
+    }, [url]);
+
     // Sync addresses when initialAddresses prop updates
     useEffect(() => {
         setAddresses(initialAddresses);
     }, [initialAddresses]);
 
-    // Sync active tab if initialTab prop changes from URL navigation
+    // Sync active tab if initialTab prop changes from external navigation
     useEffect(() => {
         if (initialTab) {
             setActiveTab(initialTab);
@@ -266,24 +339,36 @@ export default function BuyerProfile({
 
     const filteredOrders = orders.filter(order => {
         if (selectedOrderStatus === 'all') return true;
-        if (selectedOrderStatus === 'to_ship') return order.status === 'processing' || order.status === 'ready_for_pickup';
-        if (selectedOrderStatus === 'to_receive') return order.status === 'shipped';
-        if (selectedOrderStatus === 'completed') return order.status === 'delivered';
+        if (selectedOrderStatus === 'to_ship') return ['pending', 'placed', 'confirmed', 'preparing', 'processing', 'ready_for_pickup'].includes(order.status);
+        if (selectedOrderStatus === 'to_receive') return ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'in_transit'].includes(order.status);
+        if (selectedOrderStatus === 'completed') return ['delivered', 'completed'].includes(order.status);
         return true;
     });
 
     const getStatusPill = (status: string) => {
         switch (status) {
+            case 'completed':
+                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</span>;
             case 'delivered':
                 return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
+            case 'out_for_delivery':
             case 'shipped':
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3 text-slate-500" /> Out for Delivery</span>;
+                return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3 text-indigo-500" /> In Transit</span>;
+            case 'assigned_to_rider':
+            case 'sorted':
+            case 'at_sorting_center':
+            case 'picked_up':
+                return <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3 text-purple-500" /> In Logistics</span>;
             case 'ready_for_pickup':
                 return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Ready for Pickup</span>;
+            case 'preparing':
             case 'processing':
                 return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Packaging</span>;
+            case 'pending':
+            case 'placed':
+                return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Order Placed</span>;
             default:
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono uppercase">{status}</span>;
+                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono uppercase">{status.replace('_', ' ')}</span>;
         }
     };
 
@@ -297,7 +382,7 @@ export default function BuyerProfile({
 
     return (
         <BuyerLayout>
-            <Head title="My Purchases & Account Hub — BagooPH" />
+            <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Simulated Digital Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
 
             <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
                 
@@ -321,6 +406,24 @@ export default function BuyerProfile({
                     </Link>
                 </div>
 
+                {/* FLASH NOTIFICATIONS */}
+                {flash?.success && (
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-3 font-sans shadow-2xs">
+                        <div className="flex items-center gap-2.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="font-semibold">{flash.success}</span>
+                        </div>
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3 font-sans shadow-2xs">
+                        <div className="flex items-center gap-2.5">
+                            <AlertCircle className="w-4 h-4 text-[#E00D42] shrink-0" />
+                            <span className="font-semibold">{flash.error}</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
@@ -332,7 +435,7 @@ export default function BuyerProfile({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setActiveTab('account');
+                                    handleTabChange('account');
                                     setTimeout(() => {
                                         fileInputRef.current?.click();
                                     }, 50);
@@ -371,8 +474,9 @@ export default function BuyerProfile({
                                 return (
                                     <button
                                         key={item.id}
-                                        onClick={() => setActiveTab(item.id)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition text-left ${
+                                        type="button"
+                                        onClick={() => handleTabChange(item.id)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition text-left cursor-pointer ${
                                             isActive
                                                 ? 'bg-[#E00D42] text-white shadow-xs'
                                                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
@@ -542,6 +646,21 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
+                                                    {order.status === 'delivered' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (confirm("Confirm that you have received your order in good condition?")) {
+                                                                    router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true });
+                                                                }
+                                                            }}
+                                                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl font-bold uppercase transition flex items-center gap-1.5 shadow-2xs text-xs cursor-pointer"
+                                                        >
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            <span>Confirm Received</span>
+                                                        </button>
+                                                    )}
+
                                                     <Link
                                                         href={route('buyer.orders.show', order.id)}
                                                         className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-800 rounded-xl font-bold uppercase transition flex items-center gap-1.5 shadow-2xs text-xs"

@@ -189,7 +189,7 @@ export interface Order {
     subtotal: string | number;
     shipping_fee: string | number;
     total_amount: string | number;
-    payment_method: 'card' | 'cod' | 'bank_transfer' | 'e_wallet';
+    payment_method: 'cod' | string;
     payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
     status: 'placed' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'out_for_delivery' | 'delivered' | 'completed' | 'delivery_failed' | 'returned' | 'pending' | 'processing' | 'shipped' | 'cancelled';
     recipient_name: string;

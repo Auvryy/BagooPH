@@ -7,7 +7,6 @@ import {
     Calendar, 
     Truck, 
     ArrowUpRight, 
-    CreditCard, 
     TrendingUp, 
     ShieldCheck, 
     Download, 

@@ -53,7 +53,7 @@ flowchart TD
     ApplyVoucher -- Yes --> EnterVoucherCode[Enter Voucher Code & Apply Discount]
     EnterVoucherCode --> FinalizeOrder[Finalize Order Subtotal & Delivery Details]
     ApplyVoucher -- No --> FinalizeOrder
-    FinalizeOrder --> SelectPayment[Choose Payment Mode: COD / Card / Bank / E-Wallet]
+    FinalizeOrder --> SelectPayment[Payment Mode: Cash on Delivery (COD)]
     SelectPayment --> PlaceOrder[Click 'Place Order']
     PlaceOrder --> OrderCreated[Order Record & Delivery Shipment Initialized]
 
@@ -85,7 +85,7 @@ flowchart TD
 - [x] **Login & Validation:** Credential check + approval status verification.
 - [x] **Main Menu & Catalog:** 14 Master categories, keyword search, dynamic sorting.
 - [x] **Product Details & Variants:** Color, size, stock boundaries, and quantity selection.
-- [x] **Cart & Checkout Engine:** Voucher discounts, payment selection (COD, Card, Transfer), instant dispatch initialization.
+- [x] **Cart & Checkout Engine:** Voucher discounts, exclusive Cash on Delivery (COD) payment mode, instant dispatch initialization.
 - [x] **Live Tracking Milestones:** Multi-stage shipment tracking from packaging to delivery.
 - [x] **Rating & Feedback:** Review submissions post-delivery.
 - [x] **In-App Messaging & Account Settings:** Direct buyer-to-seller/courier chat.
