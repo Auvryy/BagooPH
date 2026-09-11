@@ -44,7 +44,7 @@ export default function Login({ status, canResetPassword }: Props) {
     return (
         <GuestLayout
             formPosition="left"
-            imageSrc="/images/auth/buyer_login.jpg"
+            imageSrc="/images/auth/buyer_login.jpg?v=20260911"
             imageAlt="BagooPH Shopping Visual"
             imageBadge="Buyer Marketplace"
             imageHeadline="Everyday Value, Delivered Direct"
