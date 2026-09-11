@@ -15,7 +15,6 @@ import {
     ShieldCheck, 
     Truck, 
     Sparkles, 
-    CreditCard, 
     Store,
     X,
     ArrowRight,
@@ -370,14 +369,11 @@ export default function BuyerLayout({
                     </div>
 
                     <div>
-                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Payment Modes</h5>
+                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Payment Method</h5>
                         <div className="flex flex-wrap gap-1.5 text-xs font-medium">
-                            <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-slate-700">COD</span>
-                            <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-slate-700">GCash</span>
-                            <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-slate-700">Maya</span>
-                            <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-slate-700">Cards</span>
+                            <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-slate-700 font-semibold">Cash on Delivery (COD)</span>
                         </div>
-                        <p className="text-slate-400 text-xs mt-2">100% Escrow & Anti-Fraud Protection</p>
+                        <p className="text-slate-400 text-xs mt-2">100% Escrow & Doorstep Inspection Guarantee</p>
                     </div>
 
                     <div>

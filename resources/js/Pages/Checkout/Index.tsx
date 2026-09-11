@@ -7,9 +7,7 @@ import {
     ShoppingBag, 
     ArrowLeft, 
     Truck, 
-    CreditCard, 
     Wallet, 
-    Building2, 
     ShieldCheck, 
     MapPin, 
     Check, 
@@ -17,7 +15,6 @@ import {
     Tag,
     Clock,
     X,
-    Sparkles,
     Gift,
     Upload,
     FileText,
@@ -156,7 +153,6 @@ export default function CheckoutIndex({
         }
     };
 
-    const [shippingOption, setShippingOption] = useState<'standard' | 'express'>('standard');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
     const [validationError, setValidationError] = useState('');
@@ -172,7 +168,7 @@ export default function CheckoutIndex({
         };
     }, [showConfirmModal]);
 
-    const baseShippingFee = shippingOption === 'express' ? 95 : (subtotal > 1500 ? 0 : 50);
+    const baseShippingFee = subtotal > 1500 ? 0 : 50;
     
     // Calculate final shipping fee accounting for free shipping vouchers
     const finalShippingFee = appliedVoucher?.discount_type === 'free_shipping' ? 0 : baseShippingFee;
@@ -481,121 +477,73 @@ export default function CheckoutIndex({
                                     03
                                 </div>
                                 <h2 className="font-bold text-sm text-slate-900">
-                                    Shipping Carrier & Delivery Option
+                                    Logistics Carrier & Delivery
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs font-sans">
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${
-                                    shippingOption === 'standard' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}>
-                                    <input
-                                        type="radio"
-                                        name="shipping_tier"
-                                        checked={shippingOption === 'standard'}
-                                        onChange={() => setShippingOption('standard')}
-                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
-                                    />
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                                            <Truck className="w-4 h-4 text-[#E00D42]" />
-                                            <span>Bagoo Express Standard</span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px]">Delivery in 2-3 days</p>
-                                        <p className="font-bold text-[#E00D42]">{subtotal > 1500 ? 'FREE' : '₱50.00'}</p>
+                            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start justify-between gap-4 text-xs font-sans">
+                                <div className="flex items-start gap-3.5">
+                                    <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center shrink-0 mt-0.5">
+                                        <Truck className="w-5 h-5 text-[#E00D42]" />
                                     </div>
-                                </label>
-
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${
-                                    shippingOption === 'express' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}>
-                                    <input
-                                        type="radio"
-                                        name="shipping_tier"
-                                        checked={shippingOption === 'express'}
-                                        onChange={() => setShippingOption('express')}
-                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
-                                    />
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                                            <Sparkles className="w-4 h-4 text-amber-500" />
-                                            <span>Priority Express Next-Day</span>
+                                        <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
+                                            <span>Bagoo Express Logistics</span>
+                                            <span className="px-2 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">STANDARD FLEET</span>
                                         </div>
-                                        <p className="text-slate-500 text-[11px]">Priority dispatch & routing</p>
-                                        <p className="font-bold text-slate-900">₱95.00</p>
+                                        <p className="text-slate-500 text-[11px] leading-relaxed">
+                                            Integrated sorting center routing: Merchant Pickup → Sorting Hub → Assigned Rider → Doorstep Handover.
+                                        </p>
+                                        <p className="text-slate-400 text-[10px] font-mono">
+                                            Estimated Doorstep Delivery: 2–4 Business Days
+                                        </p>
                                     </div>
-                                </label>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <span className="text-[10px] text-slate-400 block font-mono">SHIPPING RATE</span>
+                                    <span className={`text-sm font-black ${baseShippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                        {baseShippingFee === 0 ? 'FREE' : formatPrice(baseShippingFee)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* 4. Payment Methods */}
+                        {/* 4. Payment Method */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     04
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900">
-                                    Payment Method
-                                </h2>
+                                <div className="flex items-center justify-between flex-1">
+                                    <h2 className="font-bold text-sm text-slate-900">
+                                        Payment Method
+                                    </h2>
+                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-xs bg-emerald-100 text-emerald-800">
+                                        EXCLUSIVE PAYMENT MODE
+                                    </span>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs font-sans">
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'cod' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}>
-                                    <input
-                                        type="radio"
-                                        name="payment_method"
-                                        checked={data.payment_method === 'cod'}
-                                        onChange={() => setData('payment_method', 'cod')}
-                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
-                                    />
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                                            <Wallet className="w-4 h-4 text-emerald-600" />
-                                            <span>Cash On Delivery</span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px]">Pay upon doorstep receipt</p>
+                            <div className="p-4 rounded-xl border border-emerald-300/80 bg-emerald-50/40 text-xs font-sans space-y-3">
+                                <div className="flex items-start gap-3.5">
+                                    <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                                        <Wallet className="w-5 h-5" />
                                     </div>
-                                </label>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
+                                            <span>Cash on Delivery (COD)</span>
+                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-mono">DOORSTEP CASH</span>
+                                        </div>
+                                        <p className="text-slate-600 text-[11px] leading-relaxed">
+                                            Pay in cash directly to your assigned Bagoo Express rider only after inspecting your parcel at your doorstep. Zero advance online payment required.
+                                        </p>
+                                    </div>
+                                </div>
 
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'card' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}>
-                                    <input
-                                        type="radio"
-                                        name="payment_method"
-                                        checked={data.payment_method === 'card'}
-                                        onChange={() => setData('payment_method', 'card')}
-                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
-                                    />
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                                            <CreditCard className="w-4 h-4 text-indigo-600" />
-                                            <span>Credit / Debit Card</span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px]">Visa, Mastercard, JCB</p>
-                                    </div>
-                                </label>
-
-                                <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                    data.payment_method === 'e_wallet' ? 'border-[#E00D42] bg-[#E00D42]/5 ring-1 ring-[#E00D42]/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}>
-                                    <input
-                                        type="radio"
-                                        name="payment_method"
-                                        checked={data.payment_method === 'e_wallet'}
-                                        onChange={() => setData('payment_method', 'e_wallet')}
-                                        className="mt-0.5 text-[#E00D42] focus:ring-[#E00D42]"
-                                    />
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                                            <Building2 className="w-4 h-4 text-blue-600" />
-                                            <span>E-Wallet / GCash</span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px]">Instant digital checkout</p>
-                                    </div>
-                                </label>
+                                <div className="flex items-center gap-2 pt-2 border-t border-emerald-200/60 text-[11px] text-emerald-800 font-medium">
+                                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span>Protected by 100% Escrow & Doorstep Inspection Protocol</span>
+                                </div>
                             </div>
                         </div>
 
@@ -677,8 +625,8 @@ export default function CheckoutIndex({
                                 )}
 
                                 <div className="flex justify-between">
-                                    <span>Payment Selected:</span>
-                                    <span className="font-bold text-[#E00D42]">{data.payment_method.toUpperCase()}</span>
+                                    <span>Payment Mode:</span>
+                                    <span className="font-bold text-emerald-700 font-mono">CASH ON DELIVERY (COD)</span>
                                 </div>
                             </div>
 
@@ -834,7 +782,7 @@ export default function CheckoutIndex({
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
-                                        <span className="font-bold text-[#E00D42]">{data.payment_method.toUpperCase()}</span>
+                                        <span className="font-bold text-emerald-700 font-mono">CASH ON DELIVERY (COD)</span>
                                     </div>
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Applied Voucher</span>

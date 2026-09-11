@@ -331,7 +331,7 @@ export default function BuyerProductDetail({
                             </div>
                             <div className="flex items-center gap-3">
                                 <ShieldCheck className="w-4 h-4 text-[#E00D42]" />
-                                <span><strong>COD Available:</strong> Cash on Delivery / GCash / Maya nationwide</span>
+                                <span><strong>COD Exclusive:</strong> Cash on Delivery (COD) Nationwide — Doorstep Inspection Guaranteed</span>
                             </div>
                         </div>
 

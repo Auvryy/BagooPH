@@ -97,13 +97,10 @@ function AuthEcosystemFooter() {
                 {/* Payment Modes */}
                 <div>
                     <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
-                        Payment Modes
+                        Payment Method
                     </h5>
                     <div className="flex flex-wrap gap-1.5 text-xs font-medium font-mono">
-                        <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700">COD</span>
-                        <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700">GCash</span>
-                        <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700">Maya</span>
-                        <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700">Cards</span>
+                        <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700 font-bold">Cash on Delivery (COD)</span>
                     </div>
                     <p className="text-slate-400 text-xs mt-3 leading-relaxed">
                         100% Escrow & Inspection Guarantee on all Doorstep Deliveries.

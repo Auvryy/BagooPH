@@ -135,11 +135,11 @@ export default function PhoneInput({
                         id={id}
                         type="tel"
                         inputMode="numeric"
-                        pattern="[0-9]*"
                         name={name}
                         value={displayValue}
                         onChange={handleChange}
                         onKeyDown={handleKeyDown}
+                        required={required}
                         disabled={disabled}
                         autoFocus={autoFocus}
                         placeholder={placeholder}
