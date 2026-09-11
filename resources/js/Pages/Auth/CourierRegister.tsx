@@ -23,6 +23,8 @@ import {
     Building2
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
+import PhoneInput from '@/Components/PhoneInput';
+import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function CourierRegister() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -49,6 +51,9 @@ export default function CourierRegister() {
         phone: string;
         address: string;
         city: string;
+        province: string;
+        municipality: string;
+        barangay: string;
         vehicle_type: string;
         plate_number: string;
         license_number: string;
@@ -64,6 +69,9 @@ export default function CourierRegister() {
         phone: '',
         address: '',
         city: '',
+        province: 'Metro Manila',
+        municipality: '',
+        barangay: '',
         vehicle_type: 'Motorcycle',
         plate_number: '',
         license_number: '',
@@ -320,77 +328,49 @@ export default function CourierRegister() {
                                 )}
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Mobile Phone Number *
-                                </label>
-                                <div className="relative">
-                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="phone"
-                                        type="tel"
-                                        name="phone"
-                                        value={data.phone}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="+63 917 123 4567"
-                                        onChange={(e) => {
-                                            setData('phone', e.target.value);
-                                            if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
-                                        }}
-                                        required
-                                    />
-                                </div>
-                                {(stepErrors.phone || errors.phone) && (
-                                    <InputError message={stepErrors.phone || errors.phone} className="mt-1" />
-                                )}
-                            </div>
+                            <PhoneInput
+                                id="phone"
+                                name="phone"
+                                label="Mobile Phone Number"
+                                value={data.phone}
+                                onChange={(val) => {
+                                    setData('phone', val);
+                                    if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
+                                }}
+                                required
+                                accentColor="emerald"
+                                error={stepErrors.phone || errors.phone}
+                            />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Base City / Municipality *
-                                </label>
-                                <div className="relative">
-                                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="city"
-                                        type="text"
-                                        name="city"
-                                        value={data.city}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="e.g. Pasig, Quezon City, Manila"
-                                        onChange={(e) => {
-                                            setData('city', e.target.value);
-                                            if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
-                                        }}
-                                        required
-                                    />
-                                </div>
-                                {(stepErrors.city || errors.city) && (
-                                    <InputError message={stepErrors.city || errors.city} className="mt-1" />
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Terminal / Garage Address
-                                </label>
-                                <div className="relative">
-                                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="address"
-                                        type="text"
-                                        name="address"
-                                        value={data.address}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="Unit / Street / Barangay"
-                                        onChange={(e) => setData('address', e.target.value)}
-                                    />
-                                </div>
-                                <InputError message={errors.address} className="mt-1" />
-                            </div>
-                        </div>
+                        <PhilippineAddressSelector
+                            values={{
+                                province: data.province,
+                                city: data.city,
+                                municipality: data.municipality,
+                                barangay: data.barangay,
+                                address: data.address,
+                            }}
+                            onChange={(addr) => {
+                                setData(prev => ({
+                                    ...prev,
+                                    province: addr.province,
+                                    city: addr.city,
+                                    municipality: addr.municipality,
+                                    barangay: addr.barangay,
+                                    address: addr.address,
+                                }));
+                                if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
+                            }}
+                            accentColor="emerald"
+                            required={true}
+                            streetLabel="Garage / Terminal Street Address"
+                            streetPlaceholder="Unit / Street / Building"
+                            errors={{
+                                city: stepErrors.city || errors.city,
+                                address: errors.address,
+                            }}
+                        />
 
                         <div className="pt-2">
                             <button
@@ -431,11 +411,13 @@ export default function CourierRegister() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Vehicle Plate / MV File No. *
-                                </label>
+                                <div className="h-5 flex items-center mb-1">
+                                    <label htmlFor="plate_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                                        Plate / MV File No. <span className="text-emerald-700">*</span>
+                                    </label>
+                                </div>
                                 <div className="relative">
                                     <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
@@ -443,10 +425,10 @@ export default function CourierRegister() {
                                         type="text"
                                         name="plate_number"
                                         value={data.plate_number}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-mono"
                                         placeholder="e.g. 123-ABC"
                                         onChange={(e) => {
-                                            setData('plate_number', e.target.value);
+                                            setData('plate_number', e.target.value.toUpperCase());
                                             if (stepErrors.plate_number) setStepErrors(prev => ({ ...prev, plate_number: '' }));
                                         }}
                                         required
@@ -458,9 +440,11 @@ export default function CourierRegister() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Driver's License Number *
-                                </label>
+                                <div className="h-5 flex items-center mb-1">
+                                    <label htmlFor="license_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                                        Driver's License No. <span className="text-emerald-700">*</span>
+                                    </label>
+                                </div>
                                 <div className="relative">
                                     <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
@@ -468,10 +452,10 @@ export default function CourierRegister() {
                                         type="text"
                                         name="license_number"
                                         value={data.license_number}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-mono"
                                         placeholder="e.g. N01-12-345678"
                                         onChange={(e) => {
-                                            setData('license_number', e.target.value);
+                                            setData('license_number', e.target.value.toUpperCase());
                                             if (stepErrors.license_number) setStepErrors(prev => ({ ...prev, license_number: '' }));
                                         }}
                                         required

@@ -21,6 +21,8 @@ import {
     Check
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
+import PhoneInput from '@/Components/PhoneInput';
+import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function SellerRegister() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -43,6 +45,9 @@ export default function SellerRegister() {
         phone: string;
         address: string;
         city: string;
+        province: string;
+        municipality: string;
+        barangay: string;
         role: 'seller';
         password: string;
         password_confirmation: string;
@@ -55,6 +60,9 @@ export default function SellerRegister() {
         phone: '',
         address: '',
         city: '',
+        province: 'Metro Manila',
+        municipality: '',
+        barangay: '',
         role: 'seller',
         password: '',
         password_confirmation: '',
@@ -325,86 +333,54 @@ export default function SellerRegister() {
                 {/* STEP 2: PICKUP & DISPATCH ADDRESS */}
                 {currentStep === 2 && (
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Mobile Phone Number *
-                                </label>
-                                <div className="relative">
-                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="phone"
-                                        type="tel"
-                                        name="phone"
-                                        value={data.phone}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="+63 917 123 4567"
-                                        autoFocus
-                                        onChange={(e) => {
-                                            setData('phone', e.target.value);
-                                            if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
-                                        }}
-                                        required
-                                    />
-                                </div>
-                                {(stepErrors.phone || errors.phone) && (
-                                    <InputError message={stepErrors.phone || errors.phone} className="mt-1" />
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    City / Municipality *
-                                </label>
-                                <div className="relative">
-                                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="city"
-                                        type="text"
-                                        name="city"
-                                        value={data.city}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="e.g. Quezon City, Manila"
-                                        onChange={(e) => {
-                                            setData('city', e.target.value);
-                                            if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
-                                        }}
-                                        required
-                                    />
-                                </div>
-                                {(stepErrors.city || errors.city) && (
-                                    <InputError message={stepErrors.city || errors.city} className="mt-1" />
-                                )}
-                            </div>
-                        </div>
-
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                Warehouse / Pickup Address *
-                            </label>
-                            <div className="relative">
-                                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                                <textarea
-                                    id="address"
-                                    name="address"
-                                    rows={2}
-                                    value={data.address}
-                                    className="w-full pl-10 pr-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="Unit No., Building, Street, Barangay"
-                                    onChange={(e) => {
-                                        setData('address', e.target.value);
-                                        if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
-                                    }}
-                                    required
-                                />
-                            </div>
-                            {(stepErrors.address || errors.address) && (
-                                <InputError message={stepErrors.address || errors.address} className="mt-1" />
-                            )}
-                            <p className="text-xs text-slate-500 mt-1">
-                                Bagoo Express riders will collect packaged orders directly from this address.
-                            </p>
+                            <PhoneInput
+                                id="phone"
+                                name="phone"
+                                label="Merchant Mobile Phone Number"
+                                value={data.phone}
+                                onChange={(val) => {
+                                    setData('phone', val);
+                                    if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
+                                }}
+                                required
+                                accentColor="primary"
+                                error={stepErrors.phone || errors.phone}
+                            />
                         </div>
+
+                        <PhilippineAddressSelector
+                            values={{
+                                province: data.province,
+                                city: data.city,
+                                municipality: data.municipality,
+                                barangay: data.barangay,
+                                address: data.address,
+                            }}
+                            onChange={(addr) => {
+                                setData(prev => ({
+                                    ...prev,
+                                    province: addr.province,
+                                    city: addr.city,
+                                    municipality: addr.municipality,
+                                    barangay: addr.barangay,
+                                    address: addr.address,
+                                }));
+                                if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
+                                if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
+                            }}
+                            accentColor="primary"
+                            required={true}
+                            streetLabel="Warehouse / Store Street Address"
+                            streetPlaceholder="Unit No., Building, Street Name"
+                            errors={{
+                                city: stepErrors.city || errors.city,
+                                address: stepErrors.address || errors.address,
+                            }}
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                            Bagoo Express dispatch riders will collect packaged parcels directly from this pickup location.
+                        </p>
 
                         <div className="flex items-center gap-3 pt-2">
                             <button

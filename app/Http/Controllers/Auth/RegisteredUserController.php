@@ -170,7 +170,7 @@ class RegisteredUserController extends Controller
                 'slug' => Str::slug($shopName . '-' . $user->id),
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
-                'city' => $validated['city'] ?? null,
+                'city' => $validated['city'] ?? $validated['municipality'] ?? null,
                 'business_permit_path' => $permitPath,
                 'status' => 'pending',
             ]);

@@ -20,6 +20,8 @@ import {
     Sparkles
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
+import PhoneInput from '@/Components/PhoneInput';
+import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function Register() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -42,7 +44,10 @@ export default function Register() {
         age: string | number;
         sex: string;
         phone: string;
+        province: string;
         city: string;
+        municipality: string;
+        barangay: string;
         address: string;
         role: 'buyer';
         id_document: File | null;
@@ -57,7 +62,10 @@ export default function Register() {
         age: '',
         sex: '',
         phone: '',
+        province: 'Metro Manila',
         city: '',
+        municipality: '',
+        barangay: '',
         address: '',
         role: 'buyer',
         id_document: null,
@@ -440,64 +448,49 @@ export default function Register() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Mobile Number
-                                </label>
-                                <div className="relative">
-                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="phone"
-                                        type="tel"
-                                        name="phone"
-                                        value={data.phone}
-                                        className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="+63 917 123 4567"
-                                        onChange={(e) => setData('phone', e.target.value)}
-                                    />
-                                </div>
-                                <InputError message={errors.phone} className="mt-1" />
-                            </div>
-                        </div>
-
-                        {/* City & Delivery Address */}
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                            <div className="sm:col-span-5">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    City / Municipality *
-                                </label>
-                                <div className="relative">
-                                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="city"
-                                        type="text"
-                                        name="city"
-                                        value={data.city}
-                                        className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="e.g. Quezon City"
-                                        onChange={(e) => setData('city', e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <InputError message={stepErrors.city || errors.city} className="mt-1" />
-                            </div>
-
-                            <div className="sm:col-span-7">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                                    Delivery Address *
-                                </label>
-                                <input
-                                    id="address"
-                                    type="text"
-                                    name="address"
-                                    value={data.address}
-                                    className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="Unit / Street / Barangay"
-                                    onChange={(e) => setData('address', e.target.value)}
-                                    required
+                                <PhoneInput
+                                    id="phone"
+                                    name="phone"
+                                    label="Mobile Number"
+                                    value={data.phone}
+                                    onChange={(val) => setData('phone', val)}
+                                    placeholder="917 123 4567"
+                                    accentColor="primary"
+                                    error={errors.phone}
                                 />
-                                <InputError message={stepErrors.address || errors.address} className="mt-1" />
                             </div>
                         </div>
+
+                        {/* Province, City, Barangay & Street Address */}
+                        <PhilippineAddressSelector
+                            values={{
+                                province: data.province,
+                                city: data.city,
+                                municipality: data.municipality,
+                                barangay: data.barangay,
+                                address: data.address,
+                            }}
+                            onChange={(addr) => {
+                                setData(prev => ({
+                                    ...prev,
+                                    province: addr.province,
+                                    city: addr.city,
+                                    municipality: addr.municipality,
+                                    barangay: addr.barangay,
+                                    address: addr.address,
+                                }));
+                                if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
+                                if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
+                            }}
+                            accentColor="primary"
+                            required={true}
+                            streetLabel="Delivery Street Address / House No."
+                            streetPlaceholder="Unit / Street / Building"
+                            errors={{
+                                city: stepErrors.city || errors.city,
+                                address: stepErrors.address || errors.address,
+                            }}
+                        />
 
                         {/* Optional Government ID Document Upload */}
                         <div>
