@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import PhoneInput from '@/Components/PhoneInput';
 import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
@@ -365,13 +366,12 @@ export default function CheckoutIndex({
 
                                 <div>
                                     <label className="block font-semibold text-slate-700 mb-1.5">Contact Phone</label>
-                                    <input
-                                        type="text"
+                                    <PhoneInput
                                         value={data.recipient_phone}
-                                        onChange={(e) => setData('recipient_phone', e.target.value)}
+                                        onChange={(val) => setData('recipient_phone', val)}
+                                        placeholder="917 123 4567"
+                                        accentColor="primary"
                                         required
-                                        placeholder="09XXXXXXXXX"
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
                                     {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
                                 </div>
@@ -404,8 +404,12 @@ export default function CheckoutIndex({
                                     <label className="block font-semibold text-slate-700 mb-1.5">Postal Code (Optional)</label>
                                     <input
                                         type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        maxLength={4}
+                                        placeholder="e.g. 1000"
                                         value={data.shipping_postal_code}
-                                        onChange={(e) => setData('shipping_postal_code', e.target.value)}
+                                        onChange={(e) => setData('shipping_postal_code', e.target.value.replace(/\D/g, '').slice(0, 4))}
                                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                     />
                                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PhoneInput from '@/Components/PhoneInput';
 import { User, Shop } from '@/types';
 import { 
     User as UserIcon, 
@@ -311,16 +312,12 @@ export default function SellerProfile({ user, shop }: Props) {
                                 <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1.5">
                                     Mobile / Phone
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={data.phone}
-                                        onChange={(e) => setData('phone', e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition font-sans"
-                                        placeholder="+63 912 345 6789"
-                                    />
-                                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                                </div>
+                                <PhoneInput
+                                    value={data.phone}
+                                    onChange={(val) => setData('phone', val)}
+                                    placeholder="917 123 4567"
+                                    accentColor="primary"
+                                />
                                 {errors.phone && <p className="text-xs text-rose-500 mt-1 font-mono">{errors.phone}</p>}
                             </div>
                         </div>

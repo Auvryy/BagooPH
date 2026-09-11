@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PhoneInput from '@/Components/PhoneInput';
 import { Shop } from '@/types';
 import { 
     Store, 
@@ -122,11 +123,11 @@ export default function SellerSettings({ shop }: Props) {
                             <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
                                 Merchant Hotline / Mobile:
                             </label>
-                            <input
-                                type="text"
+                            <PhoneInput
                                 value={data.phone}
-                                onChange={(e) => setData('phone', e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                                onChange={(val) => setData('phone', val)}
+                                placeholder="917 123 4567"
+                                accentColor="primary"
                                 required
                             />
                         </div>
