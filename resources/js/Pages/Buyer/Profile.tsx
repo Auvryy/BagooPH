@@ -80,8 +80,35 @@ export default function BuyerProfile({
     ordersCount = 0,
     initialTab = 'orders' 
 }: Props) {
-    const { flash } = usePage<PageProps>().props;
-    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+    const page = usePage<PageProps>();
+    const { flash } = page.props;
+    const url = page.url;
+
+    // Helper to extract tab from any URL string or fallback
+    const getTabFromUrl = (targetUrl?: string): TabType | null => {
+        try {
+            const urlObj = new URL(targetUrl || (typeof window !== 'undefined' ? window.location.href : ''), 'http://localhost');
+            const tabParam = urlObj.searchParams.get('tab') as TabType | null;
+            if (tabParam && ['orders', 'account', 'addresses', 'wallet', 'vouchers'].includes(tabParam)) {
+                return tabParam;
+            }
+            if (urlObj.pathname.endsWith('/orders')) {
+                return 'orders';
+            }
+        } catch {
+            // fallback
+        }
+        return null;
+    };
+
+    const [activeTab, setActiveTab] = useState<TabType>(() => {
+        if (typeof window !== 'undefined') {
+            const fromUrl = getTabFromUrl(window.location.href);
+            if (fromUrl) return fromUrl;
+        }
+        return initialTab || 'orders';
+    });
+
     const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const [wallet, setWallet] = useState<WalletData>(initialWallet);
@@ -93,12 +120,57 @@ export default function BuyerProfile({
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+    // Tab switcher that updates URL history client-side without full-page network reloads
+    const handleTabChange = (tabId: TabType) => {
+        if (activeTab === tabId && typeof window !== 'undefined' && (window.location.search.includes(`tab=${tabId}`) || (tabId === 'orders' && window.location.pathname.endsWith('/orders')))) {
+            return;
+        }
+
+        setActiveTab(tabId);
+
+        const targetUrl = route('buyer.profile', { tab: tabId });
+        try {
+            router.push({
+                url: targetUrl,
+                props: (currentProps: any) => ({
+                    ...currentProps,
+                    initialTab: tabId,
+                }),
+                preserveState: true,
+                preserveScroll: true,
+            });
+        } catch {
+            if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', targetUrl);
+            }
+        }
+    };
+
+    // Synchronize tab state with URL on browser Back / Forward (popstate)
+    useEffect(() => {
+        const handlePopState = () => {
+            const tabFromUrl = getTabFromUrl(window.location.href);
+            setActiveTab(tabFromUrl || initialTab || 'orders');
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [initialTab]);
+
+    // Synchronize tab state if Inertia's page URL changes
+    useEffect(() => {
+        const tabFromUrl = getTabFromUrl(url);
+        if (tabFromUrl) {
+            setActiveTab(tabFromUrl);
+        }
+    }, [url]);
+
     // Sync addresses when initialAddresses prop updates
     useEffect(() => {
         setAddresses(initialAddresses);
     }, [initialAddresses]);
 
-    // Sync active tab if initialTab prop changes from URL navigation
+    // Sync active tab if initialTab prop changes from external navigation
     useEffect(() => {
         if (initialTab) {
             setActiveTab(initialTab);
@@ -310,7 +382,7 @@ export default function BuyerProfile({
 
     return (
         <BuyerLayout>
-            <Head title="My Purchases & Account Hub — BagooPH" />
+            <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Simulated Digital Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
 
             <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
                 
@@ -363,7 +435,7 @@ export default function BuyerProfile({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setActiveTab('account');
+                                    handleTabChange('account');
                                     setTimeout(() => {
                                         fileInputRef.current?.click();
                                     }, 50);
@@ -402,8 +474,9 @@ export default function BuyerProfile({
                                 return (
                                     <button
                                         key={item.id}
-                                        onClick={() => setActiveTab(item.id)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition text-left ${
+                                        type="button"
+                                        onClick={() => handleTabChange(item.id)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition text-left cursor-pointer ${
                                             isActive
                                                 ? 'bg-[#E00D42] text-white shadow-xs'
                                                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
