@@ -14,6 +14,7 @@ interface PhoneInputProps {
     accentColor?: 'primary' | 'emerald';
     className?: string;
     autoFocus?: boolean;
+    helperText?: string;
 }
 
 /**
@@ -33,11 +34,11 @@ export function formatPhNationalNumber(digits: string): string {
 export function extractNationalDigits(value: string): string {
     let clean = (value || '').replace(/\D/g, '');
     // If prefixed with 63, strip 63
-    if (clean.startsWith('63') && clean.length > 2) {
+    if (clean.startsWith('63')) {
         clean = clean.slice(2);
     }
-    // If starts with leading 0 (e.g. 0917...), strip leading 0
-    if (clean.startsWith('0')) {
+    // If starts with leading 0 (e.g. 0917...), strip leading 0 when more digits follow
+    while (clean.startsWith('0') && clean.length > 1) {
         clean = clean.slice(1);
     }
     return clean.slice(0, 10);
@@ -56,6 +57,7 @@ export default function PhoneInput({
     accentColor = 'primary',
     className = '',
     autoFocus = false,
+    helperText,
 }: PhoneInputProps) {
     const nationalDigits = extractNationalDigits(value);
     const displayValue = formatPhNationalNumber(nationalDigits);
@@ -79,8 +81,8 @@ export default function PhoneInput({
             return;
         }
 
-        // Strictly reject any key that is not a numeric digit 0-9
-        if (!/^[0-9]$/.test(e.key)) {
+        // Only block single-character non-digit keys on desktop (never block Android/IME 'Unidentified' or composition)
+        if (e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
             e.preventDefault();
         }
     };
@@ -91,6 +93,12 @@ export default function PhoneInput({
 
         if (!digits) {
             onChange('');
+            return;
+        }
+
+        // If only "0" was entered, keep state as "0" so user sees feedback and can type 9 next
+        if (digits === '0') {
+            onChange('0');
             return;
         }
 
@@ -148,6 +156,10 @@ export default function PhoneInput({
                     />
                 </div>
             </div>
+
+            {helperText && !error && (
+                <p className="text-[11px] text-slate-500 mt-1 font-mono">{helperText}</p>
+            )}
 
             {error && <InputError message={error} className="mt-1" />}
         </div>

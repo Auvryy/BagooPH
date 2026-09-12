@@ -128,6 +128,7 @@ export default function SellerSettings({ shop }: Props) {
                                 onChange={(val) => setData('phone', val)}
                                 placeholder="917 123 4567"
                                 accentColor="primary"
+                                helperText="10-digit mobile number (e.g. 917 123 4567)"
                                 required
                             />
                         </div>

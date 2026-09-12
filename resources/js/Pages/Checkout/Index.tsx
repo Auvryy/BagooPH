@@ -367,6 +367,7 @@ export default function CheckoutIndex({
                                         onChange={(val) => setData('recipient_phone', val)}
                                         placeholder="917 123 4567"
                                         accentColor="primary"
+                                        helperText="10-digit mobile number (e.g. 917 123 4567)"
                                         required
                                     />
                                     {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
@@ -401,7 +402,6 @@ export default function CheckoutIndex({
                                     <input
                                         type="text"
                                         inputMode="numeric"
-                                        pattern="[0-9]*"
                                         maxLength={4}
                                         placeholder="e.g. 1000"
                                         value={data.shipping_postal_code}

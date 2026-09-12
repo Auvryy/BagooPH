@@ -814,6 +814,7 @@ export default function BuyerProfile({
                                                     onChange={(val) => setData('phone', val)}
                                                     placeholder="917 123 4567"
                                                     accentColor="primary"
+                                                    helperText="10-digit mobile number (e.g. 917 123 4567)"
                                                 />
                                             </div>
 
@@ -1148,6 +1149,7 @@ export default function BuyerProfile({
                                             onChange={(val) => setNewAddress({ ...newAddress, phone: val })}
                                             placeholder="917 123 4567"
                                             accentColor="primary"
+                                            helperText="10-digit mobile number (e.g. 917 123 4567)"
                                             required
                                         />
                                     </div>

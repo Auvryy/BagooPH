@@ -20,7 +20,7 @@ import {
     Sparkles
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput from '@/Components/PhoneInput';
+import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function Register() {
@@ -160,6 +160,13 @@ export default function Register() {
         if (!data.sex) newErrors.sex = 'Sex is required';
         if (!data.city.trim()) newErrors.city = 'City / municipality is required';
         if (!data.address.trim()) newErrors.address = 'Delivery address is required';
+
+        if (data.phone.trim()) {
+            const phoneDigits = extractNationalDigits(data.phone);
+            if (phoneDigits.length < 10) {
+                newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
+            }
+        }
 
         if (Object.keys(newErrors).length > 0) {
             setStepErrors(newErrors);
@@ -453,10 +460,14 @@ export default function Register() {
                                     name="phone"
                                     label="Mobile Number"
                                     value={data.phone}
-                                    onChange={(val) => setData('phone', val)}
+                                    onChange={(val) => {
+                                        setData('phone', val);
+                                        if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
+                                    }}
                                     placeholder="917 123 4567"
                                     accentColor="primary"
-                                    error={errors.phone}
+                                    helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                    error={stepErrors.phone || errors.phone}
                                 />
                             </div>
                         </div>
