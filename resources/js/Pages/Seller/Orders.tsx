@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import Barcode from '@/Components/Barcode';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
@@ -824,10 +825,15 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             {/* Barcode & QR Code Section */}
                             <div className="flex items-center justify-between gap-3 p-2 bg-white rounded-xl border border-slate-200">
                                 <div className="space-y-1 flex-1 min-w-0">
-                                    <div className="h-7 bg-slate-900 flex items-center justify-center text-white tracking-[3px] text-[10px] font-black select-none font-mono rounded">
-                                        ||| | |||| | ||| |||| |
+                                    <div className="bg-white px-2 py-1 flex items-center justify-center rounded border border-slate-100 overflow-hidden">
+                                        <Barcode
+                                            value={orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
+                                            height={26}
+                                            width={1.2}
+                                            className="max-w-full h-6.5 object-contain"
+                                        />
                                     </div>
-                                    <p className="text-[10px] font-mono text-slate-700 truncate font-semibold">
+                                    <p className="text-[10px] font-mono text-slate-700 truncate font-semibold text-center">
                                         {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
                                     </p>
                                 </div>
@@ -1171,14 +1177,19 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             {/* Barcode & Scannable QR Code Section */}
                             <div className="py-2.5 border-b border-slate-300 flex items-center justify-between gap-4 bg-slate-50/50 p-2.5 rounded-xl print:bg-white print:border-black">
                                 <div className="space-y-1.5 flex-1 min-w-0">
-                                    <div className="h-8 bg-slate-900 flex items-center justify-center text-white tracking-[4px] text-[11px] font-black select-none font-mono rounded print:bg-black">
-                                        ||| | |||| | ||| |||| | ||| |||| |
+                                    <div className="bg-white p-1.5 flex items-center justify-center rounded-lg border border-slate-200 print:border-none print:p-0 overflow-hidden">
+                                        <Barcode
+                                            value={selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
+                                            height={38}
+                                            width={1.6}
+                                            className="max-w-full h-9 object-contain"
+                                        />
                                     </div>
-                                    <p className="text-xs font-bold font-mono tracking-wider text-slate-900 truncate">
+                                    <p className="text-xs font-bold font-mono tracking-wider text-slate-900 truncate text-center">
                                         {selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
                                     </p>
-                                    <p className="text-[9px] text-slate-500 font-mono">
-                                        Scan QR code for instant courier handover & live tracking
+                                    <p className="text-[9px] text-slate-500 font-mono text-center">
+                                        Scan 1D barcode or QR code for courier pickup, sorting, and delivery
                                     </p>
                                 </div>
                                 <div className="p-1 bg-white border border-slate-300 rounded-xl shrink-0 shadow-2xs print:border-black print:shadow-none">
