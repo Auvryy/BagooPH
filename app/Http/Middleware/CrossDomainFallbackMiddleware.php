@@ -31,6 +31,8 @@ class CrossDomainFallbackMiddleware
         'search/*',
         'overview',
         'about',
+        'track',
+        'track/*',
     ];
 
     /**

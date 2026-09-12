@@ -23,6 +23,7 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
+use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\Simulation\OrderSimulationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -213,6 +214,14 @@ Route::get('/admin', function () {
 Route::get('/', [BuyerHomeController::class, 'index'])->name('marketplace');
 Route::get('/overview', [MarketplaceController::class, 'index'])->name('overview');
 Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
+
+/*
+|--------------------------------------------------------------------------
+| Universal Parcel Tracking Routes (Public & Role-Aware Operations)
+|--------------------------------------------------------------------------
+*/
+Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->name('track.show');
+Route::post('/track/{tracking_number}/action', [PublicTrackingController::class, 'executeAction'])->middleware('auth')->name('track.action');
 
 /*
 |--------------------------------------------------------------------------
