@@ -23,7 +23,7 @@ import {
     Building2
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput from '@/Components/PhoneInput';
+import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function CourierRegister() {
@@ -154,7 +154,12 @@ export default function CourierRegister() {
         } else if (!/\S+@\S+\.\S+/.test(data.email)) {
             newErrors.email = 'Valid email is required';
         }
-        if (!data.phone.trim()) newErrors.phone = 'Contact number is required';
+        const phoneDigits = extractNationalDigits(data.phone);
+        if (!data.phone.trim()) {
+            newErrors.phone = 'Contact number is required';
+        } else if (phoneDigits.length < 10) {
+            newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
+        }
         if (!data.city.trim()) newErrors.city = 'Operating city is required';
         setStepErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -339,6 +344,7 @@ export default function CourierRegister() {
                                 }}
                                 required
                                 accentColor="emerald"
+                                helperText="10-digit mobile number (e.g. 917 123 4567)"
                                 error={stepErrors.phone || errors.phone}
                             />
                         </div>

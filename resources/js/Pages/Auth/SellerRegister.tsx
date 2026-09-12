@@ -21,7 +21,7 @@ import {
     Check
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput from '@/Components/PhoneInput';
+import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 
 export default function SellerRegister() {
@@ -127,7 +127,12 @@ export default function SellerRegister() {
 
     const validateStep2 = () => {
         const newErrors: Record<string, string> = {};
-        if (!data.phone.trim()) newErrors.phone = 'Mobile phone number is required';
+        const phoneDigits = extractNationalDigits(data.phone);
+        if (!data.phone.trim()) {
+            newErrors.phone = 'Mobile phone number is required';
+        } else if (phoneDigits.length < 10) {
+            newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
+        }
         if (!data.city.trim()) newErrors.city = 'City or municipality is required';
         if (!data.address.trim()) newErrors.address = 'Warehouse or pickup address is required';
         setStepErrors(newErrors);
@@ -345,6 +350,7 @@ export default function SellerRegister() {
                                 }}
                                 required
                                 accentColor="primary"
+                                helperText="10-digit mobile number (e.g. 917 123 4567)"
                                 error={stepErrors.phone || errors.phone}
                             />
                         </div>

@@ -60,5 +60,36 @@ class RegistrationTest extends TestCase
         $this->assertGreaterThanOrEqual(24, $user->age);
         $this->assertEquals('Quezon City', $user->city);
         $this->assertEquals('Unit 401 Katipunan Ave', $user->address);
+        $this->assertEquals('+63 917 123 4567', $user->phone);
+    }
+
+    public function test_buyer_registration_accepts_different_ph_phone_formats(): void
+    {
+        $phoneFormats = [
+            '+63 918 222 3333',
+            '09182223333',
+            '9182223333',
+            '+639182223333',
+        ];
+
+        foreach ($phoneFormats as $idx => $phone) {
+            $email = "buyer.phone.{$idx}@example.com";
+            $response = $this->post('/register', [
+                'name' => "Buyer {$idx}",
+                'email' => $email,
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'phone' => $phone,
+                'birthday' => '1998-01-01',
+                'sex' => 'Male',
+                'city' => 'Manila',
+                'address' => 'Sample Street',
+            ]);
+
+            $response->assertSessionHasNoErrors();
+            $user = \App\Models\User::where('email', $email)->first();
+            $this->assertNotNull($user);
+            $this->assertEquals($phone, $user->phone);
+        }
     }
 }

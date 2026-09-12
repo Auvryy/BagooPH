@@ -698,6 +698,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                         onChange={(val) => setEditData('phone', val)}
                                         placeholder="917 123 4567"
                                         accentColor="primary"
+                                        helperText="10-digit mobile number (e.g. 917 123 4567)"
                                     />
                                     {editErrors.phone && (
                                         <p className="text-xs text-rose-600 font-mono">{editErrors.phone}</p>
