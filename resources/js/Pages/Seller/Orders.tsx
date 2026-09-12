@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
@@ -308,7 +309,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'pending':
                 return (
                     <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-[11px] font-bold font-mono flex items-center gap-1.5 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42] animate-pulse"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
                         <span>New Order (Action Required)</span>
                     </span>
                 );
@@ -549,7 +550,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                     key={item.id}
                                     className={`rounded-2xl border p-4 sm:p-5 transition space-y-3 font-sans ${
                                         isToPack
-                                            ? 'bg-rose-50/20 border-2 border-rose-300 ring-2 ring-rose-100/60 border-l-[6px] border-l-[#E00D42] shadow-xs'
+                                            ? 'bg-rose-50/15 border-rose-200/80 border-l-[3px] border-l-[#E00D42] shadow-2xs hover:border-rose-300/80'
                                             : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                     }`}
                                 >
@@ -600,7 +601,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                         <div className="flex items-center gap-2 shrink-0">
                                             {isToPack ? (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-[#E00D42] border border-rose-300/80 text-[10px] font-mono font-bold uppercase tracking-wider shadow-2xs">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42] animate-ping" />
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
                                                     To Pack
                                                 </span>
                                             ) : (
@@ -728,8 +729,8 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             </div>
 
             {/* SELLER ACCEPT & REVIEW ORDER MODAL (THE BELOVED OLDER DESIGN) */}
-            {orderToAcceptAndPack && (
-                <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+            {typeof document !== 'undefined' && orderToAcceptAndPack && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 font-sans my-auto space-y-5">
                         
                         {/* Modal Header */}
@@ -853,12 +854,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* 1-CLICK CUSTOMER CHAT MODAL */}
-            {chatOrder && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+            {typeof document !== 'undefined' && chatOrder && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
@@ -959,12 +961,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* ORDER DETAILS & CHECKPOINT MODAL */}
-            {selectedOrderForDetails && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+            {typeof document !== 'undefined' && selectedOrderForDetails && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-slate-800 text-xs font-bold font-mono">
@@ -1033,12 +1036,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* CANCEL ORDER REASON MODAL */}
-            {orderToCancel && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+            {typeof document !== 'undefined' && orderToCancel && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <form onSubmit={handleConfirmCancel} className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-rose-600 text-xs font-bold font-mono">
@@ -1100,12 +1104,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </button>
                         </div>
                     </form>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* PRINTABLE THERMAL WAYBILL / SHIPPING LABEL MODAL */}
-            {selectedOrderForWaybill && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in print:p-0 print:bg-white overflow-y-auto font-sans">
+            {typeof document !== 'undefined' && selectedOrderForWaybill && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in print:p-0 print:bg-white overflow-y-auto font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-300 font-sans relative my-auto print:border-none print:shadow-none print:w-full print:max-w-none">
                         
                         {/* Modal Top Bar */}
@@ -1194,7 +1199,8 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </DashboardLayout>
     );

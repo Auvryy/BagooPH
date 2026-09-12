@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, Shop } from '@/types';
@@ -220,8 +221,8 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
             </div>
 
             {/* Create Voucher Modal */}
-            {isCreateOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in font-sans">
+            {typeof document !== 'undefined' && isCreateOpen && createPortal(
+                <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
@@ -316,7 +317,8 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </DashboardLayout>
     );
