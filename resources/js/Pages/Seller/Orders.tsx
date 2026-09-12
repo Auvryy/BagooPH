@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
@@ -28,7 +29,9 @@ import {
     Layers,
     MessageSquare,
     Send,
-    Loader2
+    Loader2,
+    QrCode,
+    ExternalLink
 } from 'lucide-react';
 
 interface Counts {
@@ -76,6 +79,7 @@ interface Props {
 
 export default function SellerOrders({ orderItems, shop, currentStatus = 'all', counts }: Props) {
     const [selectedOrderForWaybill, setSelectedOrderForWaybill] = useState<any | null>(null);
+    const [selectedOrderForQr, setSelectedOrderForQr] = useState<any | null>(null);
     const [orderToAcceptAndPack, setOrderToAcceptAndPack] = useState<any | null>(null);
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any | null>(null);
     const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
@@ -650,6 +654,16 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                 <Printer className="w-3.5 h-3.5" />
                                             </button>
 
+                                            {/* Quick QR Code Scanner Button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedOrderForQr(item)}
+                                                className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer"
+                                                title="Show QR Code for Courier Scan & Tracking"
+                                            >
+                                                <QrCode className="w-3.5 h-3.5 text-[#E00D42]" />
+                                            </button>
+
                                             {/* Cancel Icon Button (only if pre-shipped) */}
                                             {canSelect && (
                                                 <button
@@ -807,14 +821,25 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 </span>
                             </div>
 
-                            {/* Barcode Mock */}
-                            <div className="text-center space-y-0.5">
-                                <div className="h-7 bg-slate-900 mx-auto flex items-center justify-center text-white tracking-[4px] text-[10px] font-black select-none font-mono">
-                                    ||| | |||| | ||| |||| | ||| |||| |
+                            {/* Barcode & QR Code Section */}
+                            <div className="flex items-center justify-between gap-3 p-2 bg-white rounded-xl border border-slate-200">
+                                <div className="space-y-1 flex-1 min-w-0">
+                                    <div className="h-7 bg-slate-900 flex items-center justify-center text-white tracking-[3px] text-[10px] font-black select-none font-mono rounded">
+                                        ||| | |||| | ||| |||| |
+                                    </div>
+                                    <p className="text-[10px] font-mono text-slate-700 truncate font-semibold">
+                                        {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
+                                    </p>
                                 </div>
-                                <p className="text-[10px] font-mono text-slate-600">
-                                    {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-WAYBILL-${orderToAcceptAndPack.order?.order_number}`}
-                                </p>
+                                <div className="p-1 bg-white border border-slate-200 rounded-lg shrink-0">
+                                    <QRCodeSVG
+                                        value={typeof window !== 'undefined'
+                                            ? `${window.location.origin}/track/${orderToAcceptAndPack.order?.delivery?.tracking_number || orderToAcceptAndPack.order?.order_number}`
+                                            : `https://bagooph.shop/track/${orderToAcceptAndPack.order?.delivery?.tracking_number || orderToAcceptAndPack.order?.order_number}`}
+                                        size={54}
+                                        level="M"
+                                    />
+                                </div>
                             </div>
 
                             {/* Origin & Destination */}
@@ -1143,14 +1168,28 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 </div>
                             </div>
 
-                            {/* Barcode Simulation */}
-                            <div className="py-1.5 border-b border-slate-300 text-center space-y-1">
-                                <div className="h-9 bg-slate-900 mx-auto flex items-center justify-center text-white tracking-[5px] text-xs font-black select-none font-mono">
-                                    ||| | |||| | ||| |||| | ||| |||| |
+                            {/* Barcode & Scannable QR Code Section */}
+                            <div className="py-2.5 border-b border-slate-300 flex items-center justify-between gap-4 bg-slate-50/50 p-2.5 rounded-xl print:bg-white print:border-black">
+                                <div className="space-y-1.5 flex-1 min-w-0">
+                                    <div className="h-8 bg-slate-900 flex items-center justify-center text-white tracking-[4px] text-[11px] font-black select-none font-mono rounded print:bg-black">
+                                        ||| | |||| | ||| |||| | ||| |||| |
+                                    </div>
+                                    <p className="text-xs font-bold font-mono tracking-wider text-slate-900 truncate">
+                                        {selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
+                                    </p>
+                                    <p className="text-[9px] text-slate-500 font-mono">
+                                        Scan QR code for instant courier handover & live tracking
+                                    </p>
                                 </div>
-                                <p className="text-xs font-bold font-mono tracking-wider text-slate-800">
-                                    {selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-WAYBILL-${selectedOrderForWaybill.order?.order_number}`}
-                                </p>
+                                <div className="p-1 bg-white border border-slate-300 rounded-xl shrink-0 shadow-2xs print:border-black print:shadow-none">
+                                    <QRCodeSVG
+                                        value={typeof window !== 'undefined'
+                                            ? `${window.location.origin}/track/${selectedOrderForWaybill.order?.delivery?.tracking_number || selectedOrderForWaybill.order?.order_number}`
+                                            : `https://bagooph.shop/track/${selectedOrderForWaybill.order?.delivery?.tracking_number || selectedOrderForWaybill.order?.order_number}`}
+                                        size={72}
+                                        level="M"
+                                    />
+                                </div>
                             </div>
 
                             {/* Origin & Destination */}
@@ -1196,6 +1235,78 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             >
                                 <Printer className="w-4 h-4" />
                                 <span>Print Thermal Label</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* QUICK PARCEL QR CODE MODAL FOR COURIER / TRACKING */}
+            {typeof document !== 'undefined' && selectedOrderForQr && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 my-auto space-y-5 text-center font-sans">
+                        
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
+                                <QrCode className="w-4 h-4" />
+                                <span>Parcel Handover QR</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedOrderForQr(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-1">
+                            <h3 className="font-bold text-slate-900 text-base">
+                                Order #{selectedOrderForQr.order?.order_number}
+                            </h3>
+                            <p className="text-xs text-slate-500 font-mono">
+                                Tracking: {selectedOrderForQr.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForQr.order?.order_number}`}
+                            </p>
+                        </div>
+
+                        {/* Large Scannable QR Code */}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl inline-block mx-auto shadow-inner">
+                            <QRCodeSVG
+                                value={typeof window !== 'undefined'
+                                    ? `${window.location.origin}/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`
+                                    : `https://bagooph.shop/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`}
+                                size={180}
+                                level="M"
+                                includeMargin={true}
+                            />
+                        </div>
+
+                        <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                            Visiting couriers can scan this QR code directly from your screen with their mobile camera to log instant pickup handover.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs font-mono">
+                            <a
+                                href={`/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                                <span>Open Tracker</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const trk = selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number;
+                                    copyToClipboard(trk);
+                                    setSelectedOrderForQr(null);
+                                }}
+                                className="py-2.5 px-3 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Code</span>
                             </button>
                         </div>
                     </div>
