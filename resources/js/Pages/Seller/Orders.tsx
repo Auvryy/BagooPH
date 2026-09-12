@@ -548,10 +548,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             return (
                                 <div
                                     key={item.id}
-                                    className={`rounded-2xl border p-4 sm:p-5 transition space-y-3 font-sans ${
+                                    className={`rounded-2xl border p-4 sm:p-5 space-y-3 font-sans ${
                                         isToPack
-                                            ? 'bg-rose-50/15 border-rose-200/80 border-l-[3px] border-l-[#E00D42] shadow-2xs hover:border-rose-300/80'
-                                            : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
+                                            ? 'bg-rose-50/15 border-rose-200/80 border-l-[3px] border-l-[#E00D42] shadow-2xs'
+                                            : 'bg-white border-slate-200/90 shadow-2xs'
                                     }`}
                                 >
                                     {/* Order Top Bar */}
