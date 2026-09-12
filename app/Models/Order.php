@@ -49,6 +49,16 @@ class Order extends Model
         $this->attributes['status'] = $value !== null ? strtolower(trim((string) $value)) : null;
     }
 
+    public function getCancellationReasonAttribute(): ?string
+    {
+        return $this->attributes['cancellation_reason'] ?? $this->notes ?? null;
+    }
+
+    public function setCancellationReasonAttribute($value): void
+    {
+        $this->attributes['notes'] = $value;
+    }
+
     public function getUserIdAttribute(): ?int
     {
         return $this->buyer_id !== null ? (int) $this->buyer_id : null;

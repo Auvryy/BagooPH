@@ -1,7 +1,8 @@
 # GEMINI.md - Project Guidelines & Master Context
 
-> **INSTRUCTION FOR AI ASSISTANTS:**
-> This project follows the exact curriculum requirements provided by the instructor. Keep features grounded, clean, and directly aligned with the specifications. Do not add unnecessary third-party services or over-complicated systems.
+> **CRITICAL INSTRUCTION FOR AI ASSISTANTS:**
+> 1. NEVER EVER COMMIT TO GIT: The assistant must NEVER run `git commit`, `git add`, or commit code autonomously under ANY circumstance. Only the user is allowed to commit. Always leave changes in the working directory and provide a suggested git commit command for the user to execute.
+> 2. This project follows the exact curriculum requirements provided by the instructor. Keep features grounded, clean, and directly aligned with the specifications. Do not add unnecessary third-party services or over-complicated systems.
 
 ---
 
