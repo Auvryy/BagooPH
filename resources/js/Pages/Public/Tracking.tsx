@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { QRCodeSVG } from 'qrcode.react';
+import Barcode from '@/Components/Barcode';
 import BagooLogo from '@/Components/BagooLogo';
 import { PageProps } from '@/types';
 import {
@@ -514,6 +516,42 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                             </span>
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Digital Scannable Waybill Identifiers */}
+                                <div className="bg-slate-50/70 border border-slate-200/90 rounded-3xl p-5 space-y-3.5">
+                                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                                        <div className="flex items-center gap-2">
+                                            <QrCode className="w-4 h-4 text-[#E00D42]" />
+                                            <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">Digital Waybill Codes</span>
+                                        </div>
+                                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">Code 128 + QR</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {/* 1D Laser Barcode */}
+                                        <div className="bg-white p-3 rounded-2xl border border-slate-200/80 flex flex-col items-center justify-center gap-1 shadow-2xs overflow-hidden">
+                                            <Barcode
+                                                value={parcel.tracking_number}
+                                                height={34}
+                                                width={1.5}
+                                                className="max-w-full h-8 object-contain"
+                                            />
+                                            <p className="text-[11px] font-mono font-bold text-slate-800 tracking-wider">
+                                                {parcel.tracking_number}
+                                            </p>
+                                        </div>
+                                        {/* 2D QR Matrix */}
+                                        <div className="bg-white p-3 rounded-2xl border border-slate-200/80 flex items-center justify-center shadow-2xs">
+                                            <QRCodeSVG
+                                                value={typeof window !== 'undefined' ? window.location.href : `https://bagooph.shop/track/${parcel.tracking_number}`}
+                                                size={108}
+                                                level="M"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-mono text-center">
+                                        Scannable by optical warehouse laser guns and mobile camera apps.
+                                    </p>
                                 </div>
 
                                 {/* Security & Trust Guarantee */}

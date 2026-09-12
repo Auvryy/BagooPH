@@ -26,7 +26,9 @@
         "vite": "^6.1.0"
     },
     "dependencies": {
+        "@types/jsbarcode": "^3.11.4",
         "@types/three": "^0.185.4",
+        "jsbarcode": "^3.12.3",
         "qrcode.react": "^4.2.0",
         "three": "^0.185.1"
     }
