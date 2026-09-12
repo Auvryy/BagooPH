@@ -27,6 +27,7 @@
     },
     "dependencies": {
         "@types/three": "^0.185.4",
+        "qrcode.react": "^4.2.0",
         "three": "^0.185.1"
     }
 }
