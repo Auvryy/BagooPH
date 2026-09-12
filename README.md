@@ -7,6 +7,12 @@
 
 ---
 
+## Developer Notice & AI Assistant Guidelines
+
+> **IMPORTANT:** AI assistants working on this repository must NEVER run `git commit`, `git add`, or commit code autonomously. Only the human developer is authorized to commit changes to git. Always leave changes in the working directory for the user to review and commit.
+
+---
+
 ## Overview & Architecture
 
 **Bagoo** is a modern e-commerce application featuring Role-Based Access Control (RBAC) across distinct user workflows:

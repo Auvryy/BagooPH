@@ -499,9 +499,9 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </div>
                             <Link 
                                 href={route('seller.orders.index')} 
-                                className="text-[11px] font-bold font-mono text-[#E00D42] hover:underline uppercase"
+                                className="text-[11px] font-bold font-mono text-[#E00D42] hover:underline uppercase inline-flex items-center gap-1"
                             >
-                                View Orders ➔
+                                View Orders <ArrowRight className="w-3 h-3" />
                             </Link>
                         </div>
 
@@ -674,11 +674,20 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             </div>
                                         </div>
 
-                                        <div className="text-right shrink-0 space-y-1">
-                                            <span className="font-black text-slate-900 font-sans text-sm block">{formatPrice(item.subtotal)}</span>
-                                            <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] uppercase font-bold">
-                                                {item.order?.status || 'Processing'}
-                                            </span>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <div className="text-right space-y-0.5">
+                                                <span className="font-black text-slate-900 font-sans text-sm block">{formatPrice(item.subtotal)}</span>
+                                                <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] uppercase font-bold">
+                                                    {item.order?.status || 'Processing'}
+                                                </span>
+                                            </div>
+                                            <Link
+                                                href={route('seller.orders.index')}
+                                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold font-mono transition shadow-2xs cursor-pointer"
+                                                title="Open in Orders Fulfillment"
+                                            >
+                                                Manage
+                                            </Link>
                                         </div>
                                     </div>
                                 ))}

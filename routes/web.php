@@ -62,13 +62,18 @@ $registerSellerRoutes = function () {
         Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
         Route::get('/orders', [SellerOrderController::class, 'index']);
+        Route::post('/orders/{order}/accept', [SellerOrderController::class, 'accept']);
         Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack']);
         Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
+        Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover']);
+        Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel']);
+        Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady']);
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
         Route::post('/vouchers', [SellerVoucherController::class, 'store']);
         Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle']);
-        Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
         Route::get('/messages', [ChatController::class, 'sellerInbox']);
+        Route::post('/messages', [ChatController::class, 'sendMessage']);
+        Route::post('/chat/send', [ChatController::class, 'sendMessage']);
         Route::get('/reviews', [SellerReviewController::class, 'index']);
         Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply']);
         Route::get('/disputes', [SellerDisputeController::class, 'index']);
@@ -80,8 +85,11 @@ $registerSellerRoutes = function () {
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
-        Route::get('/seller/dashboard', fn() => redirect('/dashboard'));
-        Route::get('/seller/orders', fn() => redirect('/orders'));
+        Route::get('/seller/dashboard', function (\Illuminate\Http\Request $request) {
+            $qs = $request->getQueryString();
+            return redirect('/dashboard' . ($qs ? '?' . $qs : ''));
+        });
+        Route::get('/seller/orders', [SellerOrderController::class, 'index']);
     });
 };
 
@@ -304,8 +312,12 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders/{order}/accept', [SellerOrderController::class, 'accept'])->name('orders.accept');
     Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack'])->name('orders.pack');
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
+    Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover'])->name('orders.handover');
+    Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady'])->name('orders.batchReady');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
