@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\OtpVerificationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -51,6 +52,17 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    // Email OTP Verification Endpoints
+    Route::post('otp/send', [OtpVerificationController::class, 'send'])->name('otp.send');
+    Route::post('otp/verify', [OtpVerificationController::class, 'verify'])->name('otp.verify');
+    Route::post('otp/resend', [OtpVerificationController::class, 'resend'])->name('otp.resend');
+    Route::post('password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->name('password.reset.otp');
+
+    Route::post('api/otp/send', [OtpVerificationController::class, 'send'])->name('api.otp.send');
+    Route::post('api/otp/verify', [OtpVerificationController::class, 'verify'])->name('api.otp.verify');
+    Route::post('api/otp/resend', [OtpVerificationController::class, 'resend'])->name('api.otp.resend');
+    Route::post('api/password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->name('api.password.reset.otp');
 });
 
 Route::middleware('auth')->group(function () {

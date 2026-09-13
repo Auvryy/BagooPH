@@ -23,12 +23,14 @@ import {
 import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import OtpModal from '@/Components/OtpModal';
 
 export default function SellerRegister() {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const permitInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +40,7 @@ export default function SellerRegister() {
     const [permitFileName, setPermitFileName] = useState<string | null>(null);
     const [permitFileSize, setPermitFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm<{
+    const { data, setData, post, processing, errors, reset, transform } = useForm<{
         name: string;
         shop_name: string;
         email: string;
@@ -53,6 +55,7 @@ export default function SellerRegister() {
         password_confirmation: string;
         id_document: File | null;
         business_permit: File | null;
+        otp_token: string;
     }>({
         name: '',
         shop_name: '',
@@ -68,6 +71,7 @@ export default function SellerRegister() {
         password_confirmation: '',
         id_document: null,
         business_permit: null,
+        otp_token: '',
     });
 
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,6 +159,25 @@ export default function SellerRegister() {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
+        // Prompt seller with 6-digit email OTP modal before account creation
+        if (!data.otp_token) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        post(route('register'), {
+            forceFormData: true,
+            onFinish: () => reset('password', 'password_confirmation'),
+        });
+    };
+
+    const handleOtpSuccess = (token: string) => {
+        setShowOtpModal(false);
+        setData('otp_token', token);
+        transform((prevData) => ({
+            ...prevData,
+            otp_token: token,
+        }));
         post(route('register'), {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
@@ -589,6 +612,14 @@ export default function SellerRegister() {
                     </p>
                 </div>
             </form>
+
+            <OtpModal
+                isOpen={showOtpModal}
+                email={data.email}
+                purpose="registration"
+                onSuccess={handleOtpSuccess}
+                onClose={() => setShowOtpModal(false)}
+            />
         </GuestLayout>
     );
 }

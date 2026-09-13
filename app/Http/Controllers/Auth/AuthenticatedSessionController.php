@@ -94,6 +94,12 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Buyers are never blocked from entering the marketplace upon login.
+        // Their KYC verification is enforced at checkout when attempting to purchase.
+        if ($user->isBuyer()) {
+            return redirect()->intended(route('buyer.index', absolute: false));
+        }
+
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
             return redirect()->route('kyc.pending');
         }
