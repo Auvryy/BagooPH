@@ -22,18 +22,20 @@ import {
 import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import OtpModal from '@/Components/OtpModal';
 
 export default function Register() {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const [fileSize, setFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm<{
+    const { data, setData, post, processing, errors, reset, transform } = useForm<{
         first_name: string;
         middle_name: string;
         last_name: string;
@@ -51,6 +53,7 @@ export default function Register() {
         address: string;
         role: 'buyer';
         id_document: File | null;
+        otp_token: string;
     }>({
         first_name: '',
         middle_name: '',
@@ -69,6 +72,7 @@ export default function Register() {
         address: '',
         role: 'buyer',
         id_document: null,
+        otp_token: '',
     });
 
     const calculateAge = (birthDateString: string) => {
@@ -173,6 +177,25 @@ export default function Register() {
             return;
         }
 
+        // Prompt user with 6-digit email OTP modal before account creation
+        if (!data.otp_token) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        post(route('register'), {
+            forceFormData: true,
+            onFinish: () => reset('password', 'password_confirmation'),
+        });
+    };
+
+    const handleOtpSuccess = (token: string) => {
+        setShowOtpModal(false);
+        setData('otp_token', token);
+        transform((prevData) => ({
+            ...prevData,
+            otp_token: token,
+        }));
         post(route('register'), {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
@@ -576,6 +599,14 @@ export default function Register() {
                     </Link>
                 </p>
             </div>
+
+            <OtpModal
+                isOpen={showOtpModal}
+                email={data.email}
+                purpose="registration"
+                onSuccess={handleOtpSuccess}
+                onClose={() => setShowOtpModal(false)}
+            />
         </GuestLayout>
     );
 }

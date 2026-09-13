@@ -25,12 +25,14 @@ import {
 import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import OtpModal from '@/Components/OtpModal';
 
 export default function CourierRegister() {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const licenseInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +47,7 @@ export default function CourierRegister() {
     const [orCrFileName, setOrCrFileName] = useState<string | null>(null);
     const [orCrFileSize, setOrCrFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm<{
+    const { data, setData, post, processing, errors, reset, transform } = useForm<{
         name: string;
         email: string;
         phone: string;
@@ -63,6 +65,7 @@ export default function CourierRegister() {
         id_document: File | null;
         driver_license: File | null;
         or_cr_document: File | null;
+        otp_token: string;
     }>({
         name: '',
         email: '',
@@ -81,6 +84,7 @@ export default function CourierRegister() {
         id_document: null,
         driver_license: null,
         or_cr_document: null,
+        otp_token: '',
     });
 
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +194,25 @@ export default function CourierRegister() {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
+        // Prompt courier with 6-digit email OTP modal before account creation
+        if (!data.otp_token) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        post(route('register'), {
+            forceFormData: true,
+            onFinish: () => reset('password', 'password_confirmation'),
+        });
+    };
+
+    const handleOtpSuccess = (token: string) => {
+        setShowOtpModal(false);
+        setData('otp_token', token);
+        transform((prevData) => ({
+            ...prevData,
+            otp_token: token,
+        }));
         post(route('register'), {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
@@ -715,6 +738,14 @@ export default function CourierRegister() {
                     </p>
                 </div>
             </form>
+
+            <OtpModal
+                isOpen={showOtpModal}
+                email={data.email}
+                purpose="registration"
+                onSuccess={handleOtpSuccess}
+                onClose={() => setShowOtpModal(false)}
+            />
         </GuestLayout>
     );
 }
