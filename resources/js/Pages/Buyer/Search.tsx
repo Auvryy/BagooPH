@@ -448,7 +448,7 @@ export default function SearchPage({
                                             <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Trending Products You Might Like</h4>
                                         </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
                                             {relatedProducts.map((product) => (
                                                 <ProductCard
                                                     key={product.id}
@@ -461,7 +461,7 @@ export default function SearchPage({
                                 )}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
                                 {products.data.map((product) => (
                                     <ProductCard
                                         key={product.id}
@@ -479,7 +479,7 @@ export default function SearchPage({
                                     <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                     <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
                                     {relatedProducts.map((p) => (
                                         <ProductCard
                                             key={p.id}
