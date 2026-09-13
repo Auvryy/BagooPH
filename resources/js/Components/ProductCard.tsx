@@ -55,7 +55,7 @@ export default function ProductCard({
             href={targetUrl}
             className={`group bg-white rounded-xl border border-slate-200/90 overflow-hidden hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
         >
-            {/* 1. Unobstructed Product Image (Zero overlays/badges on top of image) */}
+            {/* 1. Product Image Container with Discount Badge at bottom of image */}
             <div className="relative aspect-square bg-slate-100 overflow-hidden">
                 {product.featured_image ? (
                     <img
@@ -70,22 +70,26 @@ export default function ProductCard({
                         <span className="text-[9px] font-mono text-slate-400 mt-1 uppercase">No Preview</span>
                     </div>
                 )}
+
+                {/* Discount Tag inside the image at the bottom */}
+                {discountPct && (
+                    <div className="absolute bottom-2 right-2 pointer-events-none">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
+                            -{discountPct}%
+                        </span>
+                    </div>
+                )}
             </div>
 
-            {/* 2. Compact Info Area (All tags, price, and location below image) */}
+            {/* 2. Compact Info Area */}
             <div className="p-2.5 sm:p-3 space-y-1.5 font-sans flex-1 flex flex-col justify-between">
                 <div className="space-y-1">
-                    {/* Tags placed below image */}
+                    {/* Free Delivery Tag below image */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono text-[8px] font-bold uppercase flex items-center gap-1">
                             <Truck className="w-2.5 h-2.5" />
                             <span>Free Delivery</span>
                         </span>
-                        {discountPct && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200/80 font-mono text-[8.5px] font-black">
-                                -{discountPct}%
-                            </span>
-                        )}
                     </div>
 
                     {/* Product Name */}
