@@ -69,7 +69,7 @@ class SellerProductController extends Controller
         ]);
 
         $defaultFallback = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-        $slug = Str::slug($validated['name']) . '-' . rand(1000, 9999);
+        $slug = Product::generateUniqueSlug($validated['name']);
 
         // Auto-generate SKU if left blank by the seller
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
