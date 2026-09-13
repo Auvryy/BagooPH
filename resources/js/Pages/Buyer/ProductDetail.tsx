@@ -23,7 +23,8 @@ import {
     Camera,
     Image as ImageIcon,
     X,
-    ThumbsUp
+    ThumbsUp,
+    Copy
 } from 'lucide-react';
 
 import { useAmbientColor } from '@/Hooks/useAmbientColor';
@@ -86,6 +87,69 @@ export default function BuyerProductDetail({
     const [copiedVoucher, setCopiedVoucher] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [copiedShareLink, setCopiedShareLink] = useState(false);
+    const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+
+    const getShareUrl = () => {
+        if (typeof window !== 'undefined') {
+            return `${window.location.origin}/product/${product.slug}`;
+        }
+        return `/product/${product.slug}`;
+    };
+
+    const handleShare = async () => {
+        const shareUrl = getShareUrl();
+
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title: `${product.name} | BagooPH`,
+                    text: `Check out ${product.name} on BagooPH`,
+                    url: shareUrl,
+                });
+                return;
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
+            }
+        }
+
+        handleCopyShareLink();
+    };
+
+    const handleCopyShareLink = async () => {
+        const shareUrl = getShareUrl();
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopiedShareLink(true);
+            setTimeout(() => setCopiedShareLink(false), 2500);
+        }
+    };
+
+    const openSocialShare = (platform: 'facebook' | 'twitter' | 'whatsapp' | 'telegram') => {
+        setIsShareMenuOpen(false);
+        const url = encodeURIComponent(getShareUrl());
+        const text = encodeURIComponent(`Check out ${product.name} on BagooPH!`);
+
+        let targetUrl = '';
+        switch (platform) {
+            case 'facebook':
+                targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+                break;
+            case 'twitter':
+                targetUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+                break;
+            case 'whatsapp':
+                targetUrl = `https://api.whatsapp.com/send?text=${text}%20${url}`;
+                break;
+            case 'telegram':
+                targetUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+                break;
+        }
+
+        if (targetUrl && typeof window !== 'undefined') {
+            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=450');
+        }
+    };
 
     // Dynamic Ambient Color Extraction
     const { ambientGlow, subtleBackground, accentColor } = useAmbientColor(
@@ -248,11 +312,68 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* Share & Wishlist Bar */}
-                        <div className="flex items-center justify-between pt-2 text-xs font-mono text-slate-500 border-t border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <span>Share:</span>
-                                <button type="button" className="hover:text-[#E00D42] transition"><Share2 className="w-4 h-4" /></button>
-                                <button type="button" className="hover:text-[#E00D42] transition"><Heart className="w-4 h-4" /></button>
+                        <div className="flex items-center justify-between pt-2.5 text-xs font-mono text-slate-500 border-t border-slate-100">
+                            <div className="relative flex items-center gap-2">
+                                <span className="text-slate-400 font-bold uppercase text-[10px]">Share:</span>
+                                <button
+                                    type="button"
+                                    onClick={handleCopyShareLink}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer text-[11px] font-semibold"
+                                    title="Copy product link to clipboard"
+                                >
+                                    {copiedShareLink ? (
+                                        <>
+                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                            <span className="text-emerald-600 font-bold">Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>Copy Link</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+                                    className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-[#E00D42] transition cursor-pointer"
+                                    title="More sharing options"
+                                >
+                                    <Share2 className="w-4 h-4" />
+                                </button>
+
+                                {isShareMenuOpen && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-44 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-30 space-y-0.5 text-[11px] font-sans">
+                                        <button
+                                            type="button"
+                                            onClick={() => openSocialShare('facebook')}
+                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-blue-600 font-medium transition cursor-pointer"
+                                        >
+                                            Share to Facebook
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openSocialShare('twitter')}
+                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-slate-950 font-medium transition cursor-pointer"
+                                        >
+                                            Share to X
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openSocialShare('whatsapp')}
+                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-emerald-600 font-medium transition cursor-pointer"
+                                        >
+                                            Share to WhatsApp
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openSocialShare('telegram')}
+                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-sky-600 font-medium transition cursor-pointer"
+                                        >
+                                            Share to Telegram
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex items-center gap-1 text-[#E00D42] font-bold">
                                 <ShieldCheck className="w-4 h-4" />
@@ -273,9 +394,22 @@ export default function BuyerProductDetail({
                                 <span className="text-xs text-slate-400 font-mono">SKU: {product.sku || 'BGO-7721-PH'}</span>
                             </div>
 
-                            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
-                                {product.name}
-                            </h1>
+                            <div className="flex items-start justify-between gap-3">
+                                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                                    {product.name}
+                                </h1>
+                                <button
+                                    type="button"
+                                    onClick={handleShare}
+                                    title="Share product link"
+                                    className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:text-[#E00D42] hover:border-slate-300 hover:bg-slate-50 transition shrink-0 cursor-pointer flex items-center gap-1.5"
+                                >
+                                    <Share2 className="w-4 h-4" />
+                                    <span className="text-xs font-mono font-semibold hidden sm:inline">
+                                        {copiedShareLink ? 'Copied' : 'Share'}
+                                    </span>
+                                </button>
+                            </div>
 
                             <div className="flex items-center gap-4 text-xs font-mono pt-1">
                                 <div className="flex items-center gap-1 text-[#E00D42] font-bold">
@@ -675,6 +809,14 @@ export default function BuyerProductDetail({
                 shopName={product.shop?.name}
                 product={product}
             />
+
+            {/* Floating Toast for Copied Link */}
+            {copiedShareLink && (
+                <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-mono px-4 py-2.5 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2 animate-fade-in pointer-events-none">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Product link copied to clipboard</span>
+                </div>
+            )}
         </BuyerLayout>
     );
 }
