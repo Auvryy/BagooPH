@@ -203,6 +203,11 @@ class RegisteredUserController extends Controller
     {
         $user = $request->user();
 
+        // Buyers are never held at the pending approval screen
+        if ($user->isBuyer()) {
+            return redirect()->route('buyer.index');
+        }
+
         // If user is already active and approved, redirect to their role dashboard
         if ($user->kyc_status === 'approved' && $user->status === 'active') {
             return redirect()->route('dashboard');
