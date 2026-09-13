@@ -71,27 +71,24 @@ export default function ProductCard({
                     </div>
                 )}
 
-                {/* Discount Tag inside the image at the bottom */}
-                {discountPct && (
-                    <div className="absolute bottom-2 right-2 pointer-events-none">
+                {/* Badges inside the image at the bottom */}
+                <div className="absolute bottom-2 inset-x-2 flex items-center justify-between pointer-events-none gap-1">
+                    <span className="px-1.5 py-0.5 rounded bg-white/95 backdrop-blur-xs text-emerald-700 font-mono text-[8px] font-bold uppercase flex items-center gap-1 shadow-2xs border border-emerald-200/60">
+                        <Truck className="w-2.5 h-2.5" />
+                        <span>Free Delivery</span>
+                    </span>
+
+                    {discountPct && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
                             -{discountPct}%
                         </span>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* 2. Compact Info Area */}
             <div className="p-2.5 sm:p-3 space-y-1.5 font-sans flex-1 flex flex-col justify-between">
                 <div className="space-y-1">
-                    {/* Free Delivery Tag below image */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono text-[8px] font-bold uppercase flex items-center gap-1">
-                            <Truck className="w-2.5 h-2.5" />
-                            <span>Free Delivery</span>
-                        </span>
-                    </div>
-
                     {/* Product Name */}
                     <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-[#E00D42] transition-colors line-clamp-2 leading-tight">
                         {product.name}
