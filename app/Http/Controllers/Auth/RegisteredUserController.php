@@ -133,9 +133,20 @@ class RegisteredUserController extends Controller
             }
         }
 
+        // Verify and burn OTP token if provided
+        $otpToken = $request->input('otp_token');
+        $emailVerifiedAt = null;
+        if ($otpToken) {
+            $otpService = app(\App\Services\OtpService::class);
+            if ($otpService->validateAndBurnToken($validated['email'], $otpToken, 'registration')) {
+                $emailVerifiedAt = now();
+            }
+        }
+
         // Create User with appropriate role status
         $user = User::create([
             'name' => $validated['name'],
+            'email_verified_at' => $emailVerifiedAt,
             'first_name' => $validated['first_name'] ?? null,
             'last_name' => $validated['last_name'] ?? null,
             'middle_name' => $validated['middle_name'] ?? null,
@@ -188,6 +199,10 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         if ($isBuyer) {
+            if ($emailVerifiedAt) {
+                Auth::login($user);
+                return redirect()->route('buyer.index')->with('success', 'Registration successful! Welcome to BagooPH.');
+            }
             return redirect()->route('login')->with('status', 'Registration successful! Please sign in to your new account.');
         }
 
