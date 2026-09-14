@@ -154,13 +154,13 @@ export default function BuyerLayout({
 
                         {/* Search Bar */}
                         <div className="flex-1 max-w-2xl hidden md:block">
-                            <form onSubmit={handleSearch} className="relative flex items-center">
+                            <form onSubmit={handleSearch} className="relative flex items-center h-11">
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search 14 departments, curated gear, or trending brands..."
-                                    className="w-full pl-4 pr-28 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
+                                    className="w-full h-11 pl-4 pr-28 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
                                 />
                                 {searchQuery && (
                                     <button
@@ -190,14 +190,14 @@ export default function BuyerLayout({
                             {/* CHAT BUTTON */}
                             <Link 
                                 href={auth.user ? route('buyer.messages') : route('login')} 
-                                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.messages') || route().current('messages')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
                                 }`}
                                 title="In-App Chat & Inquiries"
                             >
-                                <div className="relative">
+                                <div className="relative flex items-center">
                                     <MessageSquare className="w-4 h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
                                     {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
                                         <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
@@ -217,7 +217,7 @@ export default function BuyerLayout({
                             {/* BAG BUTTON */}
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.cart')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
@@ -241,16 +241,16 @@ export default function BuyerLayout({
                                 >
                                     <Link
                                         href={route('buyer.profile', { tab: 'orders' })}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-xs font-bold shadow-2xs focus:outline-hidden group"
+                                        className="h-11 flex items-center gap-2 px-3.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-xs font-bold shadow-2xs focus:outline-hidden group"
                                     >
                                         {auth.user.avatar ? (
                                             <img
                                                 src={auth.user.avatar}
                                                 alt={auth.user.name}
-                                                className="w-5 h-5 rounded-md object-cover border border-slate-200 shrink-0"
+                                                className="w-6 h-6 rounded-md object-cover border border-slate-200 shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-5 h-5 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                                            <div className="w-6 h-6 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center shrink-0">
                                                 {auth.user.name.charAt(0).toUpperCase()}
                                             </div>
                                         )}
@@ -334,13 +334,13 @@ export default function BuyerLayout({
                                 <div className="flex items-center gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 
-                                        className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs"
+                                        className="h-11 flex items-center px-4 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs"
                                     >
                                         Sign In
                                     </Link>
                                     <Link 
                                         href={route('register')} 
-                                        className="px-4 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs"
+                                        className="h-11 flex items-center px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs"
                                     >
                                         Register
                                     </Link>
