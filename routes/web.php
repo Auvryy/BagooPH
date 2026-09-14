@@ -305,6 +305,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
 
     // Live Chat / Messaging Endpoints
+    Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
     Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 });

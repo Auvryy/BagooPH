@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import GrainOverlay from '@/Components/GrainOverlay';
+import ProductCard from '@/Components/ProductCard';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { 
     Search, 
@@ -152,9 +153,11 @@ export default function Catalog({ products, categories, activeShipment, filters 
         applyFilters({ in_stock: next ? '1' : undefined });
     };
 
-    const handleAddToCart = (e: React.MouseEvent, productId: number) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleAddToCart = (productId: number, e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         setAddingProductId(productId);
 
         router.post(route('cart.store'), {
@@ -444,143 +447,14 @@ export default function Catalog({ products, categories, activeShipment, filters 
                             </button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {products.data.map((product) => {
-                                const isAdding = addingProductId === product.id;
-                                const isSuccess = addedSuccessId === product.id;
-                                const priceNum = Number(product.price);
-                                const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
-                                const discountPct = compareNum && compareNum > priceNum 
-                                    ? Math.round(((compareNum - priceNum) / compareNum) * 100)
-                                    : null;
-
-                                return (
-                                    <div
-                                        key={product.id}
-                                        className="group bg-white rounded-xl border border-black/15 overflow-hidden flex flex-col justify-between hover:shadow-xl hover:border-black/30 transition duration-300 relative"
-                                    >
-                                        {/* Precision Crosshair Corner Accents */}
-                                        <span className="absolute top-2 left-2 text-black/20 font-mono text-[9px] select-none pointer-events-none">+</span>
-                                        <span className="absolute top-2 right-2 text-black/20 font-mono text-[9px] select-none pointer-events-none">+</span>
-
-                                        <div>
-                                            {/* Product Thumbnail Container */}
-                                            <Link href={route('products.show', product.slug)} className="block relative aspect-square bg-[#F4F2EC] overflow-hidden">
-                                                <img
-                                                    src={product.featured_image || ''}
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                                />
-
-                                                {/* Top Badges */}
-                                                <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-1 pointer-events-none">
-                                                    {product.category && (
-                                                        <span className="px-2 py-0.5 rounded bg-black/80 backdrop-blur-xs text-white font-mono text-[9px] font-bold uppercase tracking-wider">
-                                                            {product.category.name}
-                                                        </span>
-                                                    )}
-
-                                                    {discountPct && (
-                                                        <span className="px-2 py-0.5 rounded bg-[#E00D42] text-white font-mono text-[10px] font-black tracking-wider shadow-xs">
-                                                            -{discountPct}%
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Stock Status Badge */}
-                                                <div className="absolute bottom-3 left-3 pointer-events-none">
-                                                    {product.stock > 0 ? (
-                                                        <span className="px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-black font-mono text-[9px] font-bold uppercase flex items-center gap-1 shadow-2xs">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                            <span>{product.stock <= 20 ? `LOW: ${product.stock} UNITS` : `${product.stock} IN STOCK`}</span>
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white font-mono text-[9px] font-bold uppercase">
-                                                            OUT OF STOCK
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </Link>
-
-                                            {/* Product Details Section */}
-                                            <div className="p-4 space-y-2 font-mono">
-                                                
-                                                {/* Shop & Rating Info */}
-                                                <div className="flex items-center justify-between text-[10px] text-black/60 uppercase">
-                                                    {product.shop ? (
-                                                        <Link 
-                                                            href={route('shop.show', product.shop.slug)}
-                                                            className="flex items-center gap-1 font-bold text-black hover:text-[#E00D42] transition truncate max-w-[140px]"
-                                                        >
-                                                            <Store className="w-3 h-3 text-[#E00D42]" />
-                                                            <span className="truncate">{product.shop.name}</span>
-                                                        </Link>
-                                                    ) : (
-                                                        <span>Official Store</span>
-                                                    )}
-
-                                                    <div className="flex items-center gap-1 text-black font-bold">
-                                                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                                        <span>{Number(product.rating || 5.0).toFixed(1)}</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Product Title */}
-                                                <Link 
-                                                    href={route('products.show', product.slug)}
-                                                    className="block font-sans font-bold text-sm text-black group-hover:text-[#E00D42] transition line-clamp-2 leading-snug"
-                                                >
-                                                    {product.name}
-                                                </Link>
-
-                                                {/* Price Section */}
-                                                <div className="pt-1 flex items-baseline gap-2">
-                                                    <span className="text-base font-black font-sans text-black">
-                                                        {formatPrice(product.price)}
-                                                    </span>
-                                                    {product.compare_at_price && product.compare_at_price > product.price && (
-                                                        <span className="text-xs text-black/40 line-through">
-                                                            {formatPrice(product.compare_at_price)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Bottom Action Footer */}
-                                        <div className="p-4 pt-0">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => handleAddToCart(e, product.id)}
-                                                disabled={isAdding || product.stock <= 0}
-                                                className={`w-full py-2.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-2xs ${
-                                                    isSuccess
-                                                        ? 'bg-emerald-600 text-white'
-                                                        : product.stock <= 0
-                                                            ? 'bg-black/10 text-black/40 cursor-not-allowed'
-                                                            : 'bg-black hover:bg-[#E00D42] text-white active:scale-[0.98]'
-                                                }`}
-                                            >
-                                                {isSuccess ? (
-                                                    <>
-                                                        <Check className="w-3.5 h-3.5" />
-                                                        <span>Added to Bag</span>
-                                                    </>
-                                                ) : isAdding ? (
-                                                    <span>Adding...</span>
-                                                ) : product.stock <= 0 ? (
-                                                    <span>Unavailable</span>
-                                                ) : (
-                                                    <>
-                                                        <ShoppingBag className="w-3.5 h-3.5" />
-                                                        <span>Add to Bag</span>
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4">
+                            {products.data.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    href={route('products.show', product.slug)}
+                                />
+                            ))}
                         </div>
                     )}
 

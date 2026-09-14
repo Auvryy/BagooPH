@@ -156,9 +156,25 @@ class MarketplaceController extends Controller
     public function show(string $slug): Response
     {
         $product = Product::with(['shop', 'category', 'images', 'reviews.buyer'])
-            ->where('slug', $slug)
             ->where('status', 'active')
-            ->firstOrFail();
+            ->where(function ($q) use ($slug) {
+                $q->where('slug', $slug);
+                if (is_numeric($slug)) {
+                    $q->orWhere('id', (int)$slug);
+                }
+            })
+            ->first();
+
+        if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
+            $product = Product::with(['shop', 'category', 'images', 'reviews.buyer'])
+                ->where('status', 'active')
+                ->where('id', (int)$matches[1])
+                ->first();
+        }
+
+        if (! $product) {
+            abort(404, 'Product not found.');
+        }
 
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)

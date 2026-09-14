@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import ProductCard from '@/Components/ProductCard';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Zap, 
@@ -517,8 +518,28 @@ export default function BuyerHome({
                         </div>
                     )}
 
+                    {/* Section Header when browsing naturally */}
+                    {!(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-slate-200/90 font-mono">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                        VERIFIED MARKETPLACE // DAILY DISCOVER
+                                    </span>
+                                </div>
+                                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-sans">
+                                    RECOMMENDED FOR YOU
+                                </h2>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                                Curated from <strong className="text-slate-900 font-bold">{feedProducts.total}</strong> active listings
+                            </div>
+                        </div>
+                    )}
+
                     {/* Filter & Sort Controls Toolbar */}
-                    <div className="bg-white rounded-xl p-3 shadow-xs border border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-mono text-xs">
+                    <div className="bg-white rounded-xl p-3 shadow-xs border border-slate-200/90 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-mono text-xs">
                         
                         {/* Left: Feed Sort Tabs */}
                         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
@@ -700,143 +721,44 @@ export default function BuyerHome({
                                         <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                         <h4 className="font-bold text-slate-900 text-sm uppercase">Recommended Products You Might Like</h4>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
-                                        {relatedProducts.map((product) => {
-                                            const priceNum = Number(product.price);
-                                            const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
-                                            const discountPct = compareNum && compareNum > priceNum 
-                                                ? Math.round(((compareNum - priceNum) / compareNum) * 100)
-                                                : null;
-
-                                            return (
-                                                <Link
-                                                    key={product.id}
-                                                    href={route('buyer.products.show', product.slug)}
-                                                    className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-[#E00D42]/50 transition duration-300 flex flex-col justify-between"
-                                                >
-                                                    <div className="block relative aspect-square bg-slate-100 overflow-hidden">
-                                                        <img
-                                                            src={product.featured_image || ''}
-                                                            alt={product.name}
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                                        />
-                                                        {discountPct && (
-                                                            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
-                                                                -{discountPct}%
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="p-2.5 space-y-1 font-sans">
-                                                        <h5 className="font-bold text-xs text-slate-800 group-hover:text-[#E00D42] transition line-clamp-2 leading-tight">
-                                                            {product.name}
-                                                        </h5>
-                                                        <span className="text-sm font-black text-[#E00D42] block">
-                                                            {formatPrice(product.price)}
-                                                        </span>
-                                                    </div>
-                                                </Link>
-                                            );
-                                        })}
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
+                                        {relatedProducts.map((product) => (
+                                            <ProductCard
+                                                key={product.id}
+                                                product={product}
+                                                href={route('buyer.products.show', product.slug)}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-                            {feedProducts.data.map((product) => {
-                                const priceNum = Number(product.price);
-                                const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
-                                const discountPct = compareNum && compareNum > priceNum 
-                                    ? Math.round(((compareNum - priceNum) / compareNum) * 100)
-                                    : null;
-
-                                return (
-                                    <Link
-                                        key={product.id}
-                                        href={route('buyer.products.show', product.slug)}
-                                        className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-[#E00D42]/50 transition duration-300 flex flex-col justify-between"
-                                    >
-                                        <div className="block relative aspect-square bg-slate-100 overflow-hidden">
-                                            <img
-                                                src={product.featured_image || ''}
-                                                alt={product.name}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                            />
-
-                                            {/* Mall & Discount Badges */}
-                                            <div className="absolute top-2 left-2 flex flex-col gap-1">
-                                                <span className="px-1.5 py-0.5 rounded bg-[#E00D42] text-white font-mono text-[9px] font-black tracking-wider shadow-2xs">
-                                                    MALL
-                                                </span>
-                                            </div>
-
-                                            {discountPct && (
-                                                <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
-                                                    -{discountPct}%
-                                                </span>
-                                            )}
-
-                                            {/* Free Shipping Tag */}
-                                            <div className="absolute bottom-2 left-2">
-                                                <span className="px-1.5 py-0.5 rounded bg-emerald-600/90 backdrop-blur-xs text-white font-mono text-[8px] font-bold uppercase flex items-center gap-0.5 shadow-2xs">
-                                                    <Truck className="w-2.5 h-2.5" /> FREE DELIVERY
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Product Info */}
-                                        <div className="p-3 space-y-2 font-sans flex-1 flex flex-col justify-between">
-                                            <div className="space-y-1">
-                                                <h4 className="font-bold text-xs text-slate-800 group-hover:text-[#E00D42] transition line-clamp-2 leading-tight">
-                                                    {product.name}
-                                                </h4>
-
-                                                {/* Price */}
-                                                <div className="flex items-baseline gap-1.5 pt-0.5">
-                                                    <span className="text-sm font-black text-[#E00D42]">
-                                                        {formatPrice(product.price)}
-                                                    </span>
-                                                    {compareNum && compareNum > priceNum && (
-                                                        <span className="text-[10px] text-slate-400 line-through">
-                                                            {formatPrice(product.compare_at_price)}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Rating & Sold count */}
-                                                <div className="flex items-center justify-between text-[10px] text-slate-500 font-sans pt-1">
-                                                    <div className="flex items-center gap-0.5 text-amber-500 font-bold">
-                                                        <Star className="w-3 h-3 fill-amber-400" />
-                                                        <span>{Number(product.rating || 5.0).toFixed(1)}</span>
-                                                    </div>
-                                                    <span className="text-slate-400">{product.sales_count ?? 120} sold</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                );
-                            })}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
+                            {feedProducts.data.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    href={route('buyer.products.show', product.slug)}
+                                />
+                            ))}
                         </div>
                     )}
 
                     {/* Related Products Discovery Feed (when search query produced matches) */}
                     {filters.search && feedProducts.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
-                        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-100 space-y-3 mt-8 font-mono">
+                        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-mono">
                             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                 <Sparkles className="w-4 h-4 text-[#E00D42]" />
-                                <h4 className="font-bold text-slate-900 text-xs uppercase">Related Products & Recommendations</h4>
+                                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
                                 {relatedProducts.map((p) => (
-                                    <Link
+                                    <ProductCard
                                         key={p.id}
+                                        product={p}
                                         href={route('buyer.products.show', p.slug)}
-                                        className="group rounded-lg border border-slate-200 p-2 hover:border-[#E00D42] transition flex flex-col justify-between"
-                                    >
-                                        <img src={p.featured_image || ''} alt={p.name} className="w-full aspect-square object-cover rounded-md mb-2 group-hover:scale-105 transition" />
-                                        <h5 className="font-sans font-bold text-xs text-slate-800 line-clamp-1 group-hover:text-[#E00D42]">{p.name}</h5>
-                                        <span className="font-black text-xs text-[#E00D42] mt-1">{formatPrice(p.price)}</span>
-                                    </Link>
+                                    />
                                 ))}
                             </div>
                         </div>
