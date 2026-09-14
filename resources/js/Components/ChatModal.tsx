@@ -57,11 +57,18 @@ export default function ChatModal({
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [inquirySent, setInquirySent] = useState(false);
+    const [cooldown, setCooldown] = useState(false);
+    const lastSendTimeRef = useRef<number>(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
+
+    useEffect(() => {
+        setInquirySent(false);
+    }, [product?.id]);
 
     useEffect(() => {
         if (isOpen && currentUser) {
@@ -83,10 +90,24 @@ export default function ChatModal({
         scrollToBottom();
     }, [messages]);
 
-    const sendMessagePayload = async (text: string, prodId?: number | null) => {
-        if (!text.trim() || sending || !currentUser) return;
+    const hasInquiredProduct = Boolean(
+        product && (
+            inquirySent || 
+            messages.some(m => (m as any).product_id === product.id || m.product?.id === product.id)
+        )
+    );
 
+    const sendMessagePayload = async (text: string, prodId?: number | null) => {
+        const now = Date.now();
+        if (now - lastSendTimeRef.current < 1200) {
+            return;
+        }
+        if (!text.trim() || sending || cooldown || !currentUser) return;
+
+        lastSendTimeRef.current = now;
         setSending(true);
+        setCooldown(true);
+        setTimeout(() => setCooldown(false), 1200);
 
         try {
             const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
@@ -100,15 +121,21 @@ export default function ChatModal({
                 body: JSON.stringify({
                     receiver_id: receiverId,
                     shop_id: shopId || product?.shop_id || product?.shop?.id || null,
-                    product_id: prodId !== undefined ? prodId : (product?.id || null),
+                    product_id: prodId !== undefined ? prodId : (hasInquiredProduct ? null : (product?.id || null)),
                     message: text.trim(),
                 }),
             });
 
             const data = await res.json();
             if (data.success && data.message) {
-                setMessages(prev => [...prev, data.message]);
+                setMessages(prev => {
+                    if (prev.some(m => m.id === data.message.id)) return prev;
+                    return [...prev, data.message];
+                });
                 setNewMessage('');
+                if (product && (prodId || !hasInquiredProduct)) {
+                    setInquirySent(true);
+                }
             }
         } catch (err) {
             console.error(err);
@@ -118,14 +145,22 @@ export default function ChatModal({
     };
 
     const handleSendProductInquiry = async () => {
-        if (!product || sending || !currentUser) return;
+        if (!product || sending || cooldown || !currentUser) return;
+        setInquirySent(true);
         const text = `Hello! I would like to inquire about this product: ${product.name} (PHP ${Number(product.price).toFixed(2)}).`;
         await sendMessagePayload(text, product.id);
     };
 
+    const handleSendSuggestion = async (quickText: string) => {
+        if (!product || sending || cooldown || !currentUser) return;
+        setInquirySent(true);
+        await sendMessagePayload(quickText, product.id);
+    };
+
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
-        sendMessagePayload(newMessage, product?.id || null);
+        const prodIdToAttach = hasInquiredProduct ? null : (product?.id || null);
+        sendMessagePayload(newMessage, prodIdToAttach);
     };
 
     if (!isOpen) return null;
@@ -170,16 +205,23 @@ export default function ChatModal({
                                 <span className="font-black text-[#E00D42]">PHP {Number(product.price).toFixed(2)}</span>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleSendProductInquiry}
-                            disabled={sending || !currentUser}
-                            className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-[10px] font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50"
-                            title="Send product details to seller"
-                        >
-                            <Send className="w-3 h-3" />
-                            <span>Send Item</span>
-                        </button>
+                        {hasInquiredProduct ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-[10px] font-bold uppercase tracking-wider shrink-0 flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                <span>Inquiry Sent</span>
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSendProductInquiry}
+                                disabled={sending || cooldown || !currentUser}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-[10px] font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Send product details to seller"
+                            >
+                                <Send className="w-3 h-3" />
+                                <span>Send Item</span>
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -213,13 +255,13 @@ export default function ChatModal({
                                     <MessageSquare className="w-10 h-10 mx-auto text-slate-300" />
                                     <p className="font-bold text-slate-700 font-sans text-sm">Direct Merchant Messaging</p>
                                     <p className="text-[11px]">Inquire about sizing, custom orders, or delivery details.</p>
-                                    {product && (
+                                    {product && !hasInquiredProduct && (
                                         <div className="pt-3">
                                             <button
                                                 type="button"
                                                 onClick={handleSendProductInquiry}
-                                                disabled={sending}
-                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] font-mono text-xs font-bold transition shadow-2xs cursor-pointer"
+                                                disabled={sending || cooldown}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] font-mono text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <Send className="w-3.5 h-3.5" />
                                                 <span>Send Product Inquiry to Merchant</span>
@@ -287,16 +329,16 @@ export default function ChatModal({
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Quick Inquiry Suggestion Chips (when chatting about product) */}
-                        {product && (
-                            <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-200/80 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+                        {/* Quick Inquiry Suggestion Chips (only for new inquiries, auto-dismisses after first suggestion sent) */}
+                        {product && !hasInquiredProduct && (
+                            <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-200/80 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0 animate-fade-in">
                                 {['Is this available?', 'When can you ship?', 'Are there other sizes/colors?'].map((quickText, idx) => (
                                     <button
                                         key={idx}
                                         type="button"
-                                        onClick={() => sendMessagePayload(quickText, product.id)}
-                                        disabled={sending}
-                                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-mono whitespace-nowrap transition cursor-pointer disabled:opacity-50"
+                                        onClick={() => handleSendSuggestion(quickText)}
+                                        disabled={sending || cooldown}
+                                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-mono whitespace-nowrap transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
                                     >
                                         {quickText}
                                     </button>
@@ -310,13 +352,13 @@ export default function ChatModal({
                                 type="text"
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder={product ? `Ask seller about ${product.name}...` : "Type your message to merchant..."}
+                                placeholder={product && !hasInquiredProduct ? `Ask seller about ${product.name}...` : "Type your message to merchant..."}
                                 className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans"
                             />
                             <button
                                 type="submit"
-                                disabled={!newMessage.trim() || sending}
-                                className="p-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer"
+                                disabled={!newMessage.trim() || sending || cooldown}
+                                className="p-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
                             >
                                 <Send className="w-4 h-4" />
                             </button>

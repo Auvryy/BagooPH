@@ -74,13 +74,33 @@ class ChatController extends Controller
             return back()->withErrors(['receiver_id' => 'Merchant recipient could not be found.']);
         }
 
+        // Anti-spam safeguard: prevent duplicate rapid identical messages within 2 seconds
+        $trimmedMessage = trim($validated['message']);
+        $recentDuplicate = Message::where('sender_id', $request->user()->id)
+            ->where('receiver_id', (int)$validated['receiver_id'])
+            ->where('message', $trimmedMessage)
+            ->where('created_at', '>=', now()->subSeconds(2))
+            ->first();
+
+        if ($recentDuplicate) {
+            $recentDuplicate->load(['sender', 'product.shop']);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $recentDuplicate,
+                    'is_duplicate' => true,
+                ]);
+            }
+            return back()->with('success', 'Message sent.');
+        }
+
         $msg = Message::create([
             'sender_id' => $request->user()->id,
             'receiver_id' => (int)$validated['receiver_id'],
             'shop_id' => $validated['shop_id'] ?? null,
             'product_id' => $validated['product_id'] ?? null,
             'order_id' => $validated['order_id'] ?? null,
-            'message' => trim($validated['message']),
+            'message' => $trimmedMessage,
             'is_read' => false,
         ]);
 
