@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import { PageProps } from '@/types';
 import { 
     MessageSquare, 
     Send, 
@@ -13,6 +14,20 @@ import {
     ShoppingBag, 
     ChevronRight 
 } from 'lucide-react';
+
+interface MessageItem {
+    id: number;
+    sender_id: number;
+    message: string;
+    created_at: string;
+    product?: {
+        id?: number;
+        name: string;
+        price: number;
+        featured_image: string;
+        slug?: string;
+    };
+}
 
 interface Conversation {
     user: {
@@ -28,12 +43,7 @@ interface Conversation {
     last_message: string;
     last_time: string;
     unread_count: number;
-    messages: {
-        id: number;
-        sender_id: number;
-        message: string;
-        created_at: string;
-    }[];
+    messages: MessageItem[];
 }
 
 interface Props {
@@ -41,6 +51,7 @@ interface Props {
 }
 
 export default function BuyerMessages({ conversations }: Props) {
+    const { auth } = usePage<PageProps>().props;
     const [selectedConvIndex, setSelectedConvIndex] = useState(0);
     const [replyText, setReplyText] = useState('');
     const [sending, setSending] = useState(false);
@@ -182,7 +193,7 @@ export default function BuyerMessages({ conversations }: Props) {
                         {/* Message Stream */}
                         <div className="p-5 flex-1 overflow-y-auto space-y-3 font-sans text-xs">
                             {currentConv?.messages?.map((msg) => {
-                                const isMe = msg.sender_id === 1; // Assuming buyer id 1 for visual layout
+                                const isMe = auth.user?.id ? msg.sender_id === auth.user.id : msg.sender_id === 1;
                                 return (
                                     <div
                                         key={msg.id}
@@ -195,6 +206,39 @@ export default function BuyerMessages({ conversations }: Props) {
                                                     : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                             }`}
                                         >
+                                            {/* Rich Embedded Product Card in Message Bubble */}
+                                            {msg.product && (
+                                                <a
+                                                    href={`/product/${(msg.product as any).slug || (msg.product as any).id}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className={`mb-2 p-2.5 rounded-xl flex items-center gap-3 transition block shadow-2xs border ${
+                                                        isMe 
+                                                            ? 'bg-white/95 border-red-200 text-slate-900' 
+                                                            : 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <img
+                                                        src={msg.product.featured_image || ''}
+                                                        alt={msg.product.name}
+                                                        className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
+                                                    />
+                                                    <div className="min-w-0 flex-1 font-mono text-[11px]">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E00D42] text-[8px] uppercase font-bold">
+                                                                Product Reference
+                                                            </span>
+                                                        </div>
+                                                        <p className="font-bold text-xs text-slate-900 truncate font-sans mt-0.5">
+                                                            {msg.product.name}
+                                                        </p>
+                                                        <span className="text-[#E00D42] font-black">
+                                                            PHP {Number(msg.product.price).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </a>
+                                            )}
+
                                             <p className="leading-relaxed">{msg.message}</p>
                                             <span className={`block font-mono text-[9px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
                                                 {msg.created_at}

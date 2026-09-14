@@ -20,9 +20,11 @@ interface MessageItem {
     message: string;
     created_at: string;
     product?: {
+        id?: number;
         name: string;
         price: number;
         featured_image: string;
+        slug?: string;
     };
 }
 
@@ -205,6 +207,39 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                                     : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                             }`}
                                         >
+                                            {/* Rich Embedded Product Card in Message Bubble */}
+                                            {msg.product && (
+                                                <a
+                                                    href={`/product/${(msg.product as any).slug || (msg.product as any).id}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className={`mb-2 p-2.5 rounded-xl flex items-center gap-3 transition block shadow-2xs border ${
+                                                        isMe 
+                                                            ? 'bg-white/95 border-red-200 text-slate-900' 
+                                                            : 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <img
+                                                        src={msg.product.featured_image || ''}
+                                                        alt={msg.product.name}
+                                                        className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
+                                                    />
+                                                    <div className="min-w-0 flex-1 font-mono text-[11px]">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E00D42] text-[8px] uppercase font-bold">
+                                                                Product Reference
+                                                            </span>
+                                                        </div>
+                                                        <p className="font-bold text-xs text-slate-900 truncate font-sans mt-0.5">
+                                                            {msg.product.name}
+                                                        </p>
+                                                        <span className="text-[#E00D42] font-black">
+                                                            PHP {Number(msg.product.price).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </a>
+                                            )}
+
                                             <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                         </div>
                                         <span className="text-[9px] font-mono text-slate-400 mt-1 px-1">

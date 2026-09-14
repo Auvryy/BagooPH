@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -43,16 +44,39 @@ class ChatController extends Controller
     public function sendMessage(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'receiver_id' => 'required|exists:users,id',
+            'receiver_id' => 'nullable|exists:users,id',
             'shop_id' => 'nullable|exists:shops,id',
             'product_id' => 'nullable|exists:products,id',
             'order_id' => 'nullable|exists:orders,id',
             'message' => 'required|string|max:1000',
         ]);
 
+        // Auto-resolve merchant receiver and shop if missing
+        if (empty($validated['receiver_id'])) {
+            if (!empty($validated['product_id'])) {
+                $prod = Product::with('shop')->find($validated['product_id']);
+                if ($prod?->shop?->user_id) {
+                    $validated['receiver_id'] = $prod->shop->user_id;
+                    $validated['shop_id'] = $validated['shop_id'] ?? $prod->shop_id;
+                }
+            } elseif (!empty($validated['shop_id'])) {
+                $shp = Shop::find($validated['shop_id']);
+                if ($shp?->user_id) {
+                    $validated['receiver_id'] = $shp->user_id;
+                }
+            }
+        }
+
+        if (empty($validated['receiver_id'])) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Merchant recipient could not be found.'], 422);
+            }
+            return back()->withErrors(['receiver_id' => 'Merchant recipient could not be found.']);
+        }
+
         $msg = Message::create([
             'sender_id' => $request->user()->id,
-            'receiver_id' => $validated['receiver_id'],
+            'receiver_id' => (int)$validated['receiver_id'],
             'shop_id' => $validated['shop_id'] ?? null,
             'product_id' => $validated['product_id'] ?? null,
             'order_id' => $validated['order_id'] ?? null,
@@ -60,7 +84,7 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
-        $msg->load(['sender', 'product']);
+        $msg->load(['sender', 'product.shop']);
 
         if ($request->wantsJson()) {
             return response()->json([
