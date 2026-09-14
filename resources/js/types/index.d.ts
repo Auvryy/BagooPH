@@ -233,6 +233,7 @@ export type PageProps<
         user: User | null;
     };
     cartCount: number;
+    unreadMessagesCount?: number;
     flash: {
         success?: string | null;
         error?: string | null;

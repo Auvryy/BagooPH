@@ -30,6 +30,9 @@ interface Props {
     categories?: Category[];
     hideAuthButtons?: boolean;
     hideHeader?: boolean;
+    hideFooter?: boolean;
+    hideCustomerCare?: boolean;
+    fullHeight?: boolean;
     topBanner?: React.ReactNode;
 }
 
@@ -38,9 +41,12 @@ export default function BuyerLayout({
     categories = [], 
     hideAuthButtons = false, 
     hideHeader = false,
+    hideFooter = false,
+    hideCustomerCare = false,
+    fullHeight = false,
     topBanner,
 }: Props) {
-    const { auth, cartCount } = usePage<PageProps>().props;
+    const { auth, cartCount = 0, unreadMessagesCount = 0 } = usePage<PageProps>().props;
     const user = auth.user;
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -178,16 +184,47 @@ export default function BuyerLayout({
                             </form>
                         </div>
 
-                        {/* RIGHT ACTIONS: BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
-                        <div className="flex items-center gap-3 shrink-0">
-                            
+                        {/* RIGHT ACTIONS: CHAT, BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
+                        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+
+                            {/* CHAT BUTTON */}
+                            <Link 
+                                href={auth.user ? route('buyer.messages') : route('login')} 
+                                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                    route().current('buyer.messages') || route().current('messages')
+                                        ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
+                                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                                }`}
+                                title="In-App Chat & Inquiries"
+                            >
+                                <div className="relative">
+                                    <MessageSquare className="w-4 h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
+                                    {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
+                                        <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E00D42] opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E00D42]"></span>
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="hidden sm:inline">Chat</span>
+                                {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
+                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                                    </span>
+                                )}
+                            </Link>
+
                             {/* BAG BUTTON */}
                             <Link 
                                 href={route('buyer.cart')} 
-                                className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-xs font-bold group shadow-2xs"
+                                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                    route().current('buyer.cart')
+                                        ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
+                                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                                }`}
                             >
                                 <ShoppingBag className="w-4 h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
-                                <span>Bag</span>
+                                <span className="hidden sm:inline">Bag</span>
                                 {cartCount > 0 && (
                                     <span className="min-w-[18px] h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                                         {cartCount}
@@ -263,6 +300,21 @@ export default function BuyerLayout({
                                                     <span>My Orders</span>
                                                 </Link>
 
+                                                <Link 
+                                                    href={route('buyer.messages')} 
+                                                    className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <MessageSquare className="w-4 h-4 text-rose-500" />
+                                                        <span>Messages & Inquiries</span>
+                                                    </div>
+                                                    {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
+                                                        <span className="px-1.5 py-0.5 rounded-full bg-[#E00D42] text-white text-[9px] font-mono font-bold">
+                                                            {unreadMessagesCount}
+                                                        </span>
+                                                    )}
+                                                </Link>
+
                                                 <div className="border-t border-slate-100 mt-1 pt-1">
                                                     <Link 
                                                         href={route('logout')} 
@@ -322,20 +374,28 @@ export default function BuyerLayout({
             )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden ${hideHeader ? 'pt-2 sm:pt-3 pb-8' : 'py-6'}`}>
+            <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${
+                fullHeight 
+                    ? 'py-2 sm:py-3 flex flex-col h-[calc(100vh-115px)] overflow-hidden' 
+                    : hideHeader 
+                        ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
+                        : 'py-6 overflow-x-hidden'
+            }`}>
                 {children}
             </main>
 
             {/* 4. FLOATING LIVE CHAT TRIGGER & MODAL */}
-            <div className="fixed bottom-6 right-6 z-50">
-                <button
-                    onClick={() => setChatOpen(true)}
-                    className="px-4 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-white/20 cursor-pointer"
-                >
-                    <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                    <span>Customer Care</span>
-                </button>
-            </div>
+            {!hideCustomerCare && !route().current('buyer.messages') && !route().current('messages') && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <button
+                        onClick={() => setChatOpen(true)}
+                        className="px-4 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-white/20 cursor-pointer"
+                    >
+                        <MessageSquare className="w-4 h-4 text-[#E00D42]" />
+                        <span>Customer Care</span>
+                    </button>
+                </div>
+            )}
 
             <ChatModal
                 isOpen={chatOpen}
@@ -346,7 +406,8 @@ export default function BuyerLayout({
             />
 
             {/* 5. FOOTER */}
-            <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">
+            {!hideFooter && (
+                <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Platform Directory</h5>
@@ -390,6 +451,7 @@ export default function BuyerLayout({
                     © {new Date().getFullYear()} BagooPH Ecosystem. All Rights Reserved.
                 </div>
             </footer>
+            )}
         </div>
     );
 }

@@ -31,10 +31,14 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $cartCount = 0;
+        $unreadMessagesCount = 0;
 
         if ($user) {
             $cart = \App\Models\Cart::where('user_id', $user->id)->first();
             $cartCount = $cart ? $cart->items()->sum('quantity') : 0;
+            $unreadMessagesCount = \App\Models\Message::where('receiver_id', $user->id)
+                ->where('is_read', false)
+                ->count();
         }
 
         return [
@@ -64,6 +68,7 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'cartCount' => $cartCount,
+            'unreadMessagesCount' => $unreadMessagesCount,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
