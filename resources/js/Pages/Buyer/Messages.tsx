@@ -193,7 +193,7 @@ export default function BuyerMessages({ conversations }: Props) {
 
             <div className="h-full flex flex-col min-h-0">
                 {/* 1. COMPACT TOP HEADER */}
-                <div className="bg-white rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 border border-slate-200 shadow-2xs flex items-center justify-between font-mono shrink-0 mb-3">
+                <div className="bg-white rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 border border-slate-200 shadow-2xs flex items-center justify-between font-mono shrink-0 mb-2 sm:mb-2.5">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-xl bg-red-50 text-[#E00D42] flex items-center justify-center font-bold shrink-0">
                             <MessageSquare className="w-4 h-4" />
@@ -210,10 +210,10 @@ export default function BuyerMessages({ conversations }: Props) {
                 </div>
 
                 {/* 2. TWO-PANEL INTERFACE WITH ISOLATED INTERNAL SCROLLING */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs overflow-hidden flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs overflow-hidden flex-1 min-h-0 flex">
                     
                     {/* LEFT PANEL: CONVERSATION LIST */}
-                    <div className={`md:col-span-4 border-r border-slate-100 flex flex-col h-full min-h-0 font-sans ${mobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
+                    <div className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col h-full min-h-0 font-sans shrink-0 ${mobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-3 border-b border-slate-100 bg-slate-50/60 shrink-0">
                             <div className="relative">
                                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
@@ -267,7 +267,7 @@ export default function BuyerMessages({ conversations }: Props) {
                     </div>
 
                     {/* RIGHT PANEL: ACTIVE CHAT WINDOW */}
-                    <div className={`md:col-span-8 flex flex-col h-full min-h-0 bg-slate-50/30 justify-between ${mobileChatOpen ? 'flex' : 'hidden md:flex'}`}>
+                    <div className={`flex-1 flex flex-col h-full min-h-0 min-w-0 bg-slate-50/30 ${mobileChatOpen ? 'flex' : 'hidden md:flex'}`}>
                         
                         {/* Chat Header */}
                         <div className="p-3 sm:p-4 border-b border-slate-200 bg-white flex items-center justify-between font-mono text-xs shrink-0">

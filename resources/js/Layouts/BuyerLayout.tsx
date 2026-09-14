@@ -84,6 +84,17 @@ export default function BuyerLayout({
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
 
+    React.useEffect(() => {
+        if (fullHeight) {
+            document.documentElement.classList.add('overflow-hidden');
+            document.body.classList.add('overflow-hidden');
+            return () => {
+                document.documentElement.classList.remove('overflow-hidden');
+                document.body.classList.remove('overflow-hidden');
+            };
+        }
+    }, [fullHeight]);
+
     const sellerUrl = getDomainUrl('seller', '/');
     const sellerRegisterUrl = getDomainUrl('seller', '/register');
     const courierUrl = getDomainUrl('courier', '/');
@@ -101,14 +112,14 @@ export default function BuyerLayout({
     };
 
     return (
-        <div className="min-h-screen bg-[#F4F3EF] text-[#111111] font-sans flex flex-col overflow-x-hidden w-full max-w-full selection:bg-[#E00D42] selection:text-white">
+        <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#F4F3EF] text-[#111111] font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
             
             {topBanner}
 
             {!hideHeader && (
                 <>
                     {/* 1. TOP UTILITY BAR (CLEAN & DISTINCTIVE) */}
-                    <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10">
+                    <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10 shrink-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-4">
                         <a href={sellerUrl} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-semibold text-white/90">
@@ -135,7 +146,7 @@ export default function BuyerLayout({
             </div>
 
             {/* 2. MAIN HEADER: LOGO | SEARCH | (CART + PROFILE BESIDE EACH OTHER) */}
-            <header className="bg-white text-slate-900 border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+            <header className="bg-white text-slate-900 border-b border-slate-200 sticky top-0 z-40 shadow-xs shrink-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
@@ -374,9 +385,9 @@ export default function BuyerLayout({
             )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${
+            <main className={`flex-1 min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${
                 fullHeight 
-                    ? 'py-2 sm:py-3 flex flex-col h-[calc(100vh-115px)] overflow-hidden' 
+                    ? 'py-2 sm:py-3 overflow-hidden' 
                     : hideHeader 
                         ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
                         : 'py-6 overflow-x-hidden'
