@@ -88,32 +88,13 @@ export default function BuyerProductDetail({
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
-    const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const getShareUrl = () => {
         if (typeof window !== 'undefined') {
             return `${window.location.origin}/product/${product.slug}`;
         }
         return `/product/${product.slug}`;
-    };
-
-    const handleShare = async () => {
-        const shareUrl = getShareUrl();
-
-        if (typeof navigator !== 'undefined' && navigator.share) {
-            try {
-                await navigator.share({
-                    title: `${product.name} | BagooPH`,
-                    text: `Check out ${product.name} on BagooPH`,
-                    url: shareUrl,
-                });
-                return;
-            } catch (err: any) {
-                if (err?.name === 'AbortError') return;
-            }
-        }
-
-        handleCopyShareLink();
     };
 
     const handleCopyShareLink = async () => {
@@ -125,8 +106,23 @@ export default function BuyerProductDetail({
         }
     };
 
+    const handleNativeShare = async () => {
+        const shareUrl = getShareUrl();
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title: `${product.name} | BagooPH`,
+                    text: `Check out ${product.name} on BagooPH`,
+                    url: shareUrl,
+                });
+                setIsShareModalOpen(false);
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
+            }
+        }
+    };
+
     const openSocialShare = (platform: 'facebook' | 'twitter' | 'whatsapp' | 'telegram') => {
-        setIsShareMenuOpen(false);
         const url = encodeURIComponent(getShareUrl());
         const text = encodeURIComponent(`Check out ${product.name} on BagooPH!`);
 
@@ -313,67 +309,17 @@ export default function BuyerProductDetail({
 
                         {/* Share & Wishlist Bar */}
                         <div className="flex items-center justify-between pt-2.5 text-xs font-mono text-slate-500 border-t border-slate-100">
-                            <div className="relative flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-bold uppercase text-[10px]">Share:</span>
                                 <button
                                     type="button"
-                                    onClick={handleCopyShareLink}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer text-[11px] font-semibold"
-                                    title="Copy product link to clipboard"
+                                    onClick={() => setIsShareModalOpen(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer text-xs font-semibold"
+                                    title="Share this product"
                                 >
-                                    {copiedShareLink ? (
-                                        <>
-                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                            <span className="text-emerald-600 font-bold">Copied!</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="w-3.5 h-3.5" />
-                                            <span>Copy Link</span>
-                                        </>
-                                    )}
+                                    <Share2 className="w-3.5 h-3.5 text-[#E00D42]" />
+                                    <span>Share Product</span>
                                 </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
-                                    className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-[#E00D42] transition cursor-pointer"
-                                    title="More sharing options"
-                                >
-                                    <Share2 className="w-4 h-4" />
-                                </button>
-
-                                {isShareMenuOpen && (
-                                    <div className="absolute bottom-full left-0 mb-2 w-44 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-30 space-y-0.5 text-[11px] font-sans">
-                                        <button
-                                            type="button"
-                                            onClick={() => openSocialShare('facebook')}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-blue-600 font-medium transition cursor-pointer"
-                                        >
-                                            Share to Facebook
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openSocialShare('twitter')}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-slate-950 font-medium transition cursor-pointer"
-                                        >
-                                            Share to X
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openSocialShare('whatsapp')}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-emerald-600 font-medium transition cursor-pointer"
-                                        >
-                                            Share to WhatsApp
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openSocialShare('telegram')}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-sky-600 font-medium transition cursor-pointer"
-                                        >
-                                            Share to Telegram
-                                        </button>
-                                    </div>
-                                )}
                             </div>
                             <div className="flex items-center gap-1 text-[#E00D42] font-bold">
                                 <ShieldCheck className="w-4 h-4" />
@@ -400,13 +346,13 @@ export default function BuyerProductDetail({
                                 </h1>
                                 <button
                                     type="button"
-                                    onClick={handleShare}
+                                    onClick={() => setIsShareModalOpen(true)}
                                     title="Share product link"
                                     className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:text-[#E00D42] hover:border-slate-300 hover:bg-slate-50 transition shrink-0 cursor-pointer flex items-center gap-1.5"
                                 >
                                     <Share2 className="w-4 h-4" />
                                     <span className="text-xs font-mono font-semibold hidden sm:inline">
-                                        {copiedShareLink ? 'Copied' : 'Share'}
+                                        Share
                                     </span>
                                 </button>
                             </div>
@@ -809,6 +755,159 @@ export default function BuyerProductDetail({
                 shopName={product.shop?.name}
                 product={product}
             />
+
+            {/* Dedicated Unified Share Modal */}
+            {isShareModalOpen && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans"
+                    onClick={() => setIsShareModalOpen(false)}
+                >
+                    <div 
+                        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 space-y-4 p-5 animate-scale-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-red-50 text-[#E00D42] flex items-center justify-center">
+                                    <Share2 className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-sm text-slate-900 leading-tight">Share this Product</h3>
+                                    <p className="text-[11px] text-slate-400 font-mono">Send to friends or share across social media</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsShareModalOpen(false)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Product Summary Snapshot */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 flex items-center gap-3">
+                            <img
+                                src={product.featured_image || ''}
+                                alt={product.name}
+                                className="w-14 h-14 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <span className="px-1.5 py-0.5 rounded bg-[#E00D42] text-white text-[9px] font-mono font-bold uppercase tracking-wider">
+                                    Mall Verified
+                                </span>
+                                <h4 className="font-bold text-xs text-slate-900 truncate mt-1">{product.name}</h4>
+                                <p className="font-mono font-black text-sm text-[#E00D42]">{formatPrice(currentPrice)}</p>
+                            </div>
+                        </div>
+
+                        {/* Copy Link Input Strip */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                                Product Page Link
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={getShareUrl()}
+                                    className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 truncate select-all focus:outline-none focus:ring-1 focus:ring-[#E00D42]"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleCopyShareLink}
+                                    className={`px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs ${
+                                        copiedShareLink
+                                            ? 'bg-emerald-600 text-white'
+                                            : 'bg-slate-900 hover:bg-[#E00D42] text-white'
+                                    }`}
+                                >
+                                    {copiedShareLink ? (
+                                        <>
+                                            <Check className="w-3.5 h-3.5" />
+                                            <span>Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>Copy Link</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Social Share Grid */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                                Share to Socials
+                            </label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {/* Facebook */}
+                                <button
+                                    type="button"
+                                    onClick={() => openSocialShare('facebook')}
+                                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200/80 hover:border-blue-500 hover:bg-blue-50/50 transition group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center mb-1 group-hover:scale-105 transition-transform font-bold text-sm">
+                                        f
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold text-slate-700 group-hover:text-blue-600">Facebook</span>
+                                </button>
+
+                                {/* X (Twitter) */}
+                                <button
+                                    type="button"
+                                    onClick={() => openSocialShare('twitter')}
+                                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200/80 hover:border-slate-800 hover:bg-slate-50 transition group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center mb-1 group-hover:scale-105 transition-transform font-bold text-xs">
+                                        X
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold text-slate-700 group-hover:text-slate-900">X / Twitter</span>
+                                </button>
+
+                                {/* WhatsApp */}
+                                <button
+                                    type="button"
+                                    onClick={() => openSocialShare('whatsapp')}
+                                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 hover:bg-emerald-50/50 transition group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center mb-1 group-hover:scale-105 transition-transform font-bold text-[11px]">
+                                        WA
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold text-slate-700 group-hover:text-emerald-600">WhatsApp</span>
+                                </button>
+
+                                {/* Telegram */}
+                                <button
+                                    type="button"
+                                    onClick={() => openSocialShare('telegram')}
+                                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200/80 hover:border-sky-500 hover:bg-sky-50/50 transition group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#229ED9] text-white flex items-center justify-center mb-1 group-hover:scale-105 transition-transform font-bold text-[11px]">
+                                        TG
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold text-slate-700 group-hover:text-sky-600">Telegram</span>
+                                </button>
+                            </div>
+
+                            {/* Native Device Share (Optional trigger) */}
+                            {typeof navigator !== 'undefined' && !!(navigator as any).share && (
+                                <button
+                                    type="button"
+                                    onClick={handleNativeShare}
+                                    className="w-full py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+                                >
+                                    <Share2 className="w-3.5 h-3.5 text-[#E00D42]" />
+                                    <span>More Options (Native Device Share)</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Floating Toast for Copied Link */}
             {copiedShareLink && (
