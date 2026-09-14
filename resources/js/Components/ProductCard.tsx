@@ -71,17 +71,31 @@ export default function ProductCard({
                     </div>
                 )}
 
-                {/* Badges inside the image at the bottom */}
-                <div className="absolute bottom-2 inset-x-2 flex items-center justify-between pointer-events-none gap-1">
-                    <span className="px-1.5 py-0.5 rounded bg-white/95 backdrop-blur-xs text-emerald-700 font-mono text-[8px] font-bold uppercase flex items-center gap-1 shadow-2xs border border-emerald-200/60">
-                        <Truck className="w-2.5 h-2.5" />
+                {/* Interlocking Puzzle Ribbon Badges flush to bottom-left of the image */}
+                <div className="absolute bottom-0 left-0 flex items-center pointer-events-none z-10 drop-shadow-xs">
+                    {/* Free Delivery Ribbon (Red background) */}
+                    <div
+                        className="bg-[#E00D42] text-white h-5 sm:h-5.5 flex items-center gap-1 pl-2 pr-2.5 sm:pr-3 text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider leading-none"
+                        style={{
+                            clipPath: discountPct
+                                ? 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)'
+                                : 'polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%)',
+                        }}
+                    >
+                        <Truck className="w-2.5 h-2.5 text-white shrink-0 stroke-[2.2]" />
                         <span>Free Delivery</span>
-                    </span>
+                    </div>
 
+                    {/* Discount Ribbon (Interlocking puzzle chevron + swallowtail V-notch end) */}
                     {discountPct && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[9px] font-black shadow-2xs">
-                            -{discountPct}%
-                        </span>
+                        <div
+                            className="-ml-[6px] bg-amber-400 text-slate-950 h-5 sm:h-5.5 flex items-center pl-2.5 pr-3 sm:pr-3.5 text-[9px] sm:text-[10px] font-mono font-black tracking-tight leading-none"
+                            style={{
+                                clipPath: 'polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%, 6px 50%)',
+                            }}
+                        >
+                            <span>-{discountPct}%</span>
+                        </div>
                     )}
                 </div>
             </div>
