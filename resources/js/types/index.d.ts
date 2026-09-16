@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
-export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none';
+export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none' | 'verified';
 
 export interface CourierProfile {
     id: number;
@@ -35,6 +35,7 @@ export interface User {
     name: string;
     email: string;
     role: Role;
+    google_id?: string | null;
     phone?: string | null;
     avatar?: string | null;
     address?: string | null;

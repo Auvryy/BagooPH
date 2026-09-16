@@ -121,5 +121,6 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect('/');
+        $response->assertSessionHas('success', 'You have been signed out successfully.');
     }
 }
