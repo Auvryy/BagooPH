@@ -70,6 +70,8 @@ class GoogleOAuthController extends Controller
                     'avatar' => $googleUser->getAvatar(),
                     'role' => 'buyer',
                     'status' => 'active',
+                    'kyc_status' => 'none',
+                    'id_document_path' => null,
                     'password' => Hash::make(Str::random(32)),
                     'email_verified_at' => now(),
                 ]);

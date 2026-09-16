@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
@@ -7,6 +7,7 @@ import { User, Order, Address, PageProps } from '@/types';
 import { 
     User as UserIcon, 
     ShieldCheck, 
+    ShieldAlert,
     Wallet, 
     MapPin, 
     Plus, 
@@ -35,7 +36,9 @@ import {
     Star,
     Trash2,
     Camera,
-    Upload
+    Upload,
+    FileText,
+    X
 } from 'lucide-react';
 
 interface WalletData {
@@ -83,6 +86,8 @@ export default function BuyerProfile({
     const page = usePage<PageProps>();
     const { flash } = page.props;
     const url = page.url;
+
+    const isKycApproved = user.kyc_status === 'approved' || user.kyc_status === 'verified';
 
     // Helper to extract tab from any URL string or fallback
     const getTabFromUrl = (targetUrl?: string): TabType | null => {
@@ -264,6 +269,67 @@ export default function BuyerProfile({
         passwordForm.put(route('password.update'), {
             preserveScroll: true,
             onSuccess: () => passwordForm.reset(),
+        });
+    };
+
+    // KYC Verification Upload State & Handlers
+    const [kycFile, setKycFile] = useState<File | null>(null);
+    const [kycPreview, setKycPreview] = useState<string | null>(null);
+    const [kycUploading, setKycUploading] = useState(false);
+    const [kycError, setKycError] = useState<string | null>(null);
+    const [kycSuccess, setKycSuccess] = useState(false);
+    const kycFileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleKycFileSelect = (selectedFile: File | undefined) => {
+        if (!selectedFile) return;
+
+        if (selectedFile.size > 5 * 1024 * 1024) {
+            setKycError('File size exceeds 5MB limit. Please choose a smaller file.');
+            return;
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
+        if (!allowedTypes.includes(selectedFile.type)) {
+            setKycError('Invalid file format. Please upload JPG, PNG, WEBP, or PDF.');
+            return;
+        }
+
+        setKycError(null);
+        setKycSuccess(false);
+        setKycFile(selectedFile);
+
+        if (selectedFile.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => setKycPreview(e.target?.result as string);
+            reader.readAsDataURL(selectedFile);
+        } else {
+            setKycPreview(null);
+        }
+    };
+
+    const handleKycSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!kycFile || kycUploading) return;
+
+        setKycUploading(true);
+        setKycError(null);
+
+        const formData = new FormData();
+        formData.append('id_document', kycFile);
+
+        router.post(route('buyer.kyc.upload'), formData, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setKycUploading(false);
+                setKycFile(null);
+                setKycPreview(null);
+                setKycSuccess(true);
+            },
+            onError: (errs) => {
+                setKycUploading(false);
+                setKycError(errs.id_document || 'Failed to upload ID document. Please try again.');
+            },
         });
     };
 
@@ -461,9 +527,23 @@ export default function BuyerProfile({
                             <div className="min-w-0">
                                 <h3 className="font-bold text-slate-900 text-sm truncate">{user.name}</h3>
                                 <p className="text-[11px] text-slate-500 font-mono truncate">{user.email}</p>
-                                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-emerald-600 font-mono mt-0.5">
-                                    <ShieldCheck className="w-3 h-3" /> Tier 1 Verified Buyer
-                                </span>
+                                {isKycApproved ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-emerald-600 font-mono mt-0.5">
+                                        <ShieldCheck className="w-3 h-3" /> Verified Buyer
+                                    </span>
+                                ) : user.kyc_status === 'pending_approval' ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-amber-600 font-mono mt-0.5">
+                                        <Clock className="w-3 h-3" /> KYC In Review
+                                    </span>
+                                ) : user.kyc_status === 'rejected' ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-rose-600 font-mono mt-0.5">
+                                        <ShieldAlert className="w-3 h-3" /> KYC Action Required
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-slate-400 font-mono mt-0.5">
+                                        <Shield className="w-3 h-3" /> Unverified Account
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -854,12 +934,231 @@ export default function BuyerProfile({
                                     </form>
                                 </div>
 
+                                {/* Identity & Trust Verification (KYC) */}
+                                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+                                        <div>
+                                            <h3 className="text-base font-black text-slate-900">Identity Verification & Trust Status</h3>
+                                            <p className="text-xs text-slate-500 font-mono">Government ID validation for 100% Cash on Delivery protection</p>
+                                        </div>
+                                        <div>
+                                            {isKycApproved && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                                    <span>Verified Account</span>
+                                                </span>
+                                            )}
+                                            {user.kyc_status === 'pending_approval' && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                                    <span>In Review</span>
+                                                </span>
+                                            )}
+                                            {user.kyc_status === 'rejected' && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                                                    <span>Action Required</span>
+                                                </span>
+                                            )}
+                                            {(!user.kyc_status || user.kyc_status === 'none') && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                                    <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span>Unverified</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Status Details */}
+                                    {isKycApproved && (
+                                        <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-emerald-900">Your account is fully verified</p>
+                                                <p className="text-emerald-700 leading-relaxed">
+                                                    Your submitted government ID has been authenticated by Bagoo compliance. You have unlocked unlimited Cash on Delivery privileges and doorstep item inspection.
+                                                </p>
+                                                {user.id_document_path && (
+                                                    <p className="font-mono text-[11px] text-emerald-600 pt-1">
+                                                        ID Document on file: Validated
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {user.kyc_status === 'pending_approval' && (
+                                        <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                                                <Clock className="w-4 h-4" />
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-amber-900">Verification in progress</p>
+                                                <p className="text-amber-700 leading-relaxed">
+                                                    Your government ID has been received and is in the compliance review queue. Approvals are typically processed within 24 hours.
+                                                </p>
+                                                {user.id_document_path && (
+                                                    <p className="font-mono text-[11px] text-amber-600 pt-1">
+                                                        Document submitted: Valid government ID
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {user.kyc_status === 'rejected' && (
+                                        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
+                                                <ShieldAlert className="w-4 h-4" />
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-rose-900">ID Verification Rejected</p>
+                                                <p className="text-rose-700 leading-relaxed">
+                                                    {user.kyc_feedback || 'Your previous document could not be verified. Please provide a clear, valid government photo ID.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {(!user.kyc_status || user.kyc_status === 'none') && (
+                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
+                                                <Shield className="w-4 h-4" />
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-slate-800">No government ID uploaded</p>
+                                                <p className="text-slate-600 leading-relaxed">
+                                                    Complete verification to protect against fake delivery attempts and unlock instant priority order dispatch.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Upload / Re-Upload Section for non-verified users */}
+                                    {!isKycApproved && (
+                                        <form onSubmit={handleKycSubmit} className="space-y-4 pt-1">
+                                            <input
+                                                ref={kycFileInputRef}
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
+                                                className="hidden"
+                                                onChange={(e) => handleKycFileSelect(e.target.files?.[0])}
+                                            />
+
+                                            {!kycFile ? (
+                                                <div
+                                                    onClick={() => kycFileInputRef.current?.click()}
+                                                    className="border-2 border-dashed border-slate-200 hover:border-[#E00D42] bg-slate-50/60 hover:bg-rose-50/20 rounded-2xl p-6 text-center transition cursor-pointer group"
+                                                >
+                                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 group-hover:text-[#E00D42] flex items-center justify-center mx-auto mb-2 shadow-2xs transition">
+                                                        <Upload className="w-4 h-4" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-slate-800 group-hover:text-[#E00D42] transition">
+                                                        {user.kyc_status === 'rejected' ? 'Upload New Government ID' : 'Click to upload Government ID'}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 font-mono mt-1">
+                                                        PhilID, Passport, Driver's License, UMID, Postal ID, SSS (Max 5MB)
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        {kycPreview ? (
+                                                            <img
+                                                                src={kycPreview}
+                                                                alt="ID Preview"
+                                                                className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                                                <FileText className="w-5 h-5" />
+                                                            </div>
+                                                        )}
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-bold text-slate-900 truncate">{kycFile.name}</p>
+                                                            <p className="text-[10px] text-slate-400 font-mono">
+                                                                {(kycFile.size / (1024 * 1024)).toFixed(2)} MB
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setKycFile(null);
+                                                            setKycPreview(null);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                                        title="Remove"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {kycError && (
+                                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600 flex items-center gap-2">
+                                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                                    <span>{kycError}</span>
+                                                </div>
+                                            )}
+
+                                            {kycSuccess && (
+                                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+                                                    <Check className="w-4 h-4 shrink-0" />
+                                                    <span>ID document uploaded successfully! Status updated to review.</span>
+                                                </div>
+                                            )}
+
+                                            {kycFile && (
+                                                <div className="flex justify-end pt-1">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={kycUploading}
+                                                        className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-xs font-bold uppercase rounded-xl transition shadow-xs disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                        {kycUploading ? 'Uploading...' : 'Submit ID for Verification'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </form>
+                                    )}
+                                </div>
+
                                 {/* Password & Security Settings */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Account Password & Security</h3>
                                         <p className="text-xs text-slate-500 font-mono">Ensure your account password is at least 8 characters long</p>
                                     </div>
+
+                                    {user.google_id && (
+                                        <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-2xl flex items-center gap-3">
+                                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                                                <path
+                                                    fill="#4285F4"
+                                                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                                                />
+                                                <path
+                                                    fill="#34A853"
+                                                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                                                />
+                                                <path
+                                                    fill="#FBBC05"
+                                                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.94 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
+                                                />
+                                                <path
+                                                    fill="#EA4335"
+                                                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                                                />
+                                            </svg>
+                                            <div className="text-xs text-blue-900 font-mono">
+                                                Connected with Google OAuth (<span className="font-bold">{user.email}</span>). You can sign in using your Google account.
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {passwordForm.recentlySuccessful && (
                                         <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-mono flex items-center gap-2">
