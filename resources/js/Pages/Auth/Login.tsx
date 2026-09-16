@@ -36,6 +36,10 @@ export default function Login({ status, canResetPassword }: Props) {
             localStorage.removeItem('bagoo_saved_email');
         }
 
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+        }
+
         post(route('login'), {
             onFinish: () => reset('password'),
         });
@@ -162,6 +166,11 @@ export default function Login({ status, canResetPassword }: Props) {
 
                 <a
                     href={route('auth.google')}
+                    onClick={() => {
+                        if (typeof window !== 'undefined') {
+                            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+                        }
+                    }}
                     className="w-full h-11 flex items-center justify-center gap-3 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition active:scale-[0.99] group cursor-pointer"
                 >
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">

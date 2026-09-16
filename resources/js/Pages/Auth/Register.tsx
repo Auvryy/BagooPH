@@ -183,6 +183,10 @@ export default function Register() {
             return;
         }
 
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+        }
+
         post(route('register'), {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
@@ -196,6 +200,9 @@ export default function Register() {
             ...prevData,
             otp_token: token,
         }));
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+        }
         post(route('register'), {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
@@ -257,6 +264,11 @@ export default function Register() {
                 <div className="mb-5">
                     <a
                         href={route('auth.google')}
+                        onClick={() => {
+                            if (typeof window !== 'undefined') {
+                                sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+                            }
+                        }}
                         className="w-full h-11 flex items-center justify-center gap-3 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition active:scale-[0.99] group cursor-pointer"
                     >
                         <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">

@@ -23,6 +23,7 @@ import {
     ShieldAlert
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
+import BuyerIdVerificationModal from '@/Components/BuyerIdVerificationModal';
 import { getDomainUrl } from '@/utils/domain';
 
 interface Props {
@@ -83,6 +84,38 @@ export default function BuyerLayout({
     const [chatHistory, setChatHistory] = useState([
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
+
+    const [idReminderOpen, setIdReminderOpen] = useState(false);
+
+    React.useEffect(() => {
+        if (!user || user.role !== 'buyer') {
+            setIdReminderOpen(false);
+            return;
+        }
+
+        // Prompt if buyer has no ID document uploaded or if previous KYC was rejected
+        const needsId = !user.id_document_path || user.kyc_status === 'none' || user.kyc_status === 'rejected';
+        if (!needsId) {
+            setIdReminderOpen(false);
+            return;
+        }
+
+        // Check if user dismissed for the current session
+        const isDismissed = typeof window !== 'undefined' && sessionStorage.getItem('bagoo_buyer_id_prompt_dismissed') === '1';
+        if (!isDismissed) {
+            const timer = setTimeout(() => {
+                setIdReminderOpen(true);
+            }, 700);
+            return () => clearTimeout(timer);
+        }
+    }, [user?.id, user?.kyc_status, user?.id_document_path]);
+
+    const handleDismissIdReminder = () => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('bagoo_buyer_id_prompt_dismissed', '1');
+        }
+        setIdReminderOpen(false);
+    };
 
     React.useEffect(() => {
         if (fullHeight) {
@@ -415,6 +448,16 @@ export default function BuyerLayout({
                 receiverName="Bagoo Customer Care"
                 shopName="Bagoo Official Support & Merchant Dispatch"
             />
+
+            {/* 4.5. BUYER IDENTITY VERIFICATION REMINDER MODAL */}
+            {user && user.role === 'buyer' && (
+                <BuyerIdVerificationModal
+                    isOpen={idReminderOpen}
+                    onClose={() => setIdReminderOpen(false)}
+                    onDismiss={handleDismissIdReminder}
+                    user={user}
+                />
+            )}
 
             {/* 5. FOOTER */}
             {!hideFooter && (
