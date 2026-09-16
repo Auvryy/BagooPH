@@ -47,8 +47,27 @@ export default function BuyerLayout({
     fullHeight = false,
     topBanner,
 }: Props) {
-    const { auth, cartCount = 0, unreadMessagesCount = 0 } = usePage<PageProps>().props;
+    const { auth, cartCount = 0, unreadMessagesCount = 0, flash } = usePage<PageProps>().props;
     const user = auth.user;
+
+    const [logoutFeedback, setLogoutFeedback] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        // 1. Check flash message from backend redirect
+        if (flash?.success && /sign(ed)?\s*out|logg(ed)?\s*out/i.test(flash.success)) {
+            setLogoutFeedback(flash.success);
+            const timer = setTimeout(() => setLogoutFeedback(null), 6000);
+            return () => clearTimeout(timer);
+        }
+
+        // 2. Check client-side session flag
+        if (typeof window !== 'undefined' && sessionStorage.getItem('bagoo_just_logged_out') === '1') {
+            sessionStorage.removeItem('bagoo_just_logged_out');
+            setLogoutFeedback('You have been signed out successfully.');
+            const timer = setTimeout(() => setLogoutFeedback(null), 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [flash?.success]);
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState(() => {
@@ -364,7 +383,13 @@ export default function BuyerLayout({
                                                         href={route('logout')} 
                                                         method="post" 
                                                         as="button" 
-                                                        className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                                                        onClick={() => {
+                                                            if (typeof window !== 'undefined') {
+                                                                sessionStorage.setItem('bagoo_just_logged_out', '1');
+                                                                sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+                                                            }
+                                                        }}
+                                                        className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                                                     >
                                                         <LogOut className="w-4 h-4" />
                                                         <span>Sign Out</span>
@@ -438,6 +463,34 @@ export default function BuyerLayout({
                         <MessageSquare className="w-4 h-4 text-[#E00D42]" />
                         <span>Customer Care</span>
                     </button>
+                </div>
+            )}
+
+            {/* 4. LOGOUT FEEDBACK NOTIFICATION CHIP */}
+            {logoutFeedback && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in pointer-events-auto">
+                    <div className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-slate-950/95 text-white rounded-full shadow-2xl border border-slate-800 text-xs font-mono backdrop-blur-md max-w-[92vw]">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                            <LogOut className="w-3.5 h-3.5 text-slate-400 shrink-0 hidden sm:block" />
+                            <span className="text-slate-100 truncate">{logoutFeedback}</span>
+                        </div>
+                        <div className="h-3.5 w-px bg-slate-800 shrink-0"></div>
+                        <Link
+                            href={route('login')}
+                            className="text-[11px] font-bold text-[#E00D42] hover:text-[#ff386b] underline transition shrink-0 cursor-pointer"
+                        >
+                            Sign In
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setLogoutFeedback(null)}
+                            className="p-1 -mr-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition shrink-0 cursor-pointer"
+                            title="Dismiss notification"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
                 </div>
             )}
 
