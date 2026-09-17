@@ -215,6 +215,60 @@
           "aspect_ratio": "1:1"
         }
       ]
+    },
+    {
+      "name": "Heavyweight Boxy Cotton Oversized Tee",
+      "slug": "heavyweight-boxy-cotton-oversized-tee",
+      "category": "everyday-carry-gear",
+      "price": 1150.00,
+      "compare_at_price": 1500.00,
+      "stock": 20,
+      "sku": "APX-TEE-016",
+      "weight_kg": 0.32,
+      "description": "Premium 280 GSM combed heavyweight cotton streetwear t-shirt with a relaxed boxy silhouette. Features a thick 1.25-inch ribbed collar, dropped shoulders, reinforced twin-needle stitching, and a pre-shrunk vintage stone wash.",
+      "images": [
+        {
+          "filename": "boxy_tee_front.jpg",
+          "url": "/images/products/boxy_tee_front.jpg",
+          "is_primary": true,
+          "prompt": "Minimalist streetwear heavyweight oversized cotton t-shirt hanging against a neutral textured studio concrete background, soft natural lighting, fabric folds, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "boxy_tee_angle.jpg",
+          "url": "/images/products/boxy_tee_angle.jpg",
+          "is_primary": false,
+          "prompt": "Close-up angled view of collar and textured 280 GSM cotton weave on modern minimalist streetwear tee, natural daylight, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Heritage Full-Grain Leather Watch Strap 22mm",
+      "slug": "heritage-full-grain-leather-watch-strap-22mm",
+      "category": "everyday-carry-gear",
+      "price": 1350.00,
+      "compare_at_price": 1800.00,
+      "stock": 20,
+      "sku": "APX-STP-017",
+      "weight_kg": 0.07,
+      "description": "Bespoke 22mm watch strap cut from vegetable-tanned full-grain bridle leather. Hand-stitched with waxed linen thread and fitted with a brushed 316L stainless steel buckle. Supple, weather-resistant, and develops deep patina.",
+      "images": [
+        {
+          "filename": "leather_strap_front.jpg",
+          "url": "/images/products/leather_strap_front.jpg",
+          "is_primary": true,
+          "prompt": "Cognac full-grain leather watch strap with stainless steel buckle laid flat on rustic oak wooden surface, warm soft studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "leather_strap_angle.jpg",
+          "url": "/images/products/leather_strap_angle.jpg",
+          "is_primary": false,
+          "prompt": "45-degree angle close-up of leather watch strap showing hand-stitched linen thread and burnished edges on dark wooden table, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
     }
   ]
 }

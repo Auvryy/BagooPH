@@ -264,7 +264,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($productsData as $data) {
             $images = $data['images'];
-            unset($data['images']);
+            unset($data['images'], $data['category']);
 
             $product = Product::updateOrCreate(
                 ['slug' => $data['slug']],
