@@ -105,7 +105,13 @@ export default function SearchPage({
 
     return (
         <BuyerLayout categories={categories}>
-            <Head title={filters.search ? `Search: "${filters.search}" — BagooPH` : 'Product Catalog & Search — BagooPH'} />
+            <Head>
+                <title>{filters.search ? `Search: "${filters.search}" — BagooPH` : 'Product Catalog & Search — BagooPH'}</title>
+                <meta name="description" content={filters.search ? `Explore search results for "${filters.search}" on BagooPH. Find authentic products from verified merchants with nationwide Cash on Delivery.` : 'Browse all categories and authentic products on BagooPH with nationwide Cash on Delivery.'} />
+                <meta property="og:title" content={filters.search ? `Search: "${filters.search}" — BagooPH` : 'Product Catalog & Search — BagooPH'} />
+                <meta property="og:description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD)." />
+                <meta property="og:image" content="/bagoo.svg" />
+            </Head>
 
             <div className="space-y-6">
                 

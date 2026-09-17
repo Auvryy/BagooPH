@@ -290,7 +290,14 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
 
     return (
         <MarketplaceLayout headerTheme={isDarkHeader ? 'dark' : 'light'}>
-            <Head title="BagooPH — A New Standard in Multi-Role E-Commerce" />
+            <Head>
+                <title>BagooPH — A New Standard in Multi-Role E-Commerce & Logistics</title>
+                <meta name="description" content="BagooPH is the premier unified Philippine e-commerce ecosystem. Direct marketplace for buyers, unified cockpit for sellers, and smart hub routing for couriers." />
+                <meta property="og:title" content="BagooPH — A New Standard in Multi-Role E-Commerce" />
+                <meta property="og:description" content="Philippine e-commerce and logistics marketplace with nationwide Cash on Delivery." />
+                <meta property="og:image" content="/bagoo.svg" />
+                <meta property="og:type" content="website" />
+            </Head>
 
             {/* MAIN CONTAINER */}
             <div className="relative font-sans selection:bg-[#E00D42] selection:text-white">

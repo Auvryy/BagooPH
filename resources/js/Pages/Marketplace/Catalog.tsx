@@ -195,7 +195,14 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
     return (
         <MarketplaceLayout headerTheme="light">
-            <Head title="Buyer Marketplace & Catalog — BagooPH" />
+            <Head>
+                <title>Buyer Marketplace & Product Catalog — BagooPH</title>
+                <meta name="description" content="Browse authentic goods and local stores across the Philippines on BagooPH. Nationwide Cash on Delivery (COD) and fast shipping." />
+                <meta property="og:title" content="Buyer Marketplace & Product Catalog — BagooPH" />
+                <meta property="og:description" content="Browse authentic goods and local stores across the Philippines on BagooPH." />
+                <meta property="og:image" content="/bagoo.svg" />
+                <meta property="og:type" content="website" />
+            </Head>
 
             <div className="relative bg-[#ECEAE5] min-h-screen text-[#111111] selection:bg-[#E00D42] selection:text-white pb-24">
                 <GrainOverlay />
