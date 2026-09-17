@@ -225,7 +225,18 @@ export default function BuyerProductDetail({
 
     return (
         <BuyerLayout>
-            <Head title={`${product.name} — BagooPH`} />
+            <Head>
+                <title>{`${product.name} — BagooPH`}</title>
+                <meta name="description" content={product.description ? product.description.slice(0, 160) : `Buy ${product.name} on BagooPH. Authentic product from ${product.shop?.name || 'verified seller'} with nationwide Cash on Delivery.`} />
+                <meta property="og:title" content={`${product.name} — BagooPH`} />
+                <meta property="og:description" content={product.description ? product.description.slice(0, 160) : `Buy ${product.name} on BagooPH with Cash on Delivery.`} />
+                <meta property="og:image" content={galleryImages[0] || '/bagoo.svg'} />
+                <meta property="og:type" content="product" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={`${product.name} — BagooPH`} />
+                <meta name="twitter:description" content={product.description ? product.description.slice(0, 160) : `Buy ${product.name} on BagooPH.`} />
+                <meta name="twitter:image" content={galleryImages[0] || '/bagoo.svg'} />
+            </Head>
 
             {/* Lightbox Modal for Customer Photo Zoom */}
             {lightboxImage && (

@@ -144,7 +144,17 @@ export default function SellerLanding() {
 
     return (
         <div className="min-h-screen bg-[#FAFAFA] text-[#0F172A] font-sans selection:bg-[#E00D42] selection:text-white relative overflow-hidden">
-            <Head title="BagooPH — Seller Standard | Minimalist Cash on Delivery Commerce" />
+            <Head>
+                <title>BagooPH Seller Center — Minimalist Cash on Delivery Commerce</title>
+                <meta name="description" content="Sell online with BagooPH. Fast door-to-door courier dispatch, 10% flat transparent commission, automated thermal waybills, and guaranteed next-day COD payouts." />
+                <meta property="og:title" content="BagooPH Seller Center — Modern Merchant Infrastructure" />
+                <meta property="og:description" content="Sell online with BagooPH. Transparent 10% commission, guaranteed next-day COD payouts, and integrated Philippine logistics." />
+                <meta property="og:image" content="/bagoo.svg" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="BagooPH Seller Center — Modern Merchant Infrastructure" />
+                <meta name="twitter:description" content="Sell online with BagooPH. Transparent 10% commission and integrated Philippine logistics." />
+            </Head>
 
             {/* Subtle Ambient Radial Lighting */}
             <div 

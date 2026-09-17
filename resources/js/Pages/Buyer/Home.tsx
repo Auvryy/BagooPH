@@ -264,7 +264,17 @@ export default function BuyerHome({
 
     return (
         <BuyerLayout categories={categories}>
-            <Head title="Official Marketplace — BagooPH" />
+            <Head>
+                <title>Official Marketplace — BagooPH | Philippine E-Commerce & On-Demand Delivery</title>
+                <meta name="description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD). Explore electronics, fashion, lifestyle, and local goods with real-time parcel tracking." />
+                <meta property="og:title" content="BagooPH — Official Philippine E-Commerce Marketplace" />
+                <meta property="og:description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD) and fast, reliable delivery." />
+                <meta property="og:image" content="/bagoo.svg" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="BagooPH — Official Philippine E-Commerce Marketplace" />
+                <meta name="twitter:description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD)." />
+            </Head>
 
             <div className="space-y-6">
 

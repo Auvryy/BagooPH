@@ -4,7 +4,51 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ config('app.name', 'BagooPH') }}</title>
+
+        <!-- Primary SEO & Search Engine Directives -->
+        <meta name="description" content="BagooPH is the premier Philippine e-commerce and logistics marketplace. Shop verified merchants with nationwide Cash on Delivery (COD) and real-time parcel tracking.">
+        <meta name="keywords" content="BagooPH, e-commerce Philippines, online shopping PH, cash on delivery, COD, parcel tracking, logistics hub, merchant marketplace, buy online Philippines">
+        <meta name="author" content="BagooPH">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+        <link rel="canonical" href="{{ url()->current() }}">
+
+        <!-- Google Site Verification (configured via GOOGLE_SITE_VERIFICATION in .env) -->
+        @if(config('services.google.site_verification'))
+        <meta name="google-site-verification" content="{{ config('services.google.site_verification') }}">
+        @endif
+
+        <!-- Open Graph / Facebook / Messenger / Viber Previews -->
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="BagooPH">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta property="og:title" content="BagooPH — Philippine E-Commerce & On-Demand Logistics">
+        <meta property="og:description" content="Shop verified merchants with nationwide Cash on Delivery (COD) and real-time order tracking on BagooPH.">
+        <meta property="og:image" content="{{ asset('bagoo.svg') }}">
+        <meta property="og:locale" content="en_PH">
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="BagooPH — Philippine E-Commerce & On-Demand Logistics">
+        <meta name="twitter:description" content="Shop verified merchants with nationwide Cash on Delivery (COD) and real-time order tracking.">
+        <meta name="twitter:image" content="{{ asset('bagoo.svg') }}">
+
+        <!-- JSON-LD Schema.org Structured Data for Google Rich Snippets -->
+        <script type="application/ld+json">
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Organization',
+            'name' => 'BagooPH',
+            'url' => url('/'),
+            'logo' => asset('bagoo.svg'),
+            'description' => 'Philippine E-Commerce & On-Demand Logistics Marketplace with Cash on Delivery (COD).',
+            'potentialAction' => [
+                '@type' => 'SearchAction',
+                'target' => url('/buyer/catalog') . '?search={search_term_string}',
+                'query-input' => 'required name=search_term_string',
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+        </script>
 
         <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="/bagoo.svg">

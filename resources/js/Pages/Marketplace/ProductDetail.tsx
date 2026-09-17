@@ -45,7 +45,14 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
 
     return (
         <MarketplaceLayout>
-            <Head title={`${product.name} — Bagoo Marketplace`} />
+            <Head>
+                <title>{`${product.name} — Bagoo Marketplace`}</title>
+                <meta name="description" content={product.description ? product.description.slice(0, 160) : `Buy ${product.name} on BagooPH Marketplace with nationwide Cash on Delivery.`} />
+                <meta property="og:title" content={`${product.name} — Bagoo Marketplace`} />
+                <meta property="og:description" content={product.description ? product.description.slice(0, 160) : `Buy ${product.name} on BagooPH.`} />
+                <meta property="og:image" content={product.featured_image || '/bagoo.svg'} />
+                <meta property="og:type" content="product" />
+            </Head>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Breadcrumbs */}

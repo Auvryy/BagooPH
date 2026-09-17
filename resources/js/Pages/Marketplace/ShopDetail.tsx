@@ -170,7 +170,14 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                 ) : undefined
             }
         >
-            <Head title={`${shop.name} — Verified Official Storefront`} />
+            <Head>
+                <title>{`${shop.name} — Verified Official Storefront | BagooPH`}</title>
+                <meta name="description" content={shop.description ? shop.description.slice(0, 160) : `Shop official products from ${shop.name} on BagooPH with nationwide Cash on Delivery.`} />
+                <meta property="og:title" content={`${shop.name} — Official Storefront`} />
+                <meta property="og:description" content={shop.description ? shop.description.slice(0, 160) : `Shop verified products from ${shop.name} on BagooPH.`} />
+                <meta property="og:image" content={shop.logo || '/bagoo.svg'} />
+                <meta property="og:type" content="website" />
+            </Head>
 
             <div className="space-y-6 max-w-7xl mx-auto font-sans">
                 
