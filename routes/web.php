@@ -24,6 +24,7 @@ use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\PublicTrackingController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Simulation\OrderSimulationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -169,6 +170,7 @@ $registerAdminRoutes = function () {
 };
 
 $registerBuyerDomainRoutes = function () {
+    Route::get('/sitemap.xml', [SitemapController::class, 'index']);
     Route::get('/login', [AuthenticatedSessionController::class, 'create']);
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'create']);
@@ -208,9 +210,10 @@ Route::get('/admin', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Live Public Buyer Marketplace (Root /)
+| Live Public Buyer Marketplace (Root /) & SEO Discovery
 |--------------------------------------------------------------------------
 */
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/', [BuyerHomeController::class, 'index'])->name('marketplace');
 Route::get('/overview', [MarketplaceController::class, 'index'])->name('overview');
 Route::get('/about', [MarketplaceController::class, 'index'])->name('about');

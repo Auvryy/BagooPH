@@ -1,2 +1,34 @@
 User-agent: *
-Disallow:
+Allow: /
+Allow: /buyer/catalog
+Allow: /buyer/search
+Allow: /buyer/product/
+Allow: /shop/
+Allow: /seller
+Allow: /overview
+Allow: /about
+Allow: /track
+
+# Disallow private dashboards, admin portals, and internal workstations
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /hub
+Disallow: /hub/*
+Disallow: /courier
+Disallow: /courier/*
+Disallow: /seller/dashboard
+Disallow: /seller/orders
+Disallow: /seller/products
+Disallow: /seller/settings
+Disallow: /seller/reviews
+Disallow: /seller/vouchers
+Disallow: /seller/disputes
+Disallow: /seller/payouts
+Disallow: /buyer/profile
+Disallow: /buyer/cart
+Disallow: /buyer/checkout
+Disallow: /buyer/orders
+Disallow: /buyer/messages
+Disallow: /buyer/disputes
+
+Sitemap: https://bagooph.shop/sitemap.xml
