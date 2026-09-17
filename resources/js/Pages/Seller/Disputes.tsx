@@ -86,7 +86,18 @@ export default function SellerDisputes({ disputes, shop }: Props) {
 
                 {/* 2. DISPUTE CARDS LIST */}
                 <div className="space-y-4">
-                    {disputes.map((item) => {
+                    {disputes.length === 0 ? (
+                        <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center space-y-3 shadow-xs font-sans">
+                            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-base font-bold text-slate-800">No active disputes or return claims</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto font-mono">
+                                Your storefront has zero pending buyer returns, dispute claims, or defect escalations.
+                            </p>
+                        </div>
+                    ) : (
+                        disputes.map((item) => {
                         const isActioned = actionSuccessId === item.id;
                         return (
                             <div
@@ -199,7 +210,8 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                                 </div>
                             </div>
                         );
-                    })}
+                    })
+                )}
                 </div>
 
             </div>

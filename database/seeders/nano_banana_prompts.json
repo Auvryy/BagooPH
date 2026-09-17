@@ -1,0 +1,274 @@
+{
+  "products": [
+    {
+      "name": "Tactical Quick-Release Cobra Belt",
+      "slug": "tactical-quick-release-cobra-belt",
+      "category": "everyday-carry-gear",
+      "price": 1250.00,
+      "compare_at_price": 1600.00,
+      "stock": 20,
+      "sku": "APX-BLT-008",
+      "weight_kg": 0.28,
+      "description": "Heavy-duty tactical utility belt constructed from double-layered mil-spec 1000D nylon webbing. Fitted with an authentic quick-release matte black zinc alloy cobra buckle with quick-detach mechanism. Designed for everyday carry and outdoor tactical wear.",
+      "images": [
+        {
+          "filename": "cobra_belt_front.jpg",
+          "url": "/images/products/cobra_belt_front.jpg",
+          "is_primary": true,
+          "prompt": "Heavy-duty black tactical nylon belt with matte black metal quick-release cobra buckle, coiled neatly on a dark oiled walnut wooden surface, top-down studio product photography, dramatic soft side lighting, sharp texture, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "cobra_belt_angle.jpg",
+          "url": "/images/products/cobra_belt_angle.jpg",
+          "is_primary": false,
+          "prompt": "Close-up 45-degree macro shot of black tactical cobra belt buckle clicked shut, resting on textured dark oak workbench, subtle warm workshop lighting, crisp metallic details, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Minimalist Horween Leather Bifold Wallet",
+      "slug": "minimalist-horween-leather-bifold-wallet",
+      "category": "everyday-carry-gear",
+      "price": 1850.00,
+      "compare_at_price": 2400.00,
+      "stock": 20,
+      "sku": "APX-WLT-009",
+      "weight_kg": 0.12,
+      "description": "Handcrafted minimalist bifold wallet made from premium full-grain Horween vegetable-tanned leather. Features 6 quick-access card slots, RFID-blocking interior mesh lining, and a full-length billfold compartment that develops a rich natural patina over time.",
+      "images": [
+        {
+          "filename": "leather_wallet_front.jpg",
+          "url": "/images/products/leather_wallet_front.jpg",
+          "is_primary": true,
+          "prompt": "Rich cognac brown full-grain leather bifold wallet closed, lying flat on a textured dark charcoal slate stone background, warm ambient studio lighting, handcrafted edge stitching, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "leather_wallet_angle.jpg",
+          "url": "/images/products/leather_wallet_angle.jpg",
+          "is_primary": false,
+          "prompt": "Cognac leather wallet partially open showing card slots and burnished edges, 45 degree angle perspective on dark textured stone slab, soft directional lighting, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Matte Black Titanium Field Watch 42mm",
+      "slug": "matte-black-titanium-field-watch-42mm",
+      "category": "everyday-carry-gear",
+      "price": 4200.00,
+      "compare_at_price": 5500.00,
+      "stock": 20,
+      "sku": "APX-WTC-010",
+      "weight_kg": 0.18,
+      "description": "Rugged utilitarian field watch featuring a 42mm grade-2 brushed titanium case with matte black PVD coating. Scratch-resistant sapphire crystal with anti-reflective coating, 100m water resistance, and an interchangeable olive drab military NATO strap.",
+      "images": [
+        {
+          "filename": "field_watch_front.jpg",
+          "url": "/images/products/field_watch_front.jpg",
+          "is_primary": true,
+          "prompt": "Matte black titanium field watch with dark dial and olive green nylon NATO strap, top-down flat lay on weathered grey concrete surface, dramatic studio lighting, crisp watch face, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "field_watch_angle.jpg",
+          "url": "/images/products/field_watch_angle.jpg",
+          "is_primary": false,
+          "prompt": "Three-quarter side angle of matte black military field watch showing engraved crown and knurled titanium bezel, resting against textured industrial concrete, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Polarized Aviator Sunglasses Matte Gunmetal",
+      "slug": "polarized-aviator-sunglasses-gunmetal",
+      "category": "everyday-carry-gear",
+      "price": 1950.00,
+      "compare_at_price": 2600.00,
+      "stock": 20,
+      "sku": "APX-GLS-011",
+      "weight_kg": 0.08,
+      "description": "Classic teardrop aviator sunglasses with a lightweight matte gunmetal stainless steel frame. Equipped with category 3 polarized lenses offering 100% UV400 protection, anti-glare hydrophobic coating, and flexible spring hinges for all-day comfort.",
+      "images": [
+        {
+          "filename": "aviator_glasses_front.jpg",
+          "url": "/images/products/aviator_glasses_front.jpg",
+          "is_primary": true,
+          "prompt": "Matte gunmetal aviator sunglasses with dark polarized lenses, front flat-lay on rich distressed brown leather jacket texture, studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "aviator_glasses_angle.jpg",
+          "url": "/images/products/aviator_glasses_angle.jpg",
+          "is_primary": false,
+          "prompt": "Folded gunmetal aviator sunglasses angled at 45 degrees showing spring hinge mechanism and lens reflections, on vintage dark leather background, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Structured 5-Panel Water-Repellent Camp Cap",
+      "slug": "structured-5-panel-water-repellent-camp-cap",
+      "category": "everyday-carry-gear",
+      "price": 950.00,
+      "compare_at_price": 1300.00,
+      "stock": 20,
+      "sku": "APX-CAP-012",
+      "weight_kg": 0.11,
+      "description": "Low-profile 5-panel camp cap constructed from DWR water-repellent nylon taslan. Features matte black brass ventilation eyelets, flexible flat brim, and an adjustable nylon back strap with low-profile buckle for active urban commute.",
+      "images": [
+        {
+          "filename": "camp_cap_front.jpg",
+          "url": "/images/products/camp_cap_front.jpg",
+          "is_primary": true,
+          "prompt": "Deep olive green 5-panel camp cap with flat brim, front perspective resting on weathered natural cedar wood deck, soft natural lighting, textile texture details, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "camp_cap_angle.jpg",
+          "url": "/images/products/camp_cap_angle.jpg",
+          "is_primary": false,
+          "prompt": "Side profile view of olive green 5-panel nylon camp cap showing brass side eyelets and adjustable nylon rear strap, resting on dark weathered wood, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Heavy-Duty Anodized EDC Carabiner Clip",
+      "slug": "heavy-duty-anodized-edc-carabiner-clip",
+      "category": "everyday-carry-gear",
+      "price": 680.00,
+      "compare_at_price": 900.00,
+      "stock": 20,
+      "sku": "APX-CRB-013",
+      "weight_kg": 0.06,
+      "description": "Precision CNC-machined from lightweight aerospace aluminum alloy with hard-anodized matte black finish. Integrates a spring-loaded titanium wire gate, built-in bottle opener, and dual brass split key rings for secure keychain carry.",
+      "images": [
+        {
+          "filename": "edc_carabiner_front.jpg",
+          "url": "/images/products/edc_carabiner_front.jpg",
+          "is_primary": true,
+          "prompt": "Matte black CNC aluminum tactical carabiner keychain with brass split rings, top-down view on smooth dark grey basalt stone, crisp metallic edges, studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "edc_carabiner_angle.jpg",
+          "url": "/images/products/edc_carabiner_angle.jpg",
+          "is_primary": false,
+          "prompt": "Close-up 45-degree angle of black tactical carabiner clip with wire gate slightly open, resting on textured dark stone surface, crisp highlights, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Mil-Spec 550 Paracord Survival Bracelet",
+      "slug": "mil-spec-550-paracord-survival-bracelet",
+      "category": "everyday-carry-gear",
+      "price": 550.00,
+      "compare_at_price": 750.00,
+      "stock": 20,
+      "sku": "APX-BRC-014",
+      "weight_kg": 0.05,
+      "description": "Custom-woven survival bracelet using 10 feet of certified type-III 550 paracord. Secured with an adjustable matte black stainless steel bow shackle clasp with knurled screw pin. Rugged, durable, and mold-resistant.",
+      "images": [
+        {
+          "filename": "paracord_bracelet_front.jpg",
+          "url": "/images/products/paracord_bracelet_front.jpg",
+          "is_primary": true,
+          "prompt": "Tactical black and charcoal braided paracord bracelet with matte black steel shackle clasp, top-down flat lay on coarse red-brown sandstone rock, studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "paracord_bracelet_angle.jpg",
+          "url": "/images/products/paracord_bracelet_angle.jpg",
+          "is_primary": false,
+          "prompt": "Angled close-up of woven paracord bracelet showing tight weave pattern and engraved steel pin shackle, on rugged rock background, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Touchscreen Tactical Utility Gloves",
+      "slug": "touchscreen-tactical-utility-gloves",
+      "category": "everyday-carry-gear",
+      "price": 1450.00,
+      "compare_at_price": 1900.00,
+      "stock": 20,
+      "sku": "APX-GLV-015",
+      "weight_kg": 0.16,
+      "description": "High-dexterity tactical work gloves crafted with synthetic leather palms and conductive touchscreen fingertips on thumb and index. Features flexible TPR knuckle impact guards, breathable four-way stretch back, and TPR hook-and-loop wrist closures.",
+      "images": [
+        {
+          "filename": "tactical_gloves_front.jpg",
+          "url": "/images/products/tactical_gloves_front.jpg",
+          "is_primary": true,
+          "prompt": "Pair of black tactical utility gloves with knuckle protection laid side by side, on brushed steel industrial plate background, moody studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "tactical_gloves_angle.jpg",
+          "url": "/images/products/tactical_gloves_angle.jpg",
+          "is_primary": false,
+          "prompt": "Single black tactical glove showing palm grip texture and reinforced touchscreen fingertips, 45 degree angle on steel workshop surface, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Heavyweight Boxy Cotton Oversized Tee",
+      "slug": "heavyweight-boxy-cotton-oversized-tee",
+      "category": "everyday-carry-gear",
+      "price": 1150.00,
+      "compare_at_price": 1500.00,
+      "stock": 20,
+      "sku": "APX-TEE-016",
+      "weight_kg": 0.32,
+      "description": "Premium 280 GSM combed heavyweight cotton streetwear t-shirt with a relaxed boxy silhouette. Features a thick 1.25-inch ribbed collar, dropped shoulders, reinforced twin-needle stitching, and a pre-shrunk vintage stone wash.",
+      "images": [
+        {
+          "filename": "boxy_tee_front.jpg",
+          "url": "/images/products/boxy_tee_front.jpg",
+          "is_primary": true,
+          "prompt": "Minimalist streetwear heavyweight oversized cotton t-shirt hanging against a neutral textured studio concrete background, soft natural lighting, fabric folds, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "boxy_tee_angle.jpg",
+          "url": "/images/products/boxy_tee_angle.jpg",
+          "is_primary": false,
+          "prompt": "Close-up angled view of collar and textured 280 GSM cotton weave on modern minimalist streetwear tee, natural daylight, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    },
+    {
+      "name": "Heritage Full-Grain Leather Watch Strap 22mm",
+      "slug": "heritage-full-grain-leather-watch-strap-22mm",
+      "category": "everyday-carry-gear",
+      "price": 1350.00,
+      "compare_at_price": 1800.00,
+      "stock": 20,
+      "sku": "APX-STP-017",
+      "weight_kg": 0.07,
+      "description": "Bespoke 22mm watch strap cut from vegetable-tanned full-grain bridle leather. Hand-stitched with waxed linen thread and fitted with a brushed 316L stainless steel buckle. Supple, weather-resistant, and develops deep patina.",
+      "images": [
+        {
+          "filename": "leather_strap_front.jpg",
+          "url": "/images/products/leather_strap_front.jpg",
+          "is_primary": true,
+          "prompt": "Cognac full-grain leather watch strap with stainless steel buckle laid flat on rustic oak wooden surface, warm soft studio lighting, realistic",
+          "aspect_ratio": "1:1"
+        },
+        {
+          "filename": "leather_strap_angle.jpg",
+          "url": "/images/products/leather_strap_angle.jpg",
+          "is_primary": false,
+          "prompt": "45-degree angle close-up of leather watch strap showing hand-stitched linen thread and burnished edges on dark wooden table, realistic",
+          "aspect_ratio": "1:1"
+        }
+      ]
+    }
+  ]
+}

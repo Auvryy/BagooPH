@@ -60,7 +60,7 @@ class SellerDashboardController extends Controller
         $cancelledCount = OrderItem::where('shop_id', $shop->id)
             ->whereHas('order', fn($q) => $q->whereIn('status', ['cancelled', 'canceled', 'returned', 'delivery_failed']))
             ->count();
-        $returnCount = $cancelledCount > 0 ? $cancelledCount : 1;
+        $returnCount = $cancelledCount;
 
         // 7-day revenue analytics
         $dailySales = [];

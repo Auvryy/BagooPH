@@ -25,21 +25,19 @@ class SellerReviewController extends Controller
             ->latest()
             ->paginate(15);
 
-        // Fallback sample data if shop has no reviews yet for instant visual feedback
-        if ($reviews->isEmpty()) {
-            $sampleProducts = Product::where('shop_id', $shop?->id ?? 0)->take(3)->get();
-        }
+        $totalReviews = Review::whereIn('product_id', $productIds)->count();
+        $avgRating = $totalReviews > 0 ? round((float) Review::whereIn('product_id', $productIds)->avg('rating'), 1) : 0.0;
 
         $stats = [
-            'average_rating' => 4.9,
-            'total_reviews' => 148,
-            'response_rate' => '98%',
+            'average_rating' => $avgRating,
+            'total_reviews' => $totalReviews,
+            'response_rate' => $totalReviews > 0 ? '100%' : 'N/A',
             'rating_breakdown' => [
-                '5_star' => 124,
-                '4_star' => 18,
-                '3_star' => 4,
-                '2_star' => 1,
-                '1_star' => 1,
+                '5_star' => Review::whereIn('product_id', $productIds)->where('rating', 5)->count(),
+                '4_star' => Review::whereIn('product_id', $productIds)->where('rating', 4)->count(),
+                '3_star' => Review::whereIn('product_id', $productIds)->where('rating', 3)->count(),
+                '2_star' => Review::whereIn('product_id', $productIds)->where('rating', 2)->count(),
+                '1_star' => Review::whereIn('product_id', $productIds)->where('rating', 1)->count(),
             ],
         ];
 

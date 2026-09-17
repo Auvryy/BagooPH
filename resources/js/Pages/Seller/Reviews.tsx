@@ -60,47 +60,8 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
     const [replyText, setReplyText] = useState('');
     const [repliedMap, setRepliedMap] = useState<Record<number, string>>({});
 
-    // Fallback sample reviews if store is newly opened
-    const displayReviews: ReviewItem[] = reviews.data.length > 0 ? (reviews.data as ReviewItem[]) : [
-        {
-            id: 101,
-            product_id: 1,
-            buyer_id: 2,
-            order_id: 5,
-            rating: 5,
-            comment: 'Super fast delivery! The quality of the stitching and the tactical compartments exceeded my expectations. Legit Mall seller!',
-            images: ['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60'],
-            created_at: 'Aug 23, 2026',
-            product: {
-                id: 1,
-                name: 'Techwear Ergonomic Commuter Backpack',
-                featured_image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60',
-            } as any,
-            buyer: {
-                id: 2,
-                name: 'Maria Santos',
-            } as any,
-        },
-        {
-            id: 102,
-            product_id: 2,
-            buyer_id: 3,
-            order_id: 8,
-            rating: 5,
-            comment: 'Active noise cancellation is crisp and the spatial audio is great for commute. Well packed with bubble wrap and fragile sticker.',
-            images: [],
-            created_at: 'Aug 22, 2026',
-            product: {
-                id: 2,
-                name: 'ANC Wireless Studio Spatial Headphones',
-                featured_image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
-            } as any,
-            buyer: {
-                id: 3,
-                name: 'Juan Dela Cruz',
-            } as any,
-        },
-    ];
+    // Use actual reviews passed from server
+    const displayReviews: ReviewItem[] = (reviews?.data || []) as ReviewItem[];
 
     const handleSendReply = (reviewId: number) => {
         if (!replyText.trim()) return;
@@ -180,8 +141,19 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
                         </div>
                     </div>
 
-                    <div className="space-y-6 divide-y divide-slate-100">
-                        {displayReviews.map((rev) => {
+                    {displayReviews.length === 0 ? (
+                        <div className="py-16 text-center space-y-3 font-sans">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                                <MessageSquare className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-base font-bold text-slate-800">No customer reviews yet</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto font-mono">
+                                When customers complete their purchases and leave ratings, their feedback and photo reviews will appear here.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 divide-y divide-slate-100">
+                            {displayReviews.map((rev) => {
                             const hasLocalReply = repliedMap[rev.id];
                             return (
                                 <div key={rev.id} className="pt-6 first:pt-0 space-y-3 font-sans">
@@ -279,7 +251,8 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
                                 </div>
                             );
                         })}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
             </div>
