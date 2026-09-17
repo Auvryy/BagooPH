@@ -83,13 +83,53 @@ class SitemapController extends Controller
             ->orderBy('id')
             ->get();
 
-        $xml = view('seo.sitemap', [
-            'staticPages' => $staticPages,
-            'categories' => $categories,
-            'shops' => $shops,
-            'products' => $products,
-            'baseUrl' => $baseUrl,
-        ])->render();
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+
+        foreach ($staticPages as $page) {
+            $loc = htmlspecialchars($page['url'], ENT_XML1, 'UTF-8');
+            $xml .= "    <url>\n";
+            $xml .= "        <loc>{$loc}</loc>\n";
+            $xml .= "        <lastmod>{$page['lastmod']}</lastmod>\n";
+            $xml .= "        <changefreq>{$page['changefreq']}</changefreq>\n";
+            $xml .= "        <priority>{$page['priority']}</priority>\n";
+            $xml .= "    </url>\n";
+        }
+
+        foreach ($categories as $category) {
+            $loc = htmlspecialchars("{$baseUrl}/buyer/catalog?category={$category->slug}", ENT_XML1, 'UTF-8');
+            $lastmod = ($category->updated_at ?? now())->toAtomString();
+            $xml .= "    <url>\n";
+            $xml .= "        <loc>{$loc}</loc>\n";
+            $xml .= "        <lastmod>{$lastmod}</lastmod>\n";
+            $xml .= "        <changefreq>weekly</changefreq>\n";
+            $xml .= "        <priority>0.8</priority>\n";
+            $xml .= "    </url>\n";
+        }
+
+        foreach ($shops as $shop) {
+            $loc = htmlspecialchars("{$baseUrl}/shop/{$shop->slug}", ENT_XML1, 'UTF-8');
+            $lastmod = ($shop->updated_at ?? now())->toAtomString();
+            $xml .= "    <url>\n";
+            $xml .= "        <loc>{$loc}</loc>\n";
+            $xml .= "        <lastmod>{$lastmod}</lastmod>\n";
+            $xml .= "        <changefreq>weekly</changefreq>\n";
+            $xml .= "        <priority>0.8</priority>\n";
+            $xml .= "    </url>\n";
+        }
+
+        foreach ($products as $product) {
+            $loc = htmlspecialchars("{$baseUrl}/buyer/product/{$product->slug}", ENT_XML1, 'UTF-8');
+            $lastmod = ($product->updated_at ?? now())->toAtomString();
+            $xml .= "    <url>\n";
+            $xml .= "        <loc>{$loc}</loc>\n";
+            $xml .= "        <lastmod>{$lastmod}</lastmod>\n";
+            $xml .= "        <changefreq>daily</changefreq>\n";
+            $xml .= "        <priority>0.9</priority>\n";
+            $xml .= "    </url>\n";
+        }
+
+        $xml .= '</urlset>';
 
         return response($xml, 200, [
             'Content-Type' => 'application/xml; charset=UTF-8',
