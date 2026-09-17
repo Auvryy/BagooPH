@@ -126,14 +126,14 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 7. Category: Backpacks & Everyday Carry
+        // 7. Category: Men's Everyday Carry & Gear
         $category = Category::updateOrCreate(
             ['slug' => 'backpacks-and-bags'],
             [
-                'name'        => 'Backpacks & Bags',
+                'name'        => "Men's Gear & Everyday Carry",
                 'icon'        => 'ShoppingBag',
                 'image'       => '/images/products/vanguard_commuter_front.jpg',
-                'description' => 'Ergonomic, waterproof, and modular packs for commute, EDC, and travel.',
+                'description' => 'Premium commuter packs, modular EDC accessories, tactical belts, watches, and utilitarian gear.',
                 'is_active'   => true,
             ]
         );
@@ -241,6 +241,18 @@ class DatabaseSeeder extends Seeder
                 ],
             ],
         ];
+
+        // Dynamically load additional AI-generated Men's Wear & EDC accessories if their assets exist
+        $promptsFile = __DIR__ . '/nano_banana_prompts.json';
+        if (file_exists($promptsFile)) {
+            $extraData = json_decode(file_get_contents($promptsFile), true)['products'] ?? [];
+            foreach ($extraData as $extra) {
+                $primaryImgPath = public_path($extra['images'][0]['url']);
+                if (file_exists($primaryImgPath)) {
+                    $productsData[] = $extra;
+                }
+            }
+        }
 
         // Clean up any previously seeded products under this shop not in the current catalog
         $currentSlugs = array_column($productsData, 'slug');
