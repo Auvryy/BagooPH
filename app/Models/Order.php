@@ -27,6 +27,9 @@ class Order extends Model
         'shipping_address',
         'shipping_city',
         'shipping_postal_code',
+        'delivery_type', // doorstep, hub_self_pickup
+        'pickup_hub_id',
+        'destination_barangay',
         'notes',
     ];
 
@@ -117,5 +120,10 @@ class Order extends Model
     public function commissionLedger(): HasOne
     {
         return $this->hasOne(CommissionLedger::class);
+    }
+
+    public function pickupHub(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsHub::class, 'pickup_hub_id');
     }
 }

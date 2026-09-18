@@ -12,6 +12,10 @@ class CourierProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'logistics_company_id',
+        'assigned_hub_id',
+        'assigned_barangay',
+        'vehicle_id',
         'vehicle_type',
         'plate_number',
         'license_number',
@@ -26,5 +30,20 @@ class CourierProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsCompany::class, 'logistics_company_id');
+    }
+
+    public function hub(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsHub::class, 'assigned_hub_id');
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsFleet::class, 'vehicle_id');
     }
 }

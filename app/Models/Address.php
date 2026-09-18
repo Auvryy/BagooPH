@@ -19,6 +19,11 @@ class Address extends Model
         'barangay',
         'street',
         'postal_code',
+        'latitude',
+        'longitude',
+        'landmark',
+        'verification_status', // verified, pending_review, unverified
+        'verification_notes',
         'type',
         'is_default',
     ];
@@ -27,6 +32,8 @@ class Address extends Model
     {
         return [
             'is_default' => 'boolean',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
