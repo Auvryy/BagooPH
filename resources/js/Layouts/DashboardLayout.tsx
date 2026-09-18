@@ -26,7 +26,10 @@ import {
     CheckCircle2,
     Check,
     Plus,
-    User as UserIcon
+    User as UserIcon,
+    ScanLine,
+    Building2,
+    Boxes
 } from 'lucide-react';
 
 interface Props {
@@ -42,6 +45,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [shopSwitcherOpen, setShopSwitcherOpen] = useState(false);
+    const [hubSwitcherOpen, setHubSwitcherOpen] = useState(false);
     const [createShopModalOpen, setCreateShopModalOpen] = useState(false);
     const [newShopName, setNewShopName] = useState('');
     const [newShopCategoryId, setNewShopCategoryId] = useState('');
@@ -52,6 +56,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const role = user?.role || 'buyer';
     const currentShop = user?.shop;
     const shops = sellerShops && sellerShops.length > 0 ? sellerShops : (currentShop ? [currentShop] : []);
+    const activeHub = (user as any)?.activeHub;
+    const allHubs = (user as any)?.allHubs || [];
+    const logisticsCompany = (user as any)?.logisticsCompany;
 
     const handleCreateShop = (e: React.FormEvent) => {
         e.preventDefault();
@@ -152,9 +159,50 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             ];
         }
 
-        if (role === 'courier' || role === 'logistics') {
+        if (role === 'courier') {
             return [
                 { name: 'Deliveries', href: route('courier.deliveries'), icon: Truck, current: component.startsWith('Courier/Deliveries') || route().current('courier.deliveries') || url.startsWith('/courier/deliveries') },
+            ];
+        }
+
+        if (role === 'logistics') {
+            return [
+                { 
+                    name: 'Overview', 
+                    href: route('hub.dashboard'), 
+                    icon: LayoutDashboard, 
+                    current: component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
+                },
+                { 
+                    name: 'Scan Station', 
+                    href: route('hub.scan.station'), 
+                    icon: ScanLine, 
+                    current: component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan') 
+                },
+                { 
+                    name: 'Facility Network', 
+                    href: route('hub.network'), 
+                    icon: Building2, 
+                    current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
+                },
+                { 
+                    name: 'Fleet Management', 
+                    href: route('hub.fleet'), 
+                    icon: Truck, 
+                    current: component === 'Hub/Fleet' || route().current('hub.fleet') || url.startsWith('/hub/fleet') 
+                },
+                { 
+                    name: 'Parcels & Waybills', 
+                    href: route('hub.deliveries'), 
+                    icon: Package, 
+                    current: component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries') 
+                },
+                { 
+                    name: 'Counter Pickup', 
+                    href: route('hub.counter'), 
+                    icon: Store, 
+                    current: component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter') 
+                },
             ];
         }
 
@@ -185,12 +233,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Brand Header */}
                 <div className="p-4 border-b border-slate-100 shrink-0 bg-white">
                     <div className="flex items-center justify-between">
-                        <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : '/'} className="flex items-center gap-2.5">
+                        <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
                             <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             <div>
                                 <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
                                 <span className="block text-[9px] uppercase font-bold tracking-widest text-slate-500 -mt-0.5 font-mono">
-                                    {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : 'Portal'}
+                                    {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : role === 'logistics' ? 'Logistics Hub' : 'Portal'}
                                 </span>
                             </div>
                         </Link>
@@ -283,6 +331,74 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 )}
 
+                {/* Active Hub Facility & Switcher for Logistics */}
+                {role === 'logistics' && (
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                                <Building2 className="w-3 h-3 text-blue-600" /> Facility Station
+                            </span>
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase font-mono">
+                                {activeHub?.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                            </span>
+                        </div>
+
+                        {/* Facility Switcher Dropdown Button */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setHubSwitcherOpen(!hubSwitcherOpen)}
+                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition">
+                                        {activeHub?.name || logisticsCompany?.name || 'Logistics Terminal'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-mono truncate">
+                                        Station: {activeHub?.code || 'STATION-01'} • {activeHub?.city_municipality || 'Laguna'}
+                                    </p>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {hubSwitcherOpen && allHubs && allHubs.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                        Switch Operating Hub
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                        {allHubs.map((h: any) => (
+                                            <button
+                                                key={h.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setHubSwitcherOpen(false);
+                                                    if (h.id !== activeHub?.id) {
+                                                        router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true });
+                                                    }
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
+                                                    h.id === activeHub?.id ? 'bg-slate-50 font-bold text-blue-600' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1 pr-2">
+                                                    <p className="truncate">{h.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                        {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                                    </p>
+                                                </div>
+                                                {h.id === activeHub?.id && (
+                                                    <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation Sections */}
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
                     
@@ -359,6 +475,39 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             })()}
                         </div>
                     )}
+
+                    {/* Quick Links for Logistics Operators */}
+                    {role === 'logistics' && (
+                        <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                                Floor Stations
+                            </p>
+                            <Link
+                                href={route('hub.scan.station')}
+                                className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition group"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <ScanLine className="w-4 h-4 text-emerald-600 group-hover:text-emerald-700 transition" />
+                                    <span>Barcode Scanner Terminal</span>
+                                </div>
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    PWA
+                                </span>
+                            </Link>
+                            <Link
+                                href={route('hub.counter')}
+                                className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition group"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Store className="w-4 h-4 text-blue-600 group-hover:text-blue-700 transition" />
+                                    <span>Counter Self-Pickup</span>
+                                </div>
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                    Free
+                                </span>
+                            </Link>
+                        </div>
+                    )}
                 </nav>
 
                 {/* Sidebar Bottom: Sign Out Button */}
@@ -424,7 +573,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-bold uppercase">
-                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : 'Authorized User'}
+                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : role === 'logistics' ? 'Logistics Operator' : 'Authorized User'}
                                     </span>
                                 </div>
                             </Link>
@@ -488,6 +637,32 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 </div>
                                                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                                             </a>
+                                        )}
+
+                                        {role === 'logistics' && (
+                                            <>
+                                                <Link
+                                                    href={route('hub.dashboard')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                                                    <span>Hub Overview</span>
+                                                </Link>
+                                                <Link
+                                                    href={route('hub.scan.station')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <ScanLine className="w-4 h-4 text-emerald-600" />
+                                                    <span>Floor Scanner (PWA)</span>
+                                                </Link>
+                                                <Link
+                                                    href={route('hub.network')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <Building2 className="w-4 h-4 text-slate-400" />
+                                                    <span>Facility Network</span>
+                                                </Link>
+                                            </>
                                         )}
 
                                         <Link

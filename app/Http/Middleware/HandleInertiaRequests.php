@@ -80,6 +80,26 @@ class HandleInertiaRequests extends Middleware
                         ->orderByDesc('is_default')
                         ->get() : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
+                    'logisticsCompany' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                        ? ($user->logisticsCompany ?? \App\Models\LogisticsCompany::where('is_active', true)->first())
+                        : null,
+                    'activeHub' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                        ? (function () use ($request, $user) {
+                            $hubId = $request->session()->get('active_hub_id');
+                            if ($hubId) {
+                                $h = \App\Models\LogisticsHub::find($hubId);
+                                if ($h) return $h;
+                            }
+                            $handler = \App\Models\HubHandler::where('user_id', $user->id)->first();
+                            if ($handler) {
+                                return $handler->hub;
+                            }
+                            return \App\Models\LogisticsHub::where('is_active', true)->first();
+                        })()
+                        : null,
+                    'allHubs' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                        ? \App\Models\LogisticsHub::where('is_active', true)->orderBy('tier')->get(['id', 'name', 'code', 'tier', 'city_municipality'])
+                        : [],
                 ] : null,
             ],
             'cartCount' => $cartCount,

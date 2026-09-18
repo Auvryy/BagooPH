@@ -445,6 +445,15 @@ export default function ScanStation({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Hub Dashboard Navigation Link */}
+                        <Link
+                            href={route('hub.dashboard')}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+                        >
+                            <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                            <span className="hidden sm:inline">Hub Dashboard</span>
+                        </Link>
+
                         {/* Audio Toggle */}
                         <button
                             type="button"

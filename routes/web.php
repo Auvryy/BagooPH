@@ -138,7 +138,12 @@ $registerHubRoutes = function () {
     Route::get('/hub/register', fn() => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
-        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
+        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
+        Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
+        Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
+        Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
+        Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
+        Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
@@ -415,6 +420,12 @@ Route::prefix('hub')->name('hub.')->group(function () {
     })->name('index');
 
     Route::middleware(['auth', 'role:logistics,admin'])->group(function () {
+        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
+        Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
+        Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
+        Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
+        Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
+        Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
