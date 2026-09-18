@@ -69,6 +69,9 @@ export interface Shop {
     city?: string | null;
     rating: string | number;
     status: string;
+    root_category_id?: number | null;
+    root_category?: Category | null;
+    is_default?: boolean;
     products_count?: number;
     user?: User;
 }
@@ -233,6 +236,8 @@ export type PageProps<
     auth: {
         user: User | null;
     };
+    sellerShops?: Shop[];
+    categories?: Category[];
     cartCount: number;
     unreadMessagesCount?: number;
     flash: {

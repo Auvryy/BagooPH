@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
 import { getDomainUrl } from '@/utils/domain';
@@ -24,6 +24,8 @@ import {
     ShieldAlert,
     TrendingUp,
     CheckCircle2,
+    Check,
+    Plus,
     User as UserIcon
 } from 'lucide-react';
 
@@ -35,14 +37,39 @@ interface Props {
 }
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const { auth, flash, sellerShops, categories } = usePage<PageProps>().props;
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [shopSwitcherOpen, setShopSwitcherOpen] = useState(false);
+    const [createShopModalOpen, setCreateShopModalOpen] = useState(false);
+    const [newShopName, setNewShopName] = useState('');
+    const [newShopCategoryId, setNewShopCategoryId] = useState('');
+    const [newShopDescription, setNewShopDescription] = useState('');
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
     const role = user?.role || 'buyer';
+    const currentShop = user?.shop;
+    const shops = sellerShops && sellerShops.length > 0 ? sellerShops : (currentShop ? [currentShop] : []);
+
+    const handleCreateShop = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newShopName.trim() || !newShopCategoryId) return;
+
+        router.post(route('seller.shops.create'), {
+            name: newShopName.trim(),
+            root_category_id: newShopCategoryId,
+            description: newShopDescription.trim() || undefined,
+        }, {
+            onSuccess: () => {
+                setCreateShopModalOpen(false);
+                setNewShopName('');
+                setNewShopCategoryId('');
+                setNewShopDescription('');
+            }
+        });
+    };
 
     const handleUserMenuEnter = () => {
         if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
@@ -175,6 +202,86 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         </button>
                     </div>
                 </div>
+
+                {/* Active Store Profile & Switcher for Merchants */}
+                {role === 'seller' && currentShop && (
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                                <Store className="w-3 h-3 text-[#E00D42]" /> Store Profile
+                            </span>
+                            {currentShop.root_category && (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    {currentShop.root_category.name}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Switcher Dropdown Button */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShopSwitcherOpen(!shopSwitcherOpen)}
+                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#E00D42] transition">{currentShop.name}</p>
+                                    <p className="text-[10px] text-slate-500 font-mono truncate">{shops.length} profile{shops.length === 1 ? '' : 's'} managed</p>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${shopSwitcherOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {shopSwitcherOpen && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                        Switch Store Profile
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                        {shops.map((s) => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setShopSwitcherOpen(false);
+                                                    if (s.id !== currentShop.id) {
+                                                        router.post(route('seller.shops.switch'), { shop_id: s.id }, { preserveScroll: true });
+                                                    }
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
+                                                    s.id === currentShop.id ? 'bg-slate-50 font-bold text-[#E00D42]' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1 pr-2">
+                                                    <p className="truncate">{s.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                        Enclosure: {s.root_category?.name || 'General'}
+                                                    </p>
+                                                </div>
+                                                {s.id === currentShop.id && (
+                                                    <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="p-2 border-t border-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShopSwitcherOpen(false);
+                                                setCreateShopModalOpen(true);
+                                            }}
+                                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-semibold transition cursor-pointer"
+                                        >
+                                            <Plus className="w-3 h-3" />
+                                            <span>New Specialty Store</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Navigation Sections */}
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
@@ -429,6 +536,91 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </main>
             </div>
+
+            {/* Create Store Profile Modal */}
+            {createShopModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-6">
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-lg bg-red-50 text-[#E00D42]">
+                                    <Store className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-900">Create Storefront Profile</h2>
+                                    <p className="text-[11px] text-slate-500">Add a dedicated category enclosure under this merchant account</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setCreateShopModalOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateShop} className="mt-4 space-y-4 text-xs">
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Store Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={newShopName}
+                                    onChange={(e) => setNewShopName(e.target.value)}
+                                    placeholder="e.g. Bagoo Urban EDC"
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Root Category Enclosure *</label>
+                                <select
+                                    required
+                                    value={newShopCategoryId}
+                                    onChange={(e) => setNewShopCategoryId(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs bg-white"
+                                >
+                                    <option value="">Select Root Category Enclosure...</option>
+                                    {(categories || []).map((cat) => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    All products listed in this store will be strictly bounded to this root category enclosure.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                                <textarea
+                                    rows={2}
+                                    value={newShopDescription}
+                                    onChange={(e) => setNewShopDescription(e.target.value)}
+                                    placeholder="Brief storefront specialty summary..."
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreateShopModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded-lg bg-[#E00D42] hover:bg-[#b50a35] text-white font-bold transition shadow-xs cursor-pointer"
+                                >
+                                    Create Storefront
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

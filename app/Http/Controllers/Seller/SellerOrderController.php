@@ -16,16 +16,11 @@ use Inertia\Response;
 
 class SellerOrderController extends Controller
 {
+    use HasSellerShop;
+
     private function getShop(Request $request): Shop
     {
-        return Shop::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            [
-                'name' => $request->user()->name . "'s Store",
-                'slug' => Str::slug($request->user()->name . '-store-' . $request->user()->id),
-                'status' => 'active',
-            ]
-        );
+        return $this->getActiveShop($request);
     }
 
     public function index(Request $request): Response

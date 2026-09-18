@@ -63,7 +63,22 @@ class HandleInertiaRequests extends Middleware
                     'business_permit_path' => $user->business_permit_path,
                     'driver_license_path' => $user->driver_license_path,
                     'or_cr_path' => $user->or_cr_path,
-                    'shop' => $user->role === 'seller' ? $user->shop : null,
+                    'shop' => ($user && $user->role === 'seller') ? (function () use ($user, $request) {
+                        $activeId = $request->session()->get('active_seller_shop_id');
+                        $shop = null;
+                        if ($activeId) {
+                            $shop = \App\Models\Shop::with('rootCategory')->where('id', $activeId)->where('user_id', $user->id)->first();
+                        }
+                        if (!$shop) {
+                            $shop = \App\Models\Shop::with('rootCategory')->where('user_id', $user->id)->where('is_default', true)->first()
+                                ?? \App\Models\Shop::with('rootCategory')->where('user_id', $user->id)->first();
+                        }
+                        return $shop;
+                    })() : null,
+                    'sellerShops' => ($user && $user->role === 'seller') ? \App\Models\Shop::with('rootCategory:id,name,slug')
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('is_default')
+                        ->get() : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
                 ] : null,
             ],

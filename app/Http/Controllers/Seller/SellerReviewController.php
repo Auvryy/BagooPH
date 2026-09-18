@@ -13,10 +13,12 @@ use Inertia\Response;
 
 class SellerReviewController extends Controller
 {
+    use HasSellerShop;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->first();
+        $shop = $this->getActiveShop($request);
 
         $productIds = Product::where('shop_id', $shop?->id ?? 0)->pluck('id');
 

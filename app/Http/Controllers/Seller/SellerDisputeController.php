@@ -11,10 +11,12 @@ use Inertia\Response;
 
 class SellerDisputeController extends Controller
 {
+    use HasSellerShop;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->first();
+        $shop = $this->getActiveShop($request);
 
         $disputes = [];
 

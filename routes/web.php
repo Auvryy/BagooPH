@@ -85,6 +85,8 @@ $registerSellerRoutes = function () {
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
         Route::get('/profile', [SellerDashboardController::class, 'profile']);
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
+        Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
+        Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', function (\Illuminate\Http\Request $request) {
@@ -345,6 +347,8 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
     Route::get('/profile', [SellerDashboardController::class, 'profile'])->name('profile');
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
+    Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
     Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
