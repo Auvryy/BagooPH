@@ -164,6 +164,9 @@ class CheckoutController extends Controller
             'shipping_city' => 'required|string|max:100',
             'shipping_province' => 'nullable|string|max:100',
             'shipping_postal_code' => 'nullable|string|max:20',
+            'shipping_latitude' => 'nullable|numeric|between:-90,90',
+            'shipping_longitude' => 'nullable|numeric|between:-180,180',
+            'landmark' => 'nullable|string|max:255',
             'delivery_type' => 'nullable|string|in:doorstep,hub_self_pickup',
             'pickup_hub_id' => 'nullable|exists:logistics_hubs,id',
             'destination_barangay' => 'nullable|string|max:100',
@@ -204,6 +207,9 @@ class CheckoutController extends Controller
                 'barangay' => $validated['destination_barangay'] ?? null,
                 'street' => $validated['shipping_address'],
                 'postal_code' => $validated['shipping_postal_code'] ?? null,
+                'latitude' => $validated['shipping_latitude'] ?? null,
+                'longitude' => $validated['shipping_longitude'] ?? null,
+                'landmark' => $validated['landmark'] ?? null,
                 'type' => 'Home',
                 'is_default' => ! $hasExisting,
             ]);
@@ -257,12 +263,14 @@ class CheckoutController extends Controller
                     'delivery_type' => $deliveryType,
                     'pickup_hub_id' => ($deliveryType === 'hub_self_pickup') ? ($validated['pickup_hub_id'] ?? null) : null,
                     'destination_barangay' => $validated['destination_barangay'] ?? null,
+                    'destination_latitude' => $validated['shipping_latitude'] ?? null,
+                    'destination_longitude' => $validated['shipping_longitude'] ?? null,
                     'recipient_name' => $validated['recipient_name'],
                     'recipient_phone' => $validated['recipient_phone'],
                     'shipping_address' => $validated['shipping_address'],
                     'shipping_city' => $validated['shipping_city'],
                     'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
-                    'notes' => $validated['notes'] ?? null,
+                    'notes' => (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') . ($validated['notes'] ?? ''),
                 ]);
 
                 $firstShop = null;
@@ -291,6 +299,9 @@ class CheckoutController extends Controller
                 }
 
                 // Create Delivery record for courier pool
+                $formattedDeliveryAddress = (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') 
+                    . $validated['shipping_address'] . ', ' . $validated['shipping_city'];
+
                 $delivery = Delivery::create([
                     'order_id' => $order->id,
                     'tracking_number' => 'BGO-' . strtoupper(Str::random(10)),
@@ -300,7 +311,7 @@ class CheckoutController extends Controller
                     'pickup_store_name' => $firstShop?->name ?? 'Bagoo Prime Store',
                     'pickup_address' => ($firstShop?->address ?? 'Artisan District') . ', ' . ($firstShop?->city ?? 'Metro Manila'),
                     'delivery_recipient_name' => $validated['recipient_name'],
-                    'delivery_address' => $validated['shipping_address'] . ', ' . $validated['shipping_city'],
+                    'delivery_address' => $formattedDeliveryAddress,
                     'delivery_phone' => $validated['recipient_phone'],
                     'estimated_delivery_at' => now()->addDays(3),
                 ]);
