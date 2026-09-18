@@ -184,8 +184,32 @@ class LogisticsRoutingEngine
         $hub = $currentHub ?? $delivery->currentHub;
         $status = strtolower($delivery->status);
 
-        // 1. At Origin Bayan Hub
-        if ($hub && $hub->id === $delivery->origin_bayan_hub_id) {
+        // 1. Check if at Destination Bayan Hub (Priority if parcel is destination-bound or arrived)
+        if ($hub && $hub->id === $delivery->destination_bayan_hub_id && (
+            $hub->id !== $delivery->origin_bayan_hub_id ||
+            in_array($status, ['arrived_at_destination_hub', 'sorted_to_barangay_bin', 'ready_for_hub_pickup', 'in_transit_to_destination_hub'])
+        )) {
+            if ($delivery->isSelfPickup()) {
+                return [
+                    'action' => 'STAGE_FOR_PICKUP',
+                    'prompt' => 'STAGE AT COUNTER: SHELF-PICKUP-BAY-A (NOTIFY BUYER)',
+                    'next_status' => 'ready_for_hub_pickup',
+                    'color' => 'green',
+                ];
+            }
+
+            $binCode = $delivery->destination_bin ?? 'BIN: GENERAL-DELIVERY';
+            $riderName = $delivery->assignedRider?->name ?? 'ASSIGN RIDER';
+            return [
+                'action' => 'BIN_TO_BARANGAY',
+                'prompt' => "{$binCode} | RIDER: {$riderName}",
+                'next_status' => 'out_for_delivery',
+                'color' => 'emerald',
+            ];
+        }
+
+        // 2. At Origin Bayan Hub
+        if ($hub && $hub->id === $delivery->origin_bayan_hub_id && in_array($status, ['assigned', 'picked_up', 'arrived_at_origin_hub', 'placed', 'preparing', 'ready_for_pickup'])) {
             $motherHubCode = $delivery->originMotherHub?->code ?? 'MOTHER-HUB';
             return [
                 'action' => 'DISPATCH_TO_FEEDER',
@@ -195,8 +219,8 @@ class LogisticsRoutingEngine
             ];
         }
 
-        // 2. At Regional Mother Hub
-        if ($hub && ($hub->id === $delivery->origin_mother_hub_id || $hub->isMotherHub())) {
+        // 3. At Regional Mother Hub
+        if ($hub && ($hub->id === $delivery->origin_mother_hub_id || $hub->id === $delivery->destination_mother_hub_id || $hub->isMotherHub())) {
             $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
             return [
                 'action' => 'SORT_TO_LINE_HAUL',
@@ -206,7 +230,7 @@ class LogisticsRoutingEngine
             ];
         }
 
-        // 3. At Destination Bayan Hub
+        // 4. Default Destination Bayan Hub check
         if ($hub && $hub->id === $delivery->destination_bayan_hub_id) {
             if ($delivery->isSelfPickup()) {
                 return [
