@@ -60,7 +60,9 @@ class OrderStateMachineService
             switch ($targetStatus) {
                 case self::STATUS_PICKED_UP:
                     $delivery->picked_up_at = now();
-                    $delivery->courier_id = $actor->id;
+                    if (! $delivery->courier_id && $actor->isCourier()) {
+                        $delivery->courier_id = $actor->id;
+                    }
                     break;
 
                 case self::STATUS_IN_TRANSIT_TO_MOTHER_HUB:
@@ -72,7 +74,11 @@ class OrderStateMachineService
                     break;
 
                 case self::STATUS_OUT_FOR_DELIVERY:
-                    $delivery->assigned_rider_id = $scanMetadata['rider_id'] ?? $actor->id;
+                    if (! empty($scanMetadata['rider_id'])) {
+                        $delivery->assigned_rider_id = $scanMetadata['rider_id'];
+                    } elseif ($actor->isCourier()) {
+                        $delivery->assigned_rider_id = $actor->id;
+                    }
                     break;
 
                 case self::STATUS_DELIVERED:

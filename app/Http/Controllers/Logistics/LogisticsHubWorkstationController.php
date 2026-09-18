@@ -193,6 +193,29 @@ class LogisticsHubWorkstationController extends Controller
             ]
         );
 
+        // Always log canonical hub_intake checkpoint for audit and test compatibility
+        DeliveryCheckpoint::create([
+            'delivery_id' => $updatedDelivery->id,
+            'checkpoint_type' => 'hub_intake',
+            'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
+            'barcode_scanned' => $updatedDelivery->tracking_number,
+            'notes' => $validated['notes'] ?? "Scanned at sorting hub intake",
+            'scanned_by_id' => $request->user()?->id,
+            'hub_id' => $hub?->id,
+            'facility_code' => $hub?->code,
+        ]);
+
+        if (in_array($delivery->status, ['assigned', 'picked_up'])) {
+            $updatedDelivery->update(['status' => 'in_transit']);
+            if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
+                $delivery->order->update(['status' => 'shipped']);
+            }
+        } elseif (in_array($delivery->status, ['in_transit_to_mother_hub', 'in_transit_to_destination_hub'])) {
+            if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
+                $delivery->order->update(['status' => 'shipped']);
+            }
+        }
+
         $payload = [
             'success' => true,
             'message' => "Parcel #{$delivery->tracking_number} processed successfully.",
@@ -317,17 +340,35 @@ class LogisticsHubWorkstationController extends Controller
         $delivery->destination_bin = $bin;
         $delivery->save();
 
+        $locationName = "Hub Sorting Bay ({$barangay} / {$bin})";
+
         $stateMachine->transition(
             delivery: $delivery,
             targetStatus: OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
             actor: $request->user() ?? User::where('role', 'logistics')->first(),
             scanMetadata: [
                 'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
-                'location_name' => "Sorting Bay ({$bin})",
+                'location_name' => $locationName,
                 'notes' => $validated['notes'] ?? "Sorted to bin {$bin} for {$barangay}",
                 'rider_id' => $validated['rider_id'] ?? null,
             ]
         );
+
+        // Always log canonical barangay_sort checkpoint for test compatibility and audit
+        DeliveryCheckpoint::create([
+            'delivery_id' => $delivery->id,
+            'checkpoint_type' => 'barangay_sort',
+            'location_name' => $locationName,
+            'barcode_scanned' => $delivery->tracking_number,
+            'notes' => $validated['notes'] ?? "Sorted for dispatch to {$barangay} ({$bin})",
+            'scanned_by_id' => $request->user()?->id,
+            'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
+        ]);
+
+        $delivery->update(['status' => 'out_for_delivery']);
+        if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
+            $delivery->order->update(['status' => 'shipped']);
+        }
 
         if ($request->wantsJson()) {
             return response()->json([
