@@ -294,16 +294,27 @@ class SellerOrderController extends Controller
         ]);
 
         $reasonText = $validated['reason'] . ($validated['notes'] ? ': ' . $validated['notes'] : '');
-        $order->update([
-            'status' => 'cancelled',
-            'notes' => $reasonText,
-            'cancellation_reason' => $reasonText,
-        ]);
+        
+        DB::transaction(function () use ($order, $reasonText) {
+            $order->update([
+                'status' => 'cancelled',
+                'notes' => $reasonText,
+                'cancellation_reason' => $reasonText,
+            ]);
 
-        if ($order->delivery) {
-            $order->delivery->update(['status' => 'cancelled']);
-        }
+            // Release stock back to catalog and decrement sales count
+            foreach ($order->items as $item) {
+                if ($item->product) {
+                    $item->product->increment('stock', $item->quantity);
+                    $item->product->decrement('sales_count', min($item->quantity, (int) $item->product->sales_count));
+                }
+            }
 
-        return back()->with('success', "Order #{$order->order_number} has been cancelled.");
+            if ($order->delivery) {
+                $order->delivery->update(['status' => 'cancelled']);
+            }
+        });
+
+        return back()->with('success', "Order #{$order->order_number} has been cancelled and stock released.");
     }
 }
