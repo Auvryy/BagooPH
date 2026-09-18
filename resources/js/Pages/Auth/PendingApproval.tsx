@@ -18,16 +18,24 @@ import {
     UserCheck, 
     X,
     ArrowRight,
-    Sparkles
+    Sparkles,
+    Building2
 } from 'lucide-react';
 
 interface PendingApprovalProps {
     user: User;
     shop?: Shop | null;
     courierProfile?: CourierProfile | null;
+    logisticsCompany?: {
+        id: number;
+        name: string;
+        code: string;
+        status: string;
+        address?: string;
+    } | null;
 }
 
-export default function PendingApproval({ user, shop, courierProfile }: PendingApprovalProps) {
+export default function PendingApproval({ user, shop, courierProfile, logisticsCompany }: PendingApprovalProps) {
     const isRejected = user.kyc_status === 'rejected';
 
     const idInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +180,15 @@ export default function PendingApproval({ user, shop, courierProfile }: PendingA
                                 </div>
                             </div>
                         )}
+                        {logisticsCompany && (
+                            <div className="col-span-2 pt-1 border-t border-black/5 flex items-center gap-2">
+                                <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                                <div>
+                                    <span className="text-black/50 block text-[9px] uppercase">Logistics Company & Dispatch Fleet</span>
+                                    <span className="font-bold">{logisticsCompany.name} ({logisticsCompany.code})</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -201,6 +218,22 @@ export default function PendingApproval({ user, shop, courierProfile }: PendingA
                                     <div className="flex items-center gap-2 text-emerald-700">
                                         <CheckCircle2 className="w-4 h-4 shrink-0" />
                                         <span>Courier Route Zone Allocation</span>
+                                    </div>
+                                </>
+                            )}
+                            {user.role === 'logistics' && (
+                                <>
+                                    <div className="flex items-center gap-2 text-emerald-700">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        <span>Corporate Freight Entity & DTI / SEC Registration</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-emerald-700">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        <span>LTFRB Franchise & Transport Capacity Accreditation</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-emerald-700">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        <span>Sortation Hub Allocation & Line-Haul Route Calibration</span>
                                     </div>
                                 </>
                             )}

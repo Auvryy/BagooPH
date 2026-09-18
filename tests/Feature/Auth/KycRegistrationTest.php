@@ -164,4 +164,79 @@ class KycRegistrationTest extends TestCase
         $response->assertSessionHasErrors(['id_document', 'business_permit']);
         $this->assertGuest();
     }
+
+    public function test_logistics_registration_with_documents_creates_pending_user_and_logistics_company(): void
+    {
+        Storage::fake('public');
+
+        $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
+        $franchiseFile = UploadedFile::fake()->create('franchise_cert.pdf', 1000, 'application/pdf');
+
+        $response = $this->post('/register', [
+            'name' => 'Captain Arturo Santos',
+            'company_name' => 'Southern Freight Express',
+            'company_code' => 'SFX',
+            'email' => 'arturo@southernfreight.ph',
+            'phone' => '+63 917 555 7777',
+            'address' => 'KM 54 National Highway, Real',
+            'city' => 'Calamba City',
+            'province' => 'Laguna',
+            'role' => 'logistics',
+            'franchise_number' => 'LTFRB-2026-SFX-9988',
+            'fleet_size' => 45,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'business_permit' => $permitFile,
+            'franchise_document' => $franchiseFile,
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('kyc.pending', absolute: false));
+
+        $user = User::where('email', 'arturo@southernfreight.ph')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('logistics', $user->role);
+        $this->assertEquals('pending_approval', $user->kyc_status);
+        $this->assertEquals('pending_approval', $user->status);
+        $this->assertNotNull($user->business_permit_path);
+
+        $this->assertNotNull($user->logisticsCompany);
+        $this->assertEquals('Southern Freight Express', $user->logisticsCompany->name);
+        $this->assertEquals('SFX', $user->logisticsCompany->code);
+        $this->assertEquals('pending', $user->logisticsCompany->status);
+        $this->assertFalse($user->logisticsCompany->is_active);
+    }
+
+    public function test_admin_approves_logistics_registration_activates_company(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+
+        $applicant = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'pending_approval',
+            'kyc_status' => 'pending_approval',
+        ]);
+
+        $company = \App\Models\LogisticsCompany::create([
+            'user_id' => $applicant->id,
+            'name' => 'Pacific Express Cargo',
+            'slug' => 'pacific-express-cargo',
+            'code' => 'PEC',
+            'contact_email' => $applicant->email,
+            'status' => 'pending',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $applicant));
+        $response->assertSessionHas('success');
+
+        $this->assertEquals('active', $applicant->fresh()->status);
+        $this->assertEquals('approved', $applicant->fresh()->kyc_status);
+        $this->assertEquals('active', $company->fresh()->status);
+        $this->assertTrue($company->fresh()->is_active);
+    }
 }

@@ -132,10 +132,10 @@ $registerHubRoutes = function () {
         return app(AuthenticatedSessionController::class)->createHub();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'create']);
+    Route::get('/register', [RegisteredUserController::class, 'createLogistics']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
     Route::get('/hub/login', fn() => redirect('/login'));
+    Route::get('/hub/register', fn() => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
@@ -202,6 +202,13 @@ Route::get('/courier', function () {
     }
     return app(AuthenticatedSessionController::class)->createCourier();
 })->name('courier.landing');
+
+Route::get('/logistics', function () {
+    if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
+        return redirect()->route('hub.index');
+    }
+    return redirect()->route('logistics.register');
+})->name('logistics.landing');
 
 
 

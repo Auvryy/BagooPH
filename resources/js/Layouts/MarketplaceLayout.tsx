@@ -4,6 +4,7 @@ import BagooLogo from '@/Components/BagooLogo';
 import { 
     ShoppingBag, 
     Store,
+    Truck,
     Menu,
     X,
     User,
@@ -71,6 +72,17 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             >
                                 <Store className="w-3.5 h-3.5 text-[#E00D42]" />
                                 <span>Seller Centre</span>
+                            </Link>
+                            <Link
+                                href={route('logistics.register')}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
+                                    isDark
+                                        ? 'border-white/20 text-white/90 hover:bg-white/10'
+                                        : 'border-black/20 text-black/90 hover:bg-black/5'
+                                }`}
+                            >
+                                <Truck className="w-3.5 h-3.5 text-blue-500" />
+                                <span>Logistics Partner</span>
                             </Link>
                             <Link
                                 href={route('login')}
@@ -148,6 +160,18 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                             </Link>
 
                             <Link
+                                href={route('logistics.register')}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 font-bold uppercase tracking-wider"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Truck className="w-4 h-4 text-blue-500" />
+                                    <span>Logistics Partner</span>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                            </Link>
+
+                            <Link
                                 href={route('login')}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 font-bold uppercase tracking-wider"
@@ -180,6 +204,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
 
                     <div className="flex items-center gap-6">
                         <Link href={route('seller.register')} className="hover:text-[#E00D42] transition">Seller Centre</Link>
+                        <Link href={route('logistics.register')} className="hover:text-blue-400 transition">Logistics Partner</Link>
                         <Link href={route('login')} className="hover:text-white transition">Sign In</Link>
                         <Link href={route('register')} className="hover:text-white transition">Register</Link>
                         <span>&copy; {new Date().getFullYear()} BagooPH. All rights reserved.</span>

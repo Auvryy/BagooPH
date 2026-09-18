@@ -111,6 +111,16 @@ class User extends Authenticatable
         return $this->hasOne(CourierProfile::class);
     }
 
+    public function logisticsCompany(): HasOne
+    {
+        return $this->hasOne(LogisticsCompany::class);
+    }
+
+    public function hubHandlers(): HasMany
+    {
+        return $this->hasMany(HubHandler::class);
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'buyer_id');

@@ -22,7 +22,8 @@ import {
     Star,
     Layers,
     Clock,
-    ChevronRight
+    ChevronRight,
+    Building2
 } from 'lucide-react';
 
 interface PaginatedData<T> {
@@ -1090,79 +1091,98 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                             </p>
                         </div>
 
-                        {/* 4 Role Gateways Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* 5 Role Gateways Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                             {/* Role 1: Buyer */}
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-6">
-                                <div className="space-y-3">
-                                    <div className="w-10 h-10 rounded-xl bg-[#E00D42]/20 text-[#E00D42] flex items-center justify-center">
-                                        <ShoppingBag className="w-5 h-5" />
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-5">
+                                <div className="space-y-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-[#E00D42]/20 text-[#E00D42] flex items-center justify-center">
+                                        <ShoppingBag className="w-4 h-4" />
                                     </div>
-                                    <h5 className="text-lg font-black text-white font-sans">Buyer Marketplace</h5>
-                                    <p className="text-xs text-white/60 font-sans leading-relaxed">
+                                    <h5 className="text-base font-black text-white font-sans">Buyer Market</h5>
+                                    <p className="text-[11px] text-white/60 font-sans leading-relaxed">
                                         Shop 14 departments, track orders in real-time, and enjoy protected COD payment options.
                                     </p>
                                 </div>
                                 <Link
                                     href={route('register')}
-                                    className="w-full py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-center text-xs font-bold rounded-lg transition uppercase tracking-wider"
+                                    className="w-full py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-center text-[11px] font-bold rounded-lg transition uppercase tracking-wider"
                                 >
-                                    Register as Buyer
+                                    Register Buyer
                                 </Link>
                             </div>
 
                             {/* Role 2: Seller */}
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-6">
-                                <div className="space-y-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                        <Store className="w-5 h-5" />
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-5">
+                                <div className="space-y-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                        <Store className="w-4 h-4" />
                                     </div>
-                                    <h5 className="text-lg font-black text-white font-sans">Seller Studio</h5>
-                                    <p className="text-xs text-white/60 font-sans leading-relaxed">
+                                    <h5 className="text-base font-black text-white font-sans">Seller Studio</h5>
+                                    <p className="text-[11px] text-white/60 font-sans leading-relaxed">
                                         Manage product inventories, print waybills, and view clear 10% commission profit statements.
                                     </p>
                                 </div>
                                 <Link
                                     href={route('seller.register')}
-                                    className="w-full py-2.5 bg-white text-black hover:bg-white/90 text-center text-xs font-bold rounded-lg transition uppercase tracking-wider"
+                                    className="w-full py-2 bg-white text-black hover:bg-white/90 text-center text-[11px] font-bold rounded-lg transition uppercase tracking-wider"
                                 >
-                                    Open Seller Store
+                                    Open Store
                                 </Link>
                             </div>
 
                             {/* Role 3: Courier */}
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-6">
-                                <div className="space-y-3">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                                        <Truck className="w-5 h-5" />
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-5">
+                                <div className="space-y-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                        <Truck className="w-4 h-4" />
                                     </div>
-                                    <h5 className="text-lg font-black text-white font-sans">Courier Fleet</h5>
-                                    <p className="text-xs text-white/60 font-sans leading-relaxed">
-                                        Claim delivery jobs in the first-come dispatch pool with guaranteed ₱50/₱80 fare payouts.
+                                    <h5 className="text-base font-black text-white font-sans">Courier Rider</h5>
+                                    <p className="text-[11px] text-white/60 font-sans leading-relaxed">
+                                        Claim delivery jobs in the dispatch pool with guaranteed ₱50/₱80 fare payouts.
                                     </p>
                                 </div>
                                 <Link
                                     href={route('courier.register')}
-                                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-center text-xs font-bold rounded-lg transition uppercase tracking-wider"
+                                    className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-center text-[11px] font-bold rounded-lg transition uppercase tracking-wider"
                                 >
-                                    Join Courier Fleet
+                                    Join Courier
                                 </Link>
                             </div>
 
-                            {/* Role 4: Admin */}
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-6">
-                                <div className="space-y-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                                        <ShieldCheck className="w-5 h-5" />
+                            {/* Role 4: Logistics Hub */}
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-5">
+                                <div className="space-y-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                                        <Building2 className="w-4 h-4" />
                                     </div>
-                                    <h5 className="text-lg font-black text-white font-sans">Admin Console</h5>
-                                    <p className="text-xs text-white/60 font-sans leading-relaxed">
-                                        Audit KYC registrations, oversee logistics hubs, and govern 10% platform commission ledger.
+                                    <h5 className="text-base font-black text-white font-sans">Logistics Hub</h5>
+                                    <p className="text-[11px] text-white/60 font-sans leading-relaxed">
+                                        Accredit your fleet, regional mother hubs, and bayan pickup counters.
+                                    </p>
+                                </div>
+                                <Link
+                                    href={route('logistics.register')}
+                                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-center text-[11px] font-bold rounded-lg transition uppercase tracking-wider"
+                                >
+                                    Accredit Hub
+                                </Link>
+                            </div>
+
+                            {/* Role 5: Admin */}
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition flex flex-col justify-between space-y-5">
+                                <div className="space-y-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                                        <ShieldCheck className="w-4 h-4" />
+                                    </div>
+                                    <h5 className="text-base font-black text-white font-sans">Admin Console</h5>
+                                    <p className="text-[11px] text-white/60 font-sans leading-relaxed">
+                                        Audit KYC registrations, oversee logistics hubs, and govern platform ledger.
                                     </p>
                                 </div>
                                 <Link
                                     href={route('login')}
-                                    className="w-full py-2.5 bg-white/10 hover:bg-white hover:text-black text-white text-center text-xs font-bold rounded-lg border border-white/20 transition uppercase tracking-wider"
+                                    className="w-full py-2 bg-white/10 hover:bg-white hover:text-black text-white text-center text-[11px] font-bold rounded-lg border border-white/20 transition uppercase tracking-wider"
                                 >
                                     Admin Sign In
                                 </Link>
