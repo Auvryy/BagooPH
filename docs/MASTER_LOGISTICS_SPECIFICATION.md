@@ -28,7 +28,7 @@ The system operates across three administrative tiers, maintaining separation be
        ┌─────────────────────┴─────────────────────┐
        ▼                                           ▼
 [Marketplace Management]                 [Logistics Company Admin]
-├── Seller Profiles                      (e.g., Bagoo Express, J&T)
+├── Seller Profiles                      (e.g., Bagoo Express, Tamaraw Freight Express)
 └── Buyer Accounts                                 │
                                                    ▼
                                         [Branch / Hub Network]

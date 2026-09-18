@@ -49,20 +49,21 @@ class LogisticsNetworkSeeder extends Seeder
             ]
         );
 
-        $jntCompany = LogisticsCompany::updateOrCreate(
-            ['code' => 'JNT'],
+        // Fictional Partner 2: Tamaraw Freight Express
+        $tamarawCompany = LogisticsCompany::updateOrCreate(
+            ['code' => 'TFX'],
             [
                 'user_id'              => $admin?->id,
-                'name'                 => 'J&T Express Philippines',
-                'slug'                 => 'jt-express-philippines',
-                'contact_email'        => 'support@jtexpress.ph',
-                'contact_phone'        => '+63 2 8911 1888',
-                'address'              => 'J&T Gateway Tower, Ortigas Center, Pasig City',
+                'name'                 => 'Tamaraw Freight Express',
+                'slug'                 => 'tamaraw-freight-express',
+                'contact_email'        => 'dispatch@tamarawexpress.ph',
+                'contact_phone'        => '+63 2 8700 8899',
+                'address'              => 'Tamaraw Logistics Gateway, South Luzon Expressway, Biñan City, Laguna',
                 'status'               => 'active',
                 'is_active'            => true,
                 'accreditation_details' => [
                     'license_type'     => 'Integrated Express Logistics',
-                    'franchise_number' => 'LTFRB-2026-JNT-4412',
+                    'franchise_number' => 'LTFRB-2026-TFX-4412',
                     'fleet_size'       => 350,
                 ],
             ]
@@ -230,12 +231,12 @@ class LogisticsNetworkSeeder extends Seeder
             ]
         );
 
-        // G. J&T Express South Luzon Gateway Hub
-        $jntMotherHub = LogisticsHub::updateOrCreate(
-            ['code' => 'JNT-MH-SLZ'],
+        // G. Tamaraw Freight Express South Luzon Gateway Hub
+        $tamarawMotherHub = LogisticsHub::updateOrCreate(
+            ['code' => 'TFX-MH-SLZ'],
             [
-                'logistics_company_id' => $jntCompany->id,
-                'name'                 => 'J&T South Luzon Gateway Hub',
+                'logistics_company_id' => $tamarawCompany->id,
+                'name'                 => 'Tamaraw South Luzon Gateway Hub',
                 'tier'                 => 'regional_mother_hub',
                 'province'             => 'Laguna',
                 'city_municipality'    => 'Biñan City',
@@ -250,12 +251,12 @@ class LogisticsNetworkSeeder extends Seeder
             ]
         );
 
-        // H. J&T Express Santa Cruz Branch Hub
-        $jntBayanHub = LogisticsHub::updateOrCreate(
-            ['code' => 'JNT-BH-SCZ'],
+        // H. Tamaraw Freight Express Santa Cruz Branch Hub
+        $tamarawBayanHub = LogisticsHub::updateOrCreate(
+            ['code' => 'TFX-BH-SCZ'],
             [
-                'logistics_company_id' => $jntCompany->id,
-                'name'                 => 'J&T Santa Cruz Branch Hub',
+                'logistics_company_id' => $tamarawCompany->id,
+                'name'                 => 'Tamaraw Santa Cruz Branch Hub',
                 'tier'                 => 'local_bayan_hub',
                 'province'             => 'Laguna',
                 'city_municipality'    => 'Santa Cruz',
