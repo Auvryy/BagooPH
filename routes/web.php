@@ -139,8 +139,10 @@ $registerHubRoutes = function () {
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
+        Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
+        Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
         Route::get('/hub', fn() => redirect('/dashboard'));
     });
 };
@@ -406,8 +408,10 @@ Route::prefix('hub')->name('hub.')->group(function () {
     })->name('index');
 
     Route::middleware(['auth', 'role:logistics,admin'])->group(function () {
+        Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
+        Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
     });
 });
 
