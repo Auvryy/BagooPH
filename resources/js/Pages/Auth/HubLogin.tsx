@@ -50,13 +50,13 @@ export default function HubLogin({ status, canResetPassword }: Props) {
     return (
         <GuestLayout 
             formPosition="left"
-            imageSrc="/images/auth/courier_login.jpg"
-            imageAlt="BagooPH Logistics Hub Operations"
-            imageBadge="Logistics Partner Portal"
-            imageHeadline="Sorting Center & Freight Workstation"
-            imageDescription="Real-time parcel intake scanning, automated destination dispatching, inter-hub linehaul tracking, and courier delivery management."
-            title="Logistics Partner Sign In"
-            subtitle="Sign in to your hub or courier company workstation"
+            imageSrc="/images/auth/hub_login.jpg?v=20260919"
+            imageAlt="BagooPH Logistics Sorting Hub Visual"
+            imageBadge="Logistics Hub"
+            imageHeadline="Manage Your Sorting Hub"
+            imageDescription="Access real-time parcel intake scanning, automated destination dispatching, inter-hub linehaul tracking, and courier delivery management."
+            title="Logistics Sign In"
+            subtitle="Sign in to your logistics account to manage your hub"
             alternatePortal={{
                 label: 'Buyer Marketplace',
                 subtext: 'Looking to shop?',

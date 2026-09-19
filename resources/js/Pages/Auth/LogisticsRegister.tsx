@@ -237,18 +237,18 @@ export default function LogisticsRegister() {
     return (
         <GuestLayout
             formPosition="right"
-            imageSrc="/images/auth/courier_register.jpg"
-            imageAlt="BagooPH Logistics Network Fleet Visual"
-            imageBadge="Logistics Network Accreditation"
-            imageHeadline="Verified Freight & Sortation Network"
-            imageDescription="Integrate your courier fleet or warehousing hub into BagooPH. Orchestrate Regional Mother Hub line-hauls, Local Bayan Hub counters, and guaranteed door-to-door delivery with live GPS geofencing."
-            title="Register Logistics Company"
-            subtitle="Accredit your transport fleet and hub network on BagooPH"
+            imageSrc="/images/auth/hub_register.jpg?v=20260919"
+            imageAlt="BagooPH Logistics Sorting Hub Visual"
+            imageBadge="Logistics Hub"
+            imageHeadline="Register Your Logistics Hub"
+            imageDescription="Accredit your transport fleet, Mother Hub, and Bayan Hub network into BagooPH. Orchestrate regional line-hauls, local counter collection, and automated rider dispatch."
+            title="Register as Logistics Partner"
+            subtitle="Register your logistics company to manage sorting hubs and fleets on BagooPH"
             alternatePortal={{
-                label: 'Courier Rider Portal',
-                subtext: 'Are you an individual courier?',
-                href: getDomainUrl('courier', '/register'),
-                buttonText: 'Rider Registration →',
+                label: 'Logistics Hub Sign In',
+                subtext: 'Already registered?',
+                href: getDomainUrl('hub', '/login'),
+                buttonText: 'Hub Sign In →',
             }}
         >
             <Head title="Logistics Partner Registration — BagooPH" />
