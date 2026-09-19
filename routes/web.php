@@ -155,6 +155,7 @@ $registerHubRoutes = function () {
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
+        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap']);
         Route::get('/hub', fn() => redirect('/dashboard'));
     });
 };
@@ -437,6 +438,7 @@ Route::prefix('hub')->name('hub.')->group(function () {
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
+        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });
 });
 

@@ -242,6 +242,23 @@ class LogisticsHubWorkstationController extends Controller
     }
 
     /**
+     * Corporate Enterprise Modules & Future Roadmap Explorer.
+     */
+    public function roadmap(Request $request): Response
+    {
+        $user = $request->user();
+        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
+
+        $selectedModule = $request->query('module', 'personnel');
+
+        return Inertia::render('Hub/Roadmap', [
+            'activeHub' => $activeHub,
+            'hubs' => $hubs,
+            'selectedModule' => $selectedModule,
+        ]);
+    }
+
+    /**
      * Multi-tier vehicle fleet management.
      */
     public function fleet(Request $request): Response
