@@ -184,3 +184,76 @@ Recorded from foundational domain brainstorming:
 - **Free Hub Pickup:** Buyers can choose free self-pickup at their local municipal Bayan Hub rather than doorstep delivery.
 - **Vehicle Hierarchy:** Explicit fleet registration including Motorcycles/Tricycles (first/last mile), L300 / Closed Vans (feeder shuttles between Bayan Hub & Mother Hub), and Wing Trucks (inter-hub line-haul).
 - **Facility-Hop Dispatching:** Inter-bayan and inter-provincial routing occurs strictly via facility-to-facility hops (Bayan Hub → Mother Hub → Destination Mother Hub → Destination Bayan Hub → Rider/Counter).
+
+---
+
+## 8. Enterprise Company Admin Modules & Future Roadmap (Probably Might Add Feature Section)
+
+### Baseline Comparison: What We Have vs. Enterprise Roadmap
+
+#### Core Baseline Modules (Implemented)
+- **Overview & Analytics:** Aggregated metrics, KPI cards, and Catmull-Rom throughput spline charts across all operating hubs.
+- **Scan Station / Barcode Scanner Terminal & PWA:** Mobile and terminal barcode/QR waybill scanning for inbound sortation, line-haul transfer, and outbound staging.
+- **Facility Network:** Creating and managing Regional Mother Hubs and Local Bayan Hubs, with real-time capacity and utilization tracking.
+- **Fleet Management:** Registering multi-tier vehicles: 2W motorcycles/tricycles, 4W L300/closed vans, and 10W closed wing trucks.
+- **Parcels & Waybills:** Real-time 13-stage order state machine, unbroken audit checkpoint streams, and public waybill telemetry.
+- **Counter Self-Pickup:** Managing free ₱0.00 customer claims and counter release verification at local Bayan Hubs.
+
+---
+
+### Critical Enterprise Modules for Corporate Logistics Admins
+
+To manage an entire nationwide courier company, the **Logistics Corporate Admin Portal** includes the following 5 roadmap modules:
+
+#### 1. Personnel & Onboarding Management (Riders & Sorters)
+- **Rider Accreditation & KYC:** Dedicated compliance queue to review and approve driver's licenses, vehicle OR/CR, and NBI clearances submitted by riders applying to work across network hubs.
+- **Barangay Assignment Matrix:** Spatial matrix interface to assign verified riders to specific Local Bayan Hubs and dedicate them to specific barangays (baseline: 1 rider per barangay).
+- **Hub Staff / Sorter Accounts:** Creating and managing user logins (`hub_staff` / `hub_handler`) scoped strictly to individual physical facilities.
+
+#### 2. Cash-on-Delivery (COD) & Financial Remittance Ledger
+- **Rider COD Collection Ledger:** Real-time reconciliation of cash collected by last-mile riders upon successful doorstep delivery.
+- **Hub Counter Cash Reconciliation:** Logging and balancing COD payments collected at Bayan Hub customer self-pickup counters.
+- **Platform & Merchant Remittance:** Tracking shipping fee earnings, deducting marketplace commission, and remitting collected COD funds back to the escrow/merchant settlement accounts.
+
+#### 3. Shipping Rates & Service Zone Mapping
+- **Rate Matrix Configuration:** Dynamic calculation tiers based on package weight, volume (DWS tunnel calculations), and distance (intra-bayan municipal vs. inter-provincial highway line-hauls).
+- **Service Coverage Matrix:** Interactive administrative toggles for provinces, bayans, and barangays actively serviced by the company, including unserviceable boundary rules and remote exclusions.
+
+#### 4. Exception & Return-to-Sender (RTS) Protocols
+- **Delivery Failure Queue:** Real-time monitor for parcels marked `DELIVERY_FAILED` (e.g., customer unreachable, bad weather, or invalid address).
+- **RTS Reverse Logistics:** Automated routing engine for packages hitting the 3-attempt failure threshold, generating reverse waybills to return stock back through the hub network to merchants.
+
+#### 5. AI Density & Dispatch Load Balancing
+- **Morning Barangay Density Alert:** Automated 06:00 AM dispatch engine evaluating parcel volume per barangay. If a barangay exceeds threshold (e.g., >60 parcels), the system recommends and provisions auxiliary overflow riders.
+
+---
+
+### Recommended Dashboard Menu Navigation Architecture
+
+To maintain zero UI clutter, navigation strictly separates **Global Corporate Management** from **Hub Station Floor Operations**:
+
+```
+Logistics Company Admin Portal (e.g., Tamaraw Freight Express / TFX Master)
+│
+├── Corporate & Fleet Management
+│   ├── Overview / Global Analytics
+│   ├── Facility Network (Mother Hubs & Bayan Hubs)
+│   ├── Fleet Management (Trucks, Vans, Motorcycles)
+│   ├── Personnel & Riders (KYC Approvals, Barangay Assignments) [Roadmap]
+│   └── Service Coverage & Rates (Zone Mapping & Pricing) [Roadmap]
+│
+├── Parcel Operations & Logistics
+│   ├── Master Parcels & Waybill Telemetry
+│   ├── Exceptions & RTS (Delivery Failures & Discrepancies) [Roadmap]
+│   └── Morning Barangay Density Engine (AI Rider Load Balancing) [Roadmap]
+│
+├── Financials & Remittances
+│   ├── COD Cash Ledger (Rider & Counter Remittances) [Roadmap]
+│   └── Platform Payouts & Shipping Earnings [Roadmap]
+│
+└── Branch Switcher Context (Floor Operations UI)
+    └── [Dropdown: Select Specific Hub, e.g., "TFX - Santa Cruz Bayan Hub"]
+        ├── Mobile PWA / Camera Scan Station (Inbound/Outbound)
+        └── Counter Self-Pickup Terminal
+```
+

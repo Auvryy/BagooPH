@@ -94,7 +94,9 @@ The system has 4 primary roles (with logistics kept in mind for future extension
    - List changed file paths concisely.
    - Specify the exact route/URL to verify (e.g. `Where to check: /buyer/search`).
    - Include total lines changed and estimated tokens.
-4. **Atomic Commit Breakdown:** Always break down code changes into clean, atomic, well-scoped commits by feature, bugfix, or component area whenever applicable.
+4. **Incremental Prompt-Time Commit Breakdown:**
+   - When executing user coding tasks, actively break down changes into discrete, atomic, and well-scoped git commits incrementally during execution.
+   - Commit as each logical step, component, or bugfix is completed rather than holding all changes for one giant commit at the end.
 
 ---
 
