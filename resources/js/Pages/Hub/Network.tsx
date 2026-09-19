@@ -227,7 +227,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                         return (
                             <div
                                 key={hub.id}
-                                className={`bg-white rounded-xs p-4 border transition flex flex-col justify-between ${
+                                className={`bg-white rounded-xs p-4.5 border transition flex flex-col justify-between ${
                                     isCurrent
                                         ? 'border-[#E00D42] ring-1 ring-[#E00D42] shadow-xs'
                                         : 'border-slate-300 hover:border-slate-400 shadow-xs'
@@ -235,12 +235,12 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             >
                                 <div>
                                     {/* Header Badges */}
-                                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                                         <div className="flex items-center gap-1.5 font-mono">
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs uppercase ${
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-xs uppercase tracking-wider ${
                                                 hub.tier === 'regional_mother_hub'
                                                     ? 'bg-slate-900 text-white'
-                                                    : 'bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]'
+                                                    : 'bg-slate-100 text-slate-800 border border-slate-300'
                                             }`}>
                                                 {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                                             </span>
@@ -250,20 +250,15 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                                 </span>
                                             )}
                                         </div>
+
                                         {isCurrent ? (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#E00D42] bg-[#FDF2F4] px-1.5 py-0.5 rounded-xs border border-[#FCE7EA] font-mono">
-                                                <Check className="w-3 h-3" /> Selected
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-xs border border-emerald-300 font-mono">
+                                                <Check className="w-3 h-3" /> Active Facility
                                             </span>
                                         ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    router.post(route('hub.switchHub'), { hub_id: hub.id }, { preserveScroll: true });
-                                                }}
-                                                className="text-[10px] font-bold text-slate-500 hover:text-[#E00D42] font-mono cursor-pointer underline"
-                                            >
-                                                Switch Here
-                                            </button>
+                                            <span className="text-[10px] font-mono text-slate-400">
+                                                ID: #{hub.id}
+                                            </span>
                                         )}
                                     </div>
 
@@ -272,8 +267,8 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         <h3 className="text-sm font-black text-slate-900 leading-snug">
                                             {hub.name}
                                         </h3>
-                                        <p className="text-xs text-[#E00D42] font-mono font-bold mt-0.5">
-                                            {hub.code} • {hub.company_name}
+                                        <p className="text-xs text-slate-500 font-mono font-bold mt-0.5">
+                                            <span className="text-[#E00D42]">{hub.code}</span> • {hub.company_name}
                                         </p>
                                         <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-2">
                                             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
@@ -301,14 +296,14 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         </div>
                                     </div>
 
-                                    {/* Coverage Barangays */}
+                                    {/* Coverage Barangays Summary */}
                                     {hub.coverage_barangays && hub.coverage_barangays.length > 0 && (
                                         <div className="mt-3">
                                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono mb-1">
-                                                Coverage Area ({hub.coverage_barangays.length} Barangays)
+                                                Service Coverage ({hub.coverage_barangays.length} Barangays)
                                             </p>
-                                            <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
-                                                {hub.coverage_barangays.map((bg, idx) => (
+                                            <div className="flex flex-wrap gap-1">
+                                                {hub.coverage_barangays.slice(0, 4).map((bg, idx) => (
                                                     <span
                                                         key={idx}
                                                         className="text-[10px] font-medium px-1.5 py-0.5 rounded-xs bg-slate-100 text-slate-700 font-mono border border-slate-200"
@@ -316,17 +311,22 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                                         {bg}
                                                     </span>
                                                 ))}
+                                                {hub.coverage_barangays.length > 4 && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-slate-50 text-slate-500 font-mono border border-slate-200">
+                                                        +{hub.coverage_barangays.length - 4} more
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Card Footer Actions */}
-                                <div className="mt-4 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs font-mono">
+                                {/* Card Footer with Single Unified Action Button */}
+                                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-mono">
                                     <div className="flex items-center gap-3 text-slate-500 text-[11px]">
                                         <span className="flex items-center gap-1">
                                             <Truck className="w-3 h-3 text-slate-400" />
-                                            {hub.fleet_count} vehicles
+                                            {hub.fleet_count} fleet
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Users className="w-3 h-3 text-slate-400" />
@@ -334,15 +334,20 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         </span>
                                     </div>
 
-                                    {!isCurrent && (
+                                    {isCurrent ? (
+                                        <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 font-mono">
+                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                            <span>Current Station</span>
+                                        </div>
+                                    ) : (
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 router.post(route('hub.switchHub'), { hub_id: hub.id }, { preserveScroll: true });
                                             }}
-                                            className="font-bold text-[#E00D42] hover:underline transition cursor-pointer flex items-center gap-1 text-[11px]"
+                                            className="px-3 py-1.5 bg-slate-900 hover:bg-[#E00D42] text-white text-[11px] font-bold rounded-xs transition shadow-2xs cursor-pointer flex items-center gap-1.5 font-mono"
                                         >
-                                            <span>Set Active</span>
+                                            <span>Switch Facility</span>
                                             <ArrowUpRight className="w-3 h-3" />
                                         </button>
                                     )}
