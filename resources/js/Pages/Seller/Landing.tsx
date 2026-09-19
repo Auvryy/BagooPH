@@ -714,6 +714,7 @@ export default function SellerLanding() {
                         <div className="flex flex-wrap items-center gap-6">
                             <a href={getDomainUrl('buyer', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Marketplace</a>
                             <a href={getDomainUrl('courier', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Courier</a>
+                            <a href={getDomainUrl('hub', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Logistics</a>
                             <a href={getDomainUrl('admin', '/')} className="transition text-slate-600 hover:text-slate-900 font-medium">Admin</a>
                             <span>&copy; {new Date().getFullYear()}</span>
                         </div>

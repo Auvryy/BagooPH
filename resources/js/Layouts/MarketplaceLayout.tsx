@@ -204,6 +204,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
 
                     <div className="flex items-center gap-6">
                         <Link href={route('seller.register')} className="hover:text-[#E00D42] transition">Seller Centre</Link>
+                        <Link href={route('courier.register')} className="hover:text-emerald-400 transition">Courier Driver</Link>
                         <Link href={route('logistics.register')} className="hover:text-blue-400 transition">Logistics Partner</Link>
                         <Link href={route('login')} className="hover:text-white transition">Sign In</Link>
                         <Link href={route('register')} className="hover:text-white transition">Register</Link>

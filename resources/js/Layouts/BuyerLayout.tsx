@@ -152,6 +152,7 @@ export default function BuyerLayout({
     const courierUrl = getDomainUrl('courier', '/');
     const courierRegisterUrl = getDomainUrl('courier', '/register');
     const hubUrl = getDomainUrl('hub', '/');
+    const hubRegisterUrl = getDomainUrl('hub', '/register');
     const adminUrl = getDomainUrl('admin', '/');
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -532,7 +533,9 @@ export default function BuyerLayout({
                             <li><a href={sellerUrl} className="hover:text-[#E00D42] font-semibold text-slate-800">Seller Centre Portal</a></li>
                             <li><a href={sellerRegisterUrl} className="hover:text-[#E00D42]">Open a Verified Store</a></li>
                             <li><a href={courierUrl} className="hover:text-emerald-700 font-semibold text-slate-800">Courier Rider Portal</a></li>
+                            <li><a href={courierRegisterUrl} className="hover:text-emerald-700">Apply as Fleet Driver</a></li>
                             <li><a href={hubUrl} className="hover:text-indigo-700 font-semibold text-slate-800">Logistics Sorting Hub</a></li>
+                            <li><a href={hubRegisterUrl} className="hover:text-indigo-700">Register Logistics Partner</a></li>
                         </ul>
                     </div>
 
