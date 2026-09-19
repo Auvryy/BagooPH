@@ -764,4 +764,17 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_logistics_registration_otp_send_on_subdomain_succeeds(): void
+    {
+        $response = $this->postJson('http://hub.localhost/api/otp/send', [
+            'email' => 'partner_applicant@hub.test',
+            'purpose' => 'registration',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+    }
 }
