@@ -215,7 +215,7 @@ export default function LogisticsRegister() {
             return;
         }
 
-        post(route('register'), {
+        post('/register', {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -228,7 +228,7 @@ export default function LogisticsRegister() {
             ...prevData,
             otp_token: token,
         }));
-        post(route('register'), {
+        post('/register', {
             forceFormData: true,
             onFinish: () => reset('password', 'password_confirmation'),
         });

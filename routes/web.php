@@ -54,6 +54,8 @@ $registerSellerRoutes = function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createSeller']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/seller/login', fn() => redirect('/login'));
     Route::get('/seller/register', fn() => redirect('/register'));
 
@@ -108,6 +110,8 @@ $registerCourierRoutes = function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createCourier']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/courier/login', fn() => redirect('/login'));
     Route::get('/courier/register', fn() => redirect('/register'));
 
@@ -132,8 +136,11 @@ $registerHubRoutes = function () {
         return app(AuthenticatedSessionController::class)->createHub();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createLogistics']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/hub/login', fn() => redirect('/login'));
     Route::get('/hub/register', fn() => redirect('/register'));
 
@@ -300,7 +307,7 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('login');
         }
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect()->route('kyc.pending');
+            return redirect('/pending-approval');
         }
         return redirect()->intended(match($user->role) {
             'admin' => route('admin.dashboard'),

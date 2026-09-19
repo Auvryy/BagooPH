@@ -101,7 +101,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect()->route('kyc.pending');
+            return redirect('/pending-approval');
         }
 
         $host = $request->getHost();
