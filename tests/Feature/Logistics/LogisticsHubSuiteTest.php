@@ -275,4 +275,18 @@ class LogisticsHubSuiteTest extends TestCase
             $delivery->fresh()->status
         );
     }
+
+    public function test_logistics_operator_can_view_enterprise_roadmap(): void
+    {
+        $response = $this->actingAs($this->logisticsUser)
+            ->get(route('hub.roadmap', ['module' => 'personnel']));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Hub/Roadmap')
+            ->has('activeHub')
+            ->has('hubs')
+            ->where('selectedModule', 'personnel')
+        );
+    }
 }
