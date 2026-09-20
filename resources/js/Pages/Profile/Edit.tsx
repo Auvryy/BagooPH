@@ -49,9 +49,9 @@ export default function Edit({
     const content = (
         <div className="max-w-4xl mx-auto space-y-6 font-sans">
             {/* Top Navigation Breadcrumb / Back Link */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-2xs ${
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-2xs shrink-0 ${
                         role === 'admin' ? 'bg-slate-900 text-white' :
                         role === 'seller' ? 'bg-purple-100 text-purple-700' :
                         role === 'courier' ? 'bg-blue-100 text-blue-700' :

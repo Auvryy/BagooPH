@@ -206,7 +206,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                 {/* 3. MODAL FOR FILING NEW DISPUTE */}
                 {showNewModal && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono">
                                 <h3 className="font-bold text-slate-900 text-base">File Return & Defect Claim</h3>
                                 <button 

@@ -394,7 +394,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                 {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
                 {reviewModalOpen && (
                     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
                                     <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
