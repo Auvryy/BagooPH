@@ -699,4 +699,82 @@ class SubdomainIsolationTest extends TestCase
         $searchResponse->assertStatus(302);
         $searchResponse->assertRedirect('http://localhost/search?q=bag');
     }
+
+    public function test_logistics_registration_on_subdomain_redirects_to_pending_approval(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $permit = \Illuminate\Http\UploadedFile::fake()->create('permit.pdf', 500, 'application/pdf');
+        $franchise = \Illuminate\Http\UploadedFile::fake()->create('franchise.pdf', 500, 'application/pdf');
+
+        $response = $this->post('http://hub.localhost/register', [
+            'name' => 'FastLog Partner',
+            'company_name' => 'FastLog Freight',
+            'company_code' => 'FLF',
+            'email' => 'fastlog@hub.test',
+            'phone' => '+63 917 123 4567',
+            'address' => '123 Logistics St',
+            'city' => 'Santa Rosa',
+            'province' => 'Laguna',
+            'role' => 'logistics',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_permit' => $permit,
+            'franchise_document' => $franchise,
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('/pending-approval');
+
+        $user = User::where('email', 'fastlog@hub.test')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('pending_approval', $user->status);
+
+        $pendingResponse = $this->actingAs($user)->get('http://hub.localhost/pending-approval');
+        $pendingResponse->assertStatus(200);
+        $pendingResponse->assertInertia(fn ($page) => $page->component('Auth/PendingApproval'));
+    }
+
+    public function test_logistics_login_on_subdomain_with_pending_user_redirects_to_pending_approval(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'pending_approval',
+            'kyc_status' => 'pending_approval',
+            'password' => bcrypt('Password123!'),
+        ]);
+
+        $response = $this->post('http://hub.localhost/login', [
+            'email' => $user->email,
+            'password' => 'Password123!',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect('/pending-approval');
+    }
+
+    public function test_logistics_logout_on_subdomain_clears_session_and_redirects_to_root(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'pending_approval',
+            'kyc_status' => 'pending_approval',
+        ]);
+
+        $response = $this->actingAs($user)->post('http://hub.localhost/logout');
+        $this->assertGuest();
+        $response->assertRedirect('/');
+    }
+
+    public function test_logistics_registration_otp_send_on_subdomain_succeeds(): void
+    {
+        $response = $this->postJson('http://hub.localhost/api/otp/send', [
+            'email' => 'partner_applicant@hub.test',
+            'purpose' => 'registration',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+    }
 }

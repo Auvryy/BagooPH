@@ -23,6 +23,12 @@ Route::middleware('guest')->group(function () {
     Route::get('courier/register', [RegisteredUserController::class, 'createCourier'])
         ->name('courier.register');
 
+    Route::get('logistics/register', [RegisteredUserController::class, 'createLogistics'])
+        ->name('logistics.register');
+
+    Route::get('hub/register', [RegisteredUserController::class, 'createLogistics'])
+        ->name('hub.register');
+
     Route::post('register', [RegisteredUserController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])

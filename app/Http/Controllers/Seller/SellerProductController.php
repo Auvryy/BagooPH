@@ -15,38 +15,37 @@ use Inertia\Response;
 
 class SellerProductController extends Controller
 {
-    private function getShop(Request $request): Shop
-    {
-        return Shop::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            [
-                'name' => $request->user()->name . "'s Store",
-                'slug' => Str::slug($request->user()->name . '-store-' . $request->user()->id),
-                'status' => 'active',
-            ]
-        );
-    }
+    use HasSellerShop;
 
     public function index(Request $request): Response
     {
-        $shop = $this->getShop($request);
+        $shop = $this->getActiveShop($request);
         $products = Product::where('shop_id', $shop->id)
             ->with(['category', 'images'])
             ->latest()
             ->paginate(10);
 
-        $categories = Category::where('is_active', true)->get();
+        // Enforce root category enclosure on product listing filter / category choices
+        $categoriesQuery = Category::where('is_active', true);
+        if ($shop->root_category_id) {
+            $categoriesQuery->where(function ($q) use ($shop) {
+                $q->where('id', $shop->root_category_id)
+                  ->orWhere('parent_id', $shop->root_category_id);
+            });
+        }
+        $categories = $categoriesQuery->get();
 
         return Inertia::render('Seller/Products', [
             'products' => $products,
             'categories' => $categories,
             'shop' => $shop,
+            'availableShops' => $this->getAvailableShops($request),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $shop = $this->getShop($request);
+        $shop = $this->getActiveShop($request);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -68,7 +67,23 @@ class SellerProductController extends Controller
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
-        $defaultFallback = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+        // Enforce single root category enclosure
+        if ($shop->root_category_id) {
+            $allowedCategoryIds = Category::where('id', $shop->root_category_id)
+                ->orWhere('parent_id', $shop->root_category_id)
+                ->pluck('id')
+                ->all();
+
+            $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
+            if (!in_array((int)$chosenCategoryId, $allowedCategoryIds)) {
+                return back()->withErrors([
+                    'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
+                ]);
+            }
+            $validated['category_id'] = $chosenCategoryId;
+        }
+
+        $defaultFallback = '/storage/products/placeholder.webp';
         $slug = Product::generateUniqueSlug($validated['name']);
 
         // Auto-generate SKU if left blank by the seller
@@ -96,7 +111,7 @@ class SellerProductController extends Controller
 
     public function update(Request $request, Product $product): RedirectResponse
     {
-        $shop = $this->getShop($request);
+        $shop = $this->getActiveShop($request);
         if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
             abort(403, 'Unauthorized product modification.');
         }
@@ -121,6 +136,22 @@ class SellerProductController extends Controller
             'image_files.*.max' => 'Each product image must not exceed 5MB.',
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
+
+        // Enforce single root category enclosure
+        if ($shop->root_category_id) {
+            $allowedCategoryIds = Category::where('id', $shop->root_category_id)
+                ->orWhere('parent_id', $shop->root_category_id)
+                ->pluck('id')
+                ->all();
+
+            $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
+            if (!in_array((int)$chosenCategoryId, $allowedCategoryIds)) {
+                return back()->withErrors([
+                    'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
+                ]);
+            }
+            $validated['category_id'] = $chosenCategoryId;
+        }
 
         // Auto-generate SKU if left blank or reset
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
@@ -299,7 +330,7 @@ class SellerProductController extends Controller
 
     public function destroy(Request $request, Product $product): RedirectResponse
     {
-        $shop = $this->getShop($request);
+        $shop = $this->getActiveShop($request);
         if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
             abort(403, 'Unauthorized product deletion.');
         }

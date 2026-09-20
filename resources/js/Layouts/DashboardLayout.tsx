@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
 import { getDomainUrl } from '@/utils/domain';
@@ -24,7 +24,17 @@ import {
     ShieldAlert,
     TrendingUp,
     CheckCircle2,
-    User as UserIcon
+    Check,
+    Plus,
+    User as UserIcon,
+    ScanLine,
+    Building2,
+    Boxes,
+    Wallet,
+    Compass,
+    RotateCcw,
+    Cpu,
+    Sparkles
 } from 'lucide-react';
 
 interface Props {
@@ -35,14 +45,43 @@ interface Props {
 }
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const { auth, flash, sellerShops, categories } = usePage<PageProps>().props;
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [shopSwitcherOpen, setShopSwitcherOpen] = useState(false);
+    const [hubSwitcherOpen, setHubSwitcherOpen] = useState(false);
+    const [createShopModalOpen, setCreateShopModalOpen] = useState(false);
+    const [newShopName, setNewShopName] = useState('');
+    const [newShopCategoryId, setNewShopCategoryId] = useState('');
+    const [newShopDescription, setNewShopDescription] = useState('');
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
     const role = user?.role || 'buyer';
+    const currentShop = user?.shop;
+    const shops = sellerShops && sellerShops.length > 0 ? sellerShops : (currentShop ? [currentShop] : []);
+    const activeHub = (user as any)?.activeHub;
+    const allHubs = (user as any)?.allHubs || [];
+    const logisticsCompany = (user as any)?.logisticsCompany;
+
+    const handleCreateShop = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newShopName.trim() || !newShopCategoryId) return;
+
+        router.post(route('seller.shops.create'), {
+            name: newShopName.trim(),
+            root_category_id: newShopCategoryId,
+            description: newShopDescription.trim() || undefined,
+        }, {
+            onSuccess: () => {
+                setCreateShopModalOpen(false);
+                setNewShopName('');
+                setNewShopCategoryId('');
+                setNewShopDescription('');
+            }
+        });
+    };
 
     const handleUserMenuEnter = () => {
         if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
@@ -125,9 +164,50 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             ];
         }
 
-        if (role === 'courier' || role === 'logistics') {
+        if (role === 'courier') {
             return [
                 { name: 'Deliveries', href: route('courier.deliveries'), icon: Truck, current: component.startsWith('Courier/Deliveries') || route().current('courier.deliveries') || url.startsWith('/courier/deliveries') },
+            ];
+        }
+
+        if (role === 'logistics') {
+            return [
+                { 
+                    name: 'Overview', 
+                    href: route('hub.dashboard'), 
+                    icon: LayoutDashboard, 
+                    current: component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
+                },
+                { 
+                    name: 'Scan Station', 
+                    href: route('hub.scan.station'), 
+                    icon: ScanLine, 
+                    current: component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan') 
+                },
+                { 
+                    name: 'Facility Network', 
+                    href: route('hub.network'), 
+                    icon: Building2, 
+                    current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
+                },
+                { 
+                    name: 'Fleet Management', 
+                    href: route('hub.fleet'), 
+                    icon: Truck, 
+                    current: component === 'Hub/Fleet' || route().current('hub.fleet') || url.startsWith('/hub/fleet') 
+                },
+                { 
+                    name: 'Parcels & Waybills', 
+                    href: route('hub.deliveries'), 
+                    icon: Package, 
+                    current: component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries') 
+                },
+                { 
+                    name: 'Counter Pickup', 
+                    href: route('hub.counter'), 
+                    icon: Store, 
+                    current: component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter') 
+                },
             ];
         }
 
@@ -158,12 +238,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Brand Header */}
                 <div className="p-4 border-b border-slate-100 shrink-0 bg-white">
                     <div className="flex items-center justify-between">
-                        <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : '/'} className="flex items-center gap-2.5">
+                        <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
                             <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             <div>
                                 <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
                                 <span className="block text-[9px] uppercase font-bold tracking-widest text-slate-500 -mt-0.5 font-mono">
-                                    {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : 'Portal'}
+                                    {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : role === 'logistics' ? 'Logistics Hub' : 'Portal'}
                                 </span>
                             </div>
                         </Link>
@@ -176,34 +256,399 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </div>
 
+                {/* Active Store Profile & Switcher for Merchants */}
+                {role === 'seller' && currentShop && (
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                                <Store className="w-3 h-3 text-[#E00D42]" /> Store Profile
+                            </span>
+                            {currentShop.root_category && (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    {currentShop.root_category.name}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Switcher Dropdown Button */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShopSwitcherOpen(!shopSwitcherOpen)}
+                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#E00D42] transition">{currentShop.name}</p>
+                                    <p className="text-[10px] text-slate-500 font-mono truncate">{shops.length} profile{shops.length === 1 ? '' : 's'} managed</p>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${shopSwitcherOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {shopSwitcherOpen && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                        Switch Store Profile
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                        {shops.map((s) => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setShopSwitcherOpen(false);
+                                                    if (s.id !== currentShop.id) {
+                                                        router.post(route('seller.shops.switch'), { shop_id: s.id }, { preserveScroll: true });
+                                                    }
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
+                                                    s.id === currentShop.id ? 'bg-slate-50 font-bold text-[#E00D42]' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1 pr-2">
+                                                    <p className="truncate">{s.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                        Enclosure: {s.root_category?.name || 'General'}
+                                                    </p>
+                                                </div>
+                                                {s.id === currentShop.id && (
+                                                    <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="p-2 border-t border-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShopSwitcherOpen(false);
+                                                setCreateShopModalOpen(true);
+                                            }}
+                                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-semibold transition cursor-pointer"
+                                        >
+                                            <Plus className="w-3 h-3" />
+                                            <span>New Specialty Store</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Active Hub Facility & Switcher for Logistics */}
+                {role === 'logistics' && (
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                                <Building2 className="w-3 h-3 text-blue-600" /> Facility Station
+                            </span>
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase font-mono">
+                                {activeHub?.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                            </span>
+                        </div>
+
+                        {/* Facility Switcher Dropdown Button */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setHubSwitcherOpen(!hubSwitcherOpen)}
+                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition">
+                                        {activeHub?.name || logisticsCompany?.name || 'Logistics Terminal'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-mono truncate">
+                                        Station: {activeHub?.code || 'STATION-01'} • {activeHub?.city_municipality || 'Laguna'}
+                                    </p>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {hubSwitcherOpen && allHubs && allHubs.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                        Switch Operating Hub
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                        {allHubs.map((h: any) => (
+                                            <button
+                                                key={h.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setHubSwitcherOpen(false);
+                                                    if (h.id !== activeHub?.id) {
+                                                        router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true });
+                                                    }
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
+                                                    h.id === activeHub?.id ? 'bg-slate-50 font-bold text-blue-600' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1 pr-2">
+                                                    <p className="truncate">{h.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                        {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                                    </p>
+                                                </div>
+                                                {h.id === activeHub?.id && (
+                                                    <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation Sections */}
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
                     
-                    {/* Main Navigation */}
-                    <div className="space-y-0.5">
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                            Menu
-                        </p>
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
-                                    item.current 
-                                        ? 'bg-[#E00D42] text-white shadow-xs font-bold' 
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                    <span>{item.name}</span>
-                                </div>
-                                {item.current && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
-                                )}
-                            </Link>
-                        ))}
-                    </div>
+                    {/* Non-Logistics Main Navigation (Admin / Seller / Courier) */}
+                    {role !== 'logistics' && (
+                        <div className="space-y-0.5">
+                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                                Menu
+                            </p>
+                            {navItems.map((item) => (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
+                                        item.current 
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold' 
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                        <span>{item.name}</span>
+                                    </div>
+                                    {item.current && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
+                                    )}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Logistics Multi-Tier Navigation Hierarchy */}
+                    {role === 'logistics' && (
+                        <div className="space-y-4">
+                            {/* Tier 1: Corporate & Fleet Management */}
+                            <div className="space-y-0.5">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                    <span>Corporate & Fleet</span>
+                                    <span className="text-[9px] text-slate-400">Admin</span>
+                                </p>
+                                <Link
+                                    href={route('hub.dashboard')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <LayoutDashboard className={`w-4 h-4 shrink-0 ${(component === 'Hub/Dashboard' || url === '/hub' || url === '/hub/dashboard') ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                        <span>Overview</span>
+                                    </div>
+                                </Link>
+                                <Link
+                                    href={route('hub.network')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network')
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Building2 className={`w-4 h-4 shrink-0 ${(component === 'Hub/Network' || url.startsWith('/hub/network')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                        <span>Facility Network</span>
+                                    </div>
+                                </Link>
+                                <Link
+                                    href={route('hub.fleet')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Fleet' || route().current('hub.fleet') || url.startsWith('/hub/fleet')
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Truck className={`w-4 h-4 shrink-0 ${(component === 'Hub/Fleet' || url.startsWith('/hub/fleet')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                        <span>Fleet Management</span>
+                                    </div>
+                                </Link>
+                                <Link
+                                    href="/hub/roadmap?module=personnel"
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Roadmap' && url.includes('module=personnel')
+                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>Personnel & Riders</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                        Planned
+                                    </span>
+                                </Link>
+                                <Link
+                                    href="/hub/roadmap?module=rates"
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Roadmap' && url.includes('module=rates')
+                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>Rates & Zones</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                        Planned
+                                    </span>
+                                </Link>
+                            </div>
+
+                            {/* Tier 2: Parcel Operations & Logistics */}
+                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                    <span>Parcel Operations</span>
+                                    <span className="text-[9px] text-slate-400">Logistics</span>
+                                </p>
+                                <Link
+                                    href={route('hub.deliveries')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries')
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Package className={`w-4 h-4 shrink-0 ${(component === 'Hub/Deliveries' || url.startsWith('/hub/deliveries')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                        <span>Parcels & Waybills</span>
+                                    </div>
+                                </Link>
+                                <Link
+                                    href="/hub/roadmap?module=exceptions"
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Roadmap' && url.includes('module=exceptions')
+                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <RotateCcw className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>Exceptions & RTS</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                        Planned
+                                    </span>
+                                </Link>
+                                <Link
+                                    href="/hub/roadmap?module=density"
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Roadmap' && url.includes('module=density')
+                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Cpu className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>Barangay AI Density</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
+                                        AI
+                                    </span>
+                                </Link>
+                            </div>
+
+                            {/* Tier 3: Financials & Remittances */}
+                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                    <span>Financials & COD</span>
+                                    <span className="text-[9px] text-slate-400">Ledger</span>
+                                </p>
+                                <Link
+                                    href="/hub/roadmap?module=cod"
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/Roadmap' && url.includes('module=cod')
+                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Wallet className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>COD Cash Ledger</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                        Planned
+                                    </span>
+                                </Link>
+                                <Link
+                                    href="/hub/roadmap?module=cod"
+                                    className="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <TrendingUp className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
+                                        <span>Platform Payouts</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                        Planned
+                                    </span>
+                                </Link>
+                            </div>
+
+                            {/* Tier 4: Branch Switcher Context (Floor Operations UI) */}
+                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                    <span>Floor Operations</span>
+                                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                        {activeHub?.code || 'Station'}
+                                    </span>
+                                </p>
+                                <Link
+                                    href={route('hub.scan.station')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan')
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
+                                        <span>Scan Station</span>
+                                    </div>
+                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                        PWA
+                                    </span>
+                                </Link>
+                                <Link
+                                    href={route('hub.counter')}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
+                                        component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter')
+                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Store className={`w-4 h-4 shrink-0 ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
+                                        <span>Counter Self-Pickup</span>
+                                    </div>
+                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                                        Free
+                                    </span>
+                                </Link>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Quick Links (Storefront & Settings) */}
                     {(user?.shop || role === 'seller') && (
@@ -317,7 +762,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-bold uppercase">
-                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : 'Authorized User'}
+                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : role === 'logistics' ? 'Logistics Operator' : 'Authorized User'}
                                     </span>
                                 </div>
                             </Link>
@@ -383,6 +828,32 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             </a>
                                         )}
 
+                                        {role === 'logistics' && (
+                                            <>
+                                                <Link
+                                                    href={route('hub.dashboard')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                                                    <span>Hub Overview</span>
+                                                </Link>
+                                                <Link
+                                                    href={route('hub.scan.station')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <ScanLine className="w-4 h-4 text-emerald-600" />
+                                                    <span>Floor Scanner (PWA)</span>
+                                                </Link>
+                                                <Link
+                                                    href={route('hub.network')}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                >
+                                                    <Building2 className="w-4 h-4 text-slate-400" />
+                                                    <span>Facility Network</span>
+                                                </Link>
+                                            </>
+                                        )}
+
                                         <Link
                                             href={role === 'seller' ? route('seller.profile') : route('profile.edit')}
                                             className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
@@ -429,6 +900,91 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </main>
             </div>
+
+            {/* Create Store Profile Modal */}
+            {createShopModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-6">
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-lg bg-red-50 text-[#E00D42]">
+                                    <Store className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-900">Create Storefront Profile</h2>
+                                    <p className="text-[11px] text-slate-500">Add a dedicated category enclosure under this merchant account</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setCreateShopModalOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateShop} className="mt-4 space-y-4 text-xs">
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Store Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={newShopName}
+                                    onChange={(e) => setNewShopName(e.target.value)}
+                                    placeholder="e.g. Bagoo Urban EDC"
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Root Category Enclosure *</label>
+                                <select
+                                    required
+                                    value={newShopCategoryId}
+                                    onChange={(e) => setNewShopCategoryId(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs bg-white"
+                                >
+                                    <option value="">Select Root Category Enclosure...</option>
+                                    {(categories || []).map((cat) => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    All products listed in this store will be strictly bounded to this root category enclosure.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                                <textarea
+                                    rows={2}
+                                    value={newShopDescription}
+                                    onChange={(e) => setNewShopDescription(e.target.value)}
+                                    placeholder="Brief storefront specialty summary..."
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreateShopModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded-lg bg-[#E00D42] hover:bg-[#b50a35] text-white font-bold transition shadow-xs cursor-pointer"
+                                >
+                                    Create Storefront
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

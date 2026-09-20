@@ -41,7 +41,7 @@ class RoleMiddleware
 
         // Intercept pending or rejected KYC accounts
         if ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected') {
-            return redirect()->route('kyc.pending');
+            return redirect('/pending-approval');
         }
 
         // Enforce role authorization

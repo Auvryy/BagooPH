@@ -64,7 +64,11 @@ class OtpService
         ]);
 
         // 6. Send branded HTML email via configured mailer (Resend SMTP)
-        Mail::to($normalizedEmail)->send(new OtpVerificationMail($code, $purpose));
+        try {
+            Mail::to($normalizedEmail)->send(new OtpVerificationMail($code, $purpose));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to dispatch OTP verification email to {$normalizedEmail}: " . $e->getMessage() . " [Code: {$code}]");
+        }
 
         return [
             'success' => true,

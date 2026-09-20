@@ -91,6 +91,11 @@ function AuthEcosystemFooter() {
                                 Logistics Sorting Hub
                             </a>
                         </li>
+                        <li>
+                            <a href={getDomainUrl('hub', '/register')} className="hover:text-indigo-700 transition">
+                                Register Logistics Partner
+                            </a>
+                        </li>
                     </ul>
                 </div>
 

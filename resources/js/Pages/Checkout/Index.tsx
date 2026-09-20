@@ -20,7 +20,11 @@ import {
     FileText,
     ShieldAlert,
     AlertTriangle,
-    Lock
+    Lock,
+    Store,
+    Crosshair,
+    Navigation,
+    Building2
 } from 'lucide-react';
 
 interface VoucherItem {
@@ -32,6 +36,15 @@ interface VoucherItem {
     discount_value: number;
     min_spend: number;
     max_discount?: number;
+}
+
+export interface PickupHubItem {
+    id: number;
+    name: string;
+    code: string;
+    city_municipality: string;
+    address: string;
+    province: string;
 }
 
 interface Props {
@@ -46,6 +59,7 @@ interface Props {
     kycFeedback?: string | null;
     addresses?: Address[];
     defaultAddressId?: number | null;
+    pickupHubs?: PickupHubItem[];
 }
 
 export default function CheckoutIndex({ 
@@ -59,6 +73,7 @@ export default function CheckoutIndex({
     kycFeedback = null,
     addresses = [],
     defaultAddressId = null,
+    pickupHubs = [],
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -66,6 +81,38 @@ export default function CheckoutIndex({
     const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(null);
     const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
     const [voucherError, setVoucherError] = useState<string>('');
+
+    const [isLocating, setIsLocating] = useState(false);
+    const [gpsStatus, setGpsStatus] = useState<string | null>(null);
+
+    const handleCaptureCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            setGpsStatus('Geolocation is not supported by your browser.');
+            return;
+        }
+
+        setIsLocating(true);
+        setGpsStatus('Acquiring precise GPS fix...');
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = parseFloat(pos.coords.latitude.toFixed(6));
+                const lng = parseFloat(pos.coords.longitude.toFixed(6));
+                setData(prev => ({
+                    ...prev,
+                    shipping_latitude: lat,
+                    shipping_longitude: lng,
+                }));
+                setIsLocating(false);
+                setGpsStatus(`GPS coordinates pinned (accuracy ±${Math.round(pos.coords.accuracy)}m)`);
+            },
+            (err) => {
+                setIsLocating(false);
+                setGpsStatus('GPS error: ' + err.message);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
 
     // Inline KYC ID upload form
     const kycForm = useForm<{ id_document: File | null }>({
@@ -118,7 +165,14 @@ export default function CheckoutIndex({
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress ? formatAddressString(initialAddress) : (user.address || ''),
         shipping_city: initialAddress?.city || user.city || '',
+        shipping_province: initialAddress?.province || 'Metro Manila',
         shipping_postal_code: initialAddress?.postal_code || user.postal_code || '',
+        destination_barangay: initialAddress?.barangay || '',
+        shipping_latitude: (initialAddress as any)?.latitude || '',
+        shipping_longitude: (initialAddress as any)?.longitude || '',
+        landmark: (initialAddress as any)?.landmark || '',
+        delivery_type: 'doorstep' as 'doorstep' | 'hub_self_pickup',
+        pickup_hub_id: '' as string | number,
         payment_method: 'cod',
         notes: '',
         voucher_code: '',
@@ -134,7 +188,12 @@ export default function CheckoutIndex({
                 recipient_phone: user.phone || '',
                 shipping_address: '',
                 shipping_city: '',
+                shipping_province: 'Metro Manila',
                 shipping_postal_code: '',
+                destination_barangay: '',
+                shipping_latitude: '',
+                shipping_longitude: '',
+                landmark: '',
                 save_address: true,
             }));
         } else {
@@ -146,7 +205,12 @@ export default function CheckoutIndex({
                     recipient_phone: found.phone,
                     shipping_address: formatAddressString(found),
                     shipping_city: found.city,
+                    shipping_province: found.province || 'Metro Manila',
                     shipping_postal_code: found.postal_code || '',
+                    destination_barangay: found.barangay || '',
+                    shipping_latitude: (found as any).latitude || '',
+                    shipping_longitude: (found as any).longitude || '',
+                    landmark: (found as any).landmark || '',
                     save_address: false,
                 }));
             }
@@ -168,12 +232,13 @@ export default function CheckoutIndex({
         };
     }, [showConfirmModal]);
 
-    const baseShippingFee = subtotal > 1500 ? 0 : 50;
+    const isHubPickup = data.delivery_type === 'hub_self_pickup';
+    const baseShippingFee = isHubPickup ? 0 : (subtotal > 1500 ? 0 : 50);
     
-    // Calculate final shipping fee accounting for free shipping vouchers
-    const finalShippingFee = appliedVoucher?.discount_type === 'free_shipping' ? 0 : baseShippingFee;
+    // Calculate final shipping fee accounting for free shipping vouchers or hub pickup
+    const finalShippingFee = (appliedVoucher?.discount_type === 'free_shipping' || isHubPickup) ? 0 : baseShippingFee;
     const finalDiscount = appliedVoucher?.discount_type === 'free_shipping' ? baseShippingFee : voucherDiscount;
-    const grandTotal = Math.max(0, (Number(subtotal) + (appliedVoucher?.discount_type === 'free_shipping' ? 0 : baseShippingFee)) - (appliedVoucher?.discount_type === 'free_shipping' ? 0 : voucherDiscount));
+    const grandTotal = Math.max(0, (Number(subtotal) + finalShippingFee) - (appliedVoucher?.discount_type === 'free_shipping' ? 0 : voucherDiscount));
 
     const applyVoucher = (codeToApply?: string) => {
         const code = (codeToApply || voucherCodeInput).trim().toUpperCase();
@@ -228,6 +293,11 @@ export default function CheckoutIndex({
             } else {
                 setValidationError('Identity verification required. Please upload your ID to enable purchasing.');
             }
+            return;
+        }
+
+        if (data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id) {
+            setValidationError('Please select a designated Bayan Station Hub for self-pickup collection.');
             return;
         }
 
@@ -299,129 +369,390 @@ export default function CheckoutIndex({
                     {/* Left Column: Forms */}
                     <div className="lg:col-span-8 space-y-6 font-sans">
                         
-                        {/* 1. Verified Delivery Destination */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                        {/* 1. Verified Delivery Destination & Fulfillment Method */}
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-5">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     01
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900">
-                                    Delivery Address & Recipient
-                                </h2>
+                                <div>
+                                    <h2 className="font-bold text-sm text-slate-900">
+                                        Fulfillment Method & Destination
+                                    </h2>
+                                    <p className="text-[11px] text-slate-500">Choose doorstep courier dispatch or free collection at a Bayan Hub</p>
+                                </div>
                             </div>
 
-                            {/* Saved Address Dropdown Selector */}
-                            {addresses.length > 0 && (
-                                <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                            <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                            <span>Select Saved Delivery Destination</span>
-                                        </label>
-                                        <Link 
-                                            href={route('buyer.profile', { tab: 'addresses' })} 
-                                            className="text-[11px] font-semibold text-[#E00D42] hover:underline"
-                                            target="_blank"
-                                        >
-                                            Manage Address Book
-                                        </Link>
+                            {/* Fulfillment Method Selector Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {/* Option 1: Doorstep Delivery */}
+                                <div 
+                                    onClick={() => setData('delivery_type', 'doorstep')}
+                                    className={`p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                        data.delivery_type === 'doorstep'
+                                            ? 'border-[#E00D42] bg-red-50/20 shadow-xs'
+                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'doorstep' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                <Truck className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-900">Doorstep Delivery</p>
+                                                <p className="text-[11px] text-slate-500">Direct handover at your gate / door</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-bold font-mono text-slate-900">
+                                            {subtotal > 1500 ? 'FREE' : '₱50.00'}
+                                        </span>
                                     </div>
-                                    <select
-                                        value={selectedAddressId}
-                                        onChange={(e) => handleAddressChange(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
-                                    >
-                                        {addresses.map((addr) => (
-                                            <option key={addr.id} value={String(addr.id)}>
-                                                {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
-                                            </option>
-                                        ))}
-                                        <option value="new">+ Enter New / Different Address</option>
-                                    </select>
+                                    <p className="text-[10px] text-slate-400 mt-2 font-mono">
+                                        {subtotal > 1500 ? '✓ Free shipping threshold reached' : 'Standard contiguous road freight'}
+                                    </p>
+                                </div>
+
+                                {/* Option 2: Free Bayan Hub Self-Pickup */}
+                                <div 
+                                    onClick={() => setData('delivery_type', 'hub_self_pickup')}
+                                    className={`p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                        data.delivery_type === 'hub_self_pickup'
+                                            ? 'border-emerald-600 bg-emerald-50/30 shadow-xs'
+                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'hub_self_pickup' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                <Store className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-100 text-emerald-800 font-mono">
+                                                        100% FREE
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500">Pick up at municipal station</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-black font-mono text-emerald-600">
+                                            ₱0.00
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-emerald-700 mt-2 font-mono">
+                                        ✓ Zero delivery fees • QR claim code verification
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* When Bayan Hub Pickup is selected */}
+                            {data.delivery_type === 'hub_self_pickup' ? (
+                                <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-4">
+                                    <div className="flex items-start gap-2.5">
+                                        <Building2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <h3 className="text-xs font-bold text-emerald-900">Select Collection Station (Bayan Hub)</h3>
+                                            <p className="text-[11px] text-emerald-700 mt-0.5">
+                                                Your parcel will be sorted and routed directly to the designated municipal station. You will receive an SMS and a claim QR code once staged.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-emerald-900 mb-1.5">
+                                            Designated Bayan Station *
+                                        </label>
+                                        <select
+                                            required
+                                            value={data.pickup_hub_id}
+                                            onChange={(e) => {
+                                                const hubId = e.target.value;
+                                                setData('pickup_hub_id', hubId);
+                                                const hub = pickupHubs.find(h => String(h.id) === hubId);
+                                                if (hub) {
+                                                    setData(prev => ({
+                                                        ...prev,
+                                                        pickup_hub_id: hub.id,
+                                                        shipping_address: hub.address,
+                                                        shipping_city: hub.city_municipality,
+                                                        shipping_province: hub.province,
+                                                    }));
+                                                }
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-white border border-emerald-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+                                        >
+                                            <option value="">-- Choose a Local Bayan Hub Station --</option>
+                                            {pickupHubs.map((hub) => (
+                                                <option key={hub.id} value={hub.id}>
+                                                    [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.pickup_hub_id && (
+                                            <p className="text-rose-500 text-[11px] mt-1">{errors.pickup_hub_id}</p>
+                                        )}
+                                    </div>
+
+                                    {data.pickup_hub_id && (
+                                        <div className="p-3 bg-white rounded-lg border border-emerald-200 text-xs space-y-1">
+                                            {(() => {
+                                                const selectedHub = pickupHubs.find(h => String(h.id) === String(data.pickup_hub_id));
+                                                if (!selectedHub) return null;
+                                                return (
+                                                    <>
+                                                        <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
+                                                        <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
+                                                        <p className="text-[10px] text-emerald-700 font-mono pt-1">
+                                                            Station Hours: Mon–Sat 8:00 AM – 6:00 PM • Bring valid ID & Order Pickup QR
+                                                        </p>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
+                                    {/* Recipient Details for SMS verification */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-emerald-200 text-xs">
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                                <span>Claimant Name</span>
+                                                <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
+                                                    <Lock className="w-3 h-3 text-slate-400" />
+                                                    Verified Real Name
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.recipient_name}
+                                                readOnly
+                                                disabled
+                                                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Claimant Mobile (For SMS Pin)</label>
+                                            <PhoneInput
+                                                value={data.recipient_phone}
+                                                onChange={(val) => setData('recipient_phone', val)}
+                                                placeholder="917 123 4567"
+                                                accentColor="primary"
+                                                helperText="Will receive station arrival SMS & PIN"
+                                                required
+                                            />
+                                            {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* When Doorstep Delivery is selected */
+                                <div className="space-y-4">
+                                    {/* Saved Address Dropdown Selector */}
+                                    {addresses.length > 0 && (
+                                        <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                    <span>Select Saved Delivery Destination</span>
+                                                </label>
+                                                <Link 
+                                                    href={route('buyer.profile', { tab: 'addresses' })} 
+                                                    className="text-[11px] font-semibold text-[#E00D42] hover:underline"
+                                                    target="_blank"
+                                                >
+                                                    Manage Address Book
+                                                </Link>
+                                            </div>
+                                            <select
+                                                value={selectedAddressId}
+                                                onChange={(e) => handleAddressChange(e.target.value)}
+                                                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                            >
+                                                {addresses.map((addr) => (
+                                                    <option key={addr.id} value={String(addr.id)}>
+                                                        {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
+                                                    </option>
+                                                ))}
+                                                <option value="new">+ Enter New / Different Address</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                                <span>Full Name</span>
+                                                <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
+                                                    <Lock className="w-3 h-3 text-slate-400" />
+                                                    Verified Real Name
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.recipient_name}
+                                                readOnly
+                                                disabled
+                                                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
+                                            />
+                                            {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Contact Phone</label>
+                                            <PhoneInput
+                                                value={data.recipient_phone}
+                                                onChange={(val) => setData('recipient_phone', val)}
+                                                placeholder="917 123 4567"
+                                                accentColor="primary"
+                                                helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                                required
+                                            />
+                                            {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
+                                        </div>
+
+                                        <div className="sm:col-span-2">
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No. *</label>
+                                            <input
+                                                type="text"
+                                                value={data.shipping_address}
+                                                onChange={(e) => setData('shipping_address', e.target.value)}
+                                                required
+                                                placeholder="House/Unit No., Street name, Subdivision"
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            />
+                                            {errors.shipping_address && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_address}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Barangay</label>
+                                            <input
+                                                type="text"
+                                                value={data.destination_barangay}
+                                                onChange={(e) => setData('destination_barangay', e.target.value)}
+                                                placeholder="e.g. Brgy. Santisimo Rosario"
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
+                                            <input
+                                                type="text"
+                                                value={data.shipping_city}
+                                                onChange={(e) => setData('shipping_city', e.target.value)}
+                                                required
+                                                placeholder="e.g. San Pablo City"
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            />
+                                            {errors.shipping_city && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_city}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Province</label>
+                                            <input
+                                                type="text"
+                                                value={data.shipping_province}
+                                                onChange={(e) => setData('shipping_province', e.target.value)}
+                                                placeholder="e.g. Laguna"
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Postal Code (Optional)</label>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                maxLength={4}
+                                                placeholder="e.g. 4000"
+                                                value={data.shipping_postal_code}
+                                                onChange={(e) => setData('shipping_postal_code', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            />
+                                        </div>
+
+                                        {/* Geolocation Pin Coordinates & Landmark Block */}
+                                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                                    <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                    GPS Delivery Geofencing Pin
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCaptureCurrentLocation}
+                                                    disabled={isLocating}
+                                                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50"
+                                                >
+                                                    <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                                    <span>{isLocating ? 'Acquiring GPS...' : '📍 Pin My Current Location'}</span>
+                                                </button>
+                                            </div>
+
+                                            {gpsStatus && (
+                                                <p className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                                    {gpsStatus}
+                                                </p>
+                                            )}
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-500 font-mono mb-0.5">Latitude</label>
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        placeholder="e.g. 14.0682"
+                                                        value={data.shipping_latitude}
+                                                        onChange={(e) => setData('shipping_latitude', e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-500 font-mono mb-0.5">Longitude</label>
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        placeholder="e.g. 121.3256"
+                                                        value={data.shipping_longitude}
+                                                        onChange={(e) => setData('shipping_longitude', e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-[10px] text-slate-600 font-bold mb-0.5">
+                                                    Delivery Landmark & Visual Cue (Eliminates Failed Attempts)
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
+                                                    value={data.landmark}
+                                                    onChange={(e) => setData('landmark', e.target.value)}
+                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                    Riders navigate straight to this landmark and geofenced pin within ≤100m for guaranteed delivery.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {selectedAddressId === 'new' && (
+                                            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.save_address}
+                                                    onChange={(e) => setData('save_address', e.target.checked)}
+                                                    className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                                <span>Save this verified pin and address to my address book</span>
+                                            </label>
+                                        )}
+                                    </div>
                                 </div>
                             )}
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                                        <span>Full Name</span>
-                                        <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
-                                            <Lock className="w-3 h-3 text-slate-400" />
-                                            Verified Real Name
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.recipient_name}
-                                        readOnly
-                                        disabled
-                                        className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
-                                    />
-                                    {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block font-semibold text-slate-700 mb-1.5">Contact Phone</label>
-                                    <PhoneInput
-                                        value={data.recipient_phone}
-                                        onChange={(val) => setData('recipient_phone', val)}
-                                        placeholder="917 123 4567"
-                                        accentColor="primary"
-                                        helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                        required
-                                    />
-                                    {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
-                                </div>
-
-                                <div className="sm:col-span-2">
-                                    <label className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No.</label>
-                                    <input
-                                        type="text"
-                                        value={data.shipping_address}
-                                        onChange={(e) => setData('shipping_address', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                    />
-                                    {errors.shipping_address && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_address}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block font-semibold text-slate-700 mb-1.5">City / Municipality</label>
-                                    <input
-                                        type="text"
-                                        value={data.shipping_city}
-                                        onChange={(e) => setData('shipping_city', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                    />
-                                    {errors.shipping_city && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_city}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block font-semibold text-slate-700 mb-1.5">Postal Code (Optional)</label>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={4}
-                                        placeholder="e.g. 1000"
-                                        value={data.shipping_postal_code}
-                                        onChange={(e) => setData('shipping_postal_code', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                    />
-                                </div>
-
-                                {selectedAddressId === 'new' && (
-                                    <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={data.save_address}
-                                            onChange={(e) => setData('save_address', e.target.checked)}
-                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
-                                        />
-                                        <span>Save this address to my address book for future orders</span>
-                                    </label>
-                                )}
-                            </div>
                         </div>
 
                         {/* 2. Package Items in this Order */}
@@ -484,25 +815,35 @@ export default function CheckoutIndex({
                             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start justify-between gap-4 text-xs font-sans">
                                 <div className="flex items-start gap-3.5">
                                     <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center shrink-0 mt-0.5">
-                                        <Truck className="w-5 h-5 text-[#E00D42]" />
+                                        {isHubPickup ? (
+                                            <Store className="w-5 h-5 text-emerald-600" />
+                                        ) : (
+                                            <Truck className="w-5 h-5 text-[#E00D42]" />
+                                        )}
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                            <span>Bagoo Express Logistics</span>
-                                            <span className="px-2 py-0.5 rounded-xs bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">STANDARD FLEET</span>
+                                            <span>{isHubPickup ? 'Bayan Hub Municipal Station Network' : 'Bagoo Express Logistics'}</span>
+                                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-mono font-bold ${
+                                                isHubPickup ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-800'
+                                            }`}>
+                                                {isHubPickup ? 'FREE SELF-PICKUP' : 'CONTIGUOUS ROAD FREIGHT'}
+                                            </span>
                                         </div>
                                         <p className="text-slate-500 text-[11px] leading-relaxed">
-                                            Integrated sorting center routing: Merchant Pickup → Sorting Hub → Assigned Rider → Doorstep Handover.
+                                            {isHubPickup
+                                                ? 'Feeder transit straight to local municipal station. Package stored in designated bin for collection via QR code.'
+                                                : 'Integrated sorting center routing: Merchant Pickup → Sorting Hub → Assigned Rider → Doorstep Handover.'}
                                         </p>
                                         <p className="text-slate-400 text-[10px] font-mono">
-                                            Estimated Doorstep Delivery: 2–4 Business Days
+                                            {isHubPickup ? 'Estimated Transit to Hub: 1–2 Business Days' : 'Estimated Doorstep Delivery: 2–4 Business Days'}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
                                     <span className="text-[10px] text-slate-400 block font-mono">SHIPPING RATE</span>
-                                    <span className={`text-sm font-black ${baseShippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                                        {baseShippingFee === 0 ? 'FREE' : formatPrice(baseShippingFee)}
+                                    <span className={`text-sm font-black ${finalShippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                        {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
                                     </span>
                                 </div>
                             </div>
@@ -611,7 +952,7 @@ export default function CheckoutIndex({
                                 </div>
 
                                 <div className="flex justify-between">
-                                    <span>Courier Shipping Fee:</span>
+                                    <span>{isHubPickup ? 'Bayan Hub Collection Fee:' : 'Courier Shipping Fee:'}</span>
                                     <span className={finalShippingFee === 0 ? 'text-emerald-600 font-bold' : 'font-semibold text-slate-900'}>
                                         {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
                                     </span>

@@ -54,6 +54,8 @@ $registerSellerRoutes = function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createSeller']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/seller/login', fn() => redirect('/login'));
     Route::get('/seller/register', fn() => redirect('/register'));
 
@@ -85,6 +87,8 @@ $registerSellerRoutes = function () {
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
         Route::get('/profile', [SellerDashboardController::class, 'profile']);
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
+        Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
+        Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', function (\Illuminate\Http\Request $request) {
@@ -106,6 +110,8 @@ $registerCourierRoutes = function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/register', [RegisteredUserController::class, 'createCourier']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/courier/login', fn() => redirect('/login'));
     Route::get('/courier/register', fn() => redirect('/register'));
 
@@ -131,14 +137,25 @@ $registerHubRoutes = function () {
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'create']);
+    Route::get('/register', [RegisteredUserController::class, 'createLogistics']);
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::get('/hub/login', fn() => redirect('/login'));
+    Route::get('/hub/register', fn() => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
-        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'index']);
+        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
+        Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
+        Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
+        Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
+        Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
+        Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
+        Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
+        Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
+        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap']);
         Route::get('/hub', fn() => redirect('/dashboard'));
     });
 };
@@ -198,6 +215,13 @@ Route::get('/courier', function () {
     }
     return app(AuthenticatedSessionController::class)->createCourier();
 })->name('courier.landing');
+
+Route::get('/logistics', function () {
+    if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
+        return redirect()->route('hub.index');
+    }
+    return redirect()->route('logistics.register');
+})->name('logistics.landing');
 
 
 
@@ -284,7 +308,7 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('login');
         }
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect()->route('kyc.pending');
+            return redirect('/pending-approval');
         }
         return redirect()->intended(match($user->role) {
             'admin' => route('admin.dashboard'),
@@ -345,6 +369,8 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
     Route::get('/profile', [SellerDashboardController::class, 'profile'])->name('profile');
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
+    Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
     Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
@@ -402,8 +428,17 @@ Route::prefix('hub')->name('hub.')->group(function () {
     })->name('index');
 
     Route::middleware(['auth', 'role:logistics,admin'])->group(function () {
+        Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
+        Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
+        Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
+        Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
+        Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
+        Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
+        Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
+        Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
+        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });
 });
 

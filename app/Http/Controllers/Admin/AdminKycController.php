@@ -17,7 +17,7 @@ class AdminKycController extends Controller
         $role = $request->input('role', 'all');
         $search = $request->input('search');
 
-        $query = User::with(['shop', 'courierProfile']);
+        $query = User::with(['shop', 'courierProfile', 'logisticsCompany']);
 
         if ($status !== 'all') {
             $query->where('kyc_status', $status);
@@ -44,6 +44,7 @@ class AdminKycController extends Controller
             'total_count' => User::count(),
             'pending_sellers' => User::where('role', 'seller')->where('kyc_status', 'pending_approval')->count(),
             'pending_couriers' => User::where('role', 'courier')->where('kyc_status', 'pending_approval')->count(),
+            'pending_logistics' => User::where('role', 'logistics')->where('kyc_status', 'pending_approval')->count(),
             'pending_buyers' => User::where('role', 'buyer')->where('kyc_status', 'pending_approval')->count(),
         ];
 
@@ -78,6 +79,13 @@ class AdminKycController extends Controller
             ]);
         }
 
+        if ($user->role === 'logistics' && $user->logisticsCompany) {
+            $user->logisticsCompany->update([
+                'status' => 'active',
+                'is_active' => true,
+            ]);
+        }
+
         return back()->with('success', "Applicant {$user->name} ({$user->role}) has been approved successfully.");
     }
 
@@ -101,6 +109,13 @@ class AdminKycController extends Controller
         if ($user->role === 'courier' && $user->courierProfile) {
             $user->courierProfile->update([
                 'is_available' => false,
+            ]);
+        }
+
+        if ($user->role === 'logistics' && $user->logisticsCompany) {
+            $user->logisticsCompany->update([
+                'status' => 'pending',
+                'is_active' => false,
             ]);
         }
 

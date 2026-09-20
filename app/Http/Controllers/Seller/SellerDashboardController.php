@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Order;
 use App\Models\Product;
@@ -16,22 +17,12 @@ use Inertia\Response;
 
 class SellerDashboardController extends Controller
 {
+    use HasSellerShop;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $shop = Shop::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'name' => $user->name . "'s Store",
-                'slug' => \Illuminate\Support\Str::slug($user->name . '-store-' . $user->id),
-                'description' => 'Welcome to our official verified storefront on BagooPH.',
-                'phone' => $user->phone ?? '+63 912 345 6789',
-                'address' => $user->address ?? 'Warehouse 4B, Industrial Park',
-                'city' => $user->city ?? 'Metro Manila',
-                'status' => 'active',
-                'rating' => 4.95,
-            ]
-        );
+        $shop = $this->getActiveShop($request);
 
         $totalProducts = Product::where('shop_id', $shop->id)->count();
         $lowStockCount = Product::where('shop_id', $shop->id)->where('stock', '<=', 5)->count();
@@ -109,13 +100,59 @@ class SellerDashboardController extends Controller
             'dailySales' => $dailySales,
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
+            'availableShops' => $this->getAvailableShops($request),
+            'categories' => Category::where('is_active', true)->select('id', 'name', 'slug')->get(),
         ]);
+    }
+
+    public function switchShop(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'shop_id' => 'required|exists:shops,id',
+        ]);
+
+        $shop = Shop::where('id', $validated['shop_id'])
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $request->session()->put('active_seller_shop_id', $shop->id);
+
+        return back()->with('success', "Switched active store profile to {$shop->name}.");
+    }
+
+    public function createShop(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'root_category_id' => 'required|exists:categories,id',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $slug = Str::slug($validated['name'] . '-' . $request->user()->id . '-' . Str::random(4));
+
+        $shop = Shop::create([
+            'user_id' => $request->user()->id,
+            'root_category_id' => $validated['root_category_id'],
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'description' => $validated['description'] ?? 'Verified specialty shop on BagooPH.',
+            'phone' => $request->user()->phone ?? '+63 912 345 6789',
+            'address' => $request->user()->address ?? 'Warehouse 4B, Industrial Park',
+            'city' => $request->user()->city ?? 'Metro Manila',
+            'status' => 'active',
+            'rating' => 5.00,
+            'is_default' => false,
+        ]);
+
+        $request->session()->put('active_seller_shop_id', $shop->id);
+
+        return back()->with('success', "Shop '{$shop->name}' created successfully with dedicated root category enclosure.");
     }
 
     public function reports(Request $request): Response
     {
         $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->first();
+        $shop = $this->getActiveShop($request);
 
         $fromDate = $request->input('from_date', now()->subDays(30)->format('Y-m-d'));
         $toDate = $request->input('to_date', now()->format('Y-m-d'));
@@ -154,18 +191,17 @@ class SellerDashboardController extends Controller
 
     public function settings(Request $request): Response
     {
-        $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->first();
+        $shop = $this->getActiveShop($request);
 
         return Inertia::render('Seller/Settings', [
             'shop' => $shop,
+            'availableShops' => $this->getAvailableShops($request),
         ]);
     }
 
     public function updateSettings(Request $request): RedirectResponse
     {
-        $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->firstOrFail();
+        $shop = $this->getActiveShop($request);
 
         $rules = [
             'name' => 'sometimes|required|string|max:255',
@@ -223,23 +259,12 @@ class SellerDashboardController extends Controller
     public function profile(Request $request): Response
     {
         $user = $request->user();
-        $shop = Shop::where('user_id', $user->id)->first() ?? Shop::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'name' => $user->name . "'s Store",
-                'slug' => Str::slug($user->name . '-store-' . $user->id),
-                'description' => 'Welcome to our official verified storefront on BagooPH.',
-                'phone' => $user->phone ?? '+63 912 345 6789',
-                'address' => $user->address ?? 'Warehouse 4B, Industrial Park',
-                'city' => $user->city ?? 'Metro Manila',
-                'status' => 'active',
-                'rating' => 4.95,
-            ]
-        );
+        $shop = $this->getActiveShop($request);
 
         return Inertia::render('Seller/Profile', [
             'user' => $user,
             'shop' => $shop,
+            'availableShops' => $this->getAvailableShops($request),
         ]);
     }
 
@@ -285,29 +310,11 @@ class SellerDashboardController extends Controller
 
     public function previewStorefront(Request $request): Response
     {
-        $user = $request->user();
-        $shop = Shop::with('user')
-            ->withCount(['products' => function ($q) {
-                $q->where('status', 'active');
-            }])
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$shop) {
-            $shop = Shop::firstOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'name' => $user->name . "'s Store",
-                    'slug' => Str::slug($user->name . '-store-' . $user->id),
-                    'description' => 'Welcome to our official verified storefront on BagooPH.',
-                    'phone' => $user->phone ?? '+63 912 345 6789',
-                    'address' => $user->address ?? 'Warehouse 4B, Industrial Park',
-                    'city' => $user->city ?? 'Metro Manila',
-                    'status' => 'active',
-                    'rating' => 4.95,
-                ]
-            );
-        }
+        $shop = $this->getActiveShop($request);
+        $shop->load('user');
+        $shop->loadCount(['products' => function ($q) {
+            $q->where('status', 'active');
+        }]);
 
         $products = Product::where('shop_id', $shop->id)
             ->where('status', 'active')

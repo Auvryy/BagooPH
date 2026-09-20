@@ -289,5 +289,8 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+
+        // 9. Multi-Tenant Logistics Network & Road Freight Topology
+        $this->call(LogisticsNetworkSeeder::class);
     }
 }

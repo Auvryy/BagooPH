@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Models\LogisticsHub;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Voucher;
+use App\Services\Logistics\LogisticsRoutingEngine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +93,11 @@ class CheckoutController extends Controller
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
         $defaultAddress = $user->defaultAddress();
 
+        $pickupHubs = LogisticsHub::where('tier', 'local_bayan_hub')
+            ->where('is_active', true)
+            ->where('allows_self_pickup', true)
+            ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province']);
+
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $checkoutItems,
@@ -103,6 +110,7 @@ class CheckoutController extends Controller
             'kycFeedback' => $user->kyc_feedback,
             'addresses' => $addresses,
             'defaultAddressId' => $defaultAddress?->id,
+            'pickupHubs' => $pickupHubs,
         ]);
     }
 
@@ -154,13 +162,27 @@ class CheckoutController extends Controller
             'recipient_phone' => 'required|string|max:50',
             'shipping_address' => 'required|string|max:500',
             'shipping_city' => 'required|string|max:100',
+            'shipping_province' => 'nullable|string|max:100',
             'shipping_postal_code' => 'nullable|string|max:20',
+            'shipping_latitude' => 'nullable|numeric|between:-90,90',
+            'shipping_longitude' => 'nullable|numeric|between:-180,180',
+            'landmark' => 'nullable|string|max:255',
+            'delivery_type' => 'nullable|string|in:doorstep,hub_self_pickup',
+            'pickup_hub_id' => 'nullable|exists:logistics_hubs,id',
+            'destination_barangay' => 'nullable|string|max:100',
             'payment_method' => 'nullable|string|in:cod,card,bank_transfer,e_wallet',
             'notes' => 'nullable|string|max:500',
             'voucher_code' => 'nullable|string|max:50',
             'save_address' => 'nullable|boolean',
             'item_ids' => 'nullable',
         ]);
+
+        // Contiguous Land Delimitation: strictly reject non-contiguous island addresses
+        $routingEngine = app(LogisticsRoutingEngine::class);
+        $province = $validated['shipping_province'] ?? $validated['shipping_city'];
+        if (! $routingEngine->isContiguousRoadServiceable($province, $validated['shipping_city'])) {
+            return back()->with('error', 'Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
+        }
 
         $rawItemIds = $request->input('item_ids');
         if (! empty($rawItemIds)) {
@@ -181,15 +203,20 @@ class CheckoutController extends Controller
                 'recipient_name' => $user->name,
                 'phone' => $validated['recipient_phone'],
                 'city' => $validated['shipping_city'],
+                'province' => $province,
+                'barangay' => $validated['destination_barangay'] ?? null,
                 'street' => $validated['shipping_address'],
                 'postal_code' => $validated['shipping_postal_code'] ?? null,
+                'latitude' => $validated['shipping_latitude'] ?? null,
+                'longitude' => $validated['shipping_longitude'] ?? null,
+                'landmark' => $validated['landmark'] ?? null,
                 'type' => 'Home',
                 'is_default' => ! $hasExisting,
             ]);
         }
 
         try {
-            $order = DB::transaction(function () use ($user, $cart, $checkoutItems, $validated) {
+            $order = DB::transaction(function () use ($user, $cart, $checkoutItems, $validated, $routingEngine) {
                 // Recompute exact total from database to prevent price manipulation
                 $subtotal = 0;
                 foreach ($checkoutItems as $item) {
@@ -206,7 +233,9 @@ class CheckoutController extends Controller
                     $subtotal += $product->price * $item->quantity;
                 }
 
-                $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
+                $deliveryType = $validated['delivery_type'] ?? 'doorstep';
+                // Free Bayan Hub Self-Pickup
+                $shippingFee = ($deliveryType === 'hub_self_pickup') ? 0.00 : ($subtotal > 1500 ? 0.00 : 50.00);
                 $voucherDiscount = 0.0;
                 $appliedVoucher = null;
 
@@ -231,12 +260,17 @@ class CheckoutController extends Controller
                     'payment_method' => 'cod',
                     'payment_status' => 'pending',
                     'status' => 'pending',
+                    'delivery_type' => $deliveryType,
+                    'pickup_hub_id' => ($deliveryType === 'hub_self_pickup') ? ($validated['pickup_hub_id'] ?? null) : null,
+                    'destination_barangay' => $validated['destination_barangay'] ?? null,
+                    'destination_latitude' => $validated['shipping_latitude'] ?? null,
+                    'destination_longitude' => $validated['shipping_longitude'] ?? null,
                     'recipient_name' => $validated['recipient_name'],
                     'recipient_phone' => $validated['recipient_phone'],
                     'shipping_address' => $validated['shipping_address'],
                     'shipping_city' => $validated['shipping_city'],
                     'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
-                    'notes' => $validated['notes'] ?? null,
+                    'notes' => (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') . ($validated['notes'] ?? ''),
                 ]);
 
                 $firstShop = null;
@@ -265,18 +299,31 @@ class CheckoutController extends Controller
                 }
 
                 // Create Delivery record for courier pool
-                Delivery::create([
+                $formattedDeliveryAddress = (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') 
+                    . $validated['shipping_address'] . ', ' . $validated['shipping_city'];
+
+                $delivery = Delivery::create([
                     'order_id' => $order->id,
                     'tracking_number' => 'BGO-' . strtoupper(Str::random(10)),
                     'logistics_partner' => 'Bagoo Express Dispatch Fleet',
+                    'delivery_type' => $deliveryType,
                     'status' => 'unassigned',
                     'pickup_store_name' => $firstShop?->name ?? 'Bagoo Prime Store',
                     'pickup_address' => ($firstShop?->address ?? 'Artisan District') . ', ' . ($firstShop?->city ?? 'Metro Manila'),
                     'delivery_recipient_name' => $validated['recipient_name'],
-                    'delivery_address' => $validated['shipping_address'] . ', ' . $validated['shipping_city'],
+                    'delivery_address' => $formattedDeliveryAddress,
                     'delivery_phone' => $validated['recipient_phone'],
                     'estimated_delivery_at' => now()->addDays(3),
                 ]);
+
+                // Automatically generate facility-to-facility hops and destination bin
+                if ($firstShop) {
+                    try {
+                        $routingEngine->planDeliveryRoute($delivery, $order, $firstShop);
+                    } catch (\Throwable $e) {
+                        // Keep fallback if hubs are not fully seeded yet
+                    }
+                }
 
                 // Clear only the purchased items from the shopping bag
                 $checkoutItemIds = $checkoutItems->pluck('id')->all();

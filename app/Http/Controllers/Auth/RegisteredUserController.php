@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\CourierProfile;
+use App\Models\LogisticsCompany;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -43,6 +44,14 @@ class RegisteredUserController extends Controller
     }
 
     /**
+     * Display the dedicated logistics partner registration view.
+     */
+    public function createLogistics(): Response
+    {
+        return Inertia::render('Auth/LogisticsRegister');
+    }
+
+    /**
      * Handle an incoming registration request.
      */
     public function store(Request $request): RedirectResponse
@@ -70,7 +79,7 @@ class RegisteredUserController extends Controller
             'age' => 'nullable|integer|min:0|max:150',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => 'nullable|string|in:buyer,seller,courier',
+            'role' => 'nullable|string|in:buyer,seller,courier,logistics',
             'phone' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
@@ -99,6 +108,16 @@ class RegisteredUserController extends Controller
             $rules['id_document'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
             $rules['driver_license'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
             $rules['or_cr_document'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+        } elseif ($role === 'logistics') {
+            $rules['company_name'] = 'required|string|max:255';
+            $rules['company_code'] = 'nullable|string|max:20';
+            $rules['franchise_number'] = 'nullable|string|max:100';
+            $rules['fleet_size'] = 'nullable|integer|min:1|max:100000';
+            $rules['phone'] = 'required|string|max:255';
+            $rules['address'] = 'required|string|max:255';
+            $rules['city'] = 'required|string|max:255';
+            $rules['business_permit'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+            $rules['franchise_document'] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
         }
 
         $validated = $request->validate($rules);
@@ -118,6 +137,10 @@ class RegisteredUserController extends Controller
 
         $orCrPath = $request->hasFile('or_cr_document')
             ? '/storage/' . $request->file('or_cr_document')->store('kyc_documents', 'public')
+            : null;
+
+        $franchisePath = $request->hasFile('franchise_document')
+            ? '/storage/' . $request->file('franchise_document')->store('kyc_documents', 'public')
             : null;
 
         $isBuyer = ($role === 'buyer');
@@ -194,6 +217,40 @@ class RegisteredUserController extends Controller
                 'or_cr_status' => 'Pending Verification',
                 'is_available' => false,
             ]);
+        } elseif ($role === 'logistics') {
+            $companyName = $validated['company_name'];
+            $baseCode = ! empty($validated['company_code'])
+                ? Str::upper(preg_replace('/[^A-Za-z0-9]/', '', $validated['company_code']))
+                : Str::upper(Str::substr(preg_replace('/[^A-Za-z0-9]/', '', $companyName), 0, 4));
+            if (strlen($baseCode) < 2) {
+                $baseCode = 'LOG';
+            }
+            $code = $baseCode;
+            $counter = 1;
+            while (LogisticsCompany::where('code', $code)->exists()) {
+                $code = $baseCode . $counter;
+                $counter++;
+            }
+
+            LogisticsCompany::create([
+                'user_id' => $user->id,
+                'name' => $companyName,
+                'slug' => Str::slug($companyName . '-' . $user->id),
+                'code' => $code,
+                'contact_email' => $validated['email'],
+                'contact_phone' => $validated['phone'] ?? null,
+                'address' => trim(($validated['address'] ?? '') . ', ' . ($validated['city'] ?? '')),
+                'status' => 'pending',
+                'is_active' => false,
+                'accreditation_details' => [
+                    'franchise_number' => $validated['franchise_number'] ?? 'PENDING-LTFRB',
+                    'fleet_size' => (int) ($validated['fleet_size'] ?? 10),
+                    'franchise_document_path' => $franchisePath,
+                    'business_permit_path' => $permitPath,
+                    'operating_province' => $validated['province'] ?? $validated['city'] ?? 'Laguna',
+                    'vehicle_types' => $request->input('vehicle_types', ['motorcycle', 'l300_van']),
+                ],
+            ]);
         }
 
         event(new Registered($user));
@@ -208,7 +265,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('kyc.pending');
+        return redirect('/pending-approval');
     }
 
     /**
@@ -250,6 +307,7 @@ class RegisteredUserController extends Controller
             ],
             'shop' => $user->shop,
             'courierProfile' => $user->courierProfile,
+            'logisticsCompany' => $user->logisticsCompany,
         ]);
     }
 
