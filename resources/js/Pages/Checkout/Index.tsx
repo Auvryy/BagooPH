@@ -675,7 +675,7 @@ export default function CheckoutIndex({
 
                                         {/* Geolocation Pin Coordinates & Landmark Block */}
                                         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                                     <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
                                                     GPS Delivery Geofencing Pin
@@ -684,7 +684,7 @@ export default function CheckoutIndex({
                                                     type="button"
                                                     onClick={handleCaptureCurrentLocation}
                                                     disabled={isLocating}
-                                                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50"
+                                                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 w-fit"
                                                 >
                                                     <MapPin className="w-3 h-3 text-[#E00D42]" />
                                                     <span>{isLocating ? 'Acquiring GPS...' : '📍 Pin My Current Location'}</span>
@@ -1083,8 +1083,8 @@ export default function CheckoutIndex({
 
                 {/* ORDER PLACEMENT CONFIRMATION MODAL */}
                 {showConfirmModal && (
-                    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 font-sans my-auto">
+                    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
                             
                             {/* Modal Header */}
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1120,7 +1120,7 @@ export default function CheckoutIndex({
                                 </div>
 
                                 {/* Payment Mode & Voucher Summary */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
                                         <span className="font-bold text-emerald-700 font-mono">CASH ON DELIVERY (COD)</span>
@@ -1166,7 +1166,7 @@ export default function CheckoutIndex({
                             </label>
 
                             {/* Modal Action Buttons */}
-                            <div className="grid grid-cols-2 gap-3 pt-2 font-sans text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 font-sans text-xs">
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmModal(false)}

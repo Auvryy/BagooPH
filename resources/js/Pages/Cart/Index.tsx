@@ -227,7 +227,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                 </div>
 
                                 {/* Filter Pills */}
-                                <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs font-sans">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-2 border-t border-slate-100 text-xs font-sans">
                                     <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1 mr-1">
                                         <Filter className="w-3 h-3" />
                                         Filter:
@@ -269,7 +269,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                             </div>
 
                             {/* Cart Items Container */}
-                            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4">
                                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
                                     <label className="flex items-center gap-2.5 cursor-pointer select-none font-bold text-slate-800">
                                         <input
@@ -282,7 +282,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     </label>
                                     <div className="flex items-center gap-2">
                                         <Store className="w-4 h-4 text-[#E00D42]" />
-                                        <span className="font-semibold text-slate-600">Bagoo Verified Merchants</span>
+                                        <span className="font-semibold text-slate-600 hidden sm:inline">Bagoo Verified Merchants</span>
                                     </div>
                                 </div>
 
@@ -307,7 +307,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                             <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 
                                                 {/* Product Info with Checkbox */}
-                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                <div className="flex items-center gap-3.5 min-w-0 flex-1 w-full sm:w-auto">
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedIds.includes(item.id)}
@@ -319,7 +319,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                         alt={item.product?.name}
                                                         className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                                                     />
-                                                    <div className="truncate space-y-1">
+                                                    <div className="min-w-0 flex-1 truncate space-y-1">
                                                         <div className="flex items-center gap-2">
                                                             <Link 
                                                                 href={route('buyer.products.show', item.product?.slug || '')}
@@ -385,7 +385,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                         {/* Order Summary */}
                         <div className="lg:col-span-4 space-y-4">
                             {/* Summary Totals Card */}
-                            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 font-mono text-xs">
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4 font-mono text-xs">
                                 <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
                                     Order Summary
                                 </h3>

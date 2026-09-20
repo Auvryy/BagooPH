@@ -517,10 +517,192 @@ export default function SearchPage({
                                 ))}
                             </div>
                         )}
-
                     </div>
-
                 </div>
+
+                {/* MOBILE SLIDE-OVER FILTER DRAWER */}
+                {mobileFilterOpen && (
+                    <div className="fixed inset-0 z-50 lg:hidden flex">
+                        {/* Backdrop */}
+                        <div 
+                            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+                            onClick={() => setMobileFilterOpen(false)}
+                        />
+
+                        {/* Slide-in Panel */}
+                        <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl flex flex-col z-10 font-mono text-xs overflow-hidden animate-slide-in-right">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm uppercase">
+                                    <Filter className="w-4 h-4 text-[#E00D42]" />
+                                    <span>Filter Catalog</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileFilterOpen(false)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-200 transition"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Scrollable Filter Options */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                                {/* 1. Department */}
+                                <div className="space-y-2">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Department</h4>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ category: undefined }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                                !filters.category || filters.category === 'all'
+                                                    ? 'bg-[#E00D42] text-white font-bold'
+                                                    : 'text-slate-700 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>All Departments</span>
+                                            <span className="text-[10px] opacity-80">{categories.reduce((acc, c) => acc + (c.products_count || 0), 0)}</span>
+                                        </button>
+                                        {categories.map((cat) => (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => { applyFilter({ category: cat.slug }); setMobileFilterOpen(false); }}
+                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                                    filters.category === cat.slug
+                                                        ? 'bg-[#E00D42] text-white font-bold'
+                                                        : 'text-slate-700 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <span className="truncate">{cat.name}</span>
+                                                <span className="text-[10px] opacity-75 font-mono">({cat.products_count ?? 0})</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 2. Price Range */}
+                                <div className="space-y-2.5 pt-4 border-t border-slate-100">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Price Range (₱)</h4>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(undefined, 500); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            Under ₱500
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(500, 1500); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱500 - ₱1.5k
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(1500, 5000); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱1.5k - ₱5k
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(5000, undefined); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱5k & above
+                                        </button>
+                                    </div>
+                                    <form onSubmit={(e) => { handlePriceSubmit(e); setMobileFilterOpen(false); }} className="space-y-2 pt-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <input
+                                                type="number"
+                                                placeholder="Min ₱"
+                                                value={minPrice}
+                                                onChange={(e) => setMinPrice(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                            />
+                                            <span className="text-slate-400">-</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Max ₱"
+                                                value={maxPrice}
+                                                onChange={(e) => setMaxPrice(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-lg font-bold uppercase transition text-[11px]"
+                                        >
+                                            Apply Price Filter
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* 3. Availability & Rating */}
+                                <div className="space-y-3 pt-4 border-t border-slate-100">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Availability & Rating</h4>
+                                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(filters.in_stock)}
+                                            onChange={(e) => { applyFilter({ in_stock: e.target.checked ? true : undefined }); setMobileFilterOpen(false); }}
+                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span className="text-slate-700 font-sans text-xs">In Stock Only</span>
+                                    </label>
+                                    <div className="space-y-1 pt-1 font-sans text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ rating: undefined }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-1.5 ${
+                                                !filters.rating ? 'bg-slate-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>All Ratings</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ rating: '4' }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-1.5 ${
+                                                filters.rating === '4' ? 'bg-slate-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="flex text-amber-400">
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                            </div>
+                                            <span className="font-mono text-[11px]">& up</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Reset / Close */}
+                            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { clearAllFilters(); setMobileFilterOpen(false); }}
+                                    className="flex-1 py-2 px-3 rounded-lg border border-slate-300 text-slate-700 font-bold text-center text-xs hover:bg-white transition"
+                                >
+                                    Reset All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileFilterOpen(false)}
+                                    className="flex-1 py-2 px-3 rounded-lg bg-[#E00D42] text-white font-bold text-center text-xs hover:bg-[#C20836] transition shadow-xs"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </BuyerLayout>
