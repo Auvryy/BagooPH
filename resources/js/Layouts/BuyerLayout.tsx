@@ -249,12 +249,12 @@ export default function BuyerLayout({
                         </div>
 
                         {/* RIGHT ACTIONS: CHAT, BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
-                        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
 
                             {/* CHAT BUTTON */}
                             <Link 
                                 href={auth.user ? route('buyer.messages') : route('login')} 
-                                className={`relative h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.messages') || route().current('messages')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
@@ -262,7 +262,7 @@ export default function BuyerLayout({
                                 title="In-App Chat & Inquiries"
                             >
                                 <div className="relative flex items-center">
-                                    <MessageSquare className="w-4 h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
+                                    <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
                                     {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
                                         <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E00D42] opacity-75"></span>
@@ -272,7 +272,7 @@ export default function BuyerLayout({
                                 </div>
                                 <span className="hidden sm:inline">Chat</span>
                                 {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                                    <span className="min-w-[16px] sm:min-w-[18px] h-4 sm:h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
                                         {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
                                     </span>
                                 )}
@@ -281,16 +281,16 @@ export default function BuyerLayout({
                             {/* BAG BUTTON */}
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border font-sans text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.cart')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
                                 }`}
                             >
-                                <ShoppingBag className="w-4 h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
+                                <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
                                 <span className="hidden sm:inline">Bag</span>
                                 {cartCount > 0 && (
-                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                                    <span className="min-w-[16px] sm:min-w-[18px] h-4 sm:h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
                                         {cartCount}
                                     </span>
                                 )}
@@ -305,20 +305,20 @@ export default function BuyerLayout({
                                 >
                                     <Link
                                         href={route('buyer.profile', { tab: 'orders' })}
-                                        className="h-11 flex items-center gap-2 px-3.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-xs font-bold shadow-2xs focus:outline-hidden group"
+                                        className="h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs focus:outline-hidden group"
                                     >
                                         {auth.user.avatar ? (
                                             <img
                                                 src={auth.user.avatar}
                                                 alt={auth.user.name}
-                                                className="w-6 h-6 rounded-md object-cover border border-slate-200 shrink-0"
+                                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-md object-cover border border-slate-200 shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-6 h-6 rounded-md bg-[#E00D42] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#E00D42] text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shrink-0">
                                                 {auth.user.name.charAt(0).toUpperCase()}
                                             </div>
                                         )}
-                                        <span className="truncate max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
+                                        <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
                                         <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                     </Link>
 
@@ -401,16 +401,16 @@ export default function BuyerLayout({
                                     )}
                                 </div>
                             ) : hideAuthButtons ? null : (
-                                <div className="flex items-center gap-2 font-sans text-xs">
+                                <div className="flex items-center gap-1.5 sm:gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs"
+                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs text-[11px] sm:text-xs"
                                     >
                                         Sign In
                                     </Link>
                                     <Link 
                                         href={route('register')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs"
+                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs text-[11px] sm:text-xs"
                                     >
                                         Register
                                     </Link>
@@ -456,13 +456,13 @@ export default function BuyerLayout({
 
             {/* 4. FLOATING LIVE CHAT TRIGGER & MODAL */}
             {!hideCustomerCare && !route().current('buyer.messages') && !route().current('messages') && (
-                <div className="fixed bottom-6 right-6 z-50">
+                <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
                     <button
                         onClick={() => setChatOpen(true)}
-                        className="px-4 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-white/20 cursor-pointer"
+                        className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-white/20 cursor-pointer"
                     >
                         <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                        <span>Customer Care</span>
+                        <span className="hidden xs:inline">Customer Care</span>
                     </button>
                 </div>
             )}
@@ -516,7 +516,7 @@ export default function BuyerLayout({
             {/* 5. FOOTER */}
             {!hideFooter && (
                 <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Platform Directory</h5>
                         <ul className="space-y-2 text-slate-500">

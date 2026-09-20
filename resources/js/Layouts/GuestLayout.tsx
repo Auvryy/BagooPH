@@ -30,7 +30,7 @@ interface Props {
 function AuthEcosystemFooter() {
     return (
         <footer className="bg-white border-t border-slate-300 text-slate-600 font-sans text-xs shrink-0">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 {/* Platform Directory */}
                 <div>
                     <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
@@ -167,7 +167,7 @@ export default function GuestLayout({
                 {/* 100vh Full Viewport Split-Screen Grid */}
                 <div className="min-h-[100vh] min-h-[100dvh] flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden">
                     {/* FORM COLUMN */}
-                    <div className={`col-span-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-white min-h-full ${
+                    <div className={`col-span-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-4 sm:p-10 lg:p-14 bg-white min-h-full ${
                         isFormLeft ? 'order-1' : 'order-1 lg:order-2'
                     }`}>
                         {/* Constrained container ensures brand header & form body share exact column bounds */}
@@ -336,7 +336,7 @@ export default function GuestLayout({
                     {noCard ? (
                         children
                     ) : (
-                        <div className="bg-white rounded-xs border border-slate-300 shadow-xs p-6 sm:p-8">
+                        <div className="bg-white rounded-xs border border-slate-300 shadow-xs p-4 sm:p-8">
                             {(title || headerBadge) && (
                                 <div className="mb-6 pb-4 border-b border-slate-100">
                                     {headerBadge && (
