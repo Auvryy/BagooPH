@@ -495,7 +495,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Personnel & Riders</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -511,7 +511,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Rates & Zones</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -548,7 +548,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <RotateCcw className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Exceptions & RTS</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -564,7 +564,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Cpu className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Barangay AI Density</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">
+                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
                                         AI
                                     </span>
                                 </Link>
@@ -588,7 +588,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Wallet className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>COD Cash Ledger</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -600,7 +600,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <TrendingUp className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Platform Payouts</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>

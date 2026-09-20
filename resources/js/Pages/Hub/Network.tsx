@@ -8,17 +8,14 @@ import {
     Layers, 
     Store, 
     Check, 
-    Search,
-    Users,
-    ArrowUpRight,
-    Compass,
-    X,
-    ScanLine,
-    Package,
-    Navigation,
-    ExternalLink,
-    ChevronRight,
-    SlidersHorizontal
+    Search, 
+    Users, 
+    ArrowUpRight, 
+    X, 
+    ScanLine, 
+    Package, 
+    ChevronRight, 
+    Activity
 } from 'lucide-react';
 
 interface HubItem {
@@ -93,7 +90,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
             actions={
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-xs shadow-xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-lg shadow-xs transition uppercase tracking-wider"
                 >
                     <Building2 className="w-3.5 h-3.5" />
                     <span>Station Scanner</span>
@@ -102,240 +99,250 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
         >
             <Head title="Facility Network — BagooPH" />
 
-            <div className="space-y-5 font-sans">
+            <div className="space-y-6 font-sans">
                 
-                {/* 1. TOP NETWORK KPI TILES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                {/* 1. TOP BUSINESS KPI TILES (MATCHING SELLER DASHBOARD AESTHETIC) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Total Facilities</span>
-                                <Building2 className="w-3.5 h-3.5 text-slate-700" />
+                                <span className="font-bold uppercase">Total Facilities</span>
+                                <Building2 className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                                    {hubs.length}{' '}
-                                    <span className="text-xs font-bold text-slate-400">stations</span>
+                                    {hubs.length} <span className="text-sm font-bold text-slate-500">stations</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-slate-500">Network Tier:</span>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400">Network Tier:</span>
                             <span className="font-bold text-slate-800">
-                                {motherHubs.length} Mother / {bayanHubs.length} Bayan
+                                {motherHubs.length} Mother • {bayanHubs.length} Bayan
                             </span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Self-Pickup Hubs</span>
-                                <Store className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="font-bold uppercase">Pickup Counters</span>
+                                <Store className="w-4 h-4 text-emerald-600" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                                    {bayanHubs.filter((h) => h.allows_self_pickup).length}{' '}
-                                    <span className="text-xs font-bold text-slate-400">counters</span>
+                                    {bayanHubs.filter((h) => h.allows_self_pickup).length} <span className="text-sm font-bold text-slate-500">counters</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-slate-500">Customer Pickup:</span>
-                            <span className="font-bold text-emerald-700">Zero-Fee Ready</span>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400">Customer Pickup:</span>
+                            <span className="font-bold text-emerald-600">₱0.00 Free Counter Ready</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Network Capacity</span>
-                                <Layers className="w-3.5 h-3.5 text-slate-700" />
+                                <span className="font-bold uppercase">Network Capacity</span>
+                                <Layers className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                                    {hubs.reduce((acc, h) => acc + h.capacity, 0).toLocaleString()}{' '}
-                                    <span className="text-xs font-bold text-slate-400">parcels</span>
+                                    {hubs.reduce((acc, h) => acc + h.capacity, 0).toLocaleString()} <span className="text-sm font-bold text-slate-500">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-slate-500">Corridor:</span>
-                            <span className="font-bold text-slate-800">SLEX / Laguna</span>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400">Active Corridor:</span>
+                            <span className="font-bold text-slate-800">SLEX / Laguna Route</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Active Station</span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] uppercase font-mono">
-                                    Operating
+                                <span className="font-bold uppercase">Active Station</span>
+                                <span className="inline-flex items-center gap-1 text-[#E00D42] text-[10px] font-bold bg-[#FDF2F4] px-1.5 py-0.5 rounded border border-[#FCE7EA]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span> Operating
                                 </span>
                             </div>
                             <div className="mt-2">
-                                <p className="text-lg sm:text-xl font-black text-slate-900 truncate">
+                                <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate" title={activeHub?.name}>
                                     {activeHub?.name || 'Central Terminal'}
-                                </p>
-                                <p className="text-xs text-[#E00D42] font-mono font-bold mt-0.5">
-                                    {activeHub?.code || 'STATION-01'}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-slate-500">Workstation Mode:</span>
-                            <span className="font-bold text-slate-800 capitalize">
-                                {activeHub?.tier.replace(/_/g, ' ') || 'Facility'}
-                            </span>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400">Station Code:</span>
+                            <span className="font-bold text-[#E00D42]">{activeHub?.code || 'STATION-01'}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. SEARCH & FILTER CONTROLS */}
-                <div className="bg-white rounded-xs p-3.5 border border-slate-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 font-mono">
                     <div className="relative w-full sm:w-80">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search facility name, code, or town..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            placeholder="Search station name, code, or town..."
+                            className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </div>
 
-                    <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xs border border-slate-200 text-xs w-full sm:w-auto justify-center">
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-mono text-xs w-full sm:w-auto justify-center">
                         <button
                             type="button"
                             onClick={() => setFilterTier('all')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                                 filterTier === 'all'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
                                     : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
-                            ALL ({hubs.length})
+                            All ({hubs.length})
                         </button>
                         <button
                             type="button"
                             onClick={() => setFilterTier('regional_mother_hub')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                                 filterTier === 'regional_mother_hub'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
                                     : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
-                            MOTHER HUBS ({motherHubs.length})
+                            Mother Hubs ({motherHubs.length})
                         </button>
                         <button
                             type="button"
                             onClick={() => setFilterTier('local_bayan_hub')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                                 filterTier === 'local_bayan_hub'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
                                     : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
-                            BAYAN HUBS ({bayanHubs.length})
+                            Bayan Hubs ({bayanHubs.length})
                         </button>
                     </div>
                 </div>
 
-                {/* 3. CLEAN MINIMALIST FACILITY CARDS GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* 3. CLEAN ARCHITECTURAL BENTO FACILITY GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredHubs.map((hub) => {
                         const isCurrent = activeHub?.id === hub.id;
                         return (
                             <div
                                 key={hub.id}
                                 onClick={() => setSelectedHub(hub)}
-                                className={`group bg-white rounded-xs p-4.5 border transition cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-slate-400 ${
+                                className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all duration-150 flex flex-col justify-between group cursor-pointer relative hover:shadow-md hover:border-slate-300 ${
                                     isCurrent
-                                        ? 'border-[#E00D42] ring-1 ring-[#E00D42] shadow-xs'
-                                        : 'border-slate-300 shadow-2xs'
+                                        ? 'border-[#E00D42] ring-2 ring-[#E00D42]/15 shadow-xs'
+                                        : 'border-slate-200/90 shadow-2xs'
                                 }`}
                             >
-                                <div className="space-y-3">
-                                    {/* Top Metadata Row */}
-                                    <div className="flex items-center justify-between text-[10px] font-mono">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`font-bold px-1.5 py-0.5 rounded-xs uppercase tracking-wider ${
-                                                hub.tier === 'regional_mother_hub'
-                                                    ? 'bg-slate-900 text-white'
-                                                    : 'bg-slate-100 text-slate-800 border border-slate-200'
-                                            }`}>
-                                                {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
-                                            </span>
-                                            {hub.allows_self_pickup && (
-                                                <span className="font-bold px-1.5 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    Pickup Counter
-                                                </span>
+                                <div>
+                                    {/* Top Header Row with Icon Emblem & Status Badges */}
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition border ${
+                                            isCurrent
+                                                ? 'bg-[#FDF2F4] text-[#E00D42] border-[#FCE7EA]'
+                                                : 'bg-slate-50 text-slate-700 border-slate-100 group-hover:bg-[#FDF2F4] group-hover:text-[#E00D42]'
+                                        }`}>
+                                            {hub.tier === 'regional_mother_hub' ? (
+                                                <Building2 className="w-5 h-5" />
+                                            ) : (
+                                                <Store className="w-5 h-5" />
                                             )}
                                         </div>
 
-                                        {isCurrent ? (
-                                            <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-xs border border-emerald-300">
-                                                <Check className="w-3 h-3 text-emerald-600" /> Active
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded uppercase tracking-wider ${
+                                                hub.tier === 'regional_mother_hub'
+                                                    ? 'bg-slate-900 text-white'
+                                                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}>
+                                                {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                                             </span>
-                                        ) : (
-                                            <span className="text-slate-400 group-hover:text-slate-700 transition font-bold">
-                                                {hub.code}
-                                            </span>
-                                        )}
+
+                                            {isCurrent ? (
+                                                <span className="inline-flex items-center gap-1 font-bold text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                    <Check className="w-3 h-3 text-emerald-600" /> Active
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs font-mono font-bold text-slate-400 group-hover:text-slate-700 transition">
+                                                    {hub.code}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Facility Name & Primary Location */}
-                                    <div>
-                                        <h3 className="text-sm font-black text-slate-900 leading-snug group-hover:text-[#E00D42] transition">
+                                    {/* Facility Name & Location */}
+                                    <div className="mt-4">
+                                        <h3 className="text-base font-black text-slate-900 tracking-tight leading-snug group-hover:text-[#E00D42] transition line-clamp-1">
                                             {hub.name}
                                         </h3>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
+                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
                                             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                             <span className="truncate">{hub.city_municipality}, {hub.province}</span>
                                         </div>
                                     </div>
 
-                                    {/* Minimalist Capacity Progress */}
-                                    <div className="space-y-1.5 pt-1">
-                                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
-                                            <span>Throughput Load</span>
-                                            <span className="font-bold text-slate-900">{hub.utilization}% ({hub.parcel_count} / {hub.capacity.toLocaleString()})</span>
+                                    {/* Bento Inner Metric Block */}
+                                    <div className="mt-4 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-2.5 font-mono text-xs">
+                                        <div className="flex items-center justify-between text-[11px] text-slate-600">
+                                            <span className="text-slate-400 font-bold uppercase tracking-tight text-[10px]">Throughput Load</span>
+                                            <span className="font-bold text-slate-900">
+                                                {hub.utilization}% <span className="text-slate-400 font-normal">({hub.parcel_count} / {hub.capacity.toLocaleString()})</span>
+                                            </span>
                                         </div>
-                                        <div className="w-full bg-slate-100 rounded-xs h-1.5 overflow-hidden border border-slate-200">
+                                        <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
                                             <div
-                                                className={`h-full rounded-xs transition-all ${
+                                                className={`h-full rounded-full transition-all duration-300 ${
                                                     hub.utilization > 80 ? 'bg-rose-500' : 'bg-[#E00D42]'
                                                 }`}
                                                 style={{ width: `${Math.min(100, Math.max(3, hub.utilization))}%` }}
                                             />
                                         </div>
+
+                                        <div className="grid grid-cols-3 gap-1 pt-1 text-center divide-x divide-slate-200 text-[10px]">
+                                            <div>
+                                                <span className="text-slate-400 block">Fleet</span>
+                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.fleet_count} units</span>
+                                            </div>
+                                            <div className="pl-1">
+                                                <span className="text-slate-400 block">Staff</span>
+                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.handlers_count} staff</span>
+                                            </div>
+                                            <div className="pl-1">
+                                                <span className="text-slate-400 block">Coverage</span>
+                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.coverage_barangays?.length || 0} brgys</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Card Footer: Quick Meta & Direct Action */}
+                                {/* Card Footer */}
                                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
-                                    <div className="flex items-center gap-2.5 text-slate-500 text-[11px]">
-                                        <span>{hub.fleet_count} fleet</span>
-                                        <span>•</span>
-                                        <span>{hub.handlers_count} staff</span>
-                                        <span>•</span>
-                                        <span>{hub.coverage_barangays?.length || 0} brgys</span>
+                                    <div>
+                                        {hub.allows_self_pickup ? (
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
+                                                <Store className="w-3 h-3 text-emerald-600" /> Free Counter
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-400">
+                                                Line-Haul Hub
+                                            </span>
+                                        )}
                                     </div>
 
-                                    {isCurrent ? (
-                                        <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                                            <Check className="w-3.5 h-3.5" /> Operating
-                                        </span>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleSwitchHub(hub.id, e)}
-                                            className="px-2.5 py-1 bg-slate-900 hover:bg-[#E00D42] text-white text-[10px] font-bold rounded-xs transition shadow-2xs cursor-pointer flex items-center gap-1"
-                                        >
-                                            <span>Switch</span>
-                                            <ArrowUpRight className="w-3 h-3" />
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-1 text-[#E00D42] group-hover:translate-x-0.5 transition-transform text-[11px] font-bold">
+                                        <span>Inspect Telemetry</span>
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -357,13 +364,13 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                     />
 
                     {/* Slide-Over Panel */}
-                    <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-white border-l border-slate-300 shadow-2xl flex flex-col z-50 animate-slide-in-right">
+                    <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-white border-l border-slate-200 shadow-2xl flex flex-col z-50 animate-slide-in-right">
                         
                         {/* Drawer Header */}
-                        <div className="p-5 bg-slate-900 text-white shrink-0">
+                        <div className="p-6 bg-slate-900 text-white shrink-0">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-800 font-mono">
                                 <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded-xs bg-white/10 text-white text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold uppercase tracking-wider">
                                         {selectedHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                                     </span>
                                     <span className="text-xs text-[#E00D42] font-bold">
@@ -376,17 +383,17 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         setSelectedHub(null);
                                         setCoverageSearch('');
                                     }}
-                                    className="p-1 text-slate-400 hover:text-white rounded-xs transition cursor-pointer"
+                                    className="p-1 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="mt-3">
-                                <h2 className="text-lg font-black text-white tracking-tight">
+                            <div className="mt-4">
+                                <h2 className="text-xl font-black text-white tracking-tight">
                                     {selectedHub.name}
                                 </h2>
-                                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                                <p className="text-xs text-slate-400 font-mono mt-1">
                                     {selectedHub.company_name}
                                 </p>
                             </div>
@@ -396,13 +403,13 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                 {activeHub?.id === selectedHub.id ? (
                                     <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                                         <Check className="w-4 h-4" />
-                                        <span>Currently Active Workstation</span>
+                                        <span>Currently Active Operating Workstation</span>
                                     </div>
                                 ) : (
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchHub(selectedHub.id)}
-                                        className="w-full py-2 px-4 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                        className="w-full py-2.5 px-4 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-lg transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                         <Building2 className="w-3.5 h-3.5" />
                                         <span>Set as Active Operating Workstation</span>
@@ -412,7 +419,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                         </div>
 
                         {/* Drawer Scrollable Body Content */}
-                        <div className="flex-1 overflow-y-auto p-5 space-y-5 divide-y divide-slate-100 font-sans">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 divide-y divide-slate-100 font-sans">
                             
                             {/* Operational Health & Metrics */}
                             <div className="space-y-3">
@@ -420,39 +427,39 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                     Operational Health & Capacity
                                 </h4>
                                 <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-                                    <div className="p-3 bg-slate-50 rounded-xs border border-slate-200">
-                                        <span className="text-[10px] text-slate-500 block uppercase">Capacity Utilization</span>
-                                        <span className="text-lg font-black text-slate-900 mt-0.5 block">{selectedHub.utilization}%</span>
+                                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <span className="text-[10px] text-slate-500 block uppercase font-bold">Utilization</span>
+                                        <span className="text-xl font-black text-slate-900 mt-0.5 block">{selectedHub.utilization}%</span>
                                         <span className="text-[10px] text-slate-400">{selectedHub.parcel_count} parcels held</span>
                                     </div>
-                                    <div className="p-3 bg-slate-50 rounded-xs border border-slate-200">
-                                        <span className="text-[10px] text-slate-500 block uppercase">Max Capacity</span>
-                                        <span className="text-lg font-black text-slate-900 mt-0.5 block">{selectedHub.capacity.toLocaleString()}</span>
+                                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <span className="text-[10px] text-slate-500 block uppercase font-bold">Max Capacity</span>
+                                        <span className="text-xl font-black text-slate-900 mt-0.5 block">{selectedHub.capacity.toLocaleString()}</span>
                                         <span className="text-[10px] text-slate-400">staging limit</span>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xs border border-slate-200 text-xs font-mono">
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs font-mono">
                                     <span className="text-slate-600">Self-Pickup Counter:</span>
-                                    <span className={`font-bold ${selectedHub.allows_self_pickup ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                    <span className={`font-bold ${selectedHub.allows_self_pickup ? 'text-emerald-600' : 'text-slate-400'}`}>
                                         {selectedHub.allows_self_pickup ? '₱0.00 Free Counter Ready' : 'Disabled (Line-Haul Only)'}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Physical Location & GPS Coordinates */}
-                            <div className="pt-4 space-y-2.5 font-mono text-xs">
+                            <div className="pt-5 space-y-2.5 font-mono text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Physical Address & GPS Pin
                                 </h4>
-                                <div className="p-3 bg-slate-50 rounded-xs border border-slate-200 space-y-2">
-                                    <div className="flex items-start gap-2 text-slate-700">
+                                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 space-y-2.5">
+                                    <div className="flex items-start gap-2.5 text-slate-700">
                                         <MapPin className="w-4 h-4 text-[#E00D42] shrink-0 mt-0.5" />
-                                        <span className="leading-relaxed">
+                                        <span className="leading-relaxed font-sans text-xs">
                                             {selectedHub.address}, {selectedHub.barangay}, {selectedHub.city_municipality}, {selectedHub.province}
                                         </span>
                                     </div>
-                                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-                                        <span>GPS Coordinates:</span>
+                                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+                                        <span>GPS Pin:</span>
                                         <span className="font-bold text-slate-800">
                                             {selectedHub.latitude.toFixed(4)}° N, {selectedHub.longitude.toFixed(4)}° E
                                         </span>
@@ -461,34 +468,34 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Assigned Fleet & Station Handlers */}
-                            <div className="pt-4 space-y-2.5 font-mono text-xs">
+                            <div className="pt-5 space-y-2.5 font-mono text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Station Personnel & Vehicle Fleet
                                 </h4>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-slate-50 rounded-xs border border-slate-200 flex items-center gap-3">
-                                        <div className="p-2 bg-blue-50 text-blue-700 rounded-xs">
+                                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2.5 bg-blue-50 text-blue-700 rounded-lg">
                                             <Truck className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <span className="text-[10px] text-slate-500 block uppercase">Assigned Fleet</span>
+                                            <span className="text-[10px] text-slate-500 block uppercase font-bold">Assigned Fleet</span>
                                             <span className="text-sm font-black text-slate-900">{selectedHub.fleet_count} units</span>
                                         </div>
                                     </div>
-                                    <div className="p-3 bg-slate-50 rounded-xs border border-slate-200 flex items-center gap-3">
-                                        <div className="p-2 bg-purple-50 text-purple-700 rounded-xs">
+                                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2.5 bg-purple-50 text-purple-700 rounded-lg">
                                             <Users className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <span className="text-[10px] text-slate-500 block uppercase">Station Staff</span>
-                                            <span className="text-sm font-black text-slate-900">{selectedHub.handlers_count} handlers</span>
+                                            <span className="text-[10px] text-slate-500 block uppercase font-bold">Station Staff</span>
+                                            <span className="text-sm font-black text-slate-900">{selectedHub.handlers_count} staff</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Full Service Coverage Barangays */}
-                            <div className="pt-4 space-y-3 font-mono text-xs">
+                            <div className="pt-5 space-y-3 font-mono text-xs">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                         Service Coverage ({selectedHub.coverage_barangays?.length || 0} Barangays)
@@ -498,24 +505,24 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
 
                                 {selectedHub.coverage_barangays && selectedHub.coverage_barangays.length > 5 && (
                                     <div className="relative">
-                                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                         <input
                                             type="text"
                                             value={coverageSearch}
                                             onChange={(e) => setCoverageSearch(e.target.value)}
                                             placeholder="Search barangay..."
-                                            className="w-full pl-8 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-xs text-[11px] font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42]"
+                                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-lg text-[11px] font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42]"
                                         />
                                     </div>
                                 )}
 
-                                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1 bg-slate-50 rounded-xs border border-slate-200">
+                                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                                     {selectedHub.coverage_barangays
                                         ?.filter((bg) => bg.toLowerCase().includes(coverageSearch.toLowerCase()))
                                         .map((bg, idx) => (
                                             <span
                                                 key={idx}
-                                                className="px-2 py-1 bg-white text-slate-800 text-[11px] font-medium rounded-xs border border-slate-200 shadow-2xs"
+                                                className="px-2.5 py-1 bg-white text-slate-800 text-[11px] font-medium rounded-md border border-slate-200 shadow-2xs"
                                             >
                                                 {bg}
                                             </span>
@@ -527,41 +534,41 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Direct Workstation Shortcuts */}
-                            <div className="pt-4 space-y-2 font-mono text-xs">
+                            <div className="pt-5 space-y-2 font-mono text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Workstation Shortcuts
                                 </h4>
                                 <div className="grid grid-cols-1 gap-2">
                                     <Link
                                         href={route('hub.scan.station')}
-                                        className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xs border border-slate-300 transition flex items-center justify-between"
+                                        className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl border border-slate-200/90 transition flex items-center justify-between group"
                                     >
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2.5">
                                             <ScanLine className="w-4 h-4 text-emerald-600" />
-                                            <span>Open Floor Barcode Scanner</span>
+                                            <span className="font-bold">Open Floor Barcode Scanner</span>
                                         </div>
-                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                                     </Link>
                                     <Link
                                         href={route('hub.deliveries')}
-                                        className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xs border border-slate-300 transition flex items-center justify-between"
+                                        className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl border border-slate-200/90 transition flex items-center justify-between group"
                                     >
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2.5">
                                             <Package className="w-4 h-4 text-[#E00D42]" />
-                                            <span>View Parcels & Waybills Registry</span>
+                                            <span className="font-bold">View Parcels & Waybills Registry</span>
                                         </div>
-                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                                     </Link>
                                     {selectedHub.allows_self_pickup && (
                                         <Link
                                             href={route('hub.counter')}
-                                            className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xs border border-slate-300 transition flex items-center justify-between"
+                                            className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl border border-slate-200/90 transition flex items-center justify-between group"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2.5">
                                                 <Store className="w-4 h-4 text-blue-600" />
-                                                <span>Counter Self-Pickup Desk</span>
+                                                <span className="font-bold">Counter Self-Pickup Desk</span>
                                             </div>
-                                            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                                         </Link>
                                     )}
                                 </div>
