@@ -223,7 +223,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
             {/* Create Voucher Modal */}
             {typeof document !== 'undefined' && isCreateOpen && createPortal(
                 <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200">
+                    <div className="bg-white text-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
                                 <Tag className="w-5 h-5 text-[#E00D42]" />
@@ -235,7 +235,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                         </div>
 
                         <form onSubmit={handleCreate} className="space-y-4 text-xs font-mono">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase mb-1">Voucher Code</label>
                                     <input
@@ -274,7 +274,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase mb-1">Discount Value</label>
                                     <input

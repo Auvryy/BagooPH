@@ -746,7 +746,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             {/* SELLER ACCEPT & REVIEW ORDER MODAL (THE BELOVED OLDER DESIGN) */}
             {typeof document !== 'undefined' && orderToAcceptAndPack && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 font-sans my-auto space-y-5">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 font-sans my-auto space-y-5 max-h-[92vh] overflow-y-auto">
                         
                         {/* Modal Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -892,7 +892,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             {/* 1-CLICK CUSTOMER CHAT MODAL */}
             {typeof document !== 'undefined' && chatOrder && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
                                 <MessageSquare className="w-4 h-4" />
@@ -999,7 +999,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             {/* ORDER DETAILS & CHECKPOINT MODAL */}
             {typeof document !== 'undefined' && selectedOrderForDetails && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-slate-800 text-xs font-bold font-mono">
                                 <FileText className="w-4 h-4 text-[#E00D42]" />
@@ -1074,7 +1074,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             {/* CANCEL ORDER REASON MODAL */}
             {typeof document !== 'undefined' && orderToCancel && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <form onSubmit={handleConfirmCancel} className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans">
+                    <form onSubmit={handleConfirmCancel} className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-rose-600 text-xs font-bold font-mono">
                                 <Ban className="w-4 h-4" />
@@ -1256,7 +1256,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             {/* QUICK PARCEL QR CODE MODAL FOR COURIER / TRACKING */}
             {typeof document !== 'undefined' && selectedOrderForQr && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 my-auto space-y-5 text-center font-sans">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 my-auto space-y-5 text-center font-sans max-h-[92vh] overflow-y-auto">
                         
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
