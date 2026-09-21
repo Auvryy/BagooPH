@@ -393,32 +393,32 @@ export default function BuyerHome({
 
                     {/* Right Secondary Promo Cards */}
                     <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-900 text-white flex flex-col justify-between shadow-md relative overflow-hidden h-[120px] sm:h-[165px]">
+                        <div className="p-4 rounded-lg bg-[#0F172A] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
                             <div>
-                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-black/30 px-2 py-0.5 rounded text-white/90">
+                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-[#E00D42] px-2 py-0.5 rounded-xs text-white">
                                     CURATED COLLECTION
                                 </span>
-                                <h3 className="text-base font-black tracking-tight mt-1">
+                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
                                     Verified Department Picks
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono">Handcrafted and authentic merchant items.</p>
+                                <p className="text-[11px] text-slate-300 font-mono">Handcrafted and authentic merchant items.</p>
                             </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1">
+                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-[#E00D42] transition">
                                 Explore Top Deals <ChevronRight className="w-3.5 h-3.5" />
                             </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-800 to-slate-950 text-white flex flex-col justify-between shadow-md relative overflow-hidden h-[120px] sm:h-[165px]">
+                        <div className="p-4 rounded-lg bg-[#111319] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
                             <div>
-                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-white/20 px-2 py-0.5 rounded text-white/90">
+                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-emerald-600 px-2 py-0.5 rounded-xs text-white">
                                     NEW BUYER PRIVILEGE
                                 </span>
-                                <h3 className="text-base font-black tracking-tight mt-1">
+                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
                                     Free Shipping ₱0 Min Spend
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono">Valid on your first 3 platform checkouts.</p>
+                                <p className="text-[11px] text-slate-300 font-mono">Valid on your first 3 platform checkouts.</p>
                             </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1">
+                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-emerald-400 transition">
                                 Claim Shipping Pass <ChevronRight className="w-3.5 h-3.5" />
                             </span>
                         </div>
@@ -426,7 +426,7 @@ export default function BuyerHome({
                 </div>
 
                 {/* 3. 8 QUICK-SERVICE ICON ACTIONS */}
-                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-xs border border-slate-100">
+                <div className="bg-white rounded-lg p-4 sm:p-6 shadow-xs border border-slate-200">
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 text-center">
                         {quickServices.map((service) => {
                             const IconComponent = getServiceIcon(service.icon);

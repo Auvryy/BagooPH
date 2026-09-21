@@ -53,7 +53,7 @@ export default function ProductCard({
     return (
         <Link
             href={targetUrl}
-            className={`group bg-white rounded-xl border border-slate-200/90 overflow-hidden hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
+            className={`group bg-white rounded-lg border border-slate-300 overflow-hidden hover:shadow-xl hover:border-slate-400 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
         >
             {/* 1. Product Image Container with Discount Badge at bottom of image */}
             <div className="relative aspect-square bg-slate-100 overflow-hidden">
@@ -154,7 +154,7 @@ export default function ProductCard({
                             onQuickAdd(product);
                         }}
                         disabled={isAdding || product.stock === 0}
-                        className={`w-full py-1.5 px-2 rounded-lg font-mono text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+                        className={`w-full py-1.5 px-2 rounded-xs font-mono text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
                             isSuccess
                                 ? 'bg-emerald-600 text-white'
                                 : product.stock === 0
