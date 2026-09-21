@@ -211,7 +211,7 @@ export default function OtpModal({
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans">
+            <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans max-h-[92vh] overflow-y-auto">
                 {/* Close Button */}
                 <button
                     type="button"
