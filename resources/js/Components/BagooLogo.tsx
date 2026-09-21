@@ -5,7 +5,7 @@ interface Props {
     rounded?: string;
 }
 
-export default function BagooLogo({ className = 'w-10 h-10', rounded = 'rounded-xl' }: Props) {
+export default function BagooLogo({ className = 'w-10 h-10', rounded = 'rounded-xs' }: Props) {
     return (
         <div className={`relative overflow-hidden inline-flex items-center justify-center shrink-0 ${rounded} ${className}`}>
             <svg 

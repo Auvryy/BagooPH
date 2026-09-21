@@ -165,7 +165,7 @@ export default function BuyerLayout({
     };
 
     return (
-        <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#F4F3EF] text-[#111111] font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
+        <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#F8FAFC] text-slate-800 font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
             
             {topBanner}
 
@@ -205,7 +205,7 @@ export default function BuyerLayout({
                         
                         {/* Logo */}
                         <Link href={route('buyer.index')} className="flex items-center gap-3 shrink-0 group">
-                            <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform" rounded="rounded-xl" />
+                            <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform" rounded="rounded-xs" />
                             <div className="flex flex-col">
                                 <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
                                     Bagoo<span className="text-[#E00D42]">PH</span>
@@ -224,14 +224,14 @@ export default function BuyerLayout({
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search 14 departments, curated gear, or trending brands..."
-                                    className="w-full h-11 pl-4 pr-28 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
+                                    className="w-full h-11 pl-4 pr-28 bg-slate-50 border border-slate-200 rounded-xs text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
                                 />
                                 {searchQuery && (
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setSearchQuery('');
-                                            router.get(route('buyer.index'), {}, { preserveState: true });
+                                             setSearchQuery('');
+                                             router.get(route('buyer.index'), {}, { preserveState: true });
                                         }}
                                         className="absolute right-24 text-slate-400 hover:text-slate-700 p-1"
                                     >
@@ -240,7 +240,7 @@ export default function BuyerLayout({
                                 )}
                                 <button
                                     type="submit"
-                                    className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs font-sans cursor-pointer"
+                                    className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xs text-xs font-bold transition flex items-center gap-1.5 shadow-xs font-sans cursor-pointer"
                                 >
                                     <Search className="w-3.5 h-3.5" />
                                     <span>Search</span>
@@ -254,7 +254,7 @@ export default function BuyerLayout({
                             {/* CHAT BUTTON */}
                             <Link 
                                 href={auth.user ? route('buyer.messages') : route('login')} 
-                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.messages') || route().current('messages')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
@@ -281,7 +281,7 @@ export default function BuyerLayout({
                             {/* BAG BUTTON */}
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
                                     route().current('buyer.cart')
                                         ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
                                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
@@ -305,7 +305,7 @@ export default function BuyerLayout({
                                 >
                                     <Link
                                         href={route('buyer.profile', { tab: 'orders' })}
-                                        className="h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs focus:outline-hidden group"
+                                        className="h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs focus:outline-hidden group"
                                     >
                                         {auth.user.avatar ? (
                                             <img
@@ -329,7 +329,7 @@ export default function BuyerLayout({
                                             onMouseEnter={handleUserDropdownEnter}
                                             onMouseLeave={handleUserDropdownLeave}
                                         >
-                                            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 py-2 text-slate-800 font-sans">
+                                            <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
                                                 <div className="px-4 py-2.5 border-b border-slate-100 text-xs flex items-center gap-2.5">
                                                     {auth.user.avatar ? (
                                                         <img
@@ -404,13 +404,13 @@ export default function BuyerLayout({
                                 <div className="flex items-center gap-1.5 sm:gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 
-                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs text-[11px] sm:text-xs"
+                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xs bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs text-[11px] sm:text-xs"
                                     >
                                         Sign In
                                     </Link>
                                     <Link 
                                         href={route('register')} 
-                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs text-[11px] sm:text-xs"
+                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xs bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs text-[11px] sm:text-xs"
                                     >
                                         Register
                                     </Link>
@@ -428,11 +428,11 @@ export default function BuyerLayout({
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search products..."
-                                className="w-full pl-3 pr-20 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                                className="w-full pl-3 pr-20 py-2.5 bg-slate-50 border border-slate-200 rounded-xs text-xs"
                             />
                             <button
                                 type="submit"
-                                className="absolute right-1 top-1 bottom-1 px-3 bg-[#E00D42] text-white rounded-lg text-xs font-bold"
+                                className="absolute right-1 top-1 bottom-1 px-3 bg-[#E00D42] text-white rounded-xs text-xs font-bold"
                             >
                                 Search
                             </button>
@@ -459,7 +459,7 @@ export default function BuyerLayout({
                 <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
                     <button
                         onClick={() => setChatOpen(true)}
-                        className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-white/20 cursor-pointer"
+                        className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xs shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-slate-700 cursor-pointer"
                     >
                         <MessageSquare className="w-4 h-4 text-[#E00D42]" />
                         <span className="hidden xs:inline">Customer Care</span>
