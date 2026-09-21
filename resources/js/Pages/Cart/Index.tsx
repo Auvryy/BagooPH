@@ -319,7 +319,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                         alt={item.product?.name}
                                                         className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                                                     />
-                                                    <div className="min-w-0 flex-1 truncate space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <div className="flex items-center gap-2">
                                                             <Link 
                                                                 href={route('buyer.products.show', item.product?.slug || '')}

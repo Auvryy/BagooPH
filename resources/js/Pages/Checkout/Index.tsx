@@ -687,7 +687,7 @@ export default function CheckoutIndex({
                                                     className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 w-fit"
                                                 >
                                                     <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                                    <span>{isLocating ? 'Acquiring GPS...' : '📍 Pin My Current Location'}</span>
+                                                    <span>{isLocating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
                                                 </button>
                                             </div>
 
