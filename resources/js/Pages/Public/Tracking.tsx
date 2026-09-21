@@ -299,7 +299,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                             {/* 5-Milestone Lifecycle Progress Stepper */}
                             <div className="py-2">
                                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-2">
-                                    {steps.map((s) => {
+                                    {steps.map((s, idx) => {
                                         const isComplete = currentStep >= s.number;
                                         const isCurrent = currentStep === s.number;
 
@@ -307,6 +307,8 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                             <div
                                                 key={s.number}
                                                 className={`p-3 rounded-2xl border transition ${
+                                                    idx === steps.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+                                                } ${
                                                     isComplete
                                                         ? 'bg-rose-50/20 border-rose-200'
                                                         : 'bg-slate-50/60 border-slate-200 text-slate-400'
