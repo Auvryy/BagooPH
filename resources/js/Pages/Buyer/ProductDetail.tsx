@@ -506,15 +506,15 @@ export default function BuyerProductDetail({
                         )}
 
                         {/* Quantity Selector */}
-                        <div className="flex items-center gap-6 pt-2">
-                            <span className="text-xs text-slate-500 font-bold uppercase font-mono w-24">Quantity:</span>
-                            <div className="flex items-center gap-3 font-mono text-xs">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-2">
+                            <span className="text-xs text-slate-500 font-bold uppercase font-mono w-auto sm:w-24">Quantity:</span>
+                            <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
                                 <div className="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-white">
                                     <button
                                         type="button"
                                         onClick={() => handleQuantityChange(-1)}
                                         disabled={quantity <= 1}
-                                        className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                        className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 cursor-pointer"
                                     >
                                         <Minus className="w-3.5 h-3.5" />
                                     </button>
@@ -523,7 +523,7 @@ export default function BuyerProductDetail({
                                         type="button"
                                         onClick={() => handleQuantityChange(1)}
                                         disabled={quantity >= maxAvailableStock}
-                                        className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                        className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 cursor-pointer"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                     </button>
@@ -774,7 +774,7 @@ export default function BuyerProductDetail({
                     onClick={() => setIsShareModalOpen(false)}
                 >
                     <div 
-                        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 space-y-4 p-5 animate-scale-up"
+                        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-y-auto max-h-[92vh] border border-slate-200 space-y-4 p-5 animate-scale-up"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
