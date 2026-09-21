@@ -162,7 +162,7 @@ export default function BuyerOrderDetail({ order }: Props) {
         <BuyerLayout>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
 
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
                 
                 {/* Header & Back Link */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">

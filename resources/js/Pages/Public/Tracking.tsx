@@ -202,7 +202,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
 
                 {/* Search Bar Container */}
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-4">

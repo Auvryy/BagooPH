@@ -260,7 +260,7 @@ export default function BuyerProductDetail({
                 </div>
             )}
 
-            <div className="relative space-y-6 max-w-7xl mx-auto font-sans">
+            <div className="relative space-y-6 w-full font-sans">
                 
                 {/* Dynamic Ethereal Ambient Glow Aura */}
                 <div 
