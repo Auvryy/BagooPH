@@ -10,6 +10,7 @@
 
 - **Primary Theme Color:** `#E00D42` (Crimson Red) shared across all users and portals (Buyer, Seller, Courier, and Admin).
 - **Design Aesthetic:** Architectural precision software look - clean slate structural borders, crisp micro-shadows, balanced whitespace, soft readable typography (`#1E293B` body text, `-0.008em` tracking).
+- **Single Typeface:** Use Plus Jakarta Sans across every page, portal, component, chart, email, and data field. Never introduce JetBrains Mono, Inter, `font-mono`, a monospace face, or another display/body font.
 - **Immutable Precision Corner Radius Scale (2px Buttons - No Bubble Slop):**
   - **Buttons, CTAs & Action Icons:** `rounded-xs` or `rounded-sm` (2px). Precision software look.
   - **Inputs, Search Bars & Selects:** `rounded-xs` or `rounded-sm` (2px - 3px).
@@ -82,12 +83,8 @@ The system has 4 primary roles (with logistics kept in mind for future extension
 ---
 
 ## 5. Git, Commit Message & Response Protocol
-1. **Never Commit Autonomously:** The AI must NEVER run `git add`, `git commit`, or `git push` autonomously. All git commands and repo pushes are manually handled by the user.
-2. **Super-Minimal Complete Git Command:** Provide ONLY a complete, copy-pasteable `git commit` command:
-   ```bash
-   git commit -m "type(scope): concise description"
-   ```
-   Do NOT prefix with `git add`.
+1. **Local Commits Allowed:** The assistant may run `git add` and `git commit` for completed work. It must never run `git push`; only the user publishes commits.
+2. **Report Commits:** Report every created commit with its short hash and subject. Do not provide redundant commit commands for work already committed.
 3. **Ultra-Minimal Output (Token Conservation):**
    - Keep summaries to 1-2 concise bullet points.
    - Do NOT output verbose "what was fixed" explanations.

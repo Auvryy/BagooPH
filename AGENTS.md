@@ -40,6 +40,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Customer-facing copy uses “Bag,” “Shopping Bag,” and “Add to Bag.” Follow existing database/class names such as `Cart` when required by the codebase.
 - No emojis in code, UI copy, comments, commit messages, or repository documentation.
 - Primary accent: `#E00D42`.
+- Use Plus Jakarta Sans as the single typeface across every page, portal, component, chart, email, and data field. Do not introduce monospace fonts, `font-mono`, JetBrains Mono, Inter, or another display/body font.
 - Buttons, inputs, badges, and compact controls use 2px radii (`rounded-xs`/`rounded-sm`); avoid pill-shaped UI.
 - Cards use `rounded-md`/`rounded-lg`; dialogs may use `rounded-lg`/`rounded-xl`.
 - Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
