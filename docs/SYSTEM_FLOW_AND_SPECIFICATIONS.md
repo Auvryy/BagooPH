@@ -37,6 +37,8 @@ Rider Receives Delivery Assignment
 1. **Sort the parcel according to destination**
 2. **Assign the parcel to the appropriate rider based on the rider's assigned area**
 
+The authoritative scan, waybill, custody, rider-notification, hub-transfer, self-pickup, and failure sequence is defined in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+
 ---
 
 ## 2. Buyer / Customer
