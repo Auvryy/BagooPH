@@ -142,8 +142,8 @@ export default function CartIndex({ cart, items, total }: Props) {
             <div className="space-y-6">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#E00D42] flex items-center justify-center font-bold">
                             <ShoppingBag className="w-5 h-5" />
                         </div>
@@ -155,7 +155,7 @@ export default function CartIndex({ cart, items, total }: Props) {
 
                     <Link
                         href={route('buyer.index')}
-                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase"
+                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase w-fit"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Continue Shopping</span>

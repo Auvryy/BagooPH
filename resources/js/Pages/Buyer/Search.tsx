@@ -117,20 +117,20 @@ export default function SearchPage({
                 
                 {/* 1. BREADCRUMBS & TOP TITLE */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs pb-2 border-b border-slate-200">
-                    <div className="flex items-center gap-2 text-slate-500">
-                        <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition">Marketplace</Link>
+                    <div className="flex items-center gap-2 text-slate-500 min-w-0 overflow-hidden">
+                        <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition shrink-0">Marketplace</Link>
                         <span>/</span>
-                        <Link href={route('buyer.search')} className="hover:text-[#E00D42] transition">Search Catalog</Link>
+                        <Link href={route('buyer.search')} className="hover:text-[#E00D42] transition shrink-0">Search</Link>
                         {filters.search && (
                             <>
                                 <span>/</span>
-                                <span className="font-bold text-slate-900 truncate max-w-[200px]">"{filters.search}"</span>
+                                <span className="font-bold text-slate-900 truncate min-w-0">"{filters.search}"</span>
                             </>
                         )}
                         {activeCategory && (
                             <>
                                 <span>/</span>
-                                <span className="font-bold text-[#E00D42]">{activeCategory.name}</span>
+                                <span className="font-bold text-[#E00D42] truncate min-w-0">{activeCategory.name}</span>
                             </>
                         )}
                     </div>

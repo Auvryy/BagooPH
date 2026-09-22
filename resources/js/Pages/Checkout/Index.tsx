@@ -335,15 +335,15 @@ export default function CheckoutIndex({
             <div className="space-y-6">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
+                    <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Finalize Checkout</h1>
                         <p className="text-xs text-slate-500 font-sans mt-0.5">Verify delivery destination, applied vouchers, and payment mode</p>
                     </div>
 
                     <Link
                         href={route('buyer.cart')}
-                        className="text-xs font-semibold text-[#E00D42] hover:underline flex items-center gap-1 font-sans"
+                        className="text-xs font-semibold text-[#E00D42] hover:underline flex items-center gap-1 font-sans w-fit"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Back to My Bag</span>

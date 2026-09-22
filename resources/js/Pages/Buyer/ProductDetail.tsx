@@ -269,15 +269,16 @@ export default function BuyerProductDetail({
                 />
 
                 {/* Breadcrumbs Navigation */}
-                <nav className="relative z-10 flex items-center gap-2 text-xs font-mono text-slate-500">
-                    <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition flex items-center gap-1">
+                <nav className="relative z-10 flex items-center gap-1.5 sm:gap-2 text-xs font-mono text-slate-500 min-w-0 overflow-hidden">
+                    <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition flex items-center gap-1 shrink-0">
                         <ArrowLeft className="w-3.5 h-3.5" />
-                        <span>Marketplace Home</span>
+                        <span className="hidden sm:inline">Marketplace Home</span>
+                        <span className="sm:hidden">Marketplace</span>
                     </Link>
-                    <span>/</span>
-                    <span className="text-slate-700">{product.category?.name || 'Catalog'}</span>
-                    <span>/</span>
-                    <span className="text-slate-900 font-bold truncate max-w-xs">{product.name}</span>
+                    <span className="shrink-0">/</span>
+                    <span className="text-slate-700 hidden sm:inline truncate">{product.category?.name || 'Catalog'}</span>
+                    <span className="hidden sm:inline shrink-0">/</span>
+                    <span className="text-slate-900 font-bold truncate min-w-0">{product.name}</span>
                 </nav>
 
                 {/* 1. MASTER PRODUCT STAGE (GALLERY + VARIATION ENGINE) */}
@@ -319,7 +320,7 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* Share & Wishlist Bar */}
-                        <div className="flex items-center justify-between pt-2.5 text-xs font-mono text-slate-500 border-t border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-2.5 text-xs font-mono text-slate-500 border-t border-slate-200">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-bold uppercase text-[10px]">Share:</span>
                                 <button
@@ -332,9 +333,9 @@ export default function BuyerProductDetail({
                                     <span>Share Product</span>
                                 </button>
                             </div>
-                            <div className="flex items-center gap-1 text-[#E00D42] font-bold">
+                            <div className="flex items-center gap-1 text-[#E00D42] font-bold min-w-0">
                                 <ShieldCheck className="w-4 h-4" />
-                                <span>BagooPH Buyer Protection</span>
+                                <span className="truncate">BagooPH Buyer Protection</span>
                             </div>
                         </div>
                     </div>
@@ -574,13 +575,13 @@ export default function BuyerProductDetail({
                 {/* 2. VERIFIED STORE CARD */}
                 {product.shop && (
                     <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0 w-full md:w-auto">
                             <div className="w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
                                 <img src={product.shop.logo || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=300&q=80'} alt="" className="w-full h-full object-cover" />
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-900 text-base">{product.shop.name}</h3>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h3 className="font-bold text-slate-900 text-base truncate">{product.shop.name}</h3>
                                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold font-mono">
                                         PREFERRED
                                     </span>

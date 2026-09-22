@@ -114,10 +114,10 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                             >
                                 {/* Header Bar */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-mono text-xs">
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold text-slate-900 text-sm">{item.id}</span>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                                        <span className="font-bold text-slate-900 text-sm break-all">{item.id}</span>
                                         <span className="text-slate-400">•</span>
-                                        <span className="text-slate-600">Order #{item.order_number}</span>
+                                        <span className="text-slate-600 break-all">Order #{item.order_number}</span>
                                         <span className="text-slate-400">•</span>
                                         <span className="text-slate-500">{item.created_at}</span>
                                     </div>
