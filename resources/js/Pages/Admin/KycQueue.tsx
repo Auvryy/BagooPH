@@ -189,7 +189,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                     <FileText className="w-16 h-16 text-rose-500" />
                     <div>
                         <p className="font-bold text-sm text-slate-800">PDF Document Uploaded</p>
-                        <p className="font-mono text-xs text-slate-500 truncate max-w-md">{path}</p>
+                        <p className="font-sans text-xs text-slate-500 truncate max-w-md">{path}</p>
                     </div>
                     <a
                         href={path}
@@ -243,13 +243,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-500'}`}>
                                 Pending Review
                             </span>
                             <Clock className={`w-4 h-4 ${selectedStatus === 'pending_approval' ? 'text-white' : 'text-amber-500'}`} />
                         </div>
-                        <p className="text-2xl font-black font-mono mt-1">{stats.pending_count}</p>
-                        <div className={`text-[10px] font-mono mt-1 ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-400'}`}>
+                        <p className="text-2xl font-black font-sans mt-1">{stats.pending_count}</p>
+                        <div className={`text-[10px] font-sans mt-1 ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-400'}`}>
                             {stats.pending_sellers} Sellers • {stats.pending_couriers} Couriers
                         </div>
                     </div>
@@ -263,13 +263,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-500'}`}>
                                 Approved Accounts
                             </span>
                             <ShieldCheck className={`w-4 h-4 ${selectedStatus === 'approved' ? 'text-white' : 'text-emerald-600'}`} />
                         </div>
-                        <p className="text-2xl font-black font-mono mt-1">{stats.approved_count}</p>
-                        <span className={`text-[10px] font-mono mt-1 block ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-400'}`}>
+                        <p className="text-2xl font-black font-sans mt-1">{stats.approved_count}</p>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-400'}`}>
                             Active Platform Users
                         </span>
                     </div>
@@ -283,13 +283,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-500'}`}>
                                 Rejected / Flagged
                             </span>
                             <ShieldAlert className={`w-4 h-4 ${selectedStatus === 'rejected' ? 'text-white' : 'text-rose-500'}`} />
                         </div>
-                        <p className="text-2xl font-black font-mono mt-1">{stats.rejected_count}</p>
-                        <span className={`text-[10px] font-mono mt-1 block ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-400'}`}>
+                        <p className="text-2xl font-black font-sans mt-1">{stats.rejected_count}</p>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-400'}`}>
                             Awaiting Resubmission
                         </span>
                     </div>
@@ -303,13 +303,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>
                                 Total Processed
                             </span>
                             <Layers className={`w-4 h-4 ${selectedStatus === 'all' ? 'text-white' : 'text-slate-600'}`} />
                         </div>
-                        <p className="text-2xl font-black font-mono mt-1">{stats.total_count}</p>
-                        <span className={`text-[10px] font-mono mt-1 block ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-400'}`}>
+                        <p className="text-2xl font-black font-sans mt-1">{stats.total_count}</p>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-400'}`}>
                             Across All Roles
                         </span>
                     </div>
@@ -319,7 +319,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                 <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs space-y-3">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                         {/* Status Pills */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 font-mono text-xs">
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 font-sans text-xs">
                             <button
                                 onClick={() => handleFilterChange('pending_approval')}
                                 className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
@@ -367,7 +367,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             <select
                                 value={selectedRole}
                                 onChange={(e) => handleFilterChange(undefined, e.target.value)}
-                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 outline-hidden focus:border-slate-900"
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-700 outline-hidden focus:border-slate-900"
                             >
                                 <option value="all">All Roles</option>
                                 <option value="seller">Sellers Only</option>
@@ -382,13 +382,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search applicant or email..."
-                                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-900 outline-hidden focus:border-slate-900"
+                                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-900 outline-hidden focus:border-slate-900"
                                 />
                             </div>
 
                             <button
                                 type="submit"
-                                className="px-3 py-2 bg-slate-900 hover:bg-[#E00D42] text-white rounded-lg text-xs font-mono font-bold uppercase transition"
+                                className="px-3 py-2 bg-slate-900 hover:bg-[#E00D42] text-white rounded-lg text-xs font-sans font-bold uppercase transition"
                             >
                                 Filter
                             </button>
@@ -401,7 +401,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                                <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500">
                                     <th className="py-3 px-4">Applicant & Contact</th>
                                     <th className="py-3 px-4">Role & Business Specs</th>
                                     <th className="py-3 px-4">Submitted Documents</th>
@@ -412,7 +412,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             <tbody className="divide-y divide-slate-100 text-xs font-sans">
                                 {applicants.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-12 text-center text-slate-400 font-mono">
+                                        <td colSpan={5} className="py-12 text-center text-slate-400 font-sans">
                                             <FileCheck className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                                             <p className="text-sm font-bold text-slate-600">No applicants matching criteria</p>
                                             <p className="text-xs">All applications in this filter have been processed.</p>
@@ -426,12 +426,12 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 {/* Applicant */}
                                                 <td className="py-3.5 px-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                                                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-sans font-bold text-xs flex items-center justify-center shrink-0">
                                                             {applicant.name.charAt(0)}
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-slate-900">{applicant.name}</p>
-                                                            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+                                                            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-sans">
                                                                 <span className="truncate">{applicant.email}</span>
                                                                 {applicant.phone && (
                                                                     <span>• {applicant.phone}</span>
@@ -442,7 +442,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 </td>
 
                                                 {/* Role & Specs */}
-                                                <td className="py-3.5 px-4 font-mono">
+                                                <td className="py-3.5 px-4 font-sans">
                                                     <div className="space-y-1">
                                                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                                                             applicant.role === 'seller'
@@ -473,7 +473,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 </td>
 
                                                 {/* Documents */}
-                                                <td className="py-3.5 px-4 font-mono text-[11px]">
+                                                <td className="py-3.5 px-4 font-sans text-[11px]">
                                                     <div className="flex flex-wrap gap-1">
                                                         {docs.map((doc) => (
                                                             <button
@@ -497,7 +497,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 </td>
 
                                                 {/* Status */}
-                                                <td className="py-3.5 px-4 font-mono">
+                                                <td className="py-3.5 px-4 font-sans">
                                                     {applicant.kyc_status === 'approved' ? (
                                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                             APPROVED
@@ -521,7 +521,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 </td>
 
                                                 {/* Actions */}
-                                                <td className="py-3.5 px-4 text-right font-mono">
+                                                <td className="py-3.5 px-4 text-right font-sans">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <button
                                                             onClick={() => {
@@ -568,7 +568,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
                     {/* Pagination */}
                     {applicants.links && applicants.links.length > 3 && (
-                        <div className="p-4 border-t border-slate-100 flex items-center justify-between font-mono text-xs">
+                        <div className="p-4 border-t border-slate-100 flex items-center justify-between font-sans text-xs">
                             <span className="text-slate-500">
                                 Showing {applicants.data.length} of {applicants.total} applicants
                             </span>

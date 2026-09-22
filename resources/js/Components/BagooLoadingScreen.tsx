@@ -67,7 +67,7 @@ export default function BagooLoadingScreen({ minDisplayTime = 1000, onComplete }
                             {char}
                         </span>
                     ))}
-                    <span className="text-xl sm:text-2xl font-mono text-[#E00D42] font-black ml-1 uppercase tracking-widest animate-pulse">
+                    <span className="text-xl sm:text-2xl font-sans text-[#E00D42] font-black ml-1 uppercase tracking-widest animate-pulse">
                         PH
                     </span>
                 </div>
@@ -77,7 +77,7 @@ export default function BagooLoadingScreen({ minDisplayTime = 1000, onComplete }
                     <div className="w-32 bg-slate-800/80 h-1 rounded-full overflow-hidden border border-white/5">
                         <div className="bagoo-progress-bar h-full bg-gradient-to-r from-transparent via-[#E00D42] to-transparent rounded-full"></div>
                     </div>
-                    <span className="text-[11px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+                    <span className="text-[11px] font-sans font-bold tracking-widest text-slate-400 uppercase">
                         Loading Marketplace
                     </span>
                 </div>

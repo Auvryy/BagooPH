@@ -414,27 +414,27 @@ export default function BuyerProfile({
     const getStatusPill = (status: string) => {
         switch (status) {
             case 'completed':
-                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</span>;
+                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</span>;
             case 'delivered':
-                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
+                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
             case 'out_for_delivery':
             case 'shipped':
-                return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3 text-indigo-500" /> In Transit</span>;
+                return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-indigo-500" /> In Transit</span>;
             case 'assigned_to_rider':
             case 'sorted':
             case 'at_sorting_center':
             case 'picked_up':
-                return <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Truck className="w-3 h-3 text-purple-500" /> In Logistics</span>;
+                return <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-purple-500" /> In Logistics</span>;
             case 'ready_for_pickup':
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Ready for Pickup</span>;
+                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Ready for Pickup</span>;
             case 'preparing':
             case 'processing':
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Packaging</span>;
+                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Packaging</span>;
             case 'pending':
             case 'placed':
-                return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold font-mono flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Order Placed</span>;
+                return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Order Placed</span>;
             default:
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-mono uppercase">{status.replace('_', ' ')}</span>;
+                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans uppercase">{status.replace('_', ' ')}</span>;
         }
     };
 
@@ -450,7 +450,7 @@ export default function BuyerProfile({
         <BuyerLayout>
             <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Simulated Digital Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
 
-            <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
+            <div className="w-full space-y-6 font-sans">
                 
                 {/* 1. TOP HEADER STRIP */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
@@ -458,14 +458,14 @@ export default function BuyerProfile({
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                             {activeTab === 'orders' ? 'My Purchases & Order Tracking' : 'Account Settings & Credentials'}
                         </h1>
-                        <p className="text-xs text-slate-500 font-mono">
+                        <p className="text-xs text-slate-500 font-sans">
                             {activeTab === 'orders' ? 'Track real-time parcel dispatch, delivery timelines, and order receipts' : 'Manage personal credentials, PSGC shipping addresses, and simulated wallet'}
                         </p>
                     </div>
 
                     <Link
                         href={route('buyer.index')}
-                        className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 text-xs font-mono font-bold uppercase transition flex items-center gap-2 shadow-2xs w-fit"
+                        className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 text-xs font-sans font-bold uppercase transition flex items-center gap-2 shadow-2xs w-fit"
                     >
                         <ShoppingBag className="w-4 h-4 text-slate-500" />
                         <span>Continue Shopping</span>
@@ -526,21 +526,21 @@ export default function BuyerProfile({
                             </button>
                             <div className="min-w-0">
                                 <h3 className="font-bold text-slate-900 text-sm truncate">{user.name}</h3>
-                                <p className="text-[11px] text-slate-500 font-mono truncate">{user.email}</p>
+                                <p className="text-[11px] text-slate-500 font-sans truncate">{user.email}</p>
                                 {isKycApproved ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-emerald-600 font-mono mt-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-emerald-600 font-sans mt-0.5">
                                         <ShieldCheck className="w-3 h-3" /> Verified Buyer
                                     </span>
                                 ) : user.kyc_status === 'pending_approval' ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-amber-600 font-mono mt-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-amber-600 font-sans mt-0.5">
                                         <Clock className="w-3 h-3" /> KYC In Review
                                     </span>
                                 ) : user.kyc_status === 'rejected' ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-rose-600 font-mono mt-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-rose-600 font-sans mt-0.5">
                                         <ShieldAlert className="w-3 h-3" /> KYC Action Required
                                     </span>
                                 ) : (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-slate-400 font-mono mt-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-slate-400 font-sans mt-0.5">
                                         <Shield className="w-3 h-3" /> Unverified Account
                                     </span>
                                 )}
@@ -548,7 +548,7 @@ export default function BuyerProfile({
                         </div>
 
                         {/* Navigation Links */}
-                        <nav className="space-y-1.5 font-mono text-xs">
+                        <nav className="space-y-1.5 font-sans text-xs">
                             {navItems.map((item) => {
                                 const isActive = activeTab === item.id;
                                 return (
@@ -579,7 +579,7 @@ export default function BuyerProfile({
                         </nav>
 
                         {/* Extra Direct Shortcuts */}
-                        <div className="pt-3 border-t border-slate-100 space-y-1 font-mono text-xs">
+                        <div className="pt-3 border-t border-slate-100 space-y-1 font-sans text-xs">
                             <Link
                                 href={route('buyer.messages')}
                                 className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition"
@@ -613,7 +613,7 @@ export default function BuyerProfile({
                             <div className="space-y-4">
                                 
                                 {/* Status Filter Strip */}
-                                <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-mono text-xs">
+                                <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-sans text-xs">
                                     {[
                                         { id: 'all', label: `All (${orders.length})` },
                                         { id: 'to_ship', label: 'To Ship' },
@@ -643,12 +643,12 @@ export default function BuyerProfile({
                                     <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                         <Package className="w-12 h-12 text-slate-300 mx-auto" />
                                         <h3 className="text-base font-bold text-slate-800">No orders found in this status</h3>
-                                        <p className="text-xs text-slate-500 font-mono">
+                                        <p className="text-xs text-slate-500 font-sans">
                                             Discover verified tactical apparel, bags, and EDC gear on BagooPH.
                                         </p>
                                         <Link
                                             href={route('buyer.index')}
-                                            className="inline-block px-5 py-2.5 bg-[#E00D42] text-white rounded-xl text-xs font-mono font-bold uppercase shadow-xs"
+                                            className="inline-block px-5 py-2.5 bg-[#E00D42] text-white rounded-xl text-xs font-sans font-bold uppercase shadow-xs"
                                         >
                                             Explore Marketplace
                                         </Link>
@@ -660,7 +660,7 @@ export default function BuyerProfile({
                                             className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-slate-300 transition space-y-4 font-sans"
                                         >
                                             {/* Header */}
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 font-mono text-xs">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 font-sans text-xs">
                                                 <div className="flex items-center gap-2.5">
                                                     <Store className="w-4 h-4 text-slate-400" />
                                                     <span className="font-bold text-slate-900">
@@ -688,10 +688,10 @@ export default function BuyerProfile({
                                                             <h4 className="font-bold text-slate-900 text-xs truncate">
                                                                 {item.product?.name || 'Tactical Product'}
                                                             </h4>
-                                                            <p className="text-[11px] text-slate-500 font-mono">
+                                                            <p className="text-[11px] text-slate-500 font-sans">
                                                                 Qty: <span className="text-slate-800 font-bold">{item.quantity}</span> • Unit: <span className="text-slate-800">{formatPrice(item.unit_price)}</span>
                                                             </p>
-                                                            <p className="text-xs font-bold text-slate-900 font-mono mt-0.5">
+                                                            <p className="text-xs font-bold text-slate-900 font-sans mt-0.5">
                                                                 Subtotal: {formatPrice(item.subtotal || (Number(item.unit_price) * item.quantity))}
                                                             </p>
                                                         </div>
@@ -701,7 +701,7 @@ export default function BuyerProfile({
 
                                             {/* Delivery Telemetry / Notes */}
                                             {order.delivery && (
-                                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between font-mono text-[11px]">
+                                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between font-sans text-[11px]">
                                                     <div className="flex items-center gap-2 text-slate-600">
                                                         <Truck className="w-3.5 h-3.5 text-slate-500" />
                                                         <span>
@@ -718,7 +718,7 @@ export default function BuyerProfile({
                                             )}
 
                                             {/* Footer Actions */}
-                                            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+                                            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans text-xs">
                                                 <div>
                                                     <span className="text-slate-400 text-[11px]">Order Total: </span>
                                                     <span className="font-black text-slate-900 text-base">{formatPrice(order.total_amount)}</span>
@@ -774,11 +774,11 @@ export default function BuyerProfile({
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Personal Information</h3>
-                                        <p className="text-xs text-slate-500 font-mono">Update your official contact and recipient profile details</p>
+                                        <p className="text-xs text-slate-500 font-sans">Update your official contact and recipient profile details</p>
                                     </div>
 
                                     {recentlySuccessful && (
-                                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-mono flex items-center gap-2">
+                                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-sans flex items-center gap-2">
                                             <Check className="w-4 h-4 text-emerald-600" />
                                             <span>Profile details updated successfully!</span>
                                         </div>
@@ -812,7 +812,7 @@ export default function BuyerProfile({
                                                     <button
                                                         type="button"
                                                         onClick={() => fileInputRef.current?.click()}
-                                                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity text-[10px] font-mono font-bold cursor-pointer"
+                                                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity text-[10px] font-sans font-bold cursor-pointer"
                                                     >
                                                         <Camera className="w-4 h-4 mb-0.5" />
                                                         <span>Change</span>
@@ -825,7 +825,7 @@ export default function BuyerProfile({
                                                         <button
                                                             type="button"
                                                             onClick={() => fileInputRef.current?.click()}
-                                                            className="px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                                            className="px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                                                         >
                                                             <Upload className="w-3.5 h-3.5 text-white" />
                                                             <span>{avatarPreview ? 'Change Photo' : 'Upload Photo'}</span>
@@ -835,7 +835,7 @@ export default function BuyerProfile({
                                                             <button
                                                                 type="button"
                                                                 onClick={handleRemoveAvatar}
-                                                                className="px-3 py-2 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
+                                                                className="px-3 py-2 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                                 <span>Remove Photo</span>
@@ -843,17 +843,17 @@ export default function BuyerProfile({
                                                         )}
 
                                                         {avatarPreview !== user.avatar && (
-                                                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg font-mono font-semibold">
+                                                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg font-sans font-semibold">
                                                                 Photo selected (click Save below to apply)
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    <p className="text-[11px] text-slate-500 font-mono">
+                                                    <p className="text-[11px] text-slate-500 font-sans">
                                                         Upload JPG, PNG, WEBP, or GIF. Max file size: 3MB.
                                                     </p>
                                                     {errors.avatar && (
-                                                        <p className="text-rose-500 text-[11px] font-mono font-bold mt-1">
+                                                        <p className="text-rose-500 text-[11px] font-sans font-bold mt-1">
                                                             {errors.avatar}
                                                         </p>
                                                     )}
@@ -864,7 +864,7 @@ export default function BuyerProfile({
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Full Name</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Full Name</label>
                                                 <input
                                                     type="text"
                                                     value={data.name}
@@ -872,23 +872,23 @@ export default function BuyerProfile({
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
                                                     required
                                                 />
-                                                {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-mono">{errors.name}</p>}
+                                                {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-sans">{errors.name}</p>}
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Email Address (Immutable)</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Email Address (Immutable)</label>
                                                 <input
                                                     type="email"
                                                     value={user.email}
                                                     disabled
-                                                    className="w-full rounded-xl bg-slate-100 border border-slate-200 p-2.5 text-xs text-slate-500 cursor-not-allowed font-mono"
+                                                    className="w-full rounded-xl bg-slate-100 border border-slate-200 p-2.5 text-xs text-slate-500 cursor-not-allowed font-sans"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Mobile Contact</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Mobile Contact</label>
                                                 <PhoneInput
                                                     value={data.phone}
                                                     onChange={(val) => setData('phone', val)}
@@ -899,17 +899,17 @@ export default function BuyerProfile({
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Birthday</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Birthday</label>
                                                 <input
                                                     type="date"
                                                     value={data.birthday}
                                                     onChange={(e) => setData('birthday', e.target.value)}
-                                                    className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs font-mono focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                                    className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs font-sans focus:ring-[#E00D42] focus:border-[#E00D42]"
                                                 />
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Gender</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Gender</label>
                                                 <select
                                                     value={data.gender}
                                                     onChange={(e) => setData('gender', e.target.value)}
@@ -926,7 +926,7 @@ export default function BuyerProfile({
                                             <button
                                                 type="submit"
                                                 disabled={processing}
-                                                className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-xs font-bold uppercase rounded-xl transition shadow-xs"
+                                                className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
                                             >
                                                 {processing ? 'Saving...' : 'Save Profile Changes'}
                                             </button>
@@ -939,29 +939,29 @@ export default function BuyerProfile({
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                                         <div>
                                             <h3 className="text-base font-black text-slate-900">Identity Verification & Trust Status</h3>
-                                            <p className="text-xs text-slate-500 font-mono">Government ID validation for 100% Cash on Delivery protection</p>
+                                            <p className="text-xs text-slate-500 font-sans">Government ID validation for 100% Cash on Delivery protection</p>
                                         </div>
                                         <div>
                                             {isKycApproved && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                                                     <span>Verified Account</span>
                                                 </span>
                                             )}
                                             {user.kyc_status === 'pending_approval' && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                                     <Clock className="w-3.5 h-3.5 text-amber-600" />
                                                     <span>In Review</span>
                                                 </span>
                                             )}
                                             {user.kyc_status === 'rejected' && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                                     <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
                                                     <span>Action Required</span>
                                                 </span>
                                             )}
                                             {(!user.kyc_status || user.kyc_status === 'none') && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                                     <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
                                                     <span>Unverified</span>
                                                 </span>
@@ -981,7 +981,7 @@ export default function BuyerProfile({
                                                     Your submitted government ID has been authenticated by Bagoo compliance. You have unlocked unlimited Cash on Delivery privileges and doorstep item inspection.
                                                 </p>
                                                 {user.id_document_path && (
-                                                    <p className="font-mono text-[11px] text-emerald-600 pt-1">
+                                                    <p className="font-sans text-[11px] text-emerald-600 pt-1">
                                                         ID Document on file: Validated
                                                     </p>
                                                 )}
@@ -1000,7 +1000,7 @@ export default function BuyerProfile({
                                                     Your government ID has been received and is in the compliance review queue. Approvals are typically processed within 24 hours.
                                                 </p>
                                                 {user.id_document_path && (
-                                                    <p className="font-mono text-[11px] text-amber-600 pt-1">
+                                                    <p className="font-sans text-[11px] text-amber-600 pt-1">
                                                         Document submitted: Valid government ID
                                                     </p>
                                                 )}
@@ -1058,7 +1058,7 @@ export default function BuyerProfile({
                                                     <p className="text-xs font-bold text-slate-800 group-hover:text-[#E00D42] transition">
                                                         {user.kyc_status === 'rejected' ? 'Upload New Government ID' : 'Click to upload Government ID'}
                                                     </p>
-                                                    <p className="text-[11px] text-slate-400 font-mono mt-1">
+                                                    <p className="text-[11px] text-slate-400 font-sans mt-1">
                                                         PhilID, Passport, Driver's License, UMID, Postal ID, SSS (Max 5MB)
                                                     </p>
                                                 </div>
@@ -1078,7 +1078,7 @@ export default function BuyerProfile({
                                                         )}
                                                         <div className="min-w-0">
                                                             <p className="text-xs font-bold text-slate-900 truncate">{kycFile.name}</p>
-                                                            <p className="text-[10px] text-slate-400 font-mono">
+                                                            <p className="text-[10px] text-slate-400 font-sans">
                                                                 {(kycFile.size / (1024 * 1024)).toFixed(2)} MB
                                                             </p>
                                                         </div>
@@ -1117,7 +1117,7 @@ export default function BuyerProfile({
                                                     <button
                                                         type="submit"
                                                         disabled={kycUploading}
-                                                        className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-xs font-bold uppercase rounded-xl transition shadow-xs disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                                                        className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                                                     >
                                                         {kycUploading ? 'Uploading...' : 'Submit ID for Verification'}
                                                     </button>
@@ -1131,7 +1131,7 @@ export default function BuyerProfile({
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Account Password & Security</h3>
-                                        <p className="text-xs text-slate-500 font-mono">Ensure your account password is at least 8 characters long</p>
+                                        <p className="text-xs text-slate-500 font-sans">Ensure your account password is at least 8 characters long</p>
                                     </div>
 
                                     {user.google_id && (
@@ -1154,14 +1154,14 @@ export default function BuyerProfile({
                                                     d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                                                 />
                                             </svg>
-                                            <div className="text-xs text-blue-900 font-mono">
+                                            <div className="text-xs text-blue-900 font-sans">
                                                 Connected with Google OAuth (<span className="font-bold">{user.email}</span>). You can sign in using your Google account.
                                             </div>
                                         </div>
                                     )}
 
                                     {passwordForm.recentlySuccessful && (
-                                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-mono flex items-center gap-2">
+                                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-sans flex items-center gap-2">
                                             <Check className="w-4 h-4 text-emerald-600" />
                                             <span>Password updated successfully!</span>
                                         </div>
@@ -1170,7 +1170,7 @@ export default function BuyerProfile({
                                     <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs font-sans">
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Current Password</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Current Password</label>
                                                 <input
                                                     type="password"
                                                     value={passwordForm.data.current_password}
@@ -1181,7 +1181,7 @@ export default function BuyerProfile({
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">New Password</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">New Password</label>
                                                 <input
                                                     type="password"
                                                     value={passwordForm.data.password}
@@ -1192,7 +1192,7 @@ export default function BuyerProfile({
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-mono">Confirm New Password</label>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Confirm New Password</label>
                                                 <input
                                                     type="password"
                                                     value={passwordForm.data.password_confirmation}
@@ -1207,7 +1207,7 @@ export default function BuyerProfile({
                                             <button
                                                 type="submit"
                                                 disabled={passwordForm.processing}
-                                                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-mono text-xs font-bold uppercase rounded-xl transition shadow-xs"
+                                                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
                                             >
                                                 {passwordForm.processing ? 'Updating...' : 'Update Password'}
                                             </button>
@@ -1224,12 +1224,12 @@ export default function BuyerProfile({
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                     <div>
                                         <h3 className="text-base font-black text-slate-900">PSGC Delivery Address Book</h3>
-                                        <p className="text-xs text-slate-500 font-mono">Manage doorstep drop-off destinations for Bagoo Express riders</p>
+                                        <p className="text-xs text-slate-500 font-sans">Manage doorstep drop-off destinations for Bagoo Express riders</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setShowAddressModal(true)}
-                                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
+                                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                         <span>Add New Address</span>
@@ -1245,7 +1245,7 @@ export default function BuyerProfile({
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 font-mono text-xs">
+                                                <div className="flex items-center gap-2 font-sans text-xs">
                                                     <span className="font-bold text-slate-900">{addr.recipient_name}</span>
                                                     <span className="text-slate-400">•</span>
                                                     <span className="text-slate-600">{addr.phone}</span>
@@ -1256,14 +1256,14 @@ export default function BuyerProfile({
 
                                                 <div className="flex items-center gap-3">
                                                     {addr.is_default ? (
-                                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold">
                                                             DEFAULT ADDRESS
                                                         </span>
                                                     ) : (
                                                         <button
                                                             type="button"
                                                             onClick={() => setDefaultAddress(addr.id)}
-                                                            className="text-[11px] font-mono text-slate-500 hover:text-slate-900 underline cursor-pointer"
+                                                            className="text-[11px] font-sans text-slate-500 hover:text-slate-900 underline cursor-pointer"
                                                         >
                                                             Set as Default
                                                         </button>
@@ -1300,26 +1300,26 @@ export default function BuyerProfile({
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Wallet className="w-5 h-5 text-amber-400" />
-                                            <span className="font-mono text-xs font-bold uppercase text-slate-400">Bagoo Digital Wallet Sandbox</span>
+                                            <span className="font-sans text-xs font-bold uppercase text-slate-400">Bagoo Digital Wallet Sandbox</span>
                                         </div>
-                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-sans text-[10px] font-bold border border-emerald-500/30">
                                             AUTHORIZED ACTIVE
                                         </span>
                                     </div>
 
                                     <div>
-                                        <span className="text-xs text-slate-400 font-mono">Available Account Balance</span>
+                                        <span className="text-xs text-slate-400 font-sans">Available Account Balance</span>
                                         <h2 className="text-3xl sm:text-4xl font-black text-emerald-400 mt-1">
                                             {formatPrice(wallet.balance)}
                                         </h2>
-                                        <p className="text-[11px] text-slate-400 font-mono mt-1">
+                                        <p className="text-[11px] text-slate-400 font-sans mt-1">
                                             Account: {wallet.account_number} • Instant settlement at checkout without gateway fees
                                         </p>
                                     </div>
 
                                     {/* Quick Simulation Top-Up Strip */}
                                     <div className="pt-4 border-t border-slate-800 space-y-2">
-                                        <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Simulate Instant Top-up:</span>
+                                        <span className="text-[10px] font-sans text-slate-400 uppercase font-bold">Simulate Instant Top-up:</span>
                                         <div className="flex flex-wrap items-center gap-2">
                                             {[500, 1000, 2500, 5000].map((amt) => (
                                                 <button
@@ -1327,14 +1327,14 @@ export default function BuyerProfile({
                                                     type="button"
                                                     onClick={() => handleTopup(amt)}
                                                     disabled={topupLoading}
-                                                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-bold border border-slate-700 transition"
+                                                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold border border-slate-700 transition"
                                                 >
                                                     +₱{amt.toLocaleString()}
                                                 </button>
                                             ))}
                                         </div>
                                         {topupSuccess && (
-                                            <p className="text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5 mt-2 animate-fade-in">
+                                            <p className="text-emerald-400 text-xs font-sans font-bold flex items-center gap-1.5 mt-2 animate-fade-in">
                                                 <Check className="w-3.5 h-3.5" /> Balance updated in sandbox ledger!
                                             </p>
                                         )}
@@ -1343,10 +1343,10 @@ export default function BuyerProfile({
 
                                 {/* Transactions Statement */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
-                                    <h4 className="font-bold text-slate-900 text-sm uppercase font-mono">Recent Wallet Transactions</h4>
+                                    <h4 className="font-bold text-slate-900 text-sm uppercase font-sans">Recent Wallet Transactions</h4>
                                     <div className="divide-y divide-slate-100">
                                         {wallet.recent_transactions.map((tx) => (
-                                            <div key={tx.id} className="py-3 flex items-center justify-between font-mono text-xs">
+                                            <div key={tx.id} className="py-3 flex items-center justify-between font-sans text-xs">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
                                                         tx.type === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
@@ -1375,10 +1375,10 @@ export default function BuyerProfile({
                             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                 <div className="border-b border-slate-100 pb-4">
                                     <h3 className="text-base font-black text-slate-900">Claimed Vouchers & Promos</h3>
-                                    <p className="text-xs text-slate-500 font-mono">Redeem discount vouchers automatically during checkout</p>
+                                    <p className="text-xs text-slate-500 font-sans">Redeem discount vouchers automatically during checkout</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans text-xs">
                                     
                                     <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50 border border-rose-200/80 space-y-2 relative overflow-hidden">
                                         <div className="flex items-center justify-between">
@@ -1417,16 +1417,16 @@ export default function BuyerProfile({
                 {/* 3. MODAL: ADD PSGC ADDRESS */}
                 {showAddressModal && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in max-h-[92vh] overflow-y-auto">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
                                 <h3 className="font-bold text-slate-900 text-sm uppercase">Add Philippine Delivery Address</h3>
                                 <button onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
                             </div>
 
                             <form onSubmit={handleAddAddress} className="space-y-4 text-xs">
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono flex items-center justify-between">
+                                        <label className="block font-bold text-slate-700 mb-1 font-sans flex items-center justify-between">
                                             <span>Recipient Name</span>
                                             <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
                                                 <Lock className="w-3 h-3 text-slate-400" />
@@ -1442,7 +1442,7 @@ export default function BuyerProfile({
                                         />
                                     </div>
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">Phone Number</label>
+                                        <label className="block font-bold text-slate-700 mb-1 font-sans">Phone Number</label>
                                         <PhoneInput
                                             value={newAddress.phone}
                                             onChange={(val) => setNewAddress({ ...newAddress, phone: val })}
@@ -1478,7 +1478,7 @@ export default function BuyerProfile({
                                 />
 
                                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                    <label className="flex items-center gap-2 font-mono text-xs cursor-pointer">
+                                    <label className="flex items-center gap-2 font-sans text-xs cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={newAddress.is_default}
@@ -1490,7 +1490,7 @@ export default function BuyerProfile({
 
                                     <button
                                         type="submit"
-                                        className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-mono font-bold uppercase rounded-xl transition shadow-xs"
+                                        className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase rounded-xl transition shadow-xs"
                                     >
                                         Save Address
                                     </button>

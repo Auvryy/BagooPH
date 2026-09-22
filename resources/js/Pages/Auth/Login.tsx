@@ -72,7 +72,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
             <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1.5 font-mono">
+                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1.5 font-sans">
                         Email Address
                     </label>
                     <div className="relative">
@@ -95,7 +95,7 @@ export default function Login({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans">
                             Password
                         </label>
                         {canResetPassword && (
@@ -159,7 +159,7 @@ export default function Login({ status, canResetPassword }: Props) {
             <div className="mt-5">
                 <div className="relative flex items-center justify-center my-4">
                     <div className="border-t border-slate-200 w-full"></div>
-                    <span className="bg-white px-3 text-[11px] font-mono uppercase tracking-wider text-slate-400 absolute">
+                    <span className="bg-white px-3 text-[11px] font-sans uppercase tracking-wider text-slate-400 absolute">
                         Or continue with
                     </span>
                 </div>

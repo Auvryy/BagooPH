@@ -131,8 +131,8 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                             </div>
 
                             {/* Price */}
-                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-baseline gap-3">
-                                <span className="text-3xl font-black text-slate-900">
+                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-baseline gap-2 sm:gap-3">
+                                <span className="text-2xl sm:text-3xl font-black text-slate-900">
                                     ${Number(product.price).toFixed(2)}
                                 </span>
                                 {product.compare_at_price && (

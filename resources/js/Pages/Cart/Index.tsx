@@ -142,20 +142,20 @@ export default function CartIndex({ cart, items, total }: Props) {
             <div className="space-y-6">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#E00D42] flex items-center justify-center font-bold">
                             <ShoppingBag className="w-5 h-5" />
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Shopping Bag</h1>
-                            <p className="text-xs text-slate-500 font-mono">{items.length} items ready for doorstep dispatch</p>
+                            <p className="text-xs text-slate-500 font-sans">{items.length} items ready for doorstep dispatch</p>
                         </div>
                     </div>
 
                     <Link
                         href={route('buyer.index')}
-                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase"
+                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase w-fit"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Continue Shopping</span>
@@ -227,7 +227,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                 </div>
 
                                 {/* Filter Pills */}
-                                <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs font-sans">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-2 border-t border-slate-100 text-xs font-sans">
                                     <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1 mr-1">
                                         <Filter className="w-3 h-3" />
                                         Filter:
@@ -269,7 +269,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                             </div>
 
                             {/* Cart Items Container */}
-                            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4">
                                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
                                     <label className="flex items-center gap-2.5 cursor-pointer select-none font-bold text-slate-800">
                                         <input
@@ -282,7 +282,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     </label>
                                     <div className="flex items-center gap-2">
                                         <Store className="w-4 h-4 text-[#E00D42]" />
-                                        <span className="font-semibold text-slate-600">Bagoo Verified Merchants</span>
+                                        <span className="font-semibold text-slate-600 hidden sm:inline">Bagoo Verified Merchants</span>
                                     </div>
                                 </div>
 
@@ -296,7 +296,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                 setSearchQuery('');
                                                 setSortBy('recent');
                                             }}
-                                            className="text-xs text-[#E00D42] font-bold hover:underline font-mono"
+                                            className="text-xs text-[#E00D42] font-bold hover:underline font-sans"
                                         >
                                             Reset Filters
                                         </button>
@@ -307,7 +307,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                             <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 
                                                 {/* Product Info with Checkbox */}
-                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                <div className="flex items-center gap-3.5 min-w-0 flex-1 w-full sm:w-auto">
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedIds.includes(item.id)}
@@ -319,7 +319,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                         alt={item.product?.name}
                                                         className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                                                     />
-                                                    <div className="truncate space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <div className="flex items-center gap-2">
                                                             <Link 
                                                                 href={route('buyer.products.show', item.product?.slug || '')}
@@ -328,12 +328,12 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                                 {item.product?.name}
                                                             </Link>
                                                             {item.id === mostRecentId && (
-                                                                <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-mono">
+                                                                <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-sans">
                                                                     Recent
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-xs font-mono">
+                                                        <div className="flex items-center gap-2 text-xs font-sans">
                                                             <span className="font-black text-[#E00D42]">
                                                                 {formatPrice(item.unit_price)}
                                                             </span>
@@ -344,7 +344,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                 </div>
 
                                                 {/* Quantity & Delete Controls */}
-                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-mono text-xs">
+                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-sans text-xs">
                                                     <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
                                                         <button
                                                             type="button"
@@ -385,7 +385,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                         {/* Order Summary */}
                         <div className="lg:col-span-4 space-y-4">
                             {/* Summary Totals Card */}
-                            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 font-mono text-xs">
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4 font-sans text-xs">
                                 <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
                                     Order Summary
                                 </h3>

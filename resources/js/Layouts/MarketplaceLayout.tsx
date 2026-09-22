@@ -41,7 +41,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                                 }`}>
                                     Bagoo<span className="text-[#E00D42]">PH</span>
                                 </span>
-                                <span className={`text-[8px] sm:text-[9px] uppercase font-mono font-bold tracking-widest -mt-1 transition-colors duration-300 ${
+                                <span className={`text-[8px] sm:text-[9px] uppercase font-sans font-bold tracking-widest -mt-1 transition-colors duration-300 ${
                                     isDark ? 'text-white/50' : 'text-black/50'
                                 }`}>
                                     ECOSYSTEM
@@ -50,7 +50,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                         </Link>
 
                         {/* Desktop Actions */}
-                        <div className="hidden md:flex items-center gap-2 sm:gap-3 font-mono text-xs">
+                        <div className="hidden md:flex items-center gap-2 sm:gap-3 font-sans text-xs">
                             <Link
                                 href={route('buyer.index')}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition tracking-wider uppercase ${
@@ -103,7 +103,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
                         </div>
 
                         {/* Mobile Actions: Register CTA + Hamburger Toggle */}
-                        <div className="flex md:hidden items-center gap-2 font-mono text-xs">
+                        <div className="flex md:hidden items-center gap-2 font-sans text-xs">
                             <Link
                                 href={route('register')}
                                 className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold rounded-lg shadow-xs transition tracking-wider uppercase"
@@ -129,7 +129,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
 
                 {/* Mobile Dropdown Menu Drawer */}
                 {mobileMenuOpen && (
-                    <div className={`md:hidden border-t px-4 py-4 space-y-3 font-mono text-xs transition-all ${
+                    <div className={`md:hidden border-t px-4 py-4 space-y-3 font-sans text-xs transition-all ${
                         isDark 
                             ? 'bg-[#0E121D] border-white/10 text-white' 
                             : 'bg-[#ECEAE5] border-black/10 text-black'
@@ -193,7 +193,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
             </main>
 
             {/* Clean Minimalist Footer */}
-            <footer className="bg-[#111111] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-black font-mono">
+            <footer className="bg-[#111111] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-black font-sans">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6 text-xs text-white/50">
                     <div className="flex items-center gap-3">
                         <BagooLogo className="w-7 h-7" rounded="rounded-md" />

@@ -92,27 +92,27 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
     const getStatusPill = (status: string) => {
         if (status === 'delivered' || status === 'customer_collected') {
             return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-mono bg-emerald-50 text-emerald-700 border border-emerald-300">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-emerald-50 text-emerald-700 border border-emerald-300">
                     {status.replace(/_/g, ' ')}
                 </span>
             );
         }
         if (status === 'out_for_delivery') {
             return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-mono bg-amber-50 text-amber-700 border border-amber-300">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-amber-50 text-amber-700 border border-amber-300">
                     Out for Delivery
                 </span>
             );
         }
         if (status.includes('ready_for_hub_pickup') || status.includes('arrived_at_destination_hub')) {
             return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-mono bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]">
                     At Local Hub
                 </span>
             );
         }
         return (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-mono bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-slate-100 text-slate-700 border border-slate-200">
                 {status.replace(/_/g, ' ')}
             </span>
         );
@@ -126,7 +126,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                 <div className="flex items-center gap-2">
                     <Link
                         href={route('hub.scan.station')}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-xs shadow-xs transition uppercase tracking-wider"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
                     >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Floor Scanner</span>
@@ -142,18 +142,18 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Total Tracked</span>
                                 <Package className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counts.all}{' '}
                                     <span className="text-xs font-bold text-slate-400">waybills</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Registry:</span>
                             <span className="font-bold text-slate-800">Station Active</span>
                         </div>
@@ -161,18 +161,18 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">In Sorting Hub</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counts.in_hub}{' '}
                                     <span className="text-xs font-bold text-slate-400">staged</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Dock Flow:</span>
                             <span className="font-bold text-[#E00D42]">Pending Dispatch</span>
                         </div>
@@ -180,18 +180,18 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Out for Delivery</span>
                                 <Truck className="w-3.5 h-3.5 text-amber-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counts.out_for_delivery}{' '}
                                     <span className="text-xs font-bold text-slate-400">on route</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Last-Mile:</span>
                             <span className="font-bold text-amber-700">Active Transit</span>
                         </div>
@@ -199,18 +199,18 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Delivered / Collected</span>
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counts.completed}{' '}
                                     <span className="text-xs font-bold text-slate-400">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Success Rate:</span>
                             <span className="font-bold text-emerald-700">100% Fulfilled</span>
                         </div>
@@ -226,11 +226,11 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search tracking number or recipient..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </form>
 
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end font-mono">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end font-sans">
                         <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xs border border-slate-200 text-xs">
                             <button
                                 type="button"
@@ -281,7 +281,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                         <select
                             value={filters.delivery_type}
                             onChange={(e) => handleFilter(undefined, e.target.value)}
-                            className="bg-white border border-slate-300 rounded-xs px-2.5 py-1.5 text-xs font-mono font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                            className="bg-white border border-slate-300 rounded-xs px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                         >
                             <option value="all">All Types</option>
                             <option value="doorstep">Doorstep Delivery</option>
@@ -295,7 +295,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+                                <tr className="border-b border-slate-200 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
                                     <th className="py-2.5 px-3.5">Tracking Number</th>
                                     <th className="py-2.5 px-3.5">Recipient / Destination</th>
                                     <th className="py-2.5 px-3.5">Delivery Mode</th>
@@ -308,7 +308,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                             <tbody className="divide-y divide-slate-200 text-xs">
                                 {deliveries.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-10 text-center text-slate-400 font-mono">
+                                        <td colSpan={7} className="py-10 text-center text-slate-400 font-sans">
                                             No waybills found matching current filter criteria.
                                         </td>
                                     </tr>
@@ -316,10 +316,10 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                                     deliveries.data.map((delivery) => (
                                         <tr key={delivery.id} className="hover:bg-slate-50/80 transition">
                                             <td className="py-3 px-3.5">
-                                                <span className="font-mono font-bold text-slate-900 block text-xs">
+                                                <span className="font-sans font-bold text-slate-900 block text-xs">
                                                     {delivery.tracking_number}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                                <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
                                                     Order: {delivery.order_number}
                                                 </span>
                                             </td>
@@ -335,7 +335,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                                             </td>
 
                                             <td className="py-3 px-3.5">
-                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-xs font-mono ${
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-xs font-sans ${
                                                     delivery.delivery_type === 'hub_self_pickup'
                                                         ? 'bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]'
                                                         : 'bg-slate-100 text-slate-700 border border-slate-200'
@@ -353,16 +353,16 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                                             </td>
 
                                             <td className="py-3 px-3.5">
-                                                <span className="font-mono font-bold text-slate-800 px-1.5 py-0.5 rounded-xs bg-slate-100 border border-slate-300 text-[10px] inline-block">
+                                                <span className="font-sans font-bold text-slate-800 px-1.5 py-0.5 rounded-xs bg-slate-100 border border-slate-300 text-[10px] inline-block">
                                                     {delivery.destination_bin}
                                                 </span>
                                             </td>
 
-                                            <td className="py-3 px-3.5 text-slate-700 font-mono text-xs">
+                                            <td className="py-3 px-3.5 text-slate-700 font-sans text-xs">
                                                 {delivery.rider_name}
                                             </td>
 
-                                            <td className="py-3 px-3.5 font-mono">
+                                            <td className="py-3 px-3.5 font-sans">
                                                 <span className="font-bold text-slate-900 block">
                                                     ₱{delivery.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </span>
@@ -383,7 +383,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
 
                     {/* Pagination */}
                     {deliveries.last_page > 1 && (
-                        <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs font-mono">
+                        <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs font-sans">
                             <span className="text-slate-500">
                                 Page {deliveries.current_page} of {deliveries.last_page} ({deliveries.total} total)
                             </span>
@@ -393,7 +393,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                                         key={idx}
                                         href={link.url || '#'}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
-                                        className={`px-2.5 py-1 rounded-xs text-xs font-bold font-mono transition ${
+                                        className={`px-2.5 py-1 rounded-xs text-xs font-bold font-sans transition ${
                                             link.active
                                                 ? 'bg-[#E00D42] text-white'
                                                 : link.url

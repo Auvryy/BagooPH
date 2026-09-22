@@ -69,12 +69,12 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                             <ShieldAlert className="w-6 h-6 text-[#E00D42]" />
                             <h3 className="font-bold text-slate-900 text-base">Customer Claim Pipeline</h3>
                         </div>
-                        <p className="text-xs text-slate-500 font-mono mt-1">
+                        <p className="text-xs text-slate-500 font-sans mt-1">
                             Tripartite mediation protects merchant payouts and ensures swift resolution for valid buyer defects.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 font-mono text-xs">
+                    <div className="flex items-center gap-2 font-sans text-xs">
                         <span className="px-3 py-1.5 rounded-lg bg-rose-50 text-[#E00D42] font-bold border border-rose-200">
                             {disputes.filter((d) => d.status === 'pending_seller').length} Action Required
                         </span>
@@ -92,7 +92,7 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                                 <CheckCircle2 className="w-6 h-6" />
                             </div>
                             <h3 className="text-base font-bold text-slate-800">No active disputes or return claims</h3>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto font-mono">
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto font-sans">
                                 Your storefront has zero pending buyer returns, dispute claims, or defect escalations.
                             </p>
                         </div>
@@ -105,7 +105,7 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                                 className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5 font-sans"
                             >
                                 {/* Header Meta */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-mono text-xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-sans text-xs">
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold text-slate-900 text-sm">{item.id}</span>
                                         <span className="text-slate-400">•</span>
@@ -130,9 +130,9 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                                     {/* Left: Product & Buyer Complaint */}
                                     <div className="md:col-span-7 space-y-3">
                                         <div>
-                                            <span className="text-[10px] font-mono text-slate-400 uppercase">Item Claimed</span>
+                                            <span className="text-[10px] font-sans text-slate-400 uppercase">Item Claimed</span>
                                             <h4 className="font-bold text-slate-900 text-sm mt-0.5">{item.product_name}</h4>
-                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-mono mt-1">
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-sans mt-1">
                                                 <span>Buyer: {item.buyer_name}</span>
                                                 <span>•</span>
                                                 <span>{item.buyer_phone}</span>
@@ -141,13 +141,13 @@ export default function SellerDisputes({ disputes, shop }: Props) {
 
                                         <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                                             <span className="font-bold text-slate-800 block">Customer Reported Reason:</span>
-                                            <p className="text-[#E00D42] font-mono font-bold">{item.reason}</p>
+                                            <p className="text-[#E00D42] font-sans font-bold">{item.reason}</p>
                                             <p className="text-slate-600 pt-1 leading-relaxed">{item.buyer_description}</p>
                                         </div>
                                     </div>
 
                                     {/* Right: Photographic Evidence & Value */}
-                                    <div className="md:col-span-5 space-y-3 font-mono text-xs">
+                                    <div className="md:col-span-5 space-y-3 font-sans text-xs">
                                         <div>
                                             <span className="text-[10px] text-slate-400 uppercase block mb-1">Buyer Defect Photo</span>
                                             {item.proof_image && (
@@ -168,7 +168,7 @@ export default function SellerDisputes({ disputes, shop }: Props) {
                                 </div>
 
                                 {/* Action Toolbar */}
-                                <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+                                <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans text-xs">
                                     {isActioned ? (
                                         <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl font-bold flex items-center gap-2">
                                             <Check className="w-4 h-4 text-emerald-600" />

@@ -51,14 +51,14 @@ interface Banner {
     image: string;
     cta: string;
     badge: string;
-    bgGradient: string;
 }
+
+type BannerTextTone = 'light' | 'dark';
 
 interface QuickService {
     id: string;
     name: string;
     icon: string;
-    color: string;
     tag: string;
 }
 
@@ -119,6 +119,36 @@ export default function BuyerHome({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+    const [bannerTextTones, setBannerTextTones] = useState<Record<number, BannerTextTone>>({});
+
+    const detectBannerTextTone = (bannerId: number, image: HTMLImageElement) => {
+        try {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) return;
+
+            canvas.width = 32;
+            canvas.height = 18;
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            const pixels = context.getImageData(0, 0, Math.ceil(canvas.width * 0.65), canvas.height).data;
+            let luminanceTotal = 0;
+            let pixelCount = 0;
+
+            for (let index = 0; index < pixels.length; index += 4) {
+                luminanceTotal += (pixels[index] * 0.2126) + (pixels[index + 1] * 0.7152) + (pixels[index + 2] * 0.0722);
+                pixelCount += 1;
+            }
+
+            const averageLuminance = luminanceTotal / Math.max(pixelCount, 1);
+            setBannerTextTones((current) => ({
+                ...current,
+                [bannerId]: averageLuminance >= 145 ? 'dark' : 'light',
+            }));
+        } catch {
+            setBannerTextTones((current) => ({ ...current, [bannerId]: 'light' }));
+        }
+    };
 
     // Auto-advance hero carousel
     useEffect(() => {
@@ -230,6 +260,20 @@ export default function BuyerHome({
         }
     };
 
+    const getServiceIconColor = (serviceId: string) => {
+        switch (serviceId) {
+            case 'freeship': return 'bg-emerald-500';
+            case 'new': return 'bg-amber-500';
+            case 'mall': return 'bg-[#E00D42]';
+            case 'vouchers': return 'bg-purple-500';
+            case 'top': return 'bg-blue-500';
+            case 'global': return 'bg-cyan-500';
+            case 'cashback': return 'bg-rose-500';
+            case 'vip': return 'bg-yellow-500';
+            default: return 'bg-slate-700';
+        }
+    };
+
     const getCategoryIcon = (iconName?: string | null) => {
         switch (iconName?.toLowerCase()) {
             case 'laptop':
@@ -280,7 +324,7 @@ export default function BuyerHome({
 
                 {/* 1. ACTIVE ORDER TELEMETRY STRIP (IF BUYER HAS IN-TRANSIT PACKAGE) */}
                 {activeShipment && (
-                    <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md border border-slate-800 font-mono text-xs">
+                    <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md border border-slate-800 font-sans text-xs">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-lg bg-[#E00D42] text-white flex items-center justify-center shrink-0">
                                 <Truck className="w-5 h-5 animate-bounce" />
@@ -322,20 +366,27 @@ export default function BuyerHome({
                                 <img
                                     src={banner.image}
                                     alt={banner.title}
-                                    className="w-full h-full object-cover opacity-60"
+                                    crossOrigin="anonymous"
+                                    onLoad={(event) => detectBannerTextTone(banner.id, event.currentTarget)}
+                                    className="w-full h-full object-cover"
                                 />
-                                <div className={`absolute inset-0 bg-gradient-to-r ${banner.bgGradient} opacity-80 mix-blend-multiply`}></div>
 
                                 {/* Banner Text Content */}
-                                <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-between text-white z-20">
-                                    <div>
-                                        <span className="inline-block px-2.5 py-1 rounded bg-[#E00D42] text-white font-mono text-[10px] font-bold uppercase tracking-wider mb-2 shadow-xs">
+                                <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-between z-20">
+                                    <div className={`self-start max-w-xl rounded-md border p-4 sm:p-5 backdrop-blur-sm shadow-lg ${
+                                        bannerTextTones[banner.id] === 'dark'
+                                            ? 'bg-white/90 border-white text-slate-950'
+                                            : 'bg-slate-950/75 border-slate-700 text-white'
+                                    }`}>
+                                        <span className="inline-block px-2.5 py-1 rounded bg-[#E00D42] text-white font-sans text-[10px] font-bold uppercase tracking-wider mb-2 shadow-xs">
                                             {banner.badge}
                                         </span>
-                                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight max-w-xl">
+                                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight max-w-xl text-current">
                                             {banner.title}
                                         </h2>
-                                        <p className="text-xs sm:text-sm text-white/80 font-mono mt-1 uppercase">
+                                        <p className={`text-xs sm:text-sm font-sans mt-1 uppercase ${
+                                            bannerTextTones[banner.id] === 'dark' ? 'text-slate-700' : 'text-slate-200'
+                                        }`}>
                                             {banner.subtitle}
                                         </p>
                                     </div>
@@ -344,7 +395,7 @@ export default function BuyerHome({
                                         <button
                                             type="button"
                                             onClick={() => copyVoucherCode(banner.code)}
-                                            className="px-5 py-2.5 bg-white hover:bg-[#E00D42] text-slate-900 hover:text-white rounded-lg font-mono text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2"
+                                            className="px-5 py-2.5 bg-white hover:bg-[#E00D42] text-slate-900 hover:text-white rounded-lg font-sans text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2"
                                         >
                                             {copiedVoucher === banner.code ? (
                                                 <>
@@ -393,32 +444,32 @@ export default function BuyerHome({
 
                     {/* Right Secondary Promo Cards */}
                     <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-900 text-white flex flex-col justify-between shadow-md relative overflow-hidden h-[120px] sm:h-[165px]">
+                        <div className="p-4 rounded-lg bg-[#0F172A] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
                             <div>
-                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-black/30 px-2 py-0.5 rounded text-white/90">
+                                <span className="text-[10px] font-sans uppercase tracking-wider font-bold bg-[#E00D42] px-2 py-0.5 rounded-xs text-white">
                                     CURATED COLLECTION
                                 </span>
-                                <h3 className="text-base font-black tracking-tight mt-1">
+                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
                                     Verified Department Picks
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono">Handcrafted and authentic merchant items.</p>
+                                <p className="text-[11px] text-slate-300 font-sans">Handcrafted and authentic merchant items.</p>
                             </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1">
+                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-[#E00D42] transition">
                                 Explore Top Deals <ChevronRight className="w-3.5 h-3.5" />
                             </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-800 to-slate-950 text-white flex flex-col justify-between shadow-md relative overflow-hidden h-[120px] sm:h-[165px]">
+                        <div className="p-4 rounded-lg bg-[#111319] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
                             <div>
-                                <span className="text-[10px] font-mono uppercase tracking-wider font-bold bg-white/20 px-2 py-0.5 rounded text-white/90">
+                                <span className="text-[10px] font-sans uppercase tracking-wider font-bold bg-emerald-600 px-2 py-0.5 rounded-xs text-white">
                                     NEW BUYER PRIVILEGE
                                 </span>
-                                <h3 className="text-base font-black tracking-tight mt-1">
+                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
                                     Free Shipping ₱0 Min Spend
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono">Valid on your first 3 platform checkouts.</p>
+                                <p className="text-[11px] text-slate-300 font-sans">Valid on your first 3 platform checkouts.</p>
                             </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1">
+                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-emerald-400 transition">
                                 Claim Shipping Pass <ChevronRight className="w-3.5 h-3.5" />
                             </span>
                         </div>
@@ -426,7 +477,7 @@ export default function BuyerHome({
                 </div>
 
                 {/* 3. 8 QUICK-SERVICE ICON ACTIONS */}
-                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-xs border border-slate-100">
+                <div className="bg-white rounded-lg p-4 sm:p-6 shadow-xs border border-slate-200">
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 text-center">
                         {quickServices.map((service) => {
                             const IconComponent = getServiceIcon(service.icon);
@@ -436,13 +487,13 @@ export default function BuyerHome({
                                     onClick={() => handleTabChange(service.id === 'new' ? 'new_arrivals' : service.id === 'top' ? 'top_sales' : 'all')}
                                     className="flex flex-col items-center group focus:outline-hidden"
                                 >
-                                    <div className={`w-12 h-12 rounded-2xl ${service.color} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
+                                    <div className={`w-12 h-12 rounded-2xl ${getServiceIconColor(service.id)} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
                                         <IconComponent className="w-6 h-6" />
                                     </div>
                                     <span className="text-xs font-bold text-slate-800 mt-2 truncate w-full group-hover:text-[#E00D42] transition">
                                         {service.name}
                                     </span>
-                                    <span className="text-[10px] text-slate-400 font-mono">{service.tag}</span>
+                                    <span className="text-[10px] text-slate-400 font-sans">{service.tag}</span>
                                 </button>
                             );
                         })}
@@ -459,11 +510,11 @@ export default function BuyerHome({
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <Search className="w-4 h-4 text-[#E00D42]" />
-                                        <h3 className="font-black text-slate-900 text-sm sm:text-base font-mono">
+                                        <h3 className="font-black text-slate-900 text-sm sm:text-base font-sans">
                                             {filters.search ? `SEARCH RESULTS FOR "${filters.search.toUpperCase()}"` : 'FILTERED PRODUCTS'}
                                         </h3>
                                     </div>
-                                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                    <p className="text-xs text-slate-500 font-sans mt-0.5">
                                         Found <span className="font-bold text-[#E00D42]">{feedProducts.total}</span> products matching your criteria
                                     </p>
                                 </div>
@@ -471,7 +522,7 @@ export default function BuyerHome({
                                 <button
                                     type="button"
                                     onClick={clearAllFilters}
-                                    className="text-xs font-mono font-bold text-slate-600 hover:text-[#E00D42] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#E00D42]/40 transition w-fit"
+                                    className="text-xs font-sans font-bold text-slate-600 hover:text-[#E00D42] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#E00D42]/40 transition w-fit"
                                 >
                                     <RotateCcw className="w-3.5 h-3.5" />
                                     <span>Reset All Filters</span>
@@ -479,7 +530,7 @@ export default function BuyerHome({
                             </div>
 
                             {/* Active Filter Chips */}
-                            <div className="flex items-center gap-2 flex-wrap font-mono text-[11px]">
+                            <div className="flex items-center gap-2 flex-wrap font-sans text-[11px]">
                                 {filters.search && (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800">
                                         <span>Keyword: "{filters.search}"</span>
@@ -530,7 +581,7 @@ export default function BuyerHome({
 
                     {/* Section Header when browsing naturally */}
                     {!(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
-                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-slate-200/90 font-mono">
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-slate-200/90 font-sans">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
@@ -549,7 +600,7 @@ export default function BuyerHome({
                     )}
 
                     {/* Filter & Sort Controls Toolbar */}
-                    <div className="bg-white rounded-xl p-3 shadow-xs border border-slate-200/90 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-mono text-xs">
+                    <div className="bg-white rounded-xl p-3 shadow-xs border border-slate-200/90 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-sans text-xs">
                         
                         {/* Left: Feed Sort Tabs */}
                         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
@@ -603,7 +654,7 @@ export default function BuyerHome({
                                 <select
                                     value={filters.sort || 'relevance'}
                                     onChange={(e) => applyFilterChange({ sort: e.target.value })}
-                                    className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                    className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
                                 >
                                     <option value="relevance">Relevance</option>
                                     <option value="top_sales">Best Sellers</option>
@@ -632,7 +683,7 @@ export default function BuyerHome({
 
                     {/* Expandable Advanced Filters Box */}
                     {showFiltersPanel && (
-                        <div className="bg-white rounded-xl p-4 shadow-xs border border-slate-200 space-y-4 font-mono text-xs animate-scale-in">
+                        <div className="bg-white rounded-xl p-4 shadow-xs border border-slate-200 space-y-4 font-sans text-xs animate-scale-in">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                                 
                                 {/* 1. Category Dropdown */}
@@ -713,12 +764,12 @@ export default function BuyerHome({
                             <div className="bg-white rounded-2xl p-10 text-center space-y-3 border border-slate-100">
                                 <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                                 <h3 className="text-base font-bold text-slate-800">No products found matching your search</h3>
-                                <p className="text-xs text-slate-500 font-mono">
+                                <p className="text-xs text-slate-500 font-sans">
                                     Try adjusting your search query, checking for typos, or clearing active filters.
                                 </p>
                                 <button
                                     onClick={clearAllFilters}
-                                    className="mt-2 px-4 py-2 bg-[#E00D42] text-white rounded-lg text-xs font-mono font-bold uppercase hover:bg-[#C20836] transition"
+                                    className="mt-2 px-4 py-2 bg-[#E00D42] text-white rounded-lg text-xs font-sans font-bold uppercase hover:bg-[#C20836] transition"
                                 >
                                     Clear All Filters & Browse All
                                 </button>
@@ -727,7 +778,7 @@ export default function BuyerHome({
                             {/* Related / Recommended Fallback Products */}
                             {relatedProducts && relatedProducts.length > 0 && (
                                 <div className="space-y-3 pt-4">
-                                    <div className="flex items-center gap-2 font-mono">
+                                    <div className="flex items-center gap-2 font-sans">
                                         <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                         <h4 className="font-bold text-slate-900 text-sm uppercase">Recommended Products You Might Like</h4>
                                     </div>
@@ -757,7 +808,7 @@ export default function BuyerHome({
 
                     {/* Related Products Discovery Feed (when search query produced matches) */}
                     {filters.search && feedProducts.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
-                        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-mono">
+                        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-sans">
                             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                 <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                 <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
@@ -776,7 +827,7 @@ export default function BuyerHome({
 
                     {/* Pagination */}
                     {feedProducts.links && feedProducts.links.length > 3 && (
-                        <div className="mt-8 flex items-center justify-center gap-1 font-mono text-xs">
+                        <div className="mt-8 flex items-center justify-center gap-1 font-sans text-xs">
                             {feedProducts.links.map((link, idx) => (
                                 <Link
                                     key={idx}

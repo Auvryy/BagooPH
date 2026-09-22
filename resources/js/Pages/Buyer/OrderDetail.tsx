@@ -162,16 +162,16 @@ export default function BuyerOrderDetail({ order }: Props) {
         <BuyerLayout>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
 
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
                 
                 {/* Header & Back Link */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
-                    <div>
+                    <div className="min-w-0">
                         <Link href={route('buyer.orders.index')} className="text-xs text-slate-500 hover:text-[#E00D42] flex items-center gap-1.5 mb-1 font-semibold transition">
                             <ArrowLeft className="w-4 h-4" />
                             <span>Back to My Purchases</span>
                         </Link>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">
                             Order #{order.order_number}
                         </h1>
                         <p className="text-xs text-slate-500 font-sans mt-0.5">
@@ -179,7 +179,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3 font-sans text-xs">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 font-sans text-xs w-full sm:w-auto">
                         {order.status === 'delivered' && (
                             <button
                                 type="button"
@@ -188,7 +188,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                         router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true });
                                     }
                                 }}
-                                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
+                                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <CheckCircle2 className="w-4 h-4" />
                                 <span>Confirm Order Received</span>
@@ -198,7 +198,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                             <button
                                 type="button"
                                 onClick={() => setReviewModalOpen(true)}
-                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
+                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <Star className="w-4 h-4 fill-white" />
                                 <span>Rate & Upload Photos</span>
@@ -215,14 +215,14 @@ export default function BuyerOrderDetail({ order }: Props) {
 
                 {/* 1. 5-STEP DELIVERY MILESTONE TRACKER */}
                 <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-200 text-xs">
                         <div className="flex items-center gap-2">
                             <Truck className="w-4 h-4 text-[#E00D42]" />
                             <span className="font-bold text-slate-900 text-sm">Live Delivery Tracking Milestones</span>
                         </div>
 
                         {delivery && (
-                            <span className="text-[#E00D42] font-bold font-mono text-xs">
+                            <span className="text-[#E00D42] font-bold font-sans text-xs break-all">
                                 Tracking No: {delivery.tracking_number}
                             </span>
                         )}
@@ -348,16 +348,16 @@ export default function BuyerOrderDetail({ order }: Props) {
                     <div className="divide-y divide-slate-100 font-sans">
                         {order.items?.map((item) => (
                             <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
                                     <img
                                         src={item.product?.featured_image || ''}
                                         alt={item.product?.name}
                                         className="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                     />
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 min-w-0">
                                         <Link 
                                             href={route('buyer.products.show', item.product?.slug || '')}
-                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition"
+                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition break-words"
                                         >
                                             {item.product?.name}
                                         </Link>
@@ -394,7 +394,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                 {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
                 {reviewModalOpen && (
                     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
                                     <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
@@ -481,7 +481,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                         {data.images.length < 5 && (
                                             <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#E00D42] bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition text-slate-400 hover:text-[#E00D42]">
                                                 <Camera className="w-5 h-5 mb-0.5" />
-                                                <span className="text-[9px] font-mono font-bold uppercase">+ Add</span>
+                                                <span className="text-[9px] font-sans font-bold uppercase">+ Add</span>
                                                 <input
                                                     type="file"
                                                     accept="image/*"
@@ -495,7 +495,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                 </div>
 
                                 {recentlySuccessful && (
-                                    <p className="text-xs text-emerald-600 font-mono font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                                    <p className="text-xs text-emerald-600 font-sans font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
                                         <Check className="w-4 h-4" /> Review & photos submitted successfully!
                                     </p>
                                 )}
@@ -504,14 +504,14 @@ export default function BuyerOrderDetail({ order }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => setReviewModalOpen(false)}
-                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-mono uppercase"
+                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-sans uppercase"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-mono uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-sans uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
                                     >
                                         {processing ? 'Submitting...' : 'Post Verified Review'}
                                     </button>

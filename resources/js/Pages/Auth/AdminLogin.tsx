@@ -51,12 +51,12 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
             <Head title="Platform Governance Login — BagooPH" />
 
             {status && (
-                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-sans font-bold text-emerald-800">
                     {status}
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
+            <form onSubmit={submit} className="space-y-4 font-sans">
                 <div>
                     <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
                         Administrator Email Address
@@ -68,7 +68,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
                             placeholder="admin@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -100,7 +100,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -125,7 +125,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-[11px] text-slate-700 font-mono">Store admin session</span>
+                        <span className="text-[11px] text-slate-700 font-sans">Store admin session</span>
                     </label>
                 </div>
 
@@ -140,7 +140,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                     </button>
                 </div>
 
-                <div className="pt-4 border-t border-slate-200 text-center font-mono text-[11px]">
+                <div className="pt-4 border-t border-slate-200 text-center font-sans text-[11px]">
                     <span className="text-slate-500">Return to public store? </span>
                     <a href={getDomainUrl('buyer', '/login')} className="text-slate-900 font-bold hover:text-amber-700 underline">
                         Buyer Login

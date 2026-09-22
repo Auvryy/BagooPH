@@ -13,19 +13,18 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Plus Jakarta Sans"', 'Inter', ...defaultTheme.fontFamily.sans],
-                mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                sans: ['"Plus Jakarta Sans"', ...defaultTheme.fontFamily.sans],
             },
             borderRadius: {
                 none: '0px',
-                xs: '4px',
-                sm: '6px',
-                DEFAULT: '8px',
-                md: '10px',
-                lg: '12px',
-                xl: '14px',
-                '2xl': '18px',
-                '3xl': '24px',
+                xs: '2px',
+                sm: '2px',
+                DEFAULT: '2px',
+                md: '4px',
+                lg: '4px',
+                xl: '6px',
+                '2xl': '8px',
+                '3xl': '12px',
                 full: '9999px',
             },
             colors: {

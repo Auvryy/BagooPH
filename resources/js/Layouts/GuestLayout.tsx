@@ -30,10 +30,10 @@ interface Props {
 function AuthEcosystemFooter() {
     return (
         <footer className="bg-white border-t border-slate-300 text-slate-600 font-sans text-xs shrink-0">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 {/* Platform Directory */}
                 <div>
-                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
+                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-sans">
                         Platform Directory
                     </h5>
                     <ul className="space-y-2 text-slate-500">
@@ -62,7 +62,7 @@ function AuthEcosystemFooter() {
 
                 {/* Partner with Us */}
                 <div>
-                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
+                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-sans">
                         Partner with Us
                     </h5>
                     <ul className="space-y-2 text-slate-500">
@@ -101,10 +101,10 @@ function AuthEcosystemFooter() {
 
                 {/* Payment Modes */}
                 <div>
-                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
+                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-sans">
                         Payment Method
                     </h5>
-                    <div className="flex flex-wrap gap-1.5 text-xs font-medium font-mono">
+                    <div className="flex flex-wrap gap-1.5 text-xs font-medium font-sans">
                         <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700 font-bold">Cash on Delivery (COD)</span>
                     </div>
                     <p className="text-slate-400 text-xs mt-3 leading-relaxed">
@@ -114,7 +114,7 @@ function AuthEcosystemFooter() {
 
                 {/* Governance & Security */}
                 <div>
-                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-mono">
+                    <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs font-sans">
                         Governance & Security
                     </h5>
                     <ul className="space-y-2 text-slate-500">
@@ -133,7 +133,7 @@ function AuthEcosystemFooter() {
                 </div>
             </div>
 
-            <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-mono flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 gap-2">
+            <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-sans flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 gap-2">
                 <span>BagooPH // Next-Gen Multi-Role Commerce Ecosystem</span>
                 <span>&copy; {new Date().getFullYear()} BagooPH. All Rights Reserved.</span>
             </div>
@@ -167,7 +167,7 @@ export default function GuestLayout({
                 {/* 100vh Full Viewport Split-Screen Grid */}
                 <div className="min-h-[100vh] min-h-[100dvh] flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden">
                     {/* FORM COLUMN */}
-                    <div className={`col-span-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-white min-h-full ${
+                    <div className={`col-span-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-4 sm:p-10 lg:p-14 bg-white min-h-full ${
                         isFormLeft ? 'order-1' : 'order-1 lg:order-2'
                     }`}>
                         {/* Constrained container ensures brand header & form body share exact column bounds */}
@@ -176,7 +176,7 @@ export default function GuestLayout({
                             <div className="flex items-center justify-between pb-8 w-full">
                                 <Link href="/" className="group flex items-center gap-2.5">
                                     <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
-                                    <div className="flex items-center gap-1 font-mono text-sm tracking-tight">
+                                    <div className="flex items-center gap-1 font-sans text-sm tracking-tight">
                                         <span className="font-bold text-slate-900">Bagoo</span>
                                         <span className="text-[#E00D42] font-black">PH</span>
                                     </div>
@@ -185,7 +185,7 @@ export default function GuestLayout({
                                 {showMarketplaceLink && (
                                     <a 
                                         href={getDomainUrl('buyer', '/')} 
-                                        className="text-slate-500 hover:text-slate-900 font-mono text-xs transition underline-offset-4 hover:underline"
+                                        className="text-slate-500 hover:text-slate-900 font-sans text-xs transition underline-offset-4 hover:underline"
                                     >
                                         Marketplace →
                                     </a>
@@ -195,7 +195,7 @@ export default function GuestLayout({
                             {/* Form Body */}
                             <div className="my-auto py-6 w-full">
                                 {headerBadge && (
-                                    <span className="inline-block px-2.5 py-1 mb-3 rounded-xs bg-slate-100 text-slate-700 font-mono text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="inline-block px-2.5 py-1 mb-3 rounded-xs bg-slate-100 text-slate-700 font-sans text-[10px] font-bold uppercase tracking-wider">
                                         {headerBadge}
                                     </span>
                                 )}
@@ -229,7 +229,7 @@ export default function GuestLayout({
                             </div>
 
                             {/* Inner Column Sub-Footer */}
-                            <div className="pt-8 text-slate-400 font-mono text-[11px] flex items-center justify-between border-t border-slate-100 w-full">
+                            <div className="pt-8 text-slate-400 font-sans text-[11px] flex items-center justify-between border-t border-slate-100 w-full">
                                 <span>BagooPH // Secure Authentication</span>
                                 <span>&copy; {new Date().getFullYear()}</span>
                             </div>
@@ -243,7 +243,7 @@ export default function GuestLayout({
                             : 'order-2 lg:order-1 border-r border-slate-200'
                     }`}>
                         {/* Official Bagoo Floating Badge (Top Left) */}
-                        <div className="absolute top-8 left-8 z-10 flex items-center gap-2.5 bg-white border border-slate-300 px-3.5 py-2 rounded-xs shadow-xs font-mono text-xs">
+                        <div className="absolute top-8 left-8 z-10 flex items-center gap-2.5 bg-white border border-slate-300 px-3.5 py-2 rounded-xs shadow-xs font-sans text-xs">
                             <BagooLogo className="w-5 h-5" rounded="rounded-xs" />
                             <span className="font-bold text-slate-900">BagooPH</span>
                             <span className="text-slate-300">/</span>
@@ -257,7 +257,7 @@ export default function GuestLayout({
                             <div className="absolute top-8 right-8 z-10">
                                 <a
                                     href={alternatePortal.href}
-                                    className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 px-3.5 py-2 rounded-xs shadow-xs text-xs font-mono transition group"
+                                    className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 px-3.5 py-2 rounded-xs shadow-xs text-xs font-sans transition group"
                                 >
                                     {alternatePortal.subtext && (
                                         <span className="text-slate-500 text-[11px] hidden xl:inline">{alternatePortal.subtext}</span>
@@ -313,10 +313,10 @@ export default function GuestLayout({
     return (
         <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] font-sans selection:bg-[#E00D42] selection:text-white">
             <div className="min-h-[100vh] min-h-[100dvh] flex flex-col justify-between p-4 sm:p-6 lg:p-8 flex-1">
-                <header className="w-full max-w-6xl mx-auto flex items-center justify-between font-mono text-xs py-2">
+                <header className="w-full max-w-6xl mx-auto flex items-center justify-between font-sans text-xs py-2">
                     <Link href="/" className="group flex items-center gap-2.5">
                         <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
-                        <div className="flex items-center gap-1 font-mono text-sm tracking-tight">
+                        <div className="flex items-center gap-1 font-sans text-sm tracking-tight">
                             <span className="font-bold text-slate-900">Bagoo</span>
                             <span className="text-[#E00D42] font-black">PH</span>
                         </div>
@@ -325,7 +325,7 @@ export default function GuestLayout({
                     {showMarketplaceLink && (
                         <a 
                             href={getDomainUrl('buyer', '/')} 
-                            className="text-slate-500 hover:text-slate-900 transition font-mono text-xs underline-offset-4 hover:underline"
+                            className="text-slate-500 hover:text-slate-900 transition font-sans text-xs underline-offset-4 hover:underline"
                         >
                             Marketplace →
                         </a>
@@ -336,11 +336,11 @@ export default function GuestLayout({
                     {noCard ? (
                         children
                     ) : (
-                        <div className="bg-white rounded-xs border border-slate-300 shadow-xs p-6 sm:p-8">
+                        <div className="bg-white rounded-xs border border-slate-300 shadow-xs p-4 sm:p-8">
                             {(title || headerBadge) && (
                                 <div className="mb-6 pb-4 border-b border-slate-100">
                                     {headerBadge && (
-                                        <span className="inline-block px-2.5 py-1 mb-2 rounded-xs bg-slate-100 text-slate-700 font-mono text-[10px] font-bold uppercase tracking-wider">
+                                        <span className="inline-block px-2.5 py-1 mb-2 rounded-xs bg-slate-100 text-slate-700 font-sans text-[10px] font-bold uppercase tracking-wider">
                                             {headerBadge}
                                         </span>
                                     )}
@@ -362,7 +362,7 @@ export default function GuestLayout({
                     )}
                 </main>
 
-                <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-mono text-[10px] text-slate-400 py-3 border-t border-slate-200">
+                <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-[10px] text-slate-400 py-3 border-t border-slate-200">
                     <span>BAGOO SECURE GATEWAY // ENCRYPTED SESSION</span>
                     <span>METRO MANILA COD LOGISTICS // 10% FLAT PLATFORM STANDARD</span>
                 </div>

@@ -127,11 +127,11 @@ export default function SellerMessages({ conversations, shop }: Props) {
                     <div className="p-4 border-b border-slate-200 space-y-3 bg-white">
                         <div className="flex items-center justify-between">
                             <h3 className="font-bold text-sm text-slate-900">Conversations</h3>
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-sans text-[10px] font-bold">
                                 {conversations.length} Active
                             </span>
                         </div>
-                        <div className="relative font-mono text-xs">
+                        <div className="relative font-sans text-xs">
                             <input
                                 type="text"
                                 value={searchQuery}
@@ -145,7 +145,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
 
                     <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
                         {filteredConversations.length === 0 ? (
-                            <p className="text-xs text-slate-400 py-12 text-center font-mono">No conversations found.</p>
+                            <p className="text-xs text-slate-400 py-12 text-center font-sans">No conversations found.</p>
                         ) : (
                             filteredConversations.map((c) => {
                                 const isSelected = activeUser?.id === c.user?.id;
@@ -163,7 +163,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <h4 className="font-bold text-xs text-slate-900 truncate">{c.user?.name || 'Customer'}</h4>
-                                                <span className="text-[10px] font-mono text-slate-400">{c.last_time}</span>
+                                                <span className="text-[10px] font-sans text-slate-400">{c.last_time}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 truncate mt-0.5">{c.last_message}</p>
                                         </div>
@@ -186,7 +186,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-sm text-slate-900">{activeUser.name}</h3>
-                                    <p className="text-[10px] font-mono text-slate-400">Customer • {activeUser.city || 'Metro Manila'}</p>
+                                    <p className="text-[10px] font-sans text-slate-400">Customer • {activeUser.city || 'Metro Manila'}</p>
                                 </div>
                             </div>
                         </div>
@@ -224,7 +224,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                                         alt={msg.product.name}
                                                         className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
                                                     />
-                                                    <div className="min-w-0 flex-1 font-mono text-[11px]">
+                                                    <div className="min-w-0 flex-1 font-sans text-[11px]">
                                                         <div className="flex items-center gap-1">
                                                             <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E00D42] text-[8px] uppercase font-bold">
                                                                 Product Reference
@@ -242,7 +242,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
 
                                             <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                         </div>
-                                        <span className="text-[9px] font-mono text-slate-400 mt-1 px-1">
+                                        <span className="text-[9px] font-sans text-slate-400 mt-1 px-1">
                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
@@ -270,7 +270,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                         </form>
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-slate-400 font-mono text-xs">
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-slate-400 font-sans text-xs">
                         <MessageSquare className="w-12 h-12 text-slate-300 mb-2" />
                         <p className="font-bold text-slate-700 text-sm font-sans">No Conversation Selected</p>
                         <p className="text-slate-400">Choose a customer thread on the left to start messaging.</p>

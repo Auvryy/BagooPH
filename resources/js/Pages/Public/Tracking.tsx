@@ -174,13 +174,13 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                             <BagooLogo className="h-8 w-auto" />
                         </Link>
                         <span className="text-slate-300">|</span>
-                        <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-600 uppercase">
+                        <div className="flex items-center gap-1.5 text-xs font-sans font-bold tracking-wider text-slate-600 uppercase">
                             <Truck className="w-3.5 h-3.5 text-[#E00D42]" />
                             <span>Express Tracker</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-3 text-xs font-sans">
                         {user ? (
                             <Link
                                 href={route('dashboard')}
@@ -202,12 +202,12 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
 
                 {/* Search Bar Container */}
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-4">
                     <div className="space-y-1">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] text-[11px] font-mono font-bold uppercase tracking-wider">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] text-[11px] font-sans font-bold uppercase tracking-wider">
                             <QrCode className="w-3 h-3" />
                             <span>Universal Waybill & QR Code Tracking</span>
                         </div>
@@ -227,12 +227,12 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                 value={inputNumber}
                                 onChange={(e) => setInputNumber(e.target.value)}
                                 placeholder="Enter tracking code (e.g. BGO-TRK-749210 or order #)"
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] transition"
+                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 font-sans placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] transition"
                             />
                         </div>
                         <button
                             type="submit"
-                            className="w-full sm:w-auto px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-2xl text-xs font-mono font-bold uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+                            className="w-full sm:w-auto px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-2xl text-xs font-sans font-bold uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
                         >
                             <Search className="w-4 h-4" />
                             <span>Track Parcel</span>
@@ -249,7 +249,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                         <div className="space-y-1">
                             <h3 className="font-bold text-slate-900 text-base">Shipment Not Found</h3>
                             <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                We could not find any active shipment matching <strong className="font-mono text-slate-800">#{searchedNumber}</strong>. Please check the thermal waybill label or your order history receipt.
+                                We could not find any active shipment matching <strong className="font-sans text-slate-800">#{searchedNumber}</strong>. Please check the thermal waybill label or your order history receipt.
                             </p>
                         </div>
                     </div>
@@ -266,8 +266,8 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                                 <div>
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs text-slate-400 font-mono uppercase tracking-wider font-semibold">Waybill Code:</span>
-                                        <span className="font-mono font-black text-slate-900 text-base sm:text-lg">
+                                        <span className="text-xs text-slate-400 font-sans uppercase tracking-wider font-semibold">Waybill Code:</span>
+                                        <span className="font-sans font-black text-slate-900 text-base sm:text-lg">
                                             #{parcel.tracking_number}
                                         </span>
                                         <button
@@ -280,17 +280,17 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                         </button>
                                     </div>
                                     {parcel.order_number && (
-                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                        <p className="text-xs text-slate-500 font-sans mt-0.5">
                                             Associated Order: #{parcel.order_number}
                                         </p>
                                     )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-mono font-bold uppercase tracking-wider shadow-2xs">
+                                    <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-sans font-bold uppercase tracking-wider shadow-2xs">
                                         {parcel.status.replace(/_/g, ' ')}
                                     </span>
-                                    <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-xs font-mono font-bold">
+                                    <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-xs font-sans font-bold">
                                         {parcel.payment_method}
                                     </span>
                                 </div>
@@ -299,7 +299,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                             {/* 5-Milestone Lifecycle Progress Stepper */}
                             <div className="py-2">
                                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-2">
-                                    {steps.map((s) => {
+                                    {steps.map((s, idx) => {
                                         const isComplete = currentStep >= s.number;
                                         const isCurrent = currentStep === s.number;
 
@@ -307,13 +307,15 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                             <div
                                                 key={s.number}
                                                 className={`p-3 rounded-2xl border transition ${
+                                                    idx === steps.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+                                                } ${
                                                     isComplete
                                                         ? 'bg-rose-50/20 border-rose-200'
                                                         : 'bg-slate-50/60 border-slate-200 text-slate-400'
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between mb-1.5">
-                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-mono ${
+                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-sans ${
                                                         isComplete ? 'bg-[#E00D42] text-white' : 'bg-slate-200 text-slate-500'
                                                     }`}>
                                                         {isComplete ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.number}
@@ -325,7 +327,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                                 <h4 className={`font-bold text-xs ${isComplete ? 'text-slate-900' : 'text-slate-500'}`}>
                                                     {s.title}
                                                 </h4>
-                                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                                <p className="text-[10px] text-slate-400 font-sans mt-0.5">
                                                     {s.desc}
                                                 </p>
                                             </div>
@@ -337,7 +339,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                             {/* Key Delivery Specifications Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2 border-t border-slate-100 text-xs">
                                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                                    <div className="flex items-center gap-1.5 text-slate-400 font-mono font-bold text-[10px] uppercase">
+                                    <div className="flex items-center gap-1.5 text-slate-400 font-sans font-bold text-[10px] uppercase">
                                         <Clock className="w-3.5 h-3.5 text-[#E00D42]" />
                                         <span>Estimated Delivery</span>
                                     </div>
@@ -352,16 +354,16 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                 </div>
 
                                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                                    <div className="flex items-center gap-1.5 text-slate-400 font-mono font-bold text-[10px] uppercase">
+                                    <div className="flex items-center gap-1.5 text-slate-400 font-sans font-bold text-[10px] uppercase">
                                         <Truck className="w-3.5 h-3.5 text-[#E00D42]" />
                                         <span>Fulfillment Carrier</span>
                                     </div>
                                     <p className="font-bold text-slate-900 text-sm">{parcel.courier_name}</p>
-                                    <p className="text-[11px] text-slate-500 font-mono">{parcel.courier_vehicle}</p>
+                                    <p className="text-[11px] text-slate-500 font-sans">{parcel.courier_vehicle}</p>
                                 </div>
 
                                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                                    <div className="flex items-center gap-1.5 text-slate-400 font-mono font-bold text-[10px] uppercase">
+                                    <div className="flex items-center gap-1.5 text-slate-400 font-sans font-bold text-[10px] uppercase">
                                         <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
                                         <span>Destination Region</span>
                                     </div>
@@ -377,11 +379,11 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
                                     <div className="flex items-center gap-2">
                                         <ShieldCheck className="w-4 h-4 text-[#E00D42]" />
-                                        <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wider">
+                                        <h3 className="font-bold text-sm text-white font-sans uppercase tracking-wider">
                                             Role-Aware Handover Control
                                         </h3>
                                     </div>
-                                    <span className="text-[11px] text-slate-400 font-mono">
+                                    <span className="text-[11px] text-slate-400 font-sans">
                                         Logged in as: <strong className="text-white">{user?.name}</strong> ({user?.role})
                                     </span>
                                 </div>
@@ -400,7 +402,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                                 type="button"
                                                 disabled={isExecutingAction !== null}
                                                 onClick={() => handleAction(act.action)}
-                                                className="w-full py-2.5 px-4 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white text-xs font-mono font-bold uppercase rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 px-4 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white text-xs font-sans font-bold uppercase rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <span>Execute Transition</span>
                                                 <ArrowRight className="w-3.5 h-3.5" />
@@ -421,13 +423,13 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                         <Clock className="w-4 h-4 text-[#E00D42]" />
                                         <span>Checkpoints & Audit Logs</span>
                                     </div>
-                                    <span className="text-[11px] font-mono text-slate-400">
+                                    <span className="text-[11px] font-sans text-slate-400">
                                         {parcel.checkpoints.length} Checkpoint{parcel.checkpoints.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
 
                                 {parcel.checkpoints.length === 0 ? (
-                                    <div className="py-8 text-center text-xs font-mono text-slate-400">
+                                    <div className="py-8 text-center text-xs font-sans text-slate-400">
                                         Parcel initialized. Awaiting pickup dispatch scan.
                                     </div>
                                 ) : (
@@ -446,7 +448,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                                         <h4 className="font-bold text-slate-900">
                                                             {cp.checkpoint_type.replace(/_/g, ' ').toUpperCase()}
                                                         </h4>
-                                                        <span className="text-[11px] text-slate-400 font-mono">
+                                                        <span className="text-[11px] text-slate-400 font-sans">
                                                             {new Date(cp.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(cp.created_at).toLocaleDateString()}
                                                         </span>
                                                     </div>
@@ -475,7 +477,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                             <Package className="w-4 h-4 text-[#E00D42]" />
                                             <span>Package Manifest</span>
                                         </div>
-                                        <span className="text-xs font-mono text-slate-500">
+                                        <span className="text-xs font-sans text-slate-500">
                                             Qty: {parcel.items.reduce((sum, it) => sum + it.quantity, 0)}
                                         </span>
                                     </div>
@@ -493,11 +495,11 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                                         {item.product_name}
                                                     </h5>
                                                     {(item.color || item.size) && (
-                                                        <p className="text-[10px] text-slate-400 font-mono">
+                                                        <p className="text-[10px] text-slate-400 font-sans">
                                                             {[item.color, item.size].filter(Boolean).join(' / ')}
                                                         </p>
                                                     )}
-                                                    <p className="text-[11px] text-slate-500 font-mono">
+                                                    <p className="text-[11px] text-slate-500 font-sans">
                                                         Quantity: {item.quantity}
                                                         {item.unit_price !== null && item.unit_price !== undefined && (
                                                             <span> • {formatPrice(item.unit_price)} each</span>
@@ -509,7 +511,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                     </div>
 
                                     {parcel.total_amount > 0 && (
-                                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
+                                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-sans">
                                             <span className="text-slate-500">Total Order Valuation:</span>
                                             <span className="font-bold text-slate-900 font-sans text-sm">
                                                 {formatPrice(parcel.total_amount)}
@@ -523,9 +525,9 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                                         <div className="flex items-center gap-2">
                                             <QrCode className="w-4 h-4 text-[#E00D42]" />
-                                            <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">Digital Waybill Codes</span>
+                                            <span className="text-xs font-sans font-bold uppercase tracking-wider text-slate-900">Digital Waybill Codes</span>
                                         </div>
-                                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">Code 128 + QR</span>
+                                        <span className="text-[10px] font-sans font-bold px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">Code 128 + QR</span>
                                     </div>
                                     <div className="space-y-2">
                                         {/* 1D Laser Barcode */}
@@ -536,7 +538,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                                 width={1.5}
                                                 className="max-w-full h-8 object-contain"
                                             />
-                                            <p className="text-[11px] font-mono font-bold text-slate-800 tracking-wider">
+                                            <p className="text-[11px] font-sans font-bold text-slate-800 tracking-wider">
                                                 {parcel.tracking_number}
                                             </p>
                                         </div>
@@ -549,14 +551,14 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
                                             />
                                         </div>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 font-mono text-center">
+                                    <p className="text-[10px] text-slate-500 font-sans text-center">
                                         Scannable by optical warehouse laser guns and mobile camera apps.
                                     </p>
                                 </div>
 
                                 {/* Security & Trust Guarantee */}
                                 <div className="bg-emerald-50/40 border border-emerald-200/80 rounded-3xl p-5 space-y-2 text-xs">
-                                    <div className="flex items-center gap-2 text-emerald-800 font-bold font-mono">
+                                    <div className="flex items-center gap-2 text-emerald-800 font-bold font-sans">
                                         <ShieldCheck className="w-4 h-4 text-emerald-600" />
                                         <span>Bagoo Verified Parcel Guarantee</span>
                                     </div>
@@ -575,7 +577,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, availableAc
             </main>
 
             {/* Public Footer */}
-            <footer className="mt-auto bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-mono">
+            <footer className="mt-auto bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-sans">
                 <div className="max-w-7xl mx-auto px-4 space-y-1">
                     <p>Bagoo Express Logistics Network • The Artisan Marketplace of the Philippines</p>
                     <p className="text-[11px]">Customer Support: support@bagooph.shop • +63 2 8123 4567</p>

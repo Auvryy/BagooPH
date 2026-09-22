@@ -57,7 +57,6 @@ class BuyerHomeController extends Controller
                 'image' => 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1400&q=80',
                 'cta' => 'Claim Vouchers Now',
                 'badge' => 'PLATFORM MEGA EVENT',
-                'bgGradient' => 'from-[#E00D42] via-[#A80830] to-black',
             ],
             [
                 'id' => 2,
@@ -68,7 +67,6 @@ class BuyerHomeController extends Controller
                 'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=80',
                 'cta' => 'Shop Free Delivery',
                 'badge' => 'DOORSTEP GUARANTEE',
-                'bgGradient' => 'from-indigo-900 via-blue-900 to-black',
             ],
             [
                 'id' => 3,
@@ -79,20 +77,19 @@ class BuyerHomeController extends Controller
                 'image' => 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1400&q=80',
                 'cta' => 'Claim ₱200 Bonus',
                 'badge' => 'FIRST ORDER EXCLUSIVE',
-                'bgGradient' => 'from-amber-900 via-red-950 to-black',
             ],
         ];
 
         // 2. 8 Quick Service Icon Actions
         $quickServices = [
-            ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'color' => 'bg-emerald-500', 'tag' => '₱0 Min'],
-            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'color' => 'bg-amber-500', 'tag' => 'Just In'],
-            ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'color' => 'bg-[#E00D42]', 'tag' => '100% Authentic'],
-            ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'color' => 'bg-purple-500', 'tag' => 'Claim All'],
-            ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'color' => 'bg-blue-500', 'tag' => 'Best Seller'],
-            ['id' => 'global', 'name' => 'Global Finds', 'icon' => 'Globe', 'color' => 'bg-cyan-500', 'tag' => 'Direct Import'],
-            ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'color' => 'bg-rose-500', 'tag' => 'Coins Back'],
-            ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'color' => 'bg-yellow-500', 'tag' => 'Perks'],
+            ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'tag' => '₱0 Min'],
+            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'tag' => 'Just In'],
+            ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'tag' => '100% Authentic'],
+            ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'tag' => 'Claim All'],
+            ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'tag' => 'Best Seller'],
+            ['id' => 'global', 'name' => 'Global Finds', 'icon' => 'Globe', 'tag' => 'Direct Import'],
+            ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'tag' => 'Coins Back'],
+            ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'tag' => 'Perks'],
         ];
 
         // 4. 14 Verified Departments with Visual Data

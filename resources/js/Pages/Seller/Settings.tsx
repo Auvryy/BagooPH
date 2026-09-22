@@ -45,7 +45,7 @@ export default function SellerSettings({ shop }: Props) {
                     href={route('seller.preview')}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-mono rounded-xl border border-slate-200 transition shadow-2xs"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-sans rounded-xl border border-slate-200 transition shadow-2xs"
                 >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>View Storefront Preview</span>
@@ -57,7 +57,7 @@ export default function SellerSettings({ shop }: Props) {
             <div className="max-w-4xl space-y-6 font-sans">
                 
                 {/* Unified Settings Navigation Tabs */}
-                <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-mono text-xs">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-sans text-xs">
                     <Link
                         href={route('seller.settings')}
                         className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-slate-900 text-white shadow-xs"
@@ -75,7 +75,7 @@ export default function SellerSettings({ shop }: Props) {
                 </div>
                 
                 {/* Store Status Banner */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between font-mono text-xs">
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                             <ShieldCheck className="w-5 h-5" />
@@ -94,7 +94,7 @@ export default function SellerSettings({ shop }: Props) {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Storefront Brand Name:
                             </label>
                             <input
@@ -108,7 +108,7 @@ export default function SellerSettings({ shop }: Props) {
                         </div>
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Storefront Description & Brand Story:
                             </label>
                             <textarea
@@ -120,7 +120,7 @@ export default function SellerSettings({ shop }: Props) {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Merchant Hotline / Mobile:
                             </label>
                             <PhoneInput
@@ -134,7 +134,7 @@ export default function SellerSettings({ shop }: Props) {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Hub City / Region:
                             </label>
                             <input
@@ -147,7 +147,7 @@ export default function SellerSettings({ shop }: Props) {
                         </div>
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Courier Pickup Hub Address (Warehouse):
                             </label>
                             <input
@@ -157,11 +157,11 @@ export default function SellerSettings({ shop }: Props) {
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 required
                             />
-                            <p className="text-[10px] text-slate-500 font-mono mt-1">This address is automatically printed on courier thermal waybills for package collection.</p>
+                            <p className="text-[10px] text-slate-500 font-sans mt-1">This address is automatically printed on courier thermal waybills for package collection.</p>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Store Logo Image URL:
                             </label>
                             <input
@@ -174,7 +174,7 @@ export default function SellerSettings({ shop }: Props) {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1">
+                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Store Banner Cover URL:
                             </label>
                             <input
@@ -188,7 +188,7 @@ export default function SellerSettings({ shop }: Props) {
                     </div>
 
                     {recentlySuccessful && (
-                        <p className="text-xs text-emerald-700 font-mono font-bold flex items-center gap-1.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <p className="text-xs text-emerald-700 font-sans font-bold flex items-center gap-1.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                             <Check className="w-4 h-4" /> Storefront settings successfully saved!
                         </p>
                     )}
@@ -197,7 +197,7 @@ export default function SellerSettings({ shop }: Props) {
                         <button
                             type="submit"
                             disabled={processing}
-                            className="px-6 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-mono font-bold uppercase shadow-sm transition disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-sans font-bold uppercase shadow-sm transition disabled:opacity-50"
                         >
                             {processing ? 'Saving...' : 'Save Storefront Settings'}
                         </button>

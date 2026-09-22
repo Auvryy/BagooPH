@@ -240,7 +240,7 @@ export default function CourierRegister() {
 
             {/* Step Progress Indicators */}
             <div className="mb-6 pb-2 border-b border-slate-100">
-                <div className="flex items-center justify-between font-mono">
+                <div className="flex items-center justify-between font-sans">
                     {/* Step 1 */}
                     <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
@@ -304,7 +304,7 @@ export default function CourierRegister() {
                 {currentStep === 1 && (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Full Legal Name *
                             </label>
                             <div className="relative">
@@ -331,7 +331,7 @@ export default function CourierRegister() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Email Address *
                                 </label>
                                 <div className="relative">
@@ -418,7 +418,7 @@ export default function CourierRegister() {
                 {currentStep === 2 && (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Delivery Vehicle Type *
                             </label>
                             <div className="grid grid-cols-3 gap-2">
@@ -443,7 +443,7 @@ export default function CourierRegister() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                             <div>
                                 <div className="h-5 flex items-center mb-1">
-                                    <label htmlFor="plate_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                                    <label htmlFor="plate_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                                         Plate / MV File No. <span className="text-emerald-700">*</span>
                                     </label>
                                 </div>
@@ -454,7 +454,7 @@ export default function CourierRegister() {
                                         type="text"
                                         name="plate_number"
                                         value={data.plate_number}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-mono"
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-sans"
                                         placeholder="e.g. 123-ABC"
                                         onChange={(e) => {
                                             setData('plate_number', e.target.value.toUpperCase());
@@ -470,7 +470,7 @@ export default function CourierRegister() {
 
                             <div>
                                 <div className="h-5 flex items-center mb-1">
-                                    <label htmlFor="license_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                                    <label htmlFor="license_number" className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                                         Driver's License No. <span className="text-emerald-700">*</span>
                                     </label>
                                 </div>
@@ -481,7 +481,7 @@ export default function CourierRegister() {
                                         type="text"
                                         name="license_number"
                                         value={data.license_number}
-                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-mono"
+                                        className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-sans"
                                         placeholder="e.g. N01-12-345678"
                                         onChange={(e) => {
                                             setData('license_number', e.target.value.toUpperCase());
@@ -522,7 +522,7 @@ export default function CourierRegister() {
                     <div className="space-y-4">
                         {/* Valid Government ID */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Valid Government ID (Passport / UMID / Postal) *
                             </label>
                             <input
@@ -563,7 +563,7 @@ export default function CourierRegister() {
 
                         {/* Driver's License Document */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Professional / Non-Prof Driver's License *
                             </label>
                             <input
@@ -604,7 +604,7 @@ export default function CourierRegister() {
 
                         {/* Vehicle OR/CR Document */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Vehicle Registration (OR/CR) *
                             </label>
                             <input
@@ -646,7 +646,7 @@ export default function CourierRegister() {
                         {/* Password & Confirm Password */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Password *
                                 </label>
                                 <div className="relative">
@@ -675,7 +675,7 @@ export default function CourierRegister() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Confirm Password *
                                 </label>
                                 <div className="relative">

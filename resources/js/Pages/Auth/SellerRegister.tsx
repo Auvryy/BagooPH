@@ -205,7 +205,7 @@ export default function SellerRegister() {
 
             {/* Step Progress Indicators */}
             <div className="mb-6 pb-2 border-b border-slate-100">
-                <div className="flex items-center justify-between font-mono">
+                <div className="flex items-center justify-between font-sans">
                     {/* Step 1 */}
                     <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
@@ -269,7 +269,7 @@ export default function SellerRegister() {
                 {currentStep === 1 && (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Store / Brand Name *
                             </label>
                             <div className="relative">
@@ -295,7 +295,7 @@ export default function SellerRegister() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Merchant Contact Name *
                             </label>
                             <div className="relative">
@@ -320,7 +320,7 @@ export default function SellerRegister() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Merchant Login Email *
                             </label>
                             <div className="relative">
@@ -437,7 +437,7 @@ export default function SellerRegister() {
                     <div className="space-y-4">
                         {/* 1. Business Permit / DTI Upload */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Business Permit / DTI / Student ID *
                             </label>
                             <input
@@ -478,7 +478,7 @@ export default function SellerRegister() {
 
                         {/* 2. Valid Government ID Upload */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Valid Government / Student ID *
                             </label>
                             <input
@@ -520,7 +520,7 @@ export default function SellerRegister() {
                         {/* Password & Confirm Password */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Password *
                                 </label>
                                 <div className="relative">
@@ -549,7 +549,7 @@ export default function SellerRegister() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Confirm Password *
                                 </label>
                                 <div className="relative">

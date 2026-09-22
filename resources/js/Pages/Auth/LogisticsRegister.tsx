@@ -255,7 +255,7 @@ export default function LogisticsRegister() {
 
             {/* Step Progress Indicators */}
             <div className="mb-6 pb-2 border-b border-slate-100">
-                <div className="flex items-center justify-between font-mono">
+                <div className="flex items-center justify-between font-sans">
                     {/* Step 1 */}
                     <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
@@ -339,7 +339,7 @@ export default function LogisticsRegister() {
                         {/* Company Name & Code */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="sm:col-span-2 space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Company / Fleet Name <span className="text-[#E00D42]">*</span>
                                 </label>
                                 <div className="relative">
@@ -360,7 +360,7 @@ export default function LogisticsRegister() {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Code (Acronym)
                                 </label>
                                 <div className="relative">
@@ -373,7 +373,7 @@ export default function LogisticsRegister() {
                                         value={data.company_code}
                                         onChange={e => setData('company_code', e.target.value.toUpperCase())}
                                         placeholder="TFX"
-                                        className="w-full pl-9 pr-3 py-2 text-sm font-mono uppercase bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
+                                        className="w-full pl-9 pr-3 py-2 text-sm font-sans uppercase bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
                                 {errors.company_code && (
@@ -384,7 +384,7 @@ export default function LogisticsRegister() {
 
                         {/* Authorised Representative Name */}
                         <div className="space-y-1">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                 Authorised Officer / Lead Representative <span className="text-[#E00D42]">*</span>
                             </label>
                             <div className="relative">
@@ -407,7 +407,7 @@ export default function LogisticsRegister() {
                         {/* Email & Phone */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Corporate Email <span className="text-[#E00D42]">*</span>
                                 </label>
                                 <div className="relative">
@@ -428,7 +428,7 @@ export default function LogisticsRegister() {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Dispatch Phone <span className="text-[#E00D42]">*</span>
                                 </label>
                                 <PhoneInput
@@ -445,7 +445,7 @@ export default function LogisticsRegister() {
                         {/* Password & Confirmation */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Account Password <span className="text-[#E00D42]">*</span>
                                 </label>
                                 <div className="relative">
@@ -473,7 +473,7 @@ export default function LogisticsRegister() {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Confirm Password <span className="text-[#E00D42]">*</span>
                                 </label>
                                 <div className="relative">
@@ -529,7 +529,7 @@ export default function LogisticsRegister() {
 
                         {/* LTFRB Franchise # */}
                         <div className="space-y-1">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                 LTFRB Franchise / CPC Accreditation Number <span className="text-[#E00D42]">*</span>
                             </label>
                             <div className="relative">
@@ -541,7 +541,7 @@ export default function LogisticsRegister() {
                                     value={data.franchise_number}
                                     onChange={e => setData('franchise_number', e.target.value)}
                                     placeholder="e.g. LTFRB-2026-TFX-4412"
-                                    className="w-full pl-9 pr-3 py-2 text-sm font-mono bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
+                                    className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                 />
                             </div>
                             {(stepErrors.franchise_number || errors.franchise_number) && (
@@ -552,7 +552,7 @@ export default function LogisticsRegister() {
                         {/* Fleet Size & Primary Operating Province */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Declared Active Fleet Units
                                 </label>
                                 <div className="relative">
@@ -565,13 +565,13 @@ export default function LogisticsRegister() {
                                         max={10000}
                                         value={data.fleet_size}
                                         onChange={e => setData('fleet_size', parseInt(e.target.value) || 1)}
-                                        className="w-full pl-9 pr-3 py-2 text-sm font-mono bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
+                                        className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                     Primary Operating Region
                                 </label>
                                 <div className="relative">
@@ -597,7 +597,7 @@ export default function LogisticsRegister() {
 
                         {/* Vehicle Categories Checkboxes */}
                         <div className="space-y-2">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                 Operating Vehicle Tiers <span className="text-[#E00D42]">*</span>
                             </label>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -617,7 +617,7 @@ export default function LogisticsRegister() {
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold leading-tight">Tier 1: Last-Mile</p>
-                                        <p className="text-[10px] opacity-75 font-mono">Motorcycle</p>
+                                        <p className="text-[10px] opacity-75 font-sans">Motorcycle</p>
                                     </div>
                                 </button>
 
@@ -637,7 +637,7 @@ export default function LogisticsRegister() {
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold leading-tight">Tier 2: Feeder</p>
-                                        <p className="text-[10px] opacity-75 font-mono">L300 / Urvan</p>
+                                        <p className="text-[10px] opacity-75 font-sans">L300 / Urvan</p>
                                     </div>
                                 </button>
 
@@ -657,7 +657,7 @@ export default function LogisticsRegister() {
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold leading-tight">Tier 3: Line-Haul</p>
-                                        <p className="text-[10px] opacity-75 font-mono">10W Wing Van</p>
+                                        <p className="text-[10px] opacity-75 font-sans">10W Wing Van</p>
                                     </div>
                                 </button>
                             </div>
@@ -731,7 +731,7 @@ export default function LogisticsRegister() {
 
                         {/* Document Upload 1: DTI / SEC Business Permit */}
                         <div className="space-y-1">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                 DTI / SEC Registration or Mayor's Business Permit <span className="text-[#E00D42]">*</span>
                             </label>
                             <div className="border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:bg-slate-50 transition">
@@ -748,7 +748,7 @@ export default function LogisticsRegister() {
                                             <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
                                             <div className="min-w-0">
                                                 <p className="text-xs font-semibold text-slate-800 truncate">{permitFileName}</p>
-                                                <p className="text-[10px] text-slate-400 font-mono">{permitFileSize}</p>
+                                                <p className="text-[10px] text-slate-400 font-sans">{permitFileSize}</p>
                                             </div>
                                         </div>
                                         <button
@@ -766,7 +766,7 @@ export default function LogisticsRegister() {
                                     >
                                         <Upload className="w-5 h-5 mx-auto text-slate-400 mb-1" />
                                         <p className="text-xs font-semibold text-slate-700">Click to upload permit document</p>
-                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">PDF, PNG, or JPG (max 5MB)</p>
+                                        <p className="text-[10px] text-slate-400 font-sans mt-0.5">PDF, PNG, or JPG (max 5MB)</p>
                                     </div>
                                 )}
                             </div>
@@ -777,7 +777,7 @@ export default function LogisticsRegister() {
 
                         {/* Document Upload 2: LTFRB Franchise Document (Optional / Recommended) */}
                         <div className="space-y-1">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
                                 LTFRB Franchise / CPC Certification Certificate (Optional)
                             </label>
                             <div className="border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:bg-slate-50 transition">
@@ -794,7 +794,7 @@ export default function LogisticsRegister() {
                                             <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
                                             <div className="min-w-0">
                                                 <p className="text-xs font-semibold text-slate-800 truncate">{franchiseFileName}</p>
-                                                <p className="text-[10px] text-slate-400 font-mono">{franchiseFileSize}</p>
+                                                <p className="text-[10px] text-slate-400 font-sans">{franchiseFileSize}</p>
                                             </div>
                                         </div>
                                         <button
@@ -812,7 +812,7 @@ export default function LogisticsRegister() {
                                     >
                                         <Upload className="w-5 h-5 mx-auto text-slate-400 mb-1" />
                                         <p className="text-xs font-semibold text-slate-700">Click to upload LTFRB Certificate</p>
-                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">PDF, PNG, or JPG (max 5MB)</p>
+                                        <p className="text-[10px] text-slate-400 font-sans mt-0.5">PDF, PNG, or JPG (max 5MB)</p>
                                     </div>
                                 )}
                             </div>

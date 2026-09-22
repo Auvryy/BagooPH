@@ -197,7 +197,7 @@ export default function PhilippineAddressSelector({
                 {/* Province Dropdown */}
                 <div>
                     <div className="h-5 flex items-center mb-1">
-                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                             Province / Region {required && <span className="text-[#E00D42]">*</span>}
                         </label>
                     </div>
@@ -229,11 +229,11 @@ export default function PhilippineAddressSelector({
                 {/* City / Municipality Dropdown */}
                 <div>
                     <div className="h-5 flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                             City / Municipality {required && <span className="text-[#E00D42]">*</span>}
                         </label>
                         {loadingCities && (
-                            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 font-sans flex items-center gap-1">
                                 <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
                                 Loading
                             </span>
@@ -276,11 +276,11 @@ export default function PhilippineAddressSelector({
                 {/* Barangay Dropdown */}
                 <div className={showStreetAddress ? 'sm:col-span-5' : 'sm:col-span-12'}>
                     <div className="h-5 flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                        <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                             Barangay {required && <span className="text-[#E00D42]">*</span>}
                         </label>
                         {loadingBarangays && (
-                            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 font-sans flex items-center gap-1">
                                 <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
                                 Loading
                             </span>
@@ -335,7 +335,7 @@ export default function PhilippineAddressSelector({
                 {showStreetAddress && (
                     <div className="sm:col-span-7">
                         <div className="h-5 flex items-center mb-1">
-                            <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate">
+                            <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                                 {streetLabel} {required && <span className="text-[#E00D42]">*</span>}
                             </label>
                         </div>

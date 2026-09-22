@@ -210,7 +210,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                 {/* 1. TOP BUYER TELEMETRY & BANNER */}
                 <div className="border-b border-black/15 bg-[#F3F0EA] relative z-20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] font-mono">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] font-sans">
                             {/* Left: Active Voucher Incentive */}
                             <div className="flex items-center gap-2 text-black/80">
                                 <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
@@ -238,7 +238,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                                     <Truck className="w-5 h-5 animate-bounce" />
                                 </div>
                                 <div className="space-y-0.5">
-                                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-white/60">
+                                    <div className="flex items-center gap-2 font-sans text-[10px] uppercase text-white/60">
                                         <span>LIVE SHIPMENT TELEMETRY</span>
                                         <span>•</span>
                                         <span className="text-emerald-400 font-bold">STATUS: {activeShipment.status.replace('_', ' ').toUpperCase()}</span>
@@ -247,7 +247,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                                         <span>Order #{activeShipment.order_number}</span>
                                         <span className="text-white/40 font-normal">— {activeShipment.item_name} {activeShipment.item_count > 1 ? `(+${activeShipment.item_count - 1} more)` : ''}</span>
                                     </h3>
-                                    <p className="font-mono text-[11px] text-white/70">
+                                    <p className="font-sans text-[11px] text-white/70">
                                         Tracking: <span className="text-[#E00D42] font-bold">{activeShipment.tracking_number}</span> ({activeShipment.courier_name}) • Est. Delivery: <strong className="text-white">{activeShipment.estimated_delivery}</strong>
                                     </p>
                                 </div>
@@ -255,7 +255,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
                             <Link
                                 href={route('orders.show', activeShipment.order_id)}
-                                className="px-4 py-2 bg-white hover:bg-[#E00D42] text-black hover:text-white rounded-lg font-mono text-xs font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-2"
+                                className="px-4 py-2 bg-white hover:bg-[#E00D42] text-black hover:text-white rounded-lg font-sans text-xs font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-2"
                             >
                                 <span>Track Delivery</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
@@ -265,7 +265,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
                     {/* 3. HERO HEADER SECTION */}
                     <div className="mb-8 border-b border-black/15 pb-6">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 font-mono">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 font-sans">
                             <div>
                                 <span className="inline-block px-2.5 py-0.5 mb-2 rounded bg-black text-white text-[10px] font-bold uppercase tracking-widest">
                                     BUYER PORTAL // VERIFIED DIRECTORY
@@ -273,7 +273,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-black font-sans">
                                     PRODUCT CATALOG
                                 </h1>
-                                <p className="text-xs text-black/60 font-mono mt-1 uppercase max-w-2xl">
+                                <p className="text-xs text-black/60 font-sans mt-1 uppercase max-w-2xl">
                                     14 OFFICIAL DEPARTMENTS • 100% REGULATED INVENTORY • LIVE DOORSTEP TELEMETRY
                                 </p>
                             </div>
@@ -287,12 +287,12 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
                     {/* 4. 14 VERIFIED PRODUCT DEPARTMENTS SELECTOR */}
                     <div className="mb-8">
-                        <div className="flex items-center justify-between mb-3 font-mono text-xs font-bold uppercase text-black/70">
+                        <div className="flex items-center justify-between mb-3 font-sans text-xs font-bold uppercase text-black/70">
                             <span>Browse by Department</span>
                             <span className="text-[10px] text-black/40">14 Verified Categories</span>
                         </div>
 
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none font-mono text-xs">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none font-sans text-xs">
                             {/* All Departments Button */}
                             <button
                                 type="button"
@@ -344,7 +344,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                     </div>
 
                     {/* 5. SEARCH & CONTROL TOOLBAR */}
-                    <div className="mb-8 bg-white p-3.5 rounded-xl border border-black/15 shadow-sm font-mono text-xs">
+                    <div className="mb-8 bg-white p-3.5 rounded-xl border border-black/15 shadow-sm font-sans text-xs">
                         <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
                             
                             {/* Search Input */}
@@ -441,7 +441,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
                     {/* 6. PRODUCT GRID */}
                     {products.data.length === 0 ? (
-                        <div className="bg-white rounded-2xl border border-black/15 p-12 text-center space-y-4 max-w-lg mx-auto font-mono">
+                        <div className="bg-white rounded-2xl border border-black/15 p-12 text-center space-y-4 max-w-lg mx-auto font-sans">
                             <ShoppingBag className="w-12 h-12 text-black/20 mx-auto" />
                             <h3 className="text-lg font-bold text-black font-sans">No matching products found</h3>
                             <p className="text-xs text-black/60 uppercase">Try adjusting your keyword search, selecting a different department, or resetting active filters.</p>
@@ -467,7 +467,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
 
                     {/* 7. PAGINATION LINKS */}
                     {products.links && products.links.length > 3 && (
-                        <div className="mt-12 flex items-center justify-center gap-1 font-mono text-xs">
+                        <div className="mt-12 flex items-center justify-center gap-1 font-sans text-xs">
                             {products.links.map((link, idx) => (
                                 <Link
                                     key={idx}

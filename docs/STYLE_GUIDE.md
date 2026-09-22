@@ -124,8 +124,8 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ## 5. Typography & Spacing System
 
-- **Primary Typeface:** `'Plus Jakarta Sans', 'Inter', system-ui, sans-serif`
-- **Monospace Data Font:** `'JetBrains Mono', 'Fira Code', monospace` (used for prices `₱`, order IDs `BGO-1234`, telemetry gauges, and badges).
+- **Single Typeface:** `'Plus Jakarta Sans', system-ui, sans-serif` across all pages, portals, components, charts, emails, prices, order IDs, telemetry, and badges.
+- **Forbidden Alternatives:** Do not use `font-mono`, JetBrains Mono, Inter, monospace, or another display/body font.
 - **Body Rhythm:** `letter-spacing: -0.008em; line-height: 1.55;`
 - **Heading Rhythm:** `letter-spacing: -0.018em; font-weight: 800 or 900;`
 - **Spacious Layouts:** Maintain clean, breathable white space (`gap-4` to `gap-6`, `p-5` to `p-8`). Never crowd buttons or stack text tightly.
@@ -136,7 +136,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ### Primary Action Button (2px Radius):
 ```tsx
-<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-xs shadow-xs transition duration-150 uppercase tracking-wider">
+<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition duration-150 uppercase tracking-wider">
     <Plus className="w-3.5 h-3.5" />
     <span>New Listing</span>
 </button>
@@ -144,7 +144,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ### Secondary / Outline Button (2px Radius):
 ```tsx
-<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold font-mono rounded-xs transition duration-150">
+<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold font-sans rounded-xs transition duration-150">
     <Filter className="w-3.5 h-3.5 text-slate-500" />
     <span>Filters</span>
 </button>
@@ -155,7 +155,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 <div className="bg-white border border-slate-300 rounded-md shadow-xs p-5 hover:border-slate-400 transition-colors">
     <div className="flex items-center justify-between pb-3 border-b border-slate-200">
         <h3 className="text-sm font-black text-slate-900 tracking-tight">Active Deliveries</h3>
-        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xs text-[10px] font-bold font-mono uppercase">
+        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xs text-[10px] font-bold font-sans uppercase">
             Live
         </span>
     </div>
@@ -167,7 +167,7 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ### Status Badge (2px Radius):
 ```tsx
-<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[10px] font-bold font-mono uppercase bg-slate-100 text-slate-700 border border-slate-300">
+<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[10px] font-bold font-sans uppercase bg-slate-100 text-slate-700 border border-slate-300">
     Processing
 </span>
 ```

@@ -63,17 +63,17 @@ export default function CourierProfile({ user, isOnline, fleetData }: Props) {
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-xl sm:text-2xl font-black">{user.name}</h1>
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-sans text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
                                     <ShieldCheck className="w-3 h-3" /> VERIFIED RIDER
                                 </span>
                             </div>
-                            <p className="text-xs text-slate-400 font-mono mt-1">
+                            <p className="text-xs text-slate-400 font-sans mt-1">
                                 {user.email} • {user.phone || '+63 9XX XXX XXXX'}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 font-mono text-xs z-10">
+                    <div className="flex items-center gap-3 font-sans text-xs z-10">
                         <button
                             type="button"
                             onClick={handleToggleDuty}
@@ -95,12 +95,12 @@ export default function CourierProfile({ user, isOnline, fleetData }: Props) {
                     
                     {/* Vehicle & Verification Card */}
                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 font-mono text-xs">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 font-sans text-xs">
                             <Truck className="w-4 h-4 text-[#E00D42]" />
                             <h3 className="font-bold text-slate-900 text-sm uppercase">Registered Fleet Vehicle</h3>
                         </div>
 
-                        <div className="space-y-3 font-mono text-xs">
+                        <div className="space-y-3 font-sans text-xs">
                             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-slate-500">Vehicle Type:</span>
                                 <span className="font-bold text-slate-900">{fleetData.vehicle_type}</span>
@@ -126,12 +126,12 @@ export default function CourierProfile({ user, isOnline, fleetData }: Props) {
 
                     {/* Rider Performance & Service Territory */}
                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 font-mono text-xs">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 font-sans text-xs">
                             <Award className="w-4 h-4 text-amber-500" />
                             <h3 className="font-bold text-slate-900 text-sm uppercase">Performance & Territory</h3>
                         </div>
 
-                        <div className="space-y-3 font-mono text-xs">
+                        <div className="space-y-3 font-sans text-xs">
                             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-slate-500">Service Territory Zone:</span>
                                 <span className="font-bold text-slate-900">{fleetData.zone}</span>

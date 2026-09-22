@@ -118,7 +118,7 @@ export default function PhoneInput({
                 <div className="h-5 flex items-center mb-1">
                     <label
                         htmlFor={id}
-                        className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono truncate"
+                        className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate"
                     >
                         {label} {required && <span className="text-[#E00D42]">*</span>}
                     </label>
@@ -131,7 +131,7 @@ export default function PhoneInput({
                 }`}
             >
                 {/* Fixed +63 Prefix Badge */}
-                <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 rounded-l-lg text-xs font-mono font-bold text-slate-700 select-none shrink-0">
+                <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 rounded-l-lg text-xs font-sans font-bold text-slate-700 select-none shrink-0">
                     <span className="text-slate-400 font-normal">PH</span>
                     <span className="text-slate-300">|</span>
                     <span className="text-slate-900">+63</span>
@@ -152,13 +152,13 @@ export default function PhoneInput({
                         autoFocus={autoFocus}
                         placeholder={placeholder}
                         maxLength={12} // 10 digits + 2 space separators
-                        className="w-full pl-3 pr-3.5 py-2.5 text-sm bg-transparent border-0 outline-hidden font-mono text-slate-900 placeholder-slate-400 tracking-wider focus:ring-0"
+                        className="w-full pl-3 pr-3.5 py-2.5 text-sm bg-transparent border-0 outline-hidden font-sans text-slate-900 placeholder-slate-400 tracking-wider focus:ring-0"
                     />
                 </div>
             </div>
 
             {helperText && !error && (
-                <p className="text-[11px] text-slate-500 mt-1 font-mono">{helperText}</p>
+                <p className="text-[11px] text-slate-500 mt-1 font-sans">{helperText}</p>
             )}
 
             {error && <InputError message={error} className="mt-1" />}

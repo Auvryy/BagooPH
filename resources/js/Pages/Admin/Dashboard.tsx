@@ -129,7 +129,7 @@ export default function AdminDashboard({ stats, recentOrders, recentUsers }: Pro
                             {recentOrders.map((order) => (
                                 <div key={order.id} className="pt-3 first:pt-0 flex items-center justify-between text-xs">
                                     <div>
-                                        <p className="font-mono font-bold text-slate-900">#{order.order_number}</p>
+                                        <p className="font-sans font-bold text-slate-900">#{order.order_number}</p>
                                         <p className="text-slate-400">
                                             Buyer: {order.buyer?.name} • Courier: {order.delivery?.courier?.name || 'Unassigned'}
                                         </p>

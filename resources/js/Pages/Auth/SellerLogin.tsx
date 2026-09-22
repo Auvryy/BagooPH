@@ -67,14 +67,14 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
             <Head title="Seller Centre Sign In — BagooPH" />
 
             {status && (
-                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-sans font-bold text-emerald-800">
                     {status}
                 </div>
             )}
 
             <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                         Merchant Email *
                     </label>
                     <div className="relative">
@@ -97,7 +97,7 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans">
                             Password *
                         </label>
                         {canResetPassword && (

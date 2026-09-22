@@ -116,21 +116,21 @@ export default function SearchPage({
             <div className="space-y-6">
                 
                 {/* 1. BREADCRUMBS & TOP TITLE */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs pb-2 border-b border-slate-200">
-                    <div className="flex items-center gap-2 text-slate-500">
-                        <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition">Marketplace</Link>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans text-xs pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-2 text-slate-500 min-w-0 overflow-hidden">
+                        <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition shrink-0">Marketplace</Link>
                         <span>/</span>
-                        <Link href={route('buyer.search')} className="hover:text-[#E00D42] transition">Search Catalog</Link>
+                        <Link href={route('buyer.search')} className="hover:text-[#E00D42] transition shrink-0">Search</Link>
                         {filters.search && (
                             <>
                                 <span>/</span>
-                                <span className="font-bold text-slate-900 truncate max-w-[200px]">"{filters.search}"</span>
+                                <span className="font-bold text-slate-900 truncate min-w-0">"{filters.search}"</span>
                             </>
                         )}
                         {activeCategory && (
                             <>
                                 <span>/</span>
-                                <span className="font-bold text-[#E00D42]">{activeCategory.name}</span>
+                                <span className="font-bold text-[#E00D42] truncate min-w-0">{activeCategory.name}</span>
                             </>
                         )}
                     </div>
@@ -144,7 +144,7 @@ export default function SearchPage({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
                     {/* LEFT SIDEBAR FILTERS (DESKTOP) */}
-                    <aside className="hidden lg:block lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-6 sticky top-24 font-mono text-xs">
+                    <aside className="hidden lg:block lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-6 sticky top-24 font-sans text-xs">
                         
                         {/* Filter Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -190,7 +190,7 @@ export default function SearchPage({
                                         }`}
                                     >
                                         <span className="truncate">{cat.name}</span>
-                                        <span className="text-[10px] opacity-75 font-mono">({cat.products_count ?? 0})</span>
+                                        <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
                                     </button>
                                 ))}
                             </div>
@@ -299,7 +299,7 @@ export default function SearchPage({
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                     </div>
-                                    <span className="font-mono text-[11px]">& up</span>
+                                    <span className="font-sans text-[11px]">& up</span>
                                 </button>
                                 <button
                                     type="button"
@@ -315,7 +315,7 @@ export default function SearchPage({
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                     </div>
-                                    <span className="font-mono text-[11px]">4.5+ Stars</span>
+                                    <span className="font-sans text-[11px]">4.5+ Stars</span>
                                 </button>
                             </div>
                         </div>
@@ -326,7 +326,7 @@ export default function SearchPage({
                     <div className="lg:col-span-9 space-y-4">
                         
                         {/* SEARCH CONTROLS HEADER BAR */}
-                        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-mono text-xs">
+                        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans text-xs">
                             
                             {/* Search Keyword Headline */}
                             <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function SearchPage({
                                     <select
                                         value={filters.sort || 'relevance'}
                                         onChange={(e) => applyFilter({ sort: e.target.value })}
-                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
                                     >
                                         <option value="relevance">Relevance</option>
                                         <option value="top_sales">Best Sellers</option>
@@ -373,7 +373,7 @@ export default function SearchPage({
 
                         {/* ACTIVE FILTER PILLS (Removable) */}
                         {(filters.search || filters.category || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
-                            <div className="flex items-center gap-2 flex-wrap font-mono text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                            <div className="flex items-center gap-2 flex-wrap font-sans text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                                 <span className="font-bold text-slate-400 text-[10px] uppercase">Active:</span>
 
                                 {filters.search && (
@@ -436,12 +436,12 @@ export default function SearchPage({
                                 <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                     <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                                     <h3 className="text-base font-bold text-slate-800 font-sans">No products matched your search</h3>
-                                    <p className="text-xs text-slate-500 font-mono max-w-md mx-auto">
+                                    <p className="text-xs text-slate-500 font-sans max-w-md mx-auto">
                                         We couldn't find exact matches for your filters. Try checking spelling, using more general keywords, or resetting your filters.
                                     </p>
                                     <button
                                         onClick={clearAllFilters}
-                                        className="mt-2 px-5 py-2.5 bg-[#E00D42] text-white rounded-lg text-xs font-mono font-bold uppercase hover:bg-[#C20836] transition shadow-xs"
+                                        className="mt-2 px-5 py-2.5 bg-[#E00D42] text-white rounded-lg text-xs font-sans font-bold uppercase hover:bg-[#C20836] transition shadow-xs"
                                     >
                                         Clear All Filters
                                     </button>
@@ -450,7 +450,7 @@ export default function SearchPage({
                                 {/* Smart Fallback Recommendations */}
                                 {relatedProducts && relatedProducts.length > 0 && (
                                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                                        <div className="flex items-center gap-2 font-mono pb-2 border-b border-slate-100">
+                                        <div className="flex items-center gap-2 font-sans pb-2 border-b border-slate-100">
                                             <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Trending Products You Might Like</h4>
                                         </div>
@@ -480,7 +480,7 @@ export default function SearchPage({
 
                         {/* RELATED PRODUCTS RECOMMENDATION FEED */}
                         {products.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
-                            <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-mono">
+                            <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-sans">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                     <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                     <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
@@ -499,7 +499,7 @@ export default function SearchPage({
 
                         {/* PAGINATION */}
                         {products.links && products.links.length > 3 && (
-                            <div className="mt-8 flex items-center justify-center gap-1 font-mono text-xs">
+                            <div className="mt-8 flex items-center justify-center gap-1 font-sans text-xs">
                                 {products.links.map((link, idx) => (
                                     <Link
                                         key={idx}
@@ -517,10 +517,192 @@ export default function SearchPage({
                                 ))}
                             </div>
                         )}
-
                     </div>
-
                 </div>
+
+                {/* MOBILE SLIDE-OVER FILTER DRAWER */}
+                {mobileFilterOpen && (
+                    <div className="fixed inset-0 z-50 lg:hidden flex">
+                        {/* Backdrop */}
+                        <div 
+                            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+                            onClick={() => setMobileFilterOpen(false)}
+                        />
+
+                        {/* Slide-in Panel */}
+                        <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl flex flex-col z-10 font-sans text-xs overflow-hidden animate-slide-in-right">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm uppercase">
+                                    <Filter className="w-4 h-4 text-[#E00D42]" />
+                                    <span>Filter Catalog</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileFilterOpen(false)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-200 transition"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Scrollable Filter Options */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                                {/* 1. Department */}
+                                <div className="space-y-2">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Department</h4>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ category: undefined }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                                !filters.category || filters.category === 'all'
+                                                    ? 'bg-[#E00D42] text-white font-bold'
+                                                    : 'text-slate-700 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>All Departments</span>
+                                            <span className="text-[10px] opacity-80">{categories.reduce((acc, c) => acc + (c.products_count || 0), 0)}</span>
+                                        </button>
+                                        {categories.map((cat) => (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => { applyFilter({ category: cat.slug }); setMobileFilterOpen(false); }}
+                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                                    filters.category === cat.slug
+                                                        ? 'bg-[#E00D42] text-white font-bold'
+                                                        : 'text-slate-700 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <span className="truncate">{cat.name}</span>
+                                                <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 2. Price Range */}
+                                <div className="space-y-2.5 pt-4 border-t border-slate-100">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Price Range (₱)</h4>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(undefined, 500); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            Under ₱500
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(500, 1500); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱500 - ₱1.5k
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(1500, 5000); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱1.5k - ₱5k
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handlePricePreset(5000, undefined); setMobileFilterOpen(false); }}
+                                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center text-[10px] text-slate-700 transition"
+                                        >
+                                            ₱5k & above
+                                        </button>
+                                    </div>
+                                    <form onSubmit={(e) => { handlePriceSubmit(e); setMobileFilterOpen(false); }} className="space-y-2 pt-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <input
+                                                type="number"
+                                                placeholder="Min ₱"
+                                                value={minPrice}
+                                                onChange={(e) => setMinPrice(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                            />
+                                            <span className="text-slate-400">-</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Max ₱"
+                                                value={maxPrice}
+                                                onChange={(e) => setMaxPrice(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-lg font-bold uppercase transition text-[11px]"
+                                        >
+                                            Apply Price Filter
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* 3. Availability & Rating */}
+                                <div className="space-y-3 pt-4 border-t border-slate-100">
+                                    <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Availability & Rating</h4>
+                                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(filters.in_stock)}
+                                            onChange={(e) => { applyFilter({ in_stock: e.target.checked ? true : undefined }); setMobileFilterOpen(false); }}
+                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span className="text-slate-700 font-sans text-xs">In Stock Only</span>
+                                    </label>
+                                    <div className="space-y-1 pt-1 font-sans text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ rating: undefined }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-1.5 ${
+                                                !filters.rating ? 'bg-slate-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>All Ratings</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { applyFilter({ rating: '4' }); setMobileFilterOpen(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-1.5 ${
+                                                filters.rating === '4' ? 'bg-slate-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="flex text-amber-400">
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                            </div>
+                                            <span className="font-sans text-[11px]">& up</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Reset / Close */}
+                            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { clearAllFilters(); setMobileFilterOpen(false); }}
+                                    className="flex-1 py-2 px-3 rounded-lg border border-slate-300 text-slate-700 font-bold text-center text-xs hover:bg-white transition"
+                                >
+                                    Reset All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileFilterOpen(false)}
+                                    className="flex-1 py-2 px-3 rounded-lg bg-[#E00D42] text-white font-bold text-center text-xs hover:bg-[#C20836] transition shadow-xs"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </BuyerLayout>
