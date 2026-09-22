@@ -227,7 +227,7 @@ export default function OtpModal({
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-[#E00D42] mb-1 shadow-2xs">
                         <ShieldCheck className="w-6 h-6" />
                     </div>
-                    <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono font-bold uppercase tracking-wider block mx-auto">
+                    <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-sans font-bold uppercase tracking-wider block mx-auto">
                         Bagoo Identity Verification
                     </div>
                     <h2 className="text-xl font-black text-slate-900 tracking-tight">
@@ -235,20 +235,20 @@ export default function OtpModal({
                     </h2>
                     <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
                         We sent a single-use verification code to{' '}
-                        <strong className="font-mono text-slate-900 font-semibold">{email}</strong>
+                        <strong className="font-sans text-slate-900 font-semibold">{email}</strong>
                     </p>
                 </div>
 
                 {/* Status / Error Alerts */}
                 {error && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-mono text-rose-800 flex items-start gap-2.5 animate-shake">
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-sans text-rose-800 flex items-start gap-2.5 animate-shake">
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                         <span className="leading-snug">{error}</span>
                     </div>
                 )}
 
                 {successMsg && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-mono text-emerald-800 flex items-start gap-2.5">
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-sans text-emerald-800 flex items-start gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <span className="leading-snug">{successMsg}</span>
                     </div>
@@ -269,7 +269,7 @@ export default function OtpModal({
                                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(idx, e)}
                                 disabled={isVerifying}
-                                className={`w-11 sm:w-13 h-14 sm:h-16 text-center text-xl sm:text-2xl font-black font-mono rounded-2xl border transition focus:outline-none focus:ring-2 ${
+                                className={`w-11 sm:w-13 h-14 sm:h-16 text-center text-xl sm:text-2xl font-black font-sans rounded-2xl border transition focus:outline-none focus:ring-2 ${
                                     digit
                                         ? 'bg-slate-50 border-[#E00D42] text-slate-900 focus:ring-[#E00D42]/20'
                                         : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400 focus:border-[#E00D42] focus:ring-[#E00D42]/20'
@@ -278,7 +278,7 @@ export default function OtpModal({
                         ))}
                     </div>
 
-                    <p className="text-[11px] text-slate-400 text-center font-mono">
+                    <p className="text-[11px] text-slate-400 text-center font-sans">
                         Valid for 10 minutes • Do not share this code
                     </p>
                 </div>
@@ -289,7 +289,7 @@ export default function OtpModal({
                         type="button"
                         onClick={() => submitVerification()}
                         disabled={isVerifying || digits.some((d) => d === '')}
-                        className="w-full py-3.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-2xl font-mono text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full py-3.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-2xl font-sans text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         {isVerifying ? (
                             <>
@@ -311,12 +311,12 @@ export default function OtpModal({
                                 type="button"
                                 onClick={sendOtpCode}
                                 disabled={isSending}
-                                className="text-xs font-mono font-bold text-slate-700 hover:text-[#E00D42] underline underline-offset-4 transition cursor-pointer"
+                                className="text-xs font-sans font-bold text-slate-700 hover:text-[#E00D42] underline underline-offset-4 transition cursor-pointer"
                             >
                                 {isSending ? 'Sending new code...' : 'Resend Verification Code'}
                             </button>
                         ) : (
-                            <p className="text-xs font-mono text-slate-400 flex items-center justify-center gap-1.5">
+                            <p className="text-xs font-sans text-slate-400 flex items-center justify-center gap-1.5">
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>Resend code in {cooldown}s</span>
                             </p>

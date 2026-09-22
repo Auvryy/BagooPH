@@ -90,7 +90,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
             actions={
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-lg shadow-xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-xs transition uppercase tracking-wider"
                 >
                     <Building2 className="w-3.5 h-3.5" />
                     <span>Station Scanner</span>
@@ -105,17 +105,17 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Total Facilities</span>
                                 <Building2 className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {hubs.length} <span className="text-sm font-bold text-slate-500">stations</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Network Tier:</span>
                             <span className="font-bold text-slate-800">
                                 {motherHubs.length} Mother • {bayanHubs.length} Bayan
@@ -125,17 +125,17 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Pickup Counters</span>
                                 <Store className="w-4 h-4 text-emerald-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {bayanHubs.filter((h) => h.allows_self_pickup).length} <span className="text-sm font-bold text-slate-500">counters</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Customer Pickup:</span>
                             <span className="font-bold text-emerald-600">₱0.00 Free Counter Ready</span>
                         </div>
@@ -143,17 +143,17 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Network Capacity</span>
                                 <Layers className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {hubs.reduce((acc, h) => acc + h.capacity, 0).toLocaleString()} <span className="text-sm font-bold text-slate-500">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Active Corridor:</span>
                             <span className="font-bold text-slate-800">SLEX / Laguna Route</span>
                         </div>
@@ -161,7 +161,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Active Station</span>
                                 <span className="inline-flex items-center gap-1 text-[#E00D42] text-[10px] font-bold bg-[#FDF2F4] px-1.5 py-0.5 rounded border border-[#FCE7EA]">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span> Operating
@@ -173,7 +173,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Station Code:</span>
                             <span className="font-bold text-[#E00D42]">{activeHub?.code || 'STATION-01'}</span>
                         </div>
@@ -181,7 +181,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                 </div>
 
                 {/* 2. SEARCH & FILTER CONTROLS */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 font-mono">
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 font-sans">
                     <div className="relative w-full sm:w-80">
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
@@ -189,11 +189,11 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search station name, code, or town..."
-                            className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </div>
 
-                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-mono text-xs w-full sm:w-auto justify-center">
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-sans text-xs w-full sm:w-auto justify-center">
                         <button
                             type="button"
                             onClick={() => setFilterTier('all')}
@@ -260,7 +260,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded uppercase tracking-wider ${
+                                            <span className={`text-[10px] font-bold font-sans px-2 py-0.5 rounded uppercase tracking-wider ${
                                                 hub.tier === 'regional_mother_hub'
                                                     ? 'bg-slate-900 text-white'
                                                     : 'bg-slate-100 text-slate-700 border border-slate-200'
@@ -269,11 +269,11 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                             </span>
 
                                             {isCurrent ? (
-                                                <span className="inline-flex items-center gap-1 font-bold text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                <span className="inline-flex items-center gap-1 font-bold text-[10px] font-sans text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                                     <Check className="w-3 h-3 text-emerald-600" /> Active
                                                 </span>
                                             ) : (
-                                                <span className="text-xs font-mono font-bold text-slate-400 group-hover:text-slate-700 transition">
+                                                <span className="text-xs font-sans font-bold text-slate-400 group-hover:text-slate-700 transition">
                                                     {hub.code}
                                                 </span>
                                             )}
@@ -292,7 +292,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                     </div>
 
                                     {/* Bento Inner Metric Block */}
-                                    <div className="mt-4 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-2.5 font-mono text-xs">
+                                    <div className="mt-4 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-2.5 font-sans text-xs">
                                         <div className="flex items-center justify-between text-[11px] text-slate-600">
                                             <span className="text-slate-400 font-bold uppercase tracking-tight text-[10px]">Throughput Load</span>
                                             <span className="font-bold text-slate-900">
@@ -311,22 +311,22 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         <div className="grid grid-cols-3 gap-1 pt-1 text-center divide-x divide-slate-200 text-[10px]">
                                             <div>
                                                 <span className="text-slate-400 block">Fleet</span>
-                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.fleet_count} units</span>
+                                                <span className="font-bold text-slate-800 font-sans mt-0.5 block">{hub.fleet_count} units</span>
                                             </div>
                                             <div className="pl-1">
                                                 <span className="text-slate-400 block">Staff</span>
-                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.handlers_count} staff</span>
+                                                <span className="font-bold text-slate-800 font-sans mt-0.5 block">{hub.handlers_count} staff</span>
                                             </div>
                                             <div className="pl-1">
                                                 <span className="text-slate-400 block">Coverage</span>
-                                                <span className="font-bold text-slate-800 font-mono mt-0.5 block">{hub.coverage_barangays?.length || 0} brgys</span>
+                                                <span className="font-bold text-slate-800 font-sans mt-0.5 block">{hub.coverage_barangays?.length || 0} brgys</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Card Footer */}
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
+                                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-sans">
                                     <div>
                                         {hub.allows_self_pickup ? (
                                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
@@ -368,7 +368,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                         
                         {/* Drawer Header */}
                         <div className="p-6 bg-slate-900 text-white shrink-0">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-800 font-mono">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-800 font-sans">
                                 <div className="flex items-center gap-2">
                                     <span className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold uppercase tracking-wider">
                                         {selectedHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
@@ -393,13 +393,13 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                 <h2 className="text-xl font-black text-white tracking-tight">
                                     {selectedHub.name}
                                 </h2>
-                                <p className="text-xs text-slate-400 font-mono mt-1">
+                                <p className="text-xs text-slate-400 font-sans mt-1">
                                     {selectedHub.company_name}
                                 </p>
                             </div>
 
                             {/* Active Status & Switcher CTA */}
-                            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between font-mono">
+                            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between font-sans">
                                 {activeHub?.id === selectedHub.id ? (
                                     <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                                         <Check className="w-4 h-4" />
@@ -409,7 +409,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchHub(selectedHub.id)}
-                                        className="w-full py-2.5 px-4 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-lg transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                        className="w-full py-2.5 px-4 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-lg transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                         <Building2 className="w-3.5 h-3.5" />
                                         <span>Set as Active Operating Workstation</span>
@@ -423,10 +423,10 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             
                             {/* Operational Health & Metrics */}
                             <div className="space-y-3">
-                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans">
                                     Operational Health & Capacity
                                 </h4>
-                                <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+                                <div className="grid grid-cols-2 gap-3 font-sans text-xs">
                                     <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                                         <span className="text-[10px] text-slate-500 block uppercase font-bold">Utilization</span>
                                         <span className="text-xl font-black text-slate-900 mt-0.5 block">{selectedHub.utilization}%</span>
@@ -438,7 +438,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                         <span className="text-[10px] text-slate-400">staging limit</span>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs font-mono">
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs font-sans">
                                     <span className="text-slate-600">Self-Pickup Counter:</span>
                                     <span className={`font-bold ${selectedHub.allows_self_pickup ? 'text-emerald-600' : 'text-slate-400'}`}>
                                         {selectedHub.allows_self_pickup ? '₱0.00 Free Counter Ready' : 'Disabled (Line-Haul Only)'}
@@ -447,7 +447,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Physical Location & GPS Coordinates */}
-                            <div className="pt-5 space-y-2.5 font-mono text-xs">
+                            <div className="pt-5 space-y-2.5 font-sans text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Physical Address & GPS Pin
                                 </h4>
@@ -468,7 +468,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Assigned Fleet & Station Handlers */}
-                            <div className="pt-5 space-y-2.5 font-mono text-xs">
+                            <div className="pt-5 space-y-2.5 font-sans text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Station Personnel & Vehicle Fleet
                                 </h4>
@@ -495,7 +495,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Full Service Coverage Barangays */}
-                            <div className="pt-5 space-y-3 font-mono text-xs">
+                            <div className="pt-5 space-y-3 font-sans text-xs">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                         Service Coverage ({selectedHub.coverage_barangays?.length || 0} Barangays)
@@ -511,7 +511,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                                             value={coverageSearch}
                                             onChange={(e) => setCoverageSearch(e.target.value)}
                                             placeholder="Search barangay..."
-                                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-lg text-[11px] font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42]"
+                                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-lg text-[11px] font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42]"
                                         />
                                     </div>
                                 )}
@@ -534,7 +534,7 @@ export default function HubNetwork({ activeHub, hubs }: Props) {
                             </div>
 
                             {/* Direct Workstation Shortcuts */}
-                            <div className="pt-5 space-y-2 font-mono text-xs">
+                            <div className="pt-5 space-y-2 font-sans text-xs">
                                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                     Workstation Shortcuts
                                 </h4>

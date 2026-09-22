@@ -101,7 +101,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
             <div className="space-y-6 font-sans">
                 
                 {/* 1. RIDER TELEMETRY COCKPIT METRICS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
                     
                     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
@@ -150,7 +150,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                 </div>
 
                 {/* 2. TAB TOGGLE: ACTIVE ROUTE VS AVAILABLE JOBS BROADCAST */}
-                <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex items-center justify-between font-mono text-xs">
+                <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setActiveTab('my')}
@@ -189,12 +189,12 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                             <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                 <Package className="w-12 h-12 text-slate-300 mx-auto" />
                                 <h3 className="text-base font-bold text-slate-800">No active assigned deliveries</h3>
-                                <p className="text-xs text-slate-500 font-mono">
+                                <p className="text-xs text-slate-500 font-sans">
                                     Switch to the "Available Jobs Board" tab to claim ready packages from nearby Bagoo Mall merchants.
                                 </p>
                                 <button
                                     onClick={() => setActiveTab('pool')}
-                                    className="px-4 py-2 bg-[#E00D42] text-white rounded-xl text-xs font-mono font-bold uppercase"
+                                    className="px-4 py-2 bg-[#E00D42] text-white rounded-xl text-xs font-sans font-bold uppercase"
                                 >
                                     Browse Available Jobs ({availableJobs.length})
                                 </button>
@@ -210,7 +210,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                         }`}
                                     >
                                         {/* Header Bar */}
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-mono text-xs">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-sans text-xs">
                                             <div className="flex items-center gap-3">
                                                 <span className="font-bold text-slate-900 text-sm">#{delivery.tracking_number}</span>
                                                 <span className="text-slate-400">•</span>
@@ -236,19 +236,19 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                             
                                             {/* Pickup Store (Origin) */}
                                             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                                                <div className="flex items-center justify-between font-mono text-xs">
+                                                <div className="flex items-center justify-between font-sans text-xs">
                                                     <span className="text-[10px] text-amber-600 font-bold uppercase flex items-center gap-1">
                                                         <Store className="w-3.5 h-3.5" /> 1. Merchant Store Pickup
                                                     </span>
                                                     <span className="text-slate-400 text-[10px]">Origin</span>
                                                 </div>
                                                 <h4 className="font-bold text-slate-900 text-sm">{delivery.pickup_store_name || 'Bagoo Merchant Flagship'}</h4>
-                                                <p className="text-xs text-slate-600 font-mono flex items-start gap-1.5">
+                                                <p className="text-xs text-slate-600 font-sans flex items-start gap-1.5">
                                                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                                                     <span>{delivery.pickup_address}</span>
                                                 </p>
                                                 {delivery.pickup_phone && (
-                                                    <p className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                                                    <p className="text-xs text-slate-500 font-sans flex items-center gap-1.5">
                                                         <Phone className="w-3.5 h-3.5 text-slate-400" />
                                                         <span>{delivery.pickup_phone}</span>
                                                     </p>
@@ -257,7 +257,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                             {/* Delivery Destination */}
                                             <div className="p-4 rounded-xl bg-rose-50/40 border border-rose-200/60 space-y-2">
-                                                <div className="flex items-center justify-between font-mono text-xs">
+                                                <div className="flex items-center justify-between font-sans text-xs">
                                                     <span className="text-[10px] text-[#E00D42] font-bold uppercase flex items-center gap-1">
                                                         <MapPin className="w-3.5 h-3.5" /> 2. Buyer Doorstep Drop-off
                                                     </span>
@@ -266,11 +266,11 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                                     </span>
                                                 </div>
                                                 <h4 className="font-bold text-slate-900 text-sm">{delivery.delivery_recipient_name}</h4>
-                                                <p className="text-xs text-slate-600 font-mono flex items-start gap-1.5">
+                                                <p className="text-xs text-slate-600 font-sans flex items-start gap-1.5">
                                                     <MapPin className="w-3.5 h-3.5 text-[#E00D42] shrink-0 mt-0.5" />
                                                     <span>{delivery.delivery_address}</span>
                                                 </p>
-                                                <p className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                                                <p className="text-xs text-slate-500 font-sans flex items-center gap-1.5">
                                                     <Phone className="w-3.5 h-3.5 text-slate-400" />
                                                     <span>{delivery.delivery_phone}</span>
                                                 </p>
@@ -279,7 +279,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                         </div>
 
                                         {/* Action Progression Controls */}
-                                        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+                                        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans text-xs">
                                             <div className="flex items-center gap-2">
                                                 <Link
                                                     href={route('courier.messages')}
@@ -362,7 +362,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                             <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                                 <h3 className="text-base font-bold text-slate-800">All available jobs are currently assigned!</h3>
-                                <p className="text-xs text-slate-500 font-mono">
+                                <p className="text-xs text-slate-500 font-sans">
                                     Standing by for new orders marked "Ready for Pickup" by Bagoo merchants.
                                 </p>
                             </div>
@@ -372,7 +372,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                     key={job.id}
                                     className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-slate-300 shadow-xs transition space-y-4"
                                 >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 font-mono text-xs">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 font-sans text-xs">
                                         <div className="flex items-center gap-3">
                                             <span className="font-bold text-slate-900 text-sm">#{job.tracking_number}</span>
                                             <span className="text-slate-400">•</span>
@@ -390,18 +390,18 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
                                         <div>
-                                            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">Merchant Store (Pickup)</span>
+                                            <span className="text-[10px] font-sans text-slate-400 uppercase font-bold block mb-1">Merchant Store (Pickup)</span>
                                             <h4 className="font-bold text-slate-900">{job.pickup_store_name || 'Bagoo Merchant Store'}</h4>
-                                            <p className="text-slate-600 font-mono mt-0.5">{job.pickup_address}</p>
+                                            <p className="text-slate-600 font-sans mt-0.5">{job.pickup_address}</p>
                                         </div>
                                         <div>
-                                            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">Buyer Destination (Drop-off)</span>
+                                            <span className="text-[10px] font-sans text-slate-400 uppercase font-bold block mb-1">Buyer Destination (Drop-off)</span>
                                             <h4 className="font-bold text-slate-900">{job.delivery_recipient_name}</h4>
-                                            <p className="text-slate-600 font-mono mt-0.5">{job.delivery_address}</p>
+                                            <p className="text-slate-600 font-sans mt-0.5">{job.delivery_address}</p>
                                         </div>
                                     </div>
 
-                                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between font-mono text-xs">
+                                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between font-sans text-xs">
                                         <div className="text-slate-500 text-[11px]">
                                             Package Items: <strong className="text-slate-900">{job.order?.items?.length || 1} unit(s)</strong>
                                         </div>
@@ -426,7 +426,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                 {statusModalOpen && selectedDelivery && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
                                 <h3 className="font-bold text-slate-900 text-sm uppercase">
                                     Update Task #{selectedDelivery.tracking_number}
                                 </h3>
@@ -439,7 +439,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                             </div>
 
                             <form onSubmit={submitStatusUpdate} className="space-y-4 text-xs">
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono space-y-1">
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-sans space-y-1">
                                     <span className="text-[10px] text-slate-400 uppercase">Target Status</span>
                                     <h4 className="font-bold text-slate-900 uppercase text-sm text-[#E00D42]">
                                         {nextStatus.replace('_', ' ')}
@@ -448,12 +448,12 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                 {nextStatus === 'delivered' && (
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                        <label className="block font-bold text-slate-700 mb-1 font-sans">
                                             Drop-off Proof Photo (Required for Settlement)
                                         </label>
                                         <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 relative group">
                                             <img src={proofImage} alt="Drop-off Proof" className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white font-mono text-[10px] font-bold">
+                                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white font-sans text-[10px] font-bold">
                                                 Photo Captured with GPS Metadata
                                             </div>
                                         </div>
@@ -462,7 +462,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                 {(nextStatus === 'failed' || nextStatus === 'delivery_failed') && (
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                        <label className="block font-bold text-slate-700 mb-1 font-sans">
                                             Delivery Failure Reason (Required)
                                         </label>
                                         <select
@@ -481,7 +481,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                 )}
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">
                                         Rider Operational Notes (Optional)
                                     </label>
                                     <textarea
@@ -497,14 +497,14 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                     <button
                                         type="button"
                                         onClick={() => setStatusModalOpen(false)}
-                                        className="px-4 py-2 rounded-xl border border-slate-200 font-mono font-bold text-slate-600"
+                                        className="px-4 py-2 rounded-xl border border-slate-200 font-sans font-bold text-slate-600"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={actionLoading}
-                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-mono font-bold uppercase transition shadow-xs"
+                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase transition shadow-xs"
                                     >
                                         {actionLoading ? 'Saving...' : 'Confirm Step'}
                                     </button>

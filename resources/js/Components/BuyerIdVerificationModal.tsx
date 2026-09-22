@@ -119,7 +119,7 @@ export default function BuyerIdVerificationModal({
 
                 {/* Header Badge */}
                 <div className="mb-4">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border ${
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-sans font-bold uppercase tracking-wider border ${
                         isRejected 
                             ? 'bg-rose-50 text-rose-700 border-rose-200' 
                             : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -187,7 +187,7 @@ export default function BuyerIdVerificationModal({
                             <p className="text-xs font-bold text-slate-800 group-hover:text-[#E00D42] transition">
                                 Click or drag & drop your Valid Government ID
                             </p>
-                            <p className="text-[11px] text-slate-400 font-mono mt-1">
+                            <p className="text-[11px] text-slate-400 font-sans mt-1">
                                 PhilID / ePhilID, Passport, Driver's License, UMID, SSS, Postal ID (Max 5MB)
                             </p>
                         </div>
@@ -207,7 +207,7 @@ export default function BuyerIdVerificationModal({
                                 )}
                                 <div className="min-w-0">
                                     <p className="text-xs font-bold text-slate-900 truncate">{file.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono">
+                                    <p className="text-[10px] text-slate-400 font-sans">
                                         {(file.size / (1024 * 1024)).toFixed(2)} MB
                                     </p>
                                 </div>
@@ -239,7 +239,7 @@ export default function BuyerIdVerificationModal({
                         <button
                             type="button"
                             onClick={onDismiss}
-                            className="flex-1 py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer text-center font-mono uppercase tracking-wider"
+                            className="flex-1 py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer text-center font-sans uppercase tracking-wider"
                         >
                             Maybe Later
                         </button>
@@ -247,7 +247,7 @@ export default function BuyerIdVerificationModal({
                         <button
                             type="submit"
                             disabled={!file || uploading}
-                            className="flex-1 py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer font-mono uppercase tracking-wider"
+                            className="flex-1 py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer font-sans uppercase tracking-wider"
                         >
                             {uploading ? (
                                 <span>Submitting...</span>

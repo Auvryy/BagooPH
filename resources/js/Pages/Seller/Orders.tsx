@@ -313,7 +313,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'placed':
             case 'pending':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-[11px] font-bold font-mono flex items-center gap-1.5 shadow-2xs">
+                    <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-[11px] font-bold font-sans flex items-center gap-1.5 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
                         <span>New Order (Action Required)</span>
                     </span>
@@ -322,14 +322,14 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'preparing':
             case 'processing':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-mono flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
                         <Box className="w-3 h-3 text-amber-600" />
                         <span>To Pack</span>
                     </span>
                 );
             case 'ready_for_pickup':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-mono flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
                         <Clock className="w-3 h-3 text-blue-600" />
                         <span>Ready for Pickup</span>
                     </span>
@@ -341,7 +341,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'out_for_delivery':
             case 'shipped':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-medium font-mono flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
                         <Truck className="w-3 h-3 text-slate-500" />
                         <span>In Transit</span>
                     </span>
@@ -349,7 +349,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'delivered':
             case 'completed':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium font-mono flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
                         <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                         <span>Completed</span>
                     </span>
@@ -358,13 +358,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
             case 'returned':
             case 'delivery_failed':
                 return (
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-medium font-mono flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
                         <Ban className="w-3 h-3 text-slate-400" />
                         <span>Cancelled / Returned</span>
                     </span>
                 );
             default:
-                return <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium font-mono uppercase">{status}</span>;
+                return <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium font-sans uppercase">{status}</span>;
         }
     };
 
@@ -376,11 +376,11 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
 
         if (isCompact) {
             return isRepeat ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-mono font-bold">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-sans font-bold">
                     Repeat ({totalOrders})
                 </span>
             ) : (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-sans">
                     New Buyer
                 </span>
             );
@@ -389,23 +389,23 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
         return (
             <div className="flex items-center gap-1.5 flex-wrap">
                 {isRepeat ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold font-mono">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold font-sans">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
                         <span>Repeat Buyer ({totalOrders} Orders)</span>
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold font-mono">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold font-sans">
                         <UserIcon className="w-3 h-3 text-blue-600" />
                         <span>First-time Buyer</span>
                     </span>
                 )}
                 {completedOrders > 0 && (
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-slate-500 font-sans">
                         • {completedOrders} Delivered
                     </span>
                 )}
                 {buyer.kyc_status === 'approved' && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-mono font-semibold">
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-sans font-semibold">
                         <Check className="w-2.5 h-2.5 text-emerald-600" />
                         <span>ID Verified</span>
                     </span>
@@ -464,7 +464,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             >
                                 <span>{tab.label}</span>
                                 {tab.count > 0 && (
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold leading-none transition-colors duration-200 ${
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-sans font-bold leading-none transition-colors duration-200 ${
                                         isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
                                     }`}>
                                         {tab.count}
@@ -478,7 +478,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                 {/* 2. SEARCH & BATCH TOOLBAR */}
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
                     <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-sans">
                             <Package className="w-4 h-4 text-slate-400" />
                             <span>Showing <strong>{filteredItems.length}</strong> of {orderItems.total || filteredItems.length} items</span>
                         </div>
@@ -489,7 +489,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 type="button"
                                 onClick={handleBatchSchedulePickup}
                                 disabled={isSubmitting}
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-mono"
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
                             >
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Dispatch Selected ({selectedOrderIds.length})</span>
@@ -573,12 +573,12 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             <button
                                                 type="button"
                                                 onClick={() => setSelectedOrderForDetails(item)}
-                                                className="font-bold text-slate-900 font-mono text-sm hover:text-[#E00D42] hover:underline transition cursor-pointer"
+                                                className="font-bold text-slate-900 font-sans text-sm hover:text-[#E00D42] hover:underline transition cursor-pointer"
                                                 title="View order details and history"
                                             >
                                                 #{item.order?.order_number}
                                             </button>
-                                            <span className="text-slate-400 font-mono text-[11px]">
+                                            <span className="text-slate-400 font-sans text-[11px]">
                                                 • {item.order?.created_at ? new Date(item.order.created_at).toLocaleDateString() : 'Today'}
                                             </span>
                                             <span className="text-slate-300">•</span>
@@ -593,7 +593,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                             setChatMessage(`Hello ${item.order?.recipient_name || 'Customer'}! We are preparing your order #${item.order?.order_number}.`);
                                                             setChatSent(false);
                                                         }}
-                                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[#E00D42] hover:bg-rose-50 border border-transparent hover:border-rose-200 text-[11px] font-mono font-bold transition cursor-pointer ml-0.5"
+                                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[#E00D42] hover:bg-rose-50 border border-transparent hover:border-rose-200 text-[11px] font-sans font-bold transition cursor-pointer ml-0.5"
                                                         title="1-Click Customer Chat"
                                                     >
                                                         <MessageSquare className="w-3 h-3" />
@@ -605,7 +605,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
 
                                         <div className="flex items-center gap-2 shrink-0">
                                             {isToPack ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-[#E00D42] border border-rose-300/80 text-[10px] font-mono font-bold uppercase tracking-wider shadow-2xs">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-[#E00D42] border border-rose-300/80 text-[10px] font-sans font-bold uppercase tracking-wider shadow-2xs">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
                                                     To Pack
                                                 </span>
@@ -628,11 +628,11 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                     {item.product?.name}
                                                 </h4>
                                                 {(item.color || item.size) && (
-                                                    <p className="text-[11px] text-slate-400 font-mono">
+                                                    <p className="text-[11px] text-slate-400 font-sans">
                                                         Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
                                                     </p>
                                                 )}
-                                                <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+                                                <div className="flex items-center gap-2 text-xs font-sans text-slate-500">
                                                     <span>Qty {item.quantity}</span>
                                                     <span className="text-slate-300">•</span>
                                                     <span className="font-bold text-slate-900">{formatPrice(grossPrice)}</span>
@@ -682,7 +682,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                 <button
                                                     type="button"
                                                     onClick={() => setOrderToAcceptAndPack(item)}
-                                                    className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono uppercase text-xs"
+                                                    className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
                                                 >
                                                     <Box className="w-3.5 h-3.5" />
                                                     <span>Pack Order</span>
@@ -694,7 +694,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                     type="button"
                                                     onClick={() => handleHandoverOrder(item.order_id)}
                                                     disabled={isSubmitting}
-                                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono uppercase text-xs"
+                                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
                                                     <span>Handover</span>
@@ -705,7 +705,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                                 <button
                                                     type="button"
                                                     onClick={() => copyToClipboard(item.order?.delivery?.tracking_number || item.order?.order_number)}
-                                                    className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-mono text-xs flex items-center gap-1.5 transition cursor-pointer"
+                                                    className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-sans text-xs flex items-center gap-1.5 transition cursor-pointer"
                                                     title="Click to copy tracking number"
                                                 >
                                                     <span>{item.order?.delivery?.tracking_number || 'Tracking'}</span>
@@ -718,7 +718,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             )}
 
                                             {['delivered', 'completed'].includes(orderStatus) && (
-                                                <span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1 font-mono text-xs">
+                                                <span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1 font-sans text-xs">
                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                                     <span>Delivered</span>
                                                 </span>
@@ -734,7 +734,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                 {/* Infinite Scroll Sentinel & Loading Indicator */}
                 <div ref={sentinelRef} className="py-2">
                     {isLoadingMore && (
-                        <div className="flex items-center justify-center gap-2 py-4 text-xs font-mono text-slate-500">
+                        <div className="flex items-center justify-center gap-2 py-4 text-xs font-sans text-slate-500">
                             <Loader2 className="w-4 h-4 animate-spin text-[#E00D42]" />
                             <span>Loading more orders...</span>
                         </div>
@@ -751,7 +751,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                         {/* Modal Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div>
-                                <div className="flex items-center gap-2 text-xs font-bold text-[#E00D42] font-mono">
+                                <div className="flex items-center gap-2 text-xs font-bold text-[#E00D42] font-sans">
                                     <Box className="w-4 h-4" />
                                     <span>Accept Order Step</span>
                                 </div>
@@ -815,9 +815,9 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <div className="flex items-center justify-between border-b border-slate-300 pb-2">
                                 <div>
                                     <h4 className="text-sm font-black text-[#E00D42] tracking-tighter">Bagoo<span className="text-slate-900">EXPRESS</span></h4>
-                                    <p className="text-[9px] text-slate-500 font-mono">THERMAL WAYBILL PREVIEW</p>
+                                    <p className="text-[9px] text-slate-500 font-sans">THERMAL WAYBILL PREVIEW</p>
                                 </div>
-                                <span className="px-2 py-0.5 rounded bg-black text-white font-bold text-[10px] uppercase font-mono">
+                                <span className="px-2 py-0.5 rounded bg-black text-white font-bold text-[10px] uppercase font-sans">
                                     {orderToAcceptAndPack.order?.payment_method?.toUpperCase() || 'COD'}
                                 </span>
                             </div>
@@ -833,7 +833,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             className="max-w-full h-6.5 object-contain"
                                         />
                                     </div>
-                                    <p className="text-[10px] font-mono text-slate-700 truncate font-semibold text-center">
+                                    <p className="text-[10px] font-sans text-slate-700 truncate font-semibold text-center">
                                         {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
                                     </p>
                                 </div>
@@ -878,7 +878,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                     handlePackOrder(orderToAcceptAndPack.order_id);
                                     setOrderToAcceptAndPack(null);
                                 }}
-                                className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-mono uppercase"
+                                className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-sans uppercase"
                             >
                                 <Box className="w-4 h-4" />
                                 <span>Confirm & Pack Order</span>
@@ -894,7 +894,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
+                            <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-sans">
                                 <MessageSquare className="w-4 h-4" />
                                 <span>Customer Chat • #{chatOrder.order?.order_number}</span>
                             </div>
@@ -913,7 +913,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 <span className="font-bold text-slate-900 text-sm">
                                     {chatOrder.order?.recipient_name || chatOrder.order?.buyer?.name || 'Customer'}
                                 </span>
-                                <span className="text-[11px] text-slate-500 font-mono">
+                                <span className="text-[11px] text-slate-500 font-sans">
                                     {chatOrder.order?.shipping_city || 'Metro Manila'}
                                 </span>
                             </div>
@@ -922,7 +922,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
 
                         {/* Quick Templates */}
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono block">
+                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-sans block">
                                 Quick Templates
                             </label>
                             <div className="flex flex-col gap-1.5">
@@ -946,7 +946,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                         {/* Message input */}
                         <form onSubmit={handleSendQuickChat} className="space-y-3">
                             <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono block">
+                                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-sans block">
                                     Your Message
                                 </label>
                                 <textarea
@@ -968,7 +968,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <div className="flex items-center justify-between gap-3 pt-2">
                                 <Link
                                     href={route('seller.messages.index')}
-                                    className="text-xs text-slate-500 hover:text-slate-800 underline font-mono"
+                                    className="text-xs text-slate-500 hover:text-slate-800 underline font-sans"
                                 >
                                     Open Full Inbox
                                 </Link>
@@ -983,7 +983,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                     <button
                                         type="submit"
                                         disabled={isSubmitting || !chatMessage.trim()}
-                                        className="py-2 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                                        className="py-2 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans"
                                     >
                                         <Send className="w-3.5 h-3.5" />
                                         <span>Send</span>
@@ -1001,7 +1001,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2 text-slate-800 text-xs font-bold font-mono">
+                            <div className="flex items-center gap-2 text-slate-800 text-xs font-bold font-sans">
                                 <FileText className="w-4 h-4 text-[#E00D42]" />
                                 <span>Order Details #{selectedOrderForDetails.order?.order_number}</span>
                             </div>
@@ -1022,11 +1022,11 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             </div>
                             <p className="font-bold text-slate-900">{selectedOrderForDetails.order?.recipient_name || selectedOrderForDetails.order?.buyer?.name}</p>
                             <p className="text-slate-600">{selectedOrderForDetails.order?.shipping_address}, {selectedOrderForDetails.order?.shipping_city}</p>
-                            <p className="text-slate-600 font-mono text-[11px]">{selectedOrderForDetails.order?.recipient_phone || selectedOrderForDetails.order?.buyer?.phone}</p>
+                            <p className="text-slate-600 font-sans text-[11px]">{selectedOrderForDetails.order?.recipient_phone || selectedOrderForDetails.order?.buyer?.phone}</p>
                         </div>
 
                         {/* Financial Breakdown */}
-                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs font-mono">
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs font-sans">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Financial Breakdown</span>
                             <div className="flex justify-between text-slate-600">
                                 <span>Gross Item Subtotal:</span>
@@ -1076,7 +1076,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                 <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <form onSubmit={handleConfirmCancel} className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2 text-rose-600 text-xs font-bold font-mono">
+                            <div className="flex items-center gap-2 text-rose-600 text-xs font-bold font-sans">
                                 <Ban className="w-4 h-4" />
                                 <span>Cancel Order #{orderToCancel.order?.order_number}</span>
                             </div>
@@ -1162,13 +1162,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2.5">
                                 <div>
                                     <h2 className="text-lg font-black tracking-tighter text-[#E00D42]">Bagoo<span className="text-slate-900">EXPRESS</span></h2>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">STANDARD COURIER DISPATCH</p>
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-sans">STANDARD COURIER DISPATCH</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="px-2 py-0.5 rounded bg-black text-white font-black text-xs uppercase font-mono">
+                                    <span className="px-2 py-0.5 rounded bg-black text-white font-black text-xs uppercase font-sans">
                                         {selectedOrderForWaybill.order?.payment_method?.toUpperCase() || 'COD'}
                                     </span>
-                                    <p className="text-[10px] text-slate-700 font-mono font-bold mt-0.5">
+                                    <p className="text-[10px] text-slate-700 font-sans font-bold mt-0.5">
                                         AMOUNT: {formatPrice(selectedOrderForWaybill.order?.total_amount || selectedOrderForWaybill.subtotal)}
                                     </p>
                                 </div>
@@ -1185,10 +1185,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             className="max-w-full h-9 object-contain"
                                         />
                                     </div>
-                                    <p className="text-xs font-bold font-mono tracking-wider text-slate-900 truncate text-center">
+                                    <p className="text-xs font-bold font-sans tracking-wider text-slate-900 truncate text-center">
                                         {selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
                                     </p>
-                                    <p className="text-[9px] text-slate-500 font-mono text-center">
+                                    <p className="text-[9px] text-slate-500 font-sans text-center">
                                         Scan 1D barcode or QR code for courier pickup, sorting, and delivery
                                     </p>
                                 </div>
@@ -1206,14 +1206,14 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             {/* Origin & Destination */}
                             <div className="grid grid-cols-2 gap-3 border-b border-slate-300 pb-3 text-[11px]">
                                 <div className="space-y-0.5">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-mono">FROM (MERCHANT):</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">FROM (MERCHANT):</span>
                                     <p className="font-bold text-slate-900">{shop.name}</p>
                                     <p className="text-slate-600 text-[10px]">{shop.address || 'Artisan Hub'}, {shop.city || 'Metro Manila'}</p>
                                     <p className="text-slate-600 text-[10px]">{shop.phone || '+63 912 345 6789'}</p>
                                 </div>
 
                                 <div className="space-y-0.5 border-l border-slate-200 pl-3">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-mono">TO (BUYER):</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">TO (BUYER):</span>
                                     <p className="font-bold text-slate-900">{selectedOrderForWaybill.order?.recipient_name || selectedOrderForWaybill.order?.buyer?.name || 'Customer'}</p>
                                     <p className="text-slate-600 text-[10px]">{selectedOrderForWaybill.order?.shipping_address || 'Customer Address'}, {selectedOrderForWaybill.order?.shipping_city || 'Metro Manila'}</p>
                                     <p className="text-slate-600 text-[10px]">{selectedOrderForWaybill.order?.recipient_phone || selectedOrderForWaybill.order?.buyer?.phone || '+63 900 000 0000'}</p>
@@ -1222,10 +1222,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
 
                             {/* Package Breakdown */}
                             <div className="space-y-1 text-[11px]">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase block font-mono">PACKAGE CONTENTS:</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">PACKAGE CONTENTS:</span>
                                 <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
                                     <span className="font-bold truncate max-w-[260px] text-slate-900">{selectedOrderForWaybill.product?.name}</span>
-                                    <span className="font-bold text-slate-900 font-mono">Qty: {selectedOrderForWaybill.quantity}</span>
+                                    <span className="font-bold text-slate-900 font-sans">Qty: {selectedOrderForWaybill.quantity}</span>
                                 </div>
                             </div>
                         </div>
@@ -1242,7 +1242,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <button
                                 type="button"
                                 onClick={() => window.print()}
-                                className="px-5 py-2 font-bold bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer font-mono"
+                                className="px-5 py-2 font-bold bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer font-sans"
                             >
                                 <Printer className="w-4 h-4" />
                                 <span>Print Thermal Label</span>
@@ -1259,7 +1259,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 my-auto space-y-5 text-center font-sans max-h-[92vh] overflow-y-auto">
                         
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-mono">
+                            <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-sans">
                                 <QrCode className="w-4 h-4" />
                                 <span>Parcel Handover QR</span>
                             </div>
@@ -1276,7 +1276,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <h3 className="font-bold text-slate-900 text-base">
                                 Order #{selectedOrderForQr.order?.order_number}
                             </h3>
-                            <p className="text-xs text-slate-500 font-mono">
+                            <p className="text-xs text-slate-500 font-sans">
                                 Tracking: {selectedOrderForQr.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForQr.order?.order_number}`}
                             </p>
                         </div>
@@ -1297,7 +1297,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             Visiting couriers can scan this QR code directly from your screen with their mobile camera to log instant pickup handover.
                         </p>
 
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs font-mono">
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs font-sans">
                             <a
                                 href={`/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`}
                                 target="_blank"

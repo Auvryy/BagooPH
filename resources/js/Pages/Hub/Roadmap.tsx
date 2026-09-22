@@ -91,7 +91,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
         <DashboardLayout
             title="Enterprise Corporate Roadmap"
             subtitle={
-                <span className="flex items-center gap-1.5 font-mono text-xs">
+                <span className="flex items-center gap-1.5 font-sans text-xs">
                     <span className="px-1.5 py-0.5 rounded-xs bg-purple-50 text-purple-700 border border-purple-200 font-bold uppercase">
                         Planned Enterprise Modules
                     </span>
@@ -101,7 +101,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
             actions={
                 <Link
                     href={route('hub.dashboard')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold font-mono rounded-xs border border-slate-300 shadow-2xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold font-sans rounded-xs border border-slate-300 shadow-2xs transition uppercase tracking-wider"
                 >
                     <Building2 className="w-3.5 h-3.5 text-slate-600" />
                     <span>Hub Overview</span>
@@ -117,10 +117,10 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] text-[10px] font-bold uppercase tracking-wider font-mono border border-[#FCE7EA]">
+                                <span className="px-2 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] text-[10px] font-bold uppercase tracking-wider font-sans border border-[#FCE7EA]">
                                     Logistics Admin Architecture
                                 </span>
-                                <span className="text-xs text-slate-400 font-mono">
+                                <span className="text-xs text-slate-400 font-sans">
                                     Curriculum & Enterprise Expansion
                                 </span>
                             </div>
@@ -132,11 +132,11 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                             </p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                            <div className="p-3 rounded-xs bg-slate-50 border border-slate-200 text-center font-mono">
+                            <div className="p-3 rounded-xs bg-slate-50 border border-slate-200 text-center font-sans">
                                 <span className="block text-[10px] uppercase text-slate-400 font-bold">Baseline Core</span>
                                 <span className="text-sm font-black text-emerald-600">6 Implemented</span>
                             </div>
-                            <div className="p-3 rounded-xs bg-slate-50 border border-slate-200 text-center font-mono">
+                            <div className="p-3 rounded-xs bg-slate-50 border border-slate-200 text-center font-sans">
                                 <span className="block text-[10px] uppercase text-slate-400 font-bold">Enterprise Suite</span>
                                 <span className="text-sm font-black text-[#E00D42]">5 Planned</span>
                             </div>
@@ -144,7 +144,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                     </div>
 
                     {/* Module Select Buttons */}
-                    <div className="mt-5 pt-4 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 font-mono">
+                    <div className="mt-5 pt-4 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 font-sans">
                         {modules.map((m) => {
                             const isCurrent = activeTab === m.id;
                             const IconComponent = m.icon;
@@ -182,7 +182,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                         <div className="bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
                             <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                                 <div>
-                                    <span className="px-2 py-0.5 rounded-xs bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider font-mono border border-blue-200">
+                                    <span className="px-2 py-0.5 rounded-xs bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider font-sans border border-blue-200">
                                         Module 01 • Corporate & Fleet Management
                                     </span>
                                     <h3 className="text-base font-black text-slate-900 mt-1">
@@ -192,12 +192,12 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                                         Centralized driver accreditation, government document verification, municipal barangay assignment matrix, and facility-scoped hub handlers.
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
+                                <span className="text-[10px] font-sans font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
                                     Roadmap Spec
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5 font-mono text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5 font-sans text-xs">
                                 <div className="p-4 rounded-xs bg-slate-50 border border-slate-300 space-y-2">
                                     <div className="flex items-center gap-2 font-bold text-slate-900">
                                         <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -240,11 +240,11 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
 
                             {/* Mock Visual Table Preview */}
                             <div className="mt-5 pt-4 border-t border-slate-200">
-                                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans mb-2.5">
                                     Interactive Preview: Rider Barangay Assignment Matrix
                                 </p>
                                 <div className="border border-slate-300 rounded-xs overflow-hidden">
-                                    <table className="w-full text-left font-mono text-xs">
+                                    <table className="w-full text-left font-sans text-xs">
                                         <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 text-[10px] uppercase font-bold">
                                             <tr>
                                                 <th className="p-2.5">Rider Name</th>
@@ -293,7 +293,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                         <div className="bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
                             <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                                 <div>
-                                    <span className="px-2 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider font-mono border border-emerald-200">
+                                    <span className="px-2 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider font-sans border border-emerald-200">
                                         Module 02 • Financials & Remittances
                                     </span>
                                     <h3 className="text-base font-black text-slate-900 mt-1">
@@ -303,12 +303,12 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                                         Reconciliation of physical cash collected by last-mile delivery riders, Bayan Hub counter collections, platform commission splits, and merchant payouts.
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
+                                <span className="text-[10px] font-sans font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
                                     Roadmap Spec
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 font-mono">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 font-sans">
                                 <div className="p-4 rounded-xs bg-slate-50 border border-slate-300">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase">Rider Cash in Transit</span>
                                     <p className="text-xl font-black text-slate-900 mt-1">₱18,450.00</p>
@@ -328,10 +328,10 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
 
                             {/* Schema Breakdown */}
                             <div className="mt-5 pt-4 border-t border-slate-200">
-                                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans mb-2.5">
                                     Data Architecture Blueprint: `logistics_cod_ledgers`
                                 </p>
-                                <div className="p-3.5 bg-slate-900 text-slate-200 rounded-xs font-mono text-xs overflow-x-auto space-y-1">
+                                <div className="p-3.5 bg-slate-900 text-slate-200 rounded-xs font-sans text-xs overflow-x-auto space-y-1">
                                     <p className="text-slate-400">// Database Migration Schema Proposal</p>
                                     <p className="text-amber-400">Schema::create('logistics_cod_ledgers', function (Blueprint $table) &#123;</p>
                                     <p className="pl-4">$table-&gt;id();</p>
@@ -356,7 +356,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                         <div className="bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
                             <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                                 <div>
-                                    <span className="px-2 py-0.5 rounded-xs bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wider font-mono border border-purple-200">
+                                    <span className="px-2 py-0.5 rounded-xs bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wider font-sans border border-purple-200">
                                         Module 03 • Corporate & Fleet Management
                                     </span>
                                     <h3 className="text-base font-black text-slate-900 mt-1">
@@ -366,12 +366,12 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                                         Configuring dynamic freight pricing tiers based on weight, volume (DWS tunnel calculations), and contiguous provincial highway coverage boundaries.
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
+                                <span className="text-[10px] font-sans font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
                                     Roadmap Spec
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 font-mono text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 font-sans text-xs">
                                 <div className="p-4 rounded-xs bg-slate-50 border border-slate-300 space-y-2">
                                     <div className="flex items-center justify-between font-bold text-slate-900">
                                         <span className="flex items-center gap-1.5"><Compass className="w-4 h-4 text-[#E00D42]" /> Intramunicipal (Same Bayan)</span>
@@ -401,7 +401,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                         <div className="bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
                             <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                                 <div>
-                                    <span className="px-2 py-0.5 rounded-xs bg-rose-50 text-rose-700 text-[10px] font-bold uppercase tracking-wider font-mono border border-rose-200">
+                                    <span className="px-2 py-0.5 rounded-xs bg-rose-50 text-rose-700 text-[10px] font-bold uppercase tracking-wider font-sans border border-rose-200">
                                         Module 04 • Parcel Operations & Logistics
                                     </span>
                                     <h3 className="text-base font-black text-slate-900 mt-1">
@@ -411,12 +411,12 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                                         Automated delivery failure queues, 3-attempt escalation workflows, customer re-delivery scheduling, and reverse logistics return-to-merchant routing.
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
+                                <span className="text-[10px] font-sans font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
                                     Roadmap Spec
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 font-mono text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 font-sans text-xs">
                                 <div className="p-4 rounded-xs bg-amber-50/60 border border-amber-300 space-y-1.5">
                                     <div className="flex items-center justify-between font-bold text-amber-900">
                                         <span>Attempt 1: Reschedule</span>
@@ -456,7 +456,7 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                         <div className="bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
                             <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                                 <div>
-                                    <span className="px-2 py-0.5 rounded-xs bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider font-mono border border-indigo-200">
+                                    <span className="px-2 py-0.5 rounded-xs bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider font-sans border border-indigo-200">
                                         Module 05 • Integrated AI Subsystem
                                     </span>
                                     <h3 className="text-base font-black text-slate-900 mt-1">
@@ -466,12 +466,12 @@ export default function HubRoadmap({ activeHub, hubs, selectedModule = 'personne
                                         Automated daily 06:00 AM spatial analysis of parcel density across municipal barangays, triggering auxiliary rider allocation for high-volume zones (&gt;60 parcels).
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
+                                <span className="text-[10px] font-sans font-bold px-2 py-1 rounded-xs bg-slate-100 text-slate-700 border border-slate-300 shrink-0">
                                     AI Subsystem Spec
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 font-mono text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 font-sans text-xs">
                                 <div className="p-4 rounded-xs bg-slate-50 border border-slate-300 space-y-2">
                                     <div className="flex items-center justify-between font-bold text-slate-900">
                                         <span className="flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-indigo-600" /> 06:00 AM Cron Density Engine</span>

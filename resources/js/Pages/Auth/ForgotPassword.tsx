@@ -74,13 +74,13 @@ export default function ForgotPassword({ status }: { status?: string }) {
             <Head title="Forgot Password — BagooPH" />
 
             {status && (
-                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-sans font-bold text-emerald-800">
                     {status}
                 </div>
             )}
 
             {step === 'email' ? (
-                <div className="space-y-4 font-mono">
+                <div className="space-y-4 font-sans">
                     <form onSubmit={handleSendOtp} className="space-y-4">
                         <div>
                             <label className="block text-[11px] font-bold text-slate-900 uppercase tracking-wider mb-1">
@@ -93,7 +93,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                     type="email"
                                     name="email"
                                     value={emailForm.data.email}
-                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
                                     placeholder="name@domain.com"
                                     autoFocus
                                     onChange={(e) => {
@@ -152,7 +152,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     />
                 </div>
             ) : (
-                <form onSubmit={handleResetPassword} className="space-y-4 font-mono">
+                <form onSubmit={handleResetPassword} className="space-y-4 font-sans">
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
                         <div>
                             <span className="text-[10px] uppercase tracking-wider text-slate-500 block">Verified Account</span>
@@ -175,7 +175,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                 type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 value={resetForm.data.password}
-                                className="w-full pl-9 pr-9 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                className="w-full pl-9 pr-9 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
                                 placeholder="••••••••••••"
                                 autoFocus
                                 onChange={(e) => resetForm.setData('password', e.target.value)}
@@ -203,7 +203,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                 type={showConfirmPassword ? 'text' : 'password'}
                                 name="password_confirmation"
                                 value={resetForm.data.password_confirmation}
-                                className="w-full pl-9 pr-9 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition text-slate-900 placeholder-slate-400"
+                                className="w-full pl-9 pr-9 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
                                 placeholder="••••••••••••"
                                 onChange={(e) => resetForm.setData('password_confirmation', e.target.value)}
                                 required

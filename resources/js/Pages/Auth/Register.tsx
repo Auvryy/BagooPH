@@ -229,7 +229,7 @@ export default function Register() {
             <Head title="Create an Account — BagooPH" />
 
             {/* Step Checkpoint Progress Header */}
-            <div className="flex items-center justify-between font-mono mb-6 pb-2 border-b border-slate-100">
+            <div className="flex items-center justify-between font-sans mb-6 pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
                         currentStep === 1 
@@ -294,7 +294,7 @@ export default function Register() {
 
                     <div className="relative flex items-center justify-center my-4">
                         <div className="border-t border-slate-200 w-full"></div>
-                        <span className="bg-white px-3 text-[11px] font-mono uppercase tracking-wider text-slate-400 absolute">
+                        <span className="bg-white px-3 text-[11px] font-sans uppercase tracking-wider text-slate-400 absolute">
                             Or register with email
                         </span>
                     </div>
@@ -308,7 +308,7 @@ export default function Register() {
                         {/* Separated Name: First Name, Middle Name, Last Name */}
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                             <div className="sm:col-span-5">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     First Name *
                                 </label>
                                 <div className="relative">
@@ -329,7 +329,7 @@ export default function Register() {
                             </div>
 
                             <div className="sm:col-span-3">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     M.I. / Middle
                                 </label>
                                 <input
@@ -344,7 +344,7 @@ export default function Register() {
                             </div>
 
                             <div className="sm:col-span-4">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Last Name *
                                 </label>
                                 <input
@@ -363,7 +363,7 @@ export default function Register() {
 
                         {/* Email Address */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Email Address *
                             </label>
                             <div className="relative">
@@ -386,7 +386,7 @@ export default function Register() {
                         {/* Password Creation */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Password *
                                 </label>
                                 <div className="relative">
@@ -415,7 +415,7 @@ export default function Register() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Confirm Password *
                                 </label>
                                 <div className="relative">
@@ -464,7 +464,7 @@ export default function Register() {
                         {/* Birthday & Auto-Calculated Age */}
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                             <div className="sm:col-span-7">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Date of Birth *
                                 </label>
                                 <div className="relative">
@@ -485,10 +485,10 @@ export default function Register() {
 
                             <div className="sm:col-span-5">
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans">
                                         Age
                                     </label>
-                                    <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                                    <span className="text-[10px] text-slate-400 font-sans flex items-center gap-1">
                                         <Sparkles className="w-3 h-3 text-[#E00D42]" />
                                         Auto-calculated
                                     </span>
@@ -499,7 +499,7 @@ export default function Register() {
                                     name="age"
                                     value={data.age ? `${data.age} years old` : 'Select birthday'}
                                     readOnly
-                                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg text-slate-700 font-mono font-medium outline-hidden select-none cursor-default"
+                                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg text-slate-700 font-sans font-medium outline-hidden select-none cursor-default"
                                 />
                             </div>
                         </div>
@@ -507,7 +507,7 @@ export default function Register() {
                         {/* Sex & Phone */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                     Sex *
                                 </label>
                                 <select
@@ -577,7 +577,7 @@ export default function Register() {
 
                         {/* Optional Government ID Document Upload */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Government ID <span className="text-slate-400 lowercase font-normal">(optional for verified badge)</span>
                             </label>
                             <input

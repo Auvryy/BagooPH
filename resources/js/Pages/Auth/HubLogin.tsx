@@ -67,14 +67,14 @@ export default function HubLogin({ status, canResetPassword }: Props) {
             <Head title="Logistics Partner Sign In — BagooPH" />
 
             {status && (
-                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-sans font-bold text-emerald-800">
                     {status}
                 </div>
             )}
 
             <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-mono">
+                    <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                         Operator / Company Email *
                     </label>
                     <div className="relative">
@@ -84,7 +84,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden transition text-slate-900 placeholder-slate-400 font-mono"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden transition text-slate-900 placeholder-slate-400 font-sans"
                             placeholder="hub.operator@bagooph.shop"
                             autoComplete="username"
                             autoFocus
@@ -97,7 +97,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-mono">
+                        <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans">
                             Password *
                         </label>
                         {canResetPassword && (
@@ -116,7 +116,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden transition text-slate-900 placeholder-slate-400 font-mono"
+                            className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden transition text-slate-900 placeholder-slate-400 font-sans"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -141,7 +141,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                         />
-                        <span className="text-xs text-slate-700 font-mono">Keep station signed in</span>
+                        <span className="text-xs text-slate-700 font-sans">Keep station signed in</span>
                     </label>
                 </div>
 
@@ -149,7 +149,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider font-mono"
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider font-sans"
                     >
                         <span>{processing ? 'Connecting Station...' : 'Sign In to Logistics Hub'}</span>
                         <ArrowRight className="w-4 h-4" />

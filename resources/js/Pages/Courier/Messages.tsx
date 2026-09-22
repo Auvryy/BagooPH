@@ -131,7 +131,7 @@ export default function CourierMessages({ conversations }: Props) {
                                         isSelected ? 'bg-amber-50/60 border-l-4 border-l-amber-500' : 'hover:bg-slate-50'
                                     }`}
                                 >
-                                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 font-sans">
                                         {conv.user.role === 'seller' ? <Store className="w-4 h-4 text-emerald-400" /> : <User className="w-4 h-4 text-amber-400" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -139,7 +139,7 @@ export default function CourierMessages({ conversations }: Props) {
                                             <h4 className="font-bold text-xs text-slate-900 truncate">
                                                 {conv.user.shop ? conv.user.shop.name : conv.user.name}
                                             </h4>
-                                            <span className="font-mono text-[10px] text-slate-400">{conv.last_time}</span>
+                                            <span className="font-sans text-[10px] text-slate-400">{conv.last_time}</span>
                                         </div>
                                         <p className="text-xs text-slate-500 truncate mt-0.5">{conv.last_message}</p>
                                     </div>
@@ -153,7 +153,7 @@ export default function CourierMessages({ conversations }: Props) {
                 <div className="md:col-span-8 flex flex-col justify-between bg-slate-50/40">
                     
                     {/* Header */}
-                    <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between font-mono text-xs">
+                    <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between font-sans text-xs">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
                                 {currentConv?.user?.role === 'seller' ? <Store className="w-4 h-4 text-emerald-400" /> : <User className="w-4 h-4 text-amber-400" />}
@@ -186,7 +186,7 @@ export default function CourierMessages({ conversations }: Props) {
                                         }`}
                                     >
                                         <p className="leading-relaxed">{msg.message}</p>
-                                        <span className={`block font-mono text-[9px] mt-1 text-right ${isRider ? 'text-slate-400' : 'text-slate-400'}`}>
+                                        <span className={`block font-sans text-[9px] mt-1 text-right ${isRider ? 'text-slate-400' : 'text-slate-400'}`}>
                                             {msg.created_at}
                                         </span>
                                     </div>
@@ -207,7 +207,7 @@ export default function CourierMessages({ conversations }: Props) {
                         <button
                             type="submit"
                             disabled={sending || !replyText.trim()}
-                            className="px-4 py-2.5 bg-slate-900 hover:bg-black disabled:opacity-50 text-white rounded-xl font-mono text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
+                            className="px-4 py-2.5 bg-slate-900 hover:bg-black disabled:opacity-50 text-white rounded-xl font-sans text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                         >
                             <Send className="w-3.5 h-3.5" />
                             <span>Send</span>

@@ -110,7 +110,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
             <div className="space-y-6 font-sans">
                 
                 {/* 1. LOGISTICS FACILITY METRICS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans text-xs">
                     
                     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
@@ -159,7 +159,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                 </div>
 
                 {/* 2. FLEET ROSTER STRIP */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3 font-mono text-xs">
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3 font-sans text-xs">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                         <h4 className="font-bold text-slate-900 uppercase">Active Bagoo Express Fleet ({couriers.length} Drivers)</h4>
                         <span className="text-emerald-600 font-bold">● All Systems Nominal</span>
@@ -188,7 +188,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                 <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
                     
                     {/* Search & Filter Form */}
-                    <form onSubmit={handleFilterSubmit} className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 border-b border-slate-100 font-mono text-xs">
+                    <form onSubmit={handleFilterSubmit} className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 border-b border-slate-100 font-sans text-xs">
                         <div className="relative w-full sm:w-80">
                             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                             <input
@@ -228,7 +228,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs font-sans">
                             <thead>
-                                <tr className="border-b border-slate-200 font-mono text-[10px] text-slate-400 uppercase">
+                                <tr className="border-b border-slate-200 font-sans text-[10px] text-slate-400 uppercase">
                                     <th className="pb-3 pr-4">Tracking #</th>
                                     <th className="pb-3 px-4">Merchant Origin</th>
                                     <th className="pb-3 px-4">Recipient Destination</th>
@@ -237,7 +237,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                     <th className="pb-3 pl-4 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 font-mono">
+                            <tbody className="divide-y divide-slate-100 font-sans">
                                 {deliveries.data.map((del) => (
                                     <tr key={del.id} className="hover:bg-slate-50/60 transition">
                                         <td className="py-3.5 pr-4">
@@ -249,7 +249,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                         </td>
                                         <td className="py-3.5 px-4 font-sans">
                                             <span className="font-bold text-slate-800">{del.delivery_recipient_name}</span>
-                                            <span className="block text-[10px] text-slate-500 font-mono truncate max-w-xs">{del.delivery_address}</span>
+                                            <span className="block text-[10px] text-slate-500 font-sans truncate max-w-xs">{del.delivery_address}</span>
                                         </td>
                                         <td className="py-3.5 px-4">
                                             {del.courier ? (
@@ -290,7 +290,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                 {overrideModal && selectedDelivery && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
                                 <h3 className="font-bold text-slate-900 text-sm uppercase">
                                     Supervisor Dispatch Override
                                 </h3>
@@ -303,14 +303,14 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                             </div>
 
                             <form onSubmit={handleOverrideSubmit} className="space-y-4 text-xs">
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono space-y-1">
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-sans space-y-1">
                                     <span className="text-[10px] text-slate-400 uppercase">Selected Parcel</span>
                                     <h4 className="font-bold text-slate-900">#{selectedDelivery.tracking_number}</h4>
                                     <p className="text-slate-500 text-[10px]">Order #{selectedDelivery.order?.order_number}</p>
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">
                                         Assign to Fleet Rider
                                     </label>
                                     <select
@@ -327,7 +327,7 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">
                                         Set Dispatch State
                                     </label>
                                     <select
@@ -347,14 +347,14 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                     <button
                                         type="button"
                                         onClick={() => setOverrideModal(false)}
-                                        className="px-4 py-2 rounded-xl border border-slate-200 font-mono font-bold text-slate-600"
+                                        className="px-4 py-2 rounded-xl border border-slate-200 font-sans font-bold text-slate-600"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={reassigning}
-                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-mono font-bold uppercase transition shadow-xs"
+                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase transition shadow-xs"
                                     >
                                         {reassigning ? 'Reassigning...' : 'Confirm Override'}
                                     </button>

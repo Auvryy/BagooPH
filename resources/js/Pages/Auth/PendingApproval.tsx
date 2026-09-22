@@ -91,7 +91,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
         >
             <Head title="Account Verification Status — BagooPH" />
 
-            <div className="space-y-6 font-mono text-xs">
+            <div className="space-y-6 font-sans text-xs">
                 {/* Status Hero Card */}
                 {isRejected ? (
                     <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-3">

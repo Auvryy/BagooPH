@@ -20,17 +20,17 @@ export default function VerifyEmail({ status }: { status?: string }) {
         >
             <Head title="Email Verification — BagooPH" />
 
-            <div className="mb-4 text-xs font-mono text-black/70 leading-relaxed uppercase">
+            <div className="mb-4 text-xs font-sans text-black/70 leading-relaxed uppercase">
                 THANKS FOR SIGNING UP! BEFORE GETTING STARTED, PLEASE VERIFY YOUR EMAIL ADDRESS BY CLICKING THE LINK WE JUST EMAILED TO YOU.
             </div>
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-mono font-bold text-emerald-800">
+                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-sans font-bold text-emerald-800">
                     A new verification link has been sent to the email address you provided during registration.
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
+            <form onSubmit={submit} className="space-y-4 font-sans">
                 <div>
                     <button
                         type="submit"

@@ -309,15 +309,15 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                     className="relative min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex flex-col justify-between p-4 sm:p-8 lg:p-12 border-b border-black/15 bg-[#ECEAE5] text-[#111111] overflow-hidden transition-colors duration-700"
                 >
                     {/* Precision Crosshairs */}
-                    <span className="absolute top-4 left-4 text-black/40 font-mono text-xs select-none">+</span>
-                    <span className="absolute top-4 left-1/2 -translate-x-1/2 text-black/40 font-mono text-xs select-none">+</span>
-                    <span className="absolute top-4 right-4 text-black/40 font-mono text-xs select-none">+</span>
-                    <span className="absolute bottom-4 left-4 text-black/40 font-mono text-xs select-none z-30">+</span>
-                    <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-black/40 font-mono text-xs select-none z-30">+</span>
-                    <span className="absolute bottom-4 right-4 text-black/40 font-mono text-xs select-none z-30">+</span>
+                    <span className="absolute top-4 left-4 text-black/40 font-sans text-xs select-none">+</span>
+                    <span className="absolute top-4 left-1/2 -translate-x-1/2 text-black/40 font-sans text-xs select-none">+</span>
+                    <span className="absolute top-4 right-4 text-black/40 font-sans text-xs select-none">+</span>
+                    <span className="absolute bottom-4 left-4 text-black/40 font-sans text-xs select-none z-30">+</span>
+                    <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-black/40 font-sans text-xs select-none z-30">+</span>
+                    <span className="absolute bottom-4 right-4 text-black/40 font-sans text-xs select-none z-30">+</span>
 
                     {/* Top Info Line */}
-                    <div className="flex flex-col sm:flex-row justify-between items-center z-30 font-mono text-[11px] uppercase tracking-wider text-black/70 gap-2">
+                    <div className="flex flex-col sm:flex-row justify-between items-center z-30 font-sans text-[11px] uppercase tracking-wider text-black/70 gap-2">
                         <div className="flex items-center gap-3">
                             <span className="font-black text-black">BAGOO-PH</span>
                             <span className="text-black/30">/</span>
@@ -365,7 +365,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                             
                             {/* Card 1: Back Leaning Card */}
                             <div className="absolute inset-0 rounded-3xl bg-slate-900 border-2 border-black shadow-2xl p-3 sm:p-3.5 xl:p-4 flex flex-col justify-between overflow-hidden transform -rotate-12 -translate-x-6 sm:-translate-x-12 xl:-translate-x-20 2xl:-translate-x-24 -translate-y-3 sm:-translate-y-6 xl:-translate-y-10 2xl:-translate-y-12 group-hover:-rotate-16 group-hover:-translate-x-10 sm:group-hover:-translate-x-28 group-hover:-translate-y-6 sm:group-hover:-translate-y-14 transition-all duration-500 ease-out z-10">
-                                <div className="flex items-center justify-between font-mono text-[9px] sm:text-[10px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
+                                <div className="flex items-center justify-between font-sans text-[9px] sm:text-[10px] xl:text-[11px] text-slate-300 px-1 pb-1 z-10">
                                     <span className="font-bold text-white">BAGOO // REEL 01</span>
                                     <span className="w-1.5 xl:w-2 h-1.5 xl:h-2 rounded-full bg-emerald-400 animate-ping"></span>
                                 </div>
@@ -381,7 +381,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         <source src="/videos/store-shopping-1.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-2 xl:bottom-3 left-2 xl:left-3 right-2 xl:right-3 font-mono text-[8px] sm:text-[9px] xl:text-[11px] text-white flex justify-between items-center">
+                                    <div className="absolute bottom-2 xl:bottom-3 left-2 xl:left-3 right-2 xl:right-3 font-sans text-[8px] sm:text-[9px] xl:text-[11px] text-white flex justify-between items-center">
                                         <span className="px-1.5 xl:px-2 py-0.5 rounded bg-[#E00D42] font-black text-[7px] sm:text-[8px] xl:text-[10px] uppercase">DISPATCH REEL</span>
                                         <span className="text-emerald-400 text-[7px] sm:text-[8px] xl:text-[10px] font-bold">● ACTIVE</span>
                                     </div>
@@ -390,7 +390,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
 
                             {/* Card 2: Front Elevated Card */}
                             <div className="absolute inset-0 rounded-3xl bg-white border-2 border-black shadow-2xl p-3 sm:p-3.5 xl:p-4 flex flex-col justify-between overflow-hidden transform rotate-3 translate-x-1 sm:translate-x-2 translate-y-1 sm:translate-y-2 xl:translate-x-3 xl:translate-y-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500 ease-out z-20">
-                                <div className="flex items-center justify-between font-mono text-[9px] sm:text-[10px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
+                                <div className="flex items-center justify-between font-sans text-[9px] sm:text-[10px] xl:text-[11px] text-slate-600 px-1 pb-1 z-10">
                                     <span className="font-black text-slate-900 flex items-center gap-1.5">
                                         <span className="w-1.5 sm:w-2 xl:w-2.5 h-1.5 sm:h-2 xl:h-2.5 rounded-full bg-[#E00D42]"></span>
                                         BAGOO MARKETPLACE
@@ -409,7 +409,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         <source src="/videos/store-shopping-2.webm" type="video/webm" />
                                     </video>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                                    <div className="absolute bottom-2.5 xl:bottom-3.5 left-2.5 xl:left-3.5 right-2.5 xl:right-3.5 flex items-center justify-between text-white font-mono text-[8px] sm:text-[9px] xl:text-[11px]">
+                                    <div className="absolute bottom-2.5 xl:bottom-3.5 left-2.5 xl:left-3.5 right-2.5 xl:right-3.5 flex items-center justify-between text-white font-sans text-[8px] sm:text-[9px] xl:text-[11px]">
                                         <span className="font-bold tracking-wider">ECOSYSTEM REEL</span>
                                         <span className="text-emerald-400 font-bold">● LIVE</span>
                                     </div>
@@ -421,7 +421,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
 
                     {/* METADATA BAR (pinned to bottom) */}
                     <div className="relative z-20 pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end font-mono text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end font-sans text-xs">
                             <div className="md:col-span-4 space-y-1 text-black/70">
                                 <div className="text-[10px] text-black/40 font-bold uppercase tracking-widest">ABOUT</div>
                                 <div className="flex items-center gap-6 font-bold text-black text-[11px]">
@@ -431,7 +431,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                             </div>
 
                             <div className="md:col-span-8">
-                                <p className="text-black/80 font-mono text-xs leading-relaxed max-w-2xl uppercase">
+                                <p className="text-black/80 font-sans text-xs leading-relaxed max-w-2xl uppercase">
                                     A HIGH-PERFORMANCE MULTI-ROLE COMMERCE PLATFORM. 14 VERIFIED PRODUCT DEPARTMENTS, FIRST-COME COURIER DISPATCH, AND FAIR 10% COMMISSION ACCOUNTING.
                                 </p>
                             </div>
@@ -449,12 +449,12 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                     <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-20 pb-12 border-b border-black/10">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                             <div>
-                                <span className="text-xs font-bold text-[#E00D42] uppercase tracking-widest font-mono">[PILLARS // 02]</span>
+                                <span className="text-xs font-bold text-[#E00D42] uppercase tracking-widest font-sans">[PILLARS // 02]</span>
                                 <h3 className="text-3xl sm:text-5xl font-black tracking-tight text-black mt-1 font-sans">
                                     Built for Speed, Trust & Reliability
                                 </h3>
                             </div>
-                            <p className="text-xs text-black/60 font-mono uppercase max-w-md">
+                            <p className="text-xs text-black/60 font-sans uppercase max-w-md">
                                 ENGINEERED TO SOLVE FRICTION ACROSS BUYERS, MERCHANTS, AND DISPATCH RIDERS WITH ZERO FLUFF.
                             </p>
                         </div>
@@ -475,20 +475,20 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                         
                                         {/* Floating Live Badge */}
-                                        <div className="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-[#E00D42] text-white font-mono text-[10px] font-bold uppercase tracking-wider shadow-md flex items-center gap-2">
+                                        <div className="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-[#E00D42] text-white font-sans text-[10px] font-bold uppercase tracking-wider shadow-md flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
                                             BAGOO EXPRESS // LIVE DISPATCH
                                         </div>
 
                                         {/* Bottom Telemetry Card */}
-                                        <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-black/10 text-black shadow-lg font-mono text-xs">
+                                        <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-black/10 text-black shadow-lg font-sans text-xs">
                                             <div className="flex justify-between items-center pb-1.5 border-b border-black/10">
                                                 <span className="font-bold text-[#E00D42]">FCFS DISPATCH POOL</span>
                                                 <span className="text-emerald-600 font-bold">● ACTIVE FLEET</span>
                                             </div>
                                             <div className="flex justify-between items-center text-[11px] pt-1.5 font-sans">
                                                 <span className="text-black/70">Average Store-to-Doorstep Handover:</span>
-                                                <span className="font-bold text-black font-mono">UNDER 45 MINS</span>
+                                                <span className="font-bold text-black font-sans">UNDER 45 MINS</span>
                                             </div>
                                         </div>
                                     </div>
@@ -496,14 +496,14 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
 
                                 {/* Right Content */}
                                 <div className="lg:col-span-6 space-y-6">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/10 text-[#E00D42] font-mono text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/20">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/10 text-[#E00D42] font-sans text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/20">
                                         <Truck className="w-3.5 h-3.5" />
                                         <span>PRECISION LOGISTICS</span>
                                     </div>
                                     <h4 className="text-2xl sm:text-4xl font-black text-black tracking-tight font-sans leading-tight">
                                         First-Come Dispatch. Live Route Waypoints.
                                     </h4>
-                                    <p className="text-xs sm:text-sm text-black/70 font-mono leading-relaxed uppercase">
+                                    <p className="text-xs sm:text-sm text-black/70 font-sans leading-relaxed uppercase">
                                         PARCELS ARE BROADCASTED DIRECTLY TO THE NEAREST ACTIVE RIDERS WITHOUT CENTRALIZED FAVORITISM. REAL-TIME TELEMETRY TRACKS EVERY MILESTONE FROM STORE PICKUP TO DOORSTEP SIGNATURE.
                                     </p>
 
@@ -527,7 +527,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     <div className="pt-2">
                                         <Link
                                             href={route('courier.register')}
-                                            className="inline-flex items-center gap-2 px-6 py-3 bg-black hover:bg-[#E00D42] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-mono shadow-sm"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-black hover:bg-[#E00D42] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-sans shadow-sm"
                                         >
                                             <span>Join Delivery Fleet</span>
                                             <ArrowRight className="w-4 h-4" />
@@ -544,14 +544,14 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                                 {/* Left Content */}
                                 <div className="lg:col-span-6 space-y-6 order-2 lg:order-1">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-600/10 text-emerald-700 font-mono text-[11px] font-bold uppercase tracking-wider border border-emerald-600/20">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-600/10 text-emerald-700 font-sans text-[11px] font-bold uppercase tracking-wider border border-emerald-600/20">
                                         <ShieldCheck className="w-3.5 h-3.5" />
                                         <span>100% AUTHENTIC STORES</span>
                                     </div>
                                     <h4 className="text-2xl sm:text-4xl font-black text-black tracking-tight font-sans leading-tight">
                                         Vetted Merchants. Strict Business Compliance.
                                     </h4>
-                                    <p className="text-xs sm:text-sm text-black/70 font-mono leading-relaxed uppercase">
+                                    <p className="text-xs sm:text-sm text-black/70 font-sans leading-relaxed uppercase">
                                         EVERY SELLER UNDERGOES RIGOROUS ADMIN DOCUMENT VERIFICATION (GOVERNMENT ID, DTI/BIR PERMIT) BEFORE THEIR FIRST PRODUCT IS LISTED. ZERO COUNTERFEITS, ZERO FLY-BY-NIGHT SHOPS.
                                     </p>
 
@@ -575,7 +575,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     <div className="pt-2">
                                         <Link
                                             href={route('seller.register')}
-                                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-mono shadow-sm"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-sans shadow-sm"
                                         >
                                             <span>Open Verified Store</span>
                                             <ArrowRight className="w-4 h-4" />
@@ -594,20 +594,20 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                         
                                         {/* Verified Store Stamp Badge */}
-                                        <div className="absolute top-4 right-4 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-mono text-[10px] font-black uppercase tracking-widest shadow-md flex items-center gap-2">
+                                        <div className="absolute top-4 right-4 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-sans text-[10px] font-black uppercase tracking-widest shadow-md flex items-center gap-2">
                                             <Check className="w-3.5 h-3.5" />
                                             VERIFIED MERCHANT BADGE
                                         </div>
 
                                         {/* Bottom Telemetry Card */}
-                                        <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-black/10 text-black shadow-lg font-mono text-xs">
+                                        <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-black/10 text-black shadow-lg font-sans text-xs">
                                             <div className="flex justify-between items-center pb-1.5 border-b border-black/10">
                                                 <span className="font-bold text-slate-900">KYC VERIFICATION DESK</span>
                                                 <span className="text-emerald-600 font-bold">100% AUDITED ✓</span>
                                             </div>
                                             <div className="flex justify-between items-center text-[11px] pt-1.5 font-sans">
                                                 <span className="text-black/70">Category Compliance & Prohibited Item Filter:</span>
-                                                <span className="font-bold text-[#E00D42] font-mono">ACTIVE</span>
+                                                <span className="font-bold text-[#E00D42] font-sans">ACTIVE</span>
                                             </div>
                                         </div>
                                     </div>
@@ -622,7 +622,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                                 {/* Left Mockup / Financial Card */}
                                 <div className="lg:col-span-6 relative">
-                                    <div className="p-6 sm:p-8 rounded-2xl bg-white border border-black/15 shadow-xl space-y-6 font-mono">
+                                    <div className="p-6 sm:p-8 rounded-2xl bg-white border border-black/15 shadow-xl space-y-6 font-sans">
                                         <div className="flex justify-between items-center border-b border-black/10 pb-4">
                                             <div>
                                                 <span className="text-[10px] text-black/50 font-bold uppercase tracking-widest">TRANSPARENT LEDGER</span>
@@ -648,7 +648,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                             </div>
                                             <div className="flex justify-between items-center pt-2 text-sm font-black font-sans">
                                                 <span className="text-black">Seller Net Disbursed Profit:</span>
-                                                <span className="text-black font-mono">₱3,150.00</span>
+                                                <span className="text-black font-sans">₱3,150.00</span>
                                             </div>
                                         </div>
 
@@ -657,21 +657,21 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                                 <TrendingUp className="w-3.5 h-3.5 text-[#E00D42]" />
                                                 <span>Automated Date-Filtered Profit Reports</span>
                                             </p>
-                                            <p className="text-[10px] text-black/60 font-mono">Filter transactions by date range with real-time settlement calculation.</p>
+                                            <p className="text-[10px] text-black/60 font-sans">Filter transactions by date range with real-time settlement calculation.</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Right Content */}
                                 <div className="lg:col-span-6 space-y-6">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/10 text-[#E00D42] font-mono text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/20">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/10 text-[#E00D42] font-sans text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/20">
                                         <DollarSign className="w-3.5 h-3.5" />
                                         <span>FAIR & TRANSPARENT</span>
                                     </div>
                                     <h4 className="text-2xl sm:text-4xl font-black text-black tracking-tight font-sans leading-tight">
                                         Predictable Economics. Zero Hidden Surcharges.
                                     </h4>
-                                    <p className="text-xs sm:text-sm text-black/70 font-mono leading-relaxed uppercase">
+                                    <p className="text-xs sm:text-sm text-black/70 font-sans leading-relaxed uppercase">
                                         WE KEEP COMMERCE SUSTAINABLE AND TRANSPARENT. MERCHANTS ENJOY AN UNCOMPLICATED 10% FLAT PLATFORM COMMISSION WITH INSTANT REAL-TIME PROFIT BREAKDOWNS, WHILE COURIER RIDERS RECEIVE FULL GUARANTEED TRIP EARNINGS.
                                     </p>
 
@@ -695,7 +695,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     <div className="pt-2">
                                         <Link
                                             href={route('buyer.index')}
-                                            className="inline-flex items-center gap-2 px-6 py-3 bg-black hover:bg-[#E00D42] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-mono shadow-sm"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-black hover:bg-[#E00D42] text-white font-bold text-xs rounded-lg transition uppercase tracking-wider font-sans shadow-sm"
                                         >
                                             <span>Explore Marketplace</span>
                                             <ArrowRight className="w-4 h-4" />
@@ -711,7 +711,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                 {/* SECTION 03: INTERACTIVE 4-STAGE ECOSYSTEM SEQUENCER (DARK MODE) */}
                 <section 
                     id="ecosystem" 
-                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#0A0D14] text-white border-b border-white/10 transition-colors duration-700 font-mono overflow-hidden"
+                    className="relative py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-[#0A0D14] text-white border-b border-white/10 transition-colors duration-700 font-sans overflow-hidden"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-14">
                         {/* Section Title */}
@@ -757,7 +757,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     >
                                         {/* Top Line: Step number and indicator */}
                                         <div className="flex justify-between items-center text-xs pb-3">
-                                            <span className={`font-black font-mono ${isActive ? 'text-[#E00D42]' : 'text-white/40'}`}>
+                                            <span className={`font-black font-sans ${isActive ? 'text-[#E00D42]' : 'text-white/40'}`}>
                                                 STAGE {step.num}
                                             </span>
                                             <div className={`w-2 h-2 rounded-full transition-all ${
@@ -777,7 +777,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                             </span>
                                         </div>
 
-                                        <p className="text-[10px] sm:text-[11px] text-white/60 font-mono mt-1 line-clamp-1">
+                                        <p className="text-[10px] sm:text-[11px] text-white/60 font-sans mt-1 line-clamp-1">
                                             {step.metric}
                                         </p>
 
@@ -794,7 +794,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center pt-4">
                             {/* Left: Deep Step Overview & Feature List */}
                             <div className="lg:col-span-6 space-y-6 font-sans">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/20 text-[#E00D42] font-mono text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/30">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E00D42]/20 text-[#E00D42] font-sans text-[11px] font-bold uppercase tracking-wider border border-[#E00D42]/30">
                                     <span>STAGE {ECOSYSTEM_STEPS[activeStep].num} // {ECOSYSTEM_STEPS[activeStep].badge}</span>
                                 </div>
 
@@ -802,7 +802,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     {ECOSYSTEM_STEPS[activeStep].title}
                                 </h4>
 
-                                <p className="text-xs sm:text-sm text-white/70 font-mono leading-relaxed uppercase">
+                                <p className="text-xs sm:text-sm text-white/70 font-sans leading-relaxed uppercase">
                                     {ECOSYSTEM_STEPS[activeStep].summary}
                                 </p>
 
@@ -819,7 +819,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     ))}
                                 </div>
 
-                                <div className="pt-2 font-mono flex items-center gap-3">
+                                <div className="pt-2 font-sans flex items-center gap-3">
                                     {activeStep === 0 && (
                                         <Link
                                             href={route('buyer.index')}
@@ -867,17 +867,17 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                     <div className="flex justify-between items-center border-b border-white/10 pb-4">
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                                            <span className="text-xs font-bold text-white tracking-wider font-mono">
+                                            <span className="text-xs font-bold text-white tracking-wider font-sans">
                                                 {ECOSYSTEM_STEPS[activeStep].telemetry.title}
                                             </span>
                                         </div>
-                                        <span className="px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold text-white/80 font-mono">
+                                        <span className="px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold text-white/80 font-sans">
                                             {ECOSYSTEM_STEPS[activeStep].telemetry.timestamp}
                                         </span>
                                     </div>
 
                                     {/* Simulated Live Role HUD */}
-                                    <div className="space-y-4 font-mono text-xs">
+                                    <div className="space-y-4 font-sans text-xs">
                                         <div className="p-4 rounded-xl bg-black/60 border border-white/10 flex justify-between items-center">
                                             <span className="text-white/60">PIPELINE STATUS:</span>
                                             <span className="font-bold text-[#E00D42]">
@@ -893,7 +893,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         </div>
 
                                         <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-white/80 space-y-2 text-[11px] font-sans">
-                                            <div className="flex items-center justify-between text-white/60 font-mono text-[10px]">
+                                            <div className="flex items-center justify-between text-white/60 font-sans text-[10px]">
                                                 <span>DISPATCH RELIABILITY</span>
                                                 <span className="text-emerald-400 font-bold">99.98% SUCCESS</span>
                                             </div>
@@ -918,14 +918,14 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                         {/* Header */}
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-black/15">
                             <div>
-                                <span className="text-xs font-bold text-[#E00D42] uppercase tracking-widest font-mono">[CATALOG SHOWCASE // 04]</span>
+                                <span className="text-xs font-bold text-[#E00D42] uppercase tracking-widest font-sans">[CATALOG SHOWCASE // 04]</span>
                                 <h3 className="text-3xl sm:text-5xl font-black tracking-tight text-black mt-1 font-sans">
                                     Explore Curated Originals
                                 </h3>
                             </div>
                             <Link
                                 href={route('products.index')}
-                                className="inline-flex items-center gap-2 text-xs font-bold text-black hover:text-[#E00D42] font-mono uppercase tracking-wider transition"
+                                className="inline-flex items-center gap-2 text-xs font-bold text-black hover:text-[#E00D42] font-sans uppercase tracking-wider transition"
                             >
                                 <span>Browse All 14 Departments</span>
                                 <ArrowRight className="w-4 h-4" />
@@ -933,7 +933,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                         </div>
 
                         {/* Interactive Filter Tabs */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none font-mono text-xs">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none font-sans text-xs">
                             <button
                                 onClick={() => setSelectedCategoryTab('all')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
@@ -1011,17 +1011,17 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                             alt={product.name} 
                                             className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
                                         />
-                                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-white font-mono text-[9px] font-black uppercase tracking-wider">
+                                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-white font-sans text-[9px] font-black uppercase tracking-wider">
                                             {product.badge}
                                         </div>
-                                        <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-md text-black font-mono text-[10px] font-bold shadow-sm">
+                                        <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-md text-black font-sans text-[10px] font-bold shadow-sm">
                                             ★ {product.rating} ({product.sales})
                                         </div>
                                     </div>
 
                                     {/* Product Details */}
                                     <div className="p-3 space-y-2 font-sans">
-                                        <div className="flex items-center justify-between text-[11px] font-mono text-black/50">
+                                        <div className="flex items-center justify-between text-[11px] font-sans text-black/50">
                                             <span>{product.category}</span>
                                             <span className="text-[#E00D42] font-bold">{product.shop}</span>
                                         </div>
@@ -1031,11 +1031,11 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                         </h5>
 
                                         <div className="flex items-center justify-between pt-1">
-                                            <div className="flex items-baseline gap-2 font-mono">
+                                            <div className="flex items-baseline gap-2 font-sans">
                                                 <span className="font-black text-base text-black">{product.price}</span>
                                                 <span className="text-xs text-black/40 line-through">{product.original_price}</span>
                                             </div>
-                                            <span className="px-3 py-1.5 bg-[#ECEAE5] group-hover:bg-[#E00D42] group-hover:text-white rounded-lg text-[10px] font-mono font-bold uppercase transition">
+                                            <span className="px-3 py-1.5 bg-[#ECEAE5] group-hover:bg-[#E00D42] group-hover:text-white rounded-lg text-[10px] font-sans font-bold uppercase transition">
                                                 View Specs
                                             </span>
                                         </div>
@@ -1047,7 +1047,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                         {/* 14 Departments Grid Pills */}
                         <div className="pt-8 border-t border-black/10">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="font-mono text-xs font-bold text-black uppercase tracking-wider">
+                                <span className="font-sans text-xs font-bold text-black uppercase tracking-wider">
                                     Explore All 14 Official Departments:
                                 </span>
                             </div>
@@ -1060,7 +1060,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                             href={route('products.index', { category: cat.slug })}
                                             className="p-3 bg-white hover:bg-black hover:text-white rounded-xl border border-black/10 transition group shadow-xs flex flex-col justify-between h-20"
                                         >
-                                            <span className="font-mono text-[9px] text-[#E00D42] group-hover:text-white font-bold">
+                                            <span className="font-sans text-[9px] text-[#E00D42] group-hover:text-white font-bold">
                                                 [{num}/14]
                                             </span>
                                             <span className="font-sans font-bold text-xs line-clamp-1">
@@ -1078,7 +1078,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                 {/* SECTION 05: HIGH-IMPACT MULTI-ROLE ONBOARDING ACTION BAR (DARK MODE) */}
                 <section 
                     id="onboarding" 
-                    className="relative py-20 sm:py-28 px-4 sm:px-8 lg:px-12 bg-[#05070B] text-white border-b border-white/10 font-mono"
+                    className="relative py-20 sm:py-28 px-4 sm:px-8 lg:px-12 bg-[#05070B] text-white border-b border-white/10 font-sans"
                 >
                     <div className="max-w-7xl mx-auto w-full space-y-12">
                         <div className="text-center max-w-2xl mx-auto space-y-3">

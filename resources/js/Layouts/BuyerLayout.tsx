@@ -86,6 +86,7 @@ export default function BuyerLayout({
     });
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const userDropdownTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const userDropdownRef = React.useRef<HTMLDivElement | null>(null);
 
     const handleUserDropdownEnter = () => {
         if (userDropdownTimeoutRef.current) clearTimeout(userDropdownTimeoutRef.current);
@@ -97,6 +98,31 @@ export default function BuyerLayout({
             setUserDropdownOpen(false);
         }, 250);
     };
+
+    const toggleUserDropdown = () => {
+        if (userDropdownTimeoutRef.current) clearTimeout(userDropdownTimeoutRef.current);
+        setUserDropdownOpen((isOpen) => !isOpen);
+    };
+
+    React.useEffect(() => {
+        if (!userDropdownOpen) return;
+
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            if (!userDropdownRef.current?.contains(event.target as Node)) {
+                setUserDropdownOpen(false);
+            }
+        };
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setUserDropdownOpen(false);
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsidePointer);
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.removeEventListener('pointerdown', closeOnOutsidePointer);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [userDropdownOpen]);
 
     const [chatOpen, setChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
@@ -299,32 +325,47 @@ export default function BuyerLayout({
                             {/* PROFILE BUTTON WITH SEAMLESS HOVER BRIDGE */}
                             {auth.user ? (
                                 <div 
+                                    ref={userDropdownRef}
                                     className="relative"
                                     onMouseEnter={handleUserDropdownEnter}
                                     onMouseLeave={handleUserDropdownLeave}
                                 >
-                                    <Link
-                                        href={route('buyer.profile', { tab: 'orders' })}
-                                        className="h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs focus:outline-hidden group"
-                                    >
-                                        {auth.user.avatar ? (
-                                            <img
-                                                src={auth.user.avatar}
-                                                alt={auth.user.name}
-                                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-md object-cover border border-slate-200 shrink-0"
-                                            />
-                                        ) : (
-                                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#E00D42] text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shrink-0">
-                                                {auth.user.name.charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
-                                        <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
-                                        <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
-                                    </Link>
+                                    <div className="h-9 sm:h-11 flex items-stretch rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs group">
+                                        <Link
+                                            href={route('buyer.profile', { tab: 'orders' })}
+                                            className="flex min-w-0 items-center gap-1.5 sm:gap-2 pl-2.5 sm:pl-4 pr-1 sm:pr-2 focus:outline-hidden"
+                                        >
+                                            {auth.user.avatar ? (
+                                                <img
+                                                    src={auth.user.avatar}
+                                                    alt={auth.user.name}
+                                                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-md object-cover border border-slate-200 shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#E00D42] text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shrink-0">
+                                                    {auth.user.name.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={toggleUserDropdown}
+                                            aria-label="Toggle account menu"
+                                            aria-haspopup="menu"
+                                            aria-expanded={userDropdownOpen}
+                                            aria-controls="buyer-account-menu"
+                                            className="flex items-center justify-center px-2.5 sm:px-3 cursor-pointer focus:outline-hidden"
+                                        >
+                                            <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                                        </button>
+                                    </div>
 
                                     {/* User Hover Dropdown with Instant Seamless Overlap */}
                                     {userDropdownOpen && (
                                         <div 
+                                            id="buyer-account-menu"
+                                            role="menu"
                                             className="absolute right-0 top-full -mt-0.5 pt-1 w-56 z-50 animate-scale-in"
                                             onMouseEnter={handleUserDropdownEnter}
                                             onMouseLeave={handleUserDropdownLeave}
@@ -373,7 +414,7 @@ export default function BuyerLayout({
                                                         <span>Messages & Inquiries</span>
                                                     </div>
                                                     {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                                                        <span className="px-1.5 py-0.5 rounded-full bg-[#E00D42] text-white text-[9px] font-mono font-bold">
+                                                        <span className="px-1.5 py-0.5 rounded-full bg-[#E00D42] text-white text-[9px] font-sans font-bold">
                                                             {unreadMessagesCount}
                                                         </span>
                                                     )}
@@ -470,7 +511,7 @@ export default function BuyerLayout({
             {/* 4. LOGOUT FEEDBACK NOTIFICATION CHIP */}
             {logoutFeedback && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in pointer-events-auto">
-                    <div className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-slate-950/95 text-white rounded-full shadow-2xl border border-slate-800 text-xs font-mono backdrop-blur-md max-w-[92vw]">
+                    <div className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-slate-950/95 text-white rounded-full shadow-2xl border border-slate-800 text-xs font-sans backdrop-blur-md max-w-[92vw]">
                         <div className="flex items-center gap-2 min-w-0">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                             <LogOut className="w-3.5 h-3.5 text-slate-400 shrink-0 hidden sm:block" />

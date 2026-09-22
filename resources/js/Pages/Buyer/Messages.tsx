@@ -193,7 +193,7 @@ export default function BuyerMessages({ conversations }: Props) {
 
             <div className="h-full flex flex-col min-h-0">
                 {/* 1. COMPACT TOP HEADER */}
-                <div className="bg-white rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 border border-slate-200 shadow-2xs flex items-center justify-between font-mono shrink-0 mb-2 sm:mb-2.5">
+                <div className="bg-white rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 border border-slate-200 shadow-2xs flex items-center justify-between font-sans shrink-0 mb-2 sm:mb-2.5">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-xl bg-red-50 text-[#E00D42] flex items-center justify-center font-bold shrink-0">
                             <MessageSquare className="w-4 h-4" />
@@ -230,7 +230,7 @@ export default function BuyerMessages({ conversations }: Props) {
                         {/* ONLY contacts scroll */}
                         <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
                             {filteredConversations.length === 0 ? (
-                                <div className="p-6 text-center text-xs font-mono text-slate-400">
+                                <div className="p-6 text-center text-xs font-sans text-slate-400">
                                     No conversations found
                                 </div>
                             ) : (
@@ -247,7 +247,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                 isSelected ? 'bg-rose-50/60 border-l-4 border-l-[#E00D42]' : 'hover:bg-slate-50'
                                             }`}
                                         >
-                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 font-sans">
                                                 {conv.user.role === 'seller' ? <Store className="w-4 h-4 text-emerald-400" /> : <Truck className="w-4 h-4 text-amber-400" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -255,7 +255,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                     <h4 className="font-bold text-xs text-slate-900 truncate">
                                                         {conv.user.shop ? conv.user.shop.name : conv.user.name}
                                                     </h4>
-                                                    <span className="font-mono text-[10px] text-slate-400 shrink-0 ml-1">{conv.last_time}</span>
+                                                    <span className="font-sans text-[10px] text-slate-400 shrink-0 ml-1">{conv.last_time}</span>
                                                 </div>
                                                 <p className="text-xs text-slate-500 truncate mt-0.5">{conv.last_message}</p>
                                             </div>
@@ -270,7 +270,7 @@ export default function BuyerMessages({ conversations }: Props) {
                     <div className={`flex-1 flex flex-col h-full min-h-0 min-w-0 bg-slate-50/30 ${mobileChatOpen ? 'flex' : 'hidden md:flex'}`}>
                         
                         {/* Chat Header */}
-                        <div className="p-3 sm:p-4 border-b border-slate-200 bg-white flex items-center justify-between font-mono text-xs shrink-0">
+                        <div className="p-3 sm:p-4 border-b border-slate-200 bg-white flex items-center justify-between font-sans text-xs shrink-0">
                             <div className="flex items-center gap-3">
                                 <button
                                     type="button"
@@ -298,7 +298,7 @@ export default function BuyerMessages({ conversations }: Props) {
                         {/* Message Stream: ONLY this scrolls */}
                         <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-3 font-sans text-xs">
                             {activeMessages.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2 font-mono">
+                                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2 font-sans">
                                     <MessageSquare className="w-8 h-8 text-slate-300" />
                                     <p className="text-xs">No messages yet in this conversation.</p>
                                 </div>
@@ -334,7 +334,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                             alt={msg.product.name}
                                                             className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
                                                         />
-                                                        <div className="min-w-0 flex-1 font-mono text-[11px]">
+                                                        <div className="min-w-0 flex-1 font-sans text-[11px]">
                                                             <div className="flex items-center gap-1">
                                                                 <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E00D42] text-[8px] uppercase font-bold">
                                                                     Product Reference
@@ -351,7 +351,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                 )}
 
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-                                                <span className={`block font-mono text-[9px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
+                                                <span className={`block font-sans text-[9px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
                                                     {formatMessageTime(msg.created_at)}
                                                 </span>
                                             </div>
@@ -374,7 +374,7 @@ export default function BuyerMessages({ conversations }: Props) {
                             <button
                                 type="submit"
                                 disabled={sending || !replyText.trim()}
-                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl font-mono text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl font-sans text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                             >
                                 <Send className="w-3.5 h-3.5" />
                                 <span>Send</span>

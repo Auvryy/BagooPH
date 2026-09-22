@@ -33,7 +33,7 @@ export default function ResetPassword({ token, email }: Props) {
         >
             <Head title="Reset Password — BagooPH" />
 
-            <form onSubmit={submit} className="space-y-4 font-mono">
+            <form onSubmit={submit} className="space-y-4 font-sans">
                 <div>
                     <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                         Email Address
@@ -45,7 +45,7 @@ export default function ResetPassword({ token, email }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             autoComplete="username"
                             onChange={(e) => setData('email', e.target.value)}
                             required
@@ -65,7 +65,7 @@ export default function ResetPassword({ token, email }: Props) {
                             type="password"
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
                             autoFocus
@@ -87,7 +87,7 @@ export default function ResetPassword({ token, email }: Props) {
                             type="password"
                             name="password_confirmation"
                             value={data.password_confirmation}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-mono transition"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
                             onChange={(e) => setData('password_confirmation', e.target.value)}

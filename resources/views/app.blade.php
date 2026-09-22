@@ -53,9 +53,9 @@
         <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="/bagoo.svg">
 
-        <!-- Fonts: Plus Jakarta Sans & Inter for Soft Readability, JetBrains Mono for Precise Data -->
+        <!-- Font: Plus Jakarta Sans across every BagooPH interface -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800|inter:400,500,600,700|jetbrains-mono:400,500,600,700,800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
         @routes

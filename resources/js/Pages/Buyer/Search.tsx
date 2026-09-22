@@ -116,7 +116,7 @@ export default function SearchPage({
             <div className="space-y-6">
                 
                 {/* 1. BREADCRUMBS & TOP TITLE */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs pb-2 border-b border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans text-xs pb-2 border-b border-slate-200">
                     <div className="flex items-center gap-2 text-slate-500 min-w-0 overflow-hidden">
                         <Link href={route('buyer.index')} className="hover:text-[#E00D42] transition shrink-0">Marketplace</Link>
                         <span>/</span>
@@ -144,7 +144,7 @@ export default function SearchPage({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
                     {/* LEFT SIDEBAR FILTERS (DESKTOP) */}
-                    <aside className="hidden lg:block lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-6 sticky top-24 font-mono text-xs">
+                    <aside className="hidden lg:block lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-6 sticky top-24 font-sans text-xs">
                         
                         {/* Filter Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -190,7 +190,7 @@ export default function SearchPage({
                                         }`}
                                     >
                                         <span className="truncate">{cat.name}</span>
-                                        <span className="text-[10px] opacity-75 font-mono">({cat.products_count ?? 0})</span>
+                                        <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
                                     </button>
                                 ))}
                             </div>
@@ -299,7 +299,7 @@ export default function SearchPage({
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                     </div>
-                                    <span className="font-mono text-[11px]">& up</span>
+                                    <span className="font-sans text-[11px]">& up</span>
                                 </button>
                                 <button
                                     type="button"
@@ -315,7 +315,7 @@ export default function SearchPage({
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                         <Star className="w-3.5 h-3.5 fill-amber-400" />
                                     </div>
-                                    <span className="font-mono text-[11px]">4.5+ Stars</span>
+                                    <span className="font-sans text-[11px]">4.5+ Stars</span>
                                 </button>
                             </div>
                         </div>
@@ -326,7 +326,7 @@ export default function SearchPage({
                     <div className="lg:col-span-9 space-y-4">
                         
                         {/* SEARCH CONTROLS HEADER BAR */}
-                        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-mono text-xs">
+                        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans text-xs">
                             
                             {/* Search Keyword Headline */}
                             <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function SearchPage({
                                     <select
                                         value={filters.sort || 'relevance'}
                                         onChange={(e) => applyFilter({ sort: e.target.value })}
-                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-800 py-1.5 pl-2.5 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42]"
                                     >
                                         <option value="relevance">Relevance</option>
                                         <option value="top_sales">Best Sellers</option>
@@ -373,7 +373,7 @@ export default function SearchPage({
 
                         {/* ACTIVE FILTER PILLS (Removable) */}
                         {(filters.search || filters.category || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
-                            <div className="flex items-center gap-2 flex-wrap font-mono text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                            <div className="flex items-center gap-2 flex-wrap font-sans text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                                 <span className="font-bold text-slate-400 text-[10px] uppercase">Active:</span>
 
                                 {filters.search && (
@@ -436,12 +436,12 @@ export default function SearchPage({
                                 <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                     <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                                     <h3 className="text-base font-bold text-slate-800 font-sans">No products matched your search</h3>
-                                    <p className="text-xs text-slate-500 font-mono max-w-md mx-auto">
+                                    <p className="text-xs text-slate-500 font-sans max-w-md mx-auto">
                                         We couldn't find exact matches for your filters. Try checking spelling, using more general keywords, or resetting your filters.
                                     </p>
                                     <button
                                         onClick={clearAllFilters}
-                                        className="mt-2 px-5 py-2.5 bg-[#E00D42] text-white rounded-lg text-xs font-mono font-bold uppercase hover:bg-[#C20836] transition shadow-xs"
+                                        className="mt-2 px-5 py-2.5 bg-[#E00D42] text-white rounded-lg text-xs font-sans font-bold uppercase hover:bg-[#C20836] transition shadow-xs"
                                     >
                                         Clear All Filters
                                     </button>
@@ -450,7 +450,7 @@ export default function SearchPage({
                                 {/* Smart Fallback Recommendations */}
                                 {relatedProducts && relatedProducts.length > 0 && (
                                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                                        <div className="flex items-center gap-2 font-mono pb-2 border-b border-slate-100">
+                                        <div className="flex items-center gap-2 font-sans pb-2 border-b border-slate-100">
                                             <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Trending Products You Might Like</h4>
                                         </div>
@@ -480,7 +480,7 @@ export default function SearchPage({
 
                         {/* RELATED PRODUCTS RECOMMENDATION FEED */}
                         {products.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
-                            <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-mono">
+                            <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4 mt-8 font-sans">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                     <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                     <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
@@ -499,7 +499,7 @@ export default function SearchPage({
 
                         {/* PAGINATION */}
                         {products.links && products.links.length > 3 && (
-                            <div className="mt-8 flex items-center justify-center gap-1 font-mono text-xs">
+                            <div className="mt-8 flex items-center justify-center gap-1 font-sans text-xs">
                                 {products.links.map((link, idx) => (
                                     <Link
                                         key={idx}
@@ -530,7 +530,7 @@ export default function SearchPage({
                         />
 
                         {/* Slide-in Panel */}
-                        <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl flex flex-col z-10 font-mono text-xs overflow-hidden animate-slide-in-right">
+                        <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl flex flex-col z-10 font-sans text-xs overflow-hidden animate-slide-in-right">
                             {/* Header */}
                             <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
                                 <div className="flex items-center gap-2 font-bold text-slate-900 text-sm uppercase">
@@ -576,7 +576,7 @@ export default function SearchPage({
                                                 }`}
                                             >
                                                 <span className="truncate">{cat.name}</span>
-                                                <span className="text-[10px] opacity-75 font-mono">({cat.products_count ?? 0})</span>
+                                                <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
                                             </button>
                                         ))}
                                     </div>
@@ -677,7 +677,7 @@ export default function SearchPage({
                                                 <Star className="w-3.5 h-3.5 fill-amber-400" />
                                                 <Star className="w-3.5 h-3.5 fill-amber-400" />
                                             </div>
-                                            <span className="font-mono text-[11px]">& up</span>
+                                            <span className="font-sans text-[11px]">& up</span>
                                         </button>
                                     </div>
                                 </div>

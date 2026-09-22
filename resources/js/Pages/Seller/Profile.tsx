@@ -108,7 +108,7 @@ export default function SellerProfile({ user, shop }: Props) {
                 <div className="flex items-center gap-2.5">
                     <Link
                         href={route('seller.settings')}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-mono rounded-xl border border-slate-200 transition shadow-2xs"
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold font-sans rounded-xl border border-slate-200 transition shadow-2xs"
                     >
                         <Settings className="w-3.5 h-3.5 text-slate-500" />
                         <span>Store Settings</span>
@@ -118,7 +118,7 @@ export default function SellerProfile({ user, shop }: Props) {
                             href={route('seller.preview')}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xl transition shadow-xs"
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-xl transition shadow-xs"
                         >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>Storefront Preview</span>
@@ -132,7 +132,7 @@ export default function SellerProfile({ user, shop }: Props) {
             <div className="max-w-4xl space-y-6 font-sans">
                 
                 {/* Unified Settings Navigation Tabs */}
-                <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-mono text-xs">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-sans text-xs">
                     <Link
                         href={route('seller.settings')}
                         className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
@@ -150,7 +150,7 @@ export default function SellerProfile({ user, shop }: Props) {
                 </div>
 
                 {/* Verification Status Banner */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs">
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans text-xs">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
                             <ShieldCheck className="w-5 h-5" />
@@ -184,7 +184,7 @@ export default function SellerProfile({ user, shop }: Props) {
                     {/* Section: Profile Avatar */}
                     <div className="space-y-4">
                         <div>
-                            <h3 className="text-sm font-bold text-slate-900 font-mono uppercase tracking-wider">
+                            <h3 className="text-sm font-bold text-slate-900 font-sans uppercase tracking-wider">
                                 Merchant Avatar
                             </h3>
                             <p className="text-xs text-slate-500 mt-0.5">
@@ -202,14 +202,14 @@ export default function SellerProfile({ user, shop }: Props) {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-full bg-slate-950 text-white font-mono font-bold text-3xl flex items-center justify-center">
+                                    <div className="w-full h-full bg-slate-950 text-white font-sans font-bold text-3xl flex items-center justify-center">
                                         {user.name ? user.name.charAt(0).toUpperCase() : 'M'}
                                     </div>
                                 )}
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity text-[10px] font-mono font-bold cursor-pointer"
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity text-[10px] font-sans font-bold cursor-pointer"
                                 >
                                     <Camera className="w-5 h-5 mb-1" />
                                     <span>Change</span>
@@ -222,7 +222,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                                     >
                                         <Upload className="w-3.5 h-3.5" />
                                         <span>{avatarPreview ? 'Upload / Change Photo' : 'Upload Photo'}</span>
@@ -232,7 +232,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                         <button
                                             type="button"
                                             onClick={handleRemoveAvatar}
-                                            className="px-4 py-2 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
+                                            className="px-4 py-2 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
                                         >
                                             <Trash2 className="w-3.5 h-3.5" />
                                             <span>Remove Photo</span>
@@ -241,17 +241,17 @@ export default function SellerProfile({ user, shop }: Props) {
                                 </div>
 
                                 {avatarPreview !== user.avatar && (
-                                    <p className="text-[11px] text-amber-700 font-mono font-medium">
+                                    <p className="text-[11px] text-amber-700 font-sans font-medium">
                                         New photo selected. Click Save Changes below to apply.
                                     </p>
                                 )}
 
-                                <p className="text-[11px] text-slate-500 font-mono">
+                                <p className="text-[11px] text-slate-500 font-sans">
                                     Supported formats: JPEG, PNG, WEBP, GIF. Maximum file size: 3MB.
                                 </p>
 
                                 {(fileValidationError || errors.avatar) && (
-                                    <p className="text-xs text-rose-600 font-mono font-bold flex items-center gap-1">
+                                    <p className="text-xs text-rose-600 font-sans font-bold flex items-center gap-1">
                                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                                         <span>{fileValidationError || errors.avatar}</span>
                                     </p>
@@ -263,7 +263,7 @@ export default function SellerProfile({ user, shop }: Props) {
                     {/* Section: Merchant Information */}
                     <div className="space-y-4 pt-4 border-t border-slate-100">
                         <div>
-                            <h3 className="text-sm font-bold text-slate-900 font-mono uppercase tracking-wider">
+                            <h3 className="text-sm font-bold text-slate-900 font-sans uppercase tracking-wider">
                                 Merchant Information
                             </h3>
                             <p className="text-xs text-slate-500 mt-0.5">
@@ -273,7 +273,7 @@ export default function SellerProfile({ user, shop }: Props) {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1.5">
+                                <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1.5">
                                     Full Name <span className="text-rose-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -287,11 +287,11 @@ export default function SellerProfile({ user, shop }: Props) {
                                     />
                                     <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 </div>
-                                {errors.name && <p className="text-xs text-rose-500 mt-1 font-mono">{errors.name}</p>}
+                                {errors.name && <p className="text-xs text-rose-500 mt-1 font-sans">{errors.name}</p>}
                             </div>
 
                             <div>
-                                <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1.5">
+                                <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1.5">
                                     Email Address <span className="text-rose-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -305,11 +305,11 @@ export default function SellerProfile({ user, shop }: Props) {
                                     />
                                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 </div>
-                                {errors.email && <p className="text-xs text-rose-500 mt-1 font-mono">{errors.email}</p>}
+                                {errors.email && <p className="text-xs text-rose-500 mt-1 font-sans">{errors.email}</p>}
                             </div>
 
                             <div>
-                                <label className="block text-xs font-mono font-bold text-slate-700 uppercase mb-1.5">
+                                <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1.5">
                                     Mobile / Phone
                                 </label>
                                 <PhoneInput
@@ -319,13 +319,13 @@ export default function SellerProfile({ user, shop }: Props) {
                                     accentColor="primary"
                                     helperText="10-digit mobile number (e.g. 917 123 4567)"
                                 />
-                                {errors.phone && <p className="text-xs text-rose-500 mt-1 font-mono">{errors.phone}</p>}
+                                {errors.phone && <p className="text-xs text-rose-500 mt-1 font-sans">{errors.phone}</p>}
                             </div>
                         </div>
                     </div>
 
                     {recentlySuccessful && (
-                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-mono flex items-center gap-2">
+                        <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-sans flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span>Profile details updated successfully!</span>
                         </div>
@@ -335,7 +335,7 @@ export default function SellerProfile({ user, shop }: Props) {
                         <button
                             type="submit"
                             disabled={processing}
-                            className="px-6 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-mono font-bold uppercase shadow-sm transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                            className="px-6 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-sans font-bold uppercase shadow-sm transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                         >
                             {processing ? 'Saving...' : 'Save Changes'}
                         </button>
@@ -350,7 +350,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                 <Store className="w-4 h-4" />
                             </div>
                             <div>
-                                <h4 className="text-xs font-mono font-bold text-slate-900 uppercase">
+                                <h4 className="text-xs font-sans font-bold text-slate-900 uppercase">
                                     Storefront Management
                                 </h4>
                                 <p className="text-[11px] text-slate-500 font-sans">
@@ -360,14 +360,14 @@ export default function SellerProfile({ user, shop }: Props) {
                         </div>
                         <Link
                             href={route('seller.settings')}
-                            className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E00D42] hover:text-[#C20836] transition"
+                            className="flex items-center gap-1.5 text-xs font-sans font-bold text-[#E00D42] hover:text-[#C20836] transition"
                         >
                             <span>Store Settings</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
                     </div>
                     {shop && (
-                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans">
                             <div>
                                 <span className="text-slate-500">Connected Store: </span>
                                 <span className="font-bold text-slate-900">{shop.name}</span>

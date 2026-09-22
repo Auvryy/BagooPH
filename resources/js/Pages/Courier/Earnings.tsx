@@ -57,7 +57,7 @@ export default function CourierEarnings({ stats, trips }: Props) {
             <div className="space-y-6 font-sans">
                 
                 {/* 1. EARNINGS OVERVIEW CARDS */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 font-sans">
                     
                     {/* Total Driver Payouts Earned */}
                     <div className="bg-slate-900 rounded-2xl p-6 text-white border border-slate-800 shadow-xl space-y-3">
@@ -103,7 +103,7 @@ export default function CourierEarnings({ stats, trips }: Props) {
 
                 {/* 2. COMPLETED TRIPS LEDGER TABLE */}
                 <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono text-xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans text-xs">
                         <div className="flex items-center gap-2">
                             <Truck className="w-4 h-4 text-[#E00D42]" />
                             <h3 className="font-bold text-slate-900 text-sm uppercase">Completed Trip History Log</h3>
@@ -112,14 +112,14 @@ export default function CourierEarnings({ stats, trips }: Props) {
                     </div>
 
                     {trips.length === 0 ? (
-                        <div className="py-12 text-center text-slate-400 font-mono text-xs">
+                        <div className="py-12 text-center text-slate-400 font-sans text-xs">
                             No completed delivery trips yet. Claim your first task in the Dispatch Board.
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs font-sans">
                                 <thead>
-                                    <tr className="border-b border-slate-200 font-mono text-[10px] text-slate-400 uppercase">
+                                    <tr className="border-b border-slate-200 font-sans text-[10px] text-slate-400 uppercase">
                                         <th className="pb-3 pr-4">Tracking Number</th>
                                         <th className="pb-3 px-4">Merchant Origin</th>
                                         <th className="pb-3 px-4">Recipient Drop-off</th>
@@ -128,7 +128,7 @@ export default function CourierEarnings({ stats, trips }: Props) {
                                         <th className="pb-3 pl-4 text-right">Rider Payout</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 font-mono">
+                                <tbody className="divide-y divide-slate-100 font-sans">
                                     {trips.map((trip) => (
                                         <tr key={trip.id} className="hover:bg-slate-50/60 transition">
                                             <td className="py-3.5 pr-4">
@@ -140,7 +140,7 @@ export default function CourierEarnings({ stats, trips }: Props) {
                                             </td>
                                             <td className="py-3.5 px-4 font-sans">
                                                 <span className="font-bold text-slate-800">{trip.recipient_name}</span>
-                                                <span className="block text-[10px] text-slate-500 font-mono truncate max-w-xs">{trip.delivery_address}</span>
+                                                <span className="block text-[10px] text-slate-500 font-sans truncate max-w-xs">{trip.delivery_address}</span>
                                             </td>
                                             <td className="py-3.5 px-4 text-slate-500 text-[11px]">
                                                 {trip.delivered_at}

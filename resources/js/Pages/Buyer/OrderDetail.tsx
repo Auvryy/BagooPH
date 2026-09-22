@@ -222,7 +222,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                         </div>
 
                         {delivery && (
-                            <span className="text-[#E00D42] font-bold font-mono text-xs break-all">
+                            <span className="text-[#E00D42] font-bold font-sans text-xs break-all">
                                 Tracking No: {delivery.tracking_number}
                             </span>
                         )}
@@ -481,7 +481,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                         {data.images.length < 5 && (
                                             <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#E00D42] bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition text-slate-400 hover:text-[#E00D42]">
                                                 <Camera className="w-5 h-5 mb-0.5" />
-                                                <span className="text-[9px] font-mono font-bold uppercase">+ Add</span>
+                                                <span className="text-[9px] font-sans font-bold uppercase">+ Add</span>
                                                 <input
                                                     type="file"
                                                     accept="image/*"
@@ -495,7 +495,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                 </div>
 
                                 {recentlySuccessful && (
-                                    <p className="text-xs text-emerald-600 font-mono font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                                    <p className="text-xs text-emerald-600 font-sans font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
                                         <Check className="w-4 h-4" /> Review & photos submitted successfully!
                                     </p>
                                 )}
@@ -504,14 +504,14 @@ export default function BuyerOrderDetail({ order }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => setReviewModalOpen(false)}
-                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-mono uppercase"
+                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-sans uppercase"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-mono uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-sans uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
                                     >
                                         {processing ? 'Submitting...' : 'Post Verified Review'}
                                     </button>

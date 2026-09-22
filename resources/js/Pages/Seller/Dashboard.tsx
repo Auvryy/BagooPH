@@ -146,14 +146,14 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                     <Link
                         href={route('preview')}
                         target="_blank"
-                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold font-mono rounded-lg border border-slate-200 transition"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold font-sans rounded-lg border border-slate-200 transition"
                     >
                         <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                         <span>Storefront Preview</span>
                     </Link>
                     <Link
                         href={route('seller.products.index')}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-lg shadow-xs transition uppercase tracking-wider"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-lg shadow-xs transition uppercase tracking-wider"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         <span>New Listing</span>
@@ -169,19 +169,19 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Gross Sales</span>
                                 <span className="inline-flex items-center gap-0.5 text-slate-700 text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                     <TrendingUp className="w-3 h-3" /> +16.4%
                                 </span>
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {formatPrice(stats.totalRevenue)}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Net Take-Home (90%):</span>
                             <span className="font-bold text-slate-900">{formatPrice(stats.totalRevenue * 0.9)}</span>
                         </div>
@@ -189,17 +189,17 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Items Sold</span>
                                 <Package className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {stats.totalSales} <span className="text-sm font-bold text-slate-500">items</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Average Basket:</span>
                             <span className="font-bold text-slate-800">
                                 {formatPrice(stats.totalSales > 0 ? stats.totalRevenue / stats.totalSales : 0)}
@@ -209,17 +209,17 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Catalog</span>
                                 <Box className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {stats.totalProducts} <span className="text-sm font-bold text-slate-500">SKUs</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Inventory Status:</span>
                             <span className={`font-bold ${stats.lowStockCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
                                 {stats.lowStockCount > 0 ? `${stats.lowStockCount} low stock` : 'In stock'}
@@ -229,20 +229,20 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase">Store Rating</span>
                                 <div className="flex items-center gap-1 text-amber-500">
                                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                    <span className="font-bold text-slate-900 font-mono">{Number(shop.rating || 4.95).toFixed(2)}</span>
+                                    <span className="font-bold text-slate-900 font-sans">{Number(shop.rating || 4.95).toFixed(2)}</span>
                                 </div>
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     98.4%
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-400">Dispatch Rating:</span>
                             <span className="font-bold text-slate-700">Top Rated Seller</span>
                         </div>
@@ -260,14 +260,14 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
-                                    <h3 className="text-sm font-black text-slate-900 font-mono uppercase tracking-wider">
+                                    <h3 className="text-sm font-black text-slate-900 font-sans uppercase tracking-wider">
                                         Sales Velocity
                                     </h3>
                                 </div>
                             </div>
 
                             {/* Timeframe Filter Buttons */}
-                            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-mono text-xs">
+                            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-sans text-xs">
                                 <button
                                     type="button"
                                     onClick={() => setTimeframe('7d')}
@@ -310,7 +310,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* Live Hover Tooltip */}
                             {isHoveringChart && activePoint && (
                                 <div
-                                    className="absolute pointer-events-none z-20 bg-slate-950 text-white p-3 rounded-xl shadow-xl border border-slate-800 font-mono text-xs transition-all duration-75"
+                                    className="absolute pointer-events-none z-20 bg-slate-950 text-white p-3 rounded-xl shadow-xl border border-slate-800 font-sans text-xs transition-all duration-75"
                                     style={{
                                         left: `${(activePoint.x / svgWidth) * 100}%`,
                                         top: `${(activePoint.y / svgHeight) * 100}%`,
@@ -322,7 +322,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-slate-300 font-bold">{activePoint.units} sold</span>
                                     </div>
                                     <div className="mt-1.5 space-y-0.5">
-                                        <p className="text-base font-black text-white font-mono">
+                                        <p className="text-base font-black text-white font-sans">
                                             {formatPrice(activePoint.revenue)}
                                         </p>
                                         <p className="text-[10px] text-slate-300">
@@ -377,7 +377,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 y={y + 3}
                                                 fill="#94a3b8"
                                                 fontSize="8.5"
-                                                fontFamily="monospace"
+                                                fontFamily="Plus Jakarta Sans, sans-serif"
                                                 textAnchor="end"
                                             >
                                                 {formatPrice(maxRevenue * (1 - ratio)).slice(0, -3)}
@@ -458,7 +458,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 fill={isActive ? "#E00D42" : "#64748b"}
                                                 fontWeight={isActive ? "bold" : "normal"}
                                                 fontSize="9.5"
-                                                fontFamily="monospace"
+                                                fontFamily="Plus Jakarta Sans, sans-serif"
                                                 textAnchor="middle"
                                                 className="uppercase tracking-wider"
                                             >
@@ -471,7 +471,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         </div>
 
                         {/* Bottom Telemetry Strip: Clean Single-Row Bar (Minimalist, Zero Bulk) */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-mono text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-slate-400 uppercase tracking-tight">Selected Date Revenue:</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
@@ -493,13 +493,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <Box className="w-4 h-4 text-[#E00D42]" />
-                                <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
+                                <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
                                     Fulfillment Actions
                                 </h3>
                             </div>
                             <Link 
                                 href={route('seller.orders.index')} 
-                                className="text-[11px] font-bold font-mono text-[#E00D42] hover:underline uppercase inline-flex items-center gap-1"
+                                className="text-[11px] font-bold font-sans text-[#E00D42] hover:underline uppercase inline-flex items-center gap-1"
                             >
                                 View Orders <ArrowRight className="w-3 h-3" />
                             </Link>
@@ -526,15 +526,15 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <Package className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-amber-900 block leading-tight">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-amber-900 block leading-tight">
                                             To Pack
                                         </span>
-                                        <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                                        <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
                                             Awaiting packaging
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-mono text-sm font-black shrink-0 ${
+                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
                                     stats.pendingPackCount > 0
                                         ? 'bg-amber-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -561,15 +561,15 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <RotateCcw className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
                                             Returns & Cancels
                                         </span>
-                                        <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                                        <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
                                             {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-mono text-sm font-black shrink-0 ${
+                                <span className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-500 text-white shadow-xs'
                                         : 'bg-slate-200 text-slate-700'
@@ -579,7 +579,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </Link>
 
                             {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}
-                            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-mono shrink-0">
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-sans shrink-0">
                                 <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
                                     <span>Logistics Pipeline</span>
                                     <span className="text-slate-500">Live Status</span>
@@ -593,7 +593,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Ready
                                         </span>
-                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.readyPickupCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
@@ -609,7 +609,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Transit
                                         </span>
-                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.shippedCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
@@ -625,7 +625,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
                                             Delivered
                                         </span>
-                                        <span className="text-sm font-black text-slate-900 font-mono block mt-0.5 group-hover:text-[#E00D42]">
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
                                             {stats.completedCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
@@ -646,20 +646,20 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
                                 <h3 className="font-bold text-sm text-slate-900">Incoming Customer Orders</h3>
-                                <p className="text-xs text-slate-400 font-mono">Awaiting packaging and courier handover</p>
+                                <p className="text-xs text-slate-400 font-sans">Awaiting packaging and courier handover</p>
                             </div>
-                            <Link href={route('seller.orders.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase">
+                            <Link href={route('seller.orders.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Manage All</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                         </div>
 
                         {recentOrders.length === 0 ? (
-                            <p className="text-xs text-slate-400 py-8 text-center font-mono">No incoming orders at the moment.</p>
+                            <p className="text-xs text-slate-400 py-8 text-center font-sans">No incoming orders at the moment.</p>
                         ) : (
                             <div className="divide-y divide-slate-100 space-y-3">
                                 {recentOrders.map((item) => (
-                                    <div key={item.id} className="pt-3 first:pt-0 flex items-center justify-between gap-4 font-mono text-xs">
+                                    <div key={item.id} className="pt-3 first:pt-0 flex items-center justify-between gap-4 font-sans text-xs">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <img
                                                 src={item.product?.featured_image || ''}
@@ -683,7 +683,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             </div>
                                             <Link
                                                 href={route('seller.orders.index')}
-                                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold font-mono transition shadow-2xs cursor-pointer"
+                                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold font-sans transition shadow-2xs cursor-pointer"
                                                 title="Open in Orders Fulfillment"
                                             >
                                                 Manage
@@ -700,20 +700,20 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
                                 <h3 className="font-bold text-sm text-slate-900">Inventory Velocity Leaders</h3>
-                                <p className="text-xs text-slate-400 font-mono">High conversion SKU listings</p>
+                                <p className="text-xs text-slate-400 font-sans">High conversion SKU listings</p>
                             </div>
-                            <Link href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase">
+                            <Link href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Catalog</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                         </div>
 
                         {topProducts.length === 0 ? (
-                            <p className="text-xs text-slate-400 py-8 text-center font-mono">No products published in catalog yet.</p>
+                            <p className="text-xs text-slate-400 py-8 text-center font-sans">No products published in catalog yet.</p>
                         ) : (
                             <div className="divide-y divide-slate-100 space-y-3">
                                 {topProducts.map((prod) => (
-                                    <div key={prod.id} className="pt-3 first:pt-0 flex items-center justify-between gap-4 font-mono text-xs">
+                                    <div key={prod.id} className="pt-3 first:pt-0 flex items-center justify-between gap-4 font-sans text-xs">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <img
                                                 src={prod.featured_image || ''}

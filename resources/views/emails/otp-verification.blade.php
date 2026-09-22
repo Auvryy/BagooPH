@@ -16,7 +16,7 @@
                             <h1 style="margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #E00D42;">
                                 Bagoo<span style="color: #0F172A;">PH</span>
                             </h1>
-                            <p style="margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748B; font-family: monospace;">
+                            <p style="margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748B; font-family: 'Plus Jakarta Sans', Arial, sans-serif;">
                                 Security & Verification Service
                             </p>
                         </td>
@@ -42,7 +42,7 @@
 
                             <!-- OTP Code Box -->
                             <div style="background-color: #0F172A; border-radius: 12px; padding: 24px; text-align: center; margin: 0 0 24px 0;">
-                                <span style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #FFFFFF; display: inline-block;">
+                                <span style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #FFFFFF; display: inline-block;">
                                     {{ $otpCode }}
                                 </span>
                             </div>
@@ -66,7 +66,7 @@
                     <!-- Footer -->
                     <tr>
                         <td style="padding: 24px 32px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; text-align: center;">
-                            <p style="margin: 0; font-size: 11px; color: #94A3B8; font-family: monospace;">
+                            <p style="margin: 0; font-size: 11px; color: #94A3B8; font-family: 'Plus Jakarta Sans', Arial, sans-serif;">
                                 &copy; {{ date('Y') }} BagooPH Logistics & Artisan Marketplace. All rights reserved.
                             </p>
                             <p style="margin: 4px 0 0 0; font-size: 11px; color: #94A3B8;">

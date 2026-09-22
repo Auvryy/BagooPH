@@ -82,14 +82,14 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                             <ShieldAlert className="w-6 h-6 text-[#E00D42]" />
                             <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-sans">Returns, Defect & Dispute Center</h1>
                         </div>
-                        <p className="text-xs text-slate-500 font-mono mt-1">
+                        <p className="text-xs text-slate-500 font-sans mt-1">
                             Tripartite mediation system protecting buyers, merchants, and logistics couriers.
                         </p>
                     </div>
 
                     <button
                         onClick={() => setShowNewModal(true)}
-                        className="px-5 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-mono font-bold uppercase transition text-xs shadow-xs flex items-center gap-2 w-fit"
+                        className="px-5 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase transition text-xs shadow-xs flex items-center gap-2 w-fit"
                     >
                         <Plus className="w-4 h-4" />
                         <span>File Return / Defect Report</span>
@@ -102,7 +102,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                         <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                             <h3 className="text-base font-bold text-slate-800">No active returns or disputes</h3>
-                            <p className="text-xs text-slate-500 font-mono">
+                            <p className="text-xs text-slate-500 font-sans">
                                 All your delivered orders are in good standing with 100% resolution.
                             </p>
                         </div>
@@ -113,7 +113,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                 className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5 font-sans"
                             >
                                 {/* Header Bar */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-mono text-xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 font-sans text-xs">
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                                         <span className="font-bold text-slate-900 text-sm break-all">{item.id}</span>
                                         <span className="text-slate-400">•</span>
@@ -134,14 +134,14 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                     {/* Left: Product & Reason */}
                                     <div className="md:col-span-7 space-y-3">
                                         <div>
-                                            <span className="text-[10px] font-mono text-slate-400 uppercase">Affected Item & Merchant</span>
+                                            <span className="text-[10px] font-sans text-slate-400 uppercase">Affected Item & Merchant</span>
                                             <h4 className="font-bold text-slate-900 text-sm mt-0.5">{item.product_name}</h4>
-                                            <p className="text-xs text-slate-500 font-mono">Store: {item.shop_name}</p>
+                                            <p className="text-xs text-slate-500 font-sans">Store: {item.shop_name}</p>
                                         </div>
 
                                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                                             <span className="font-bold text-slate-700 block">Reported Issue:</span>
-                                            <p className="text-slate-600 font-mono">{item.reason}</p>
+                                            <p className="text-slate-600 font-sans">{item.reason}</p>
                                         </div>
 
                                         {item.seller_response && (
@@ -153,7 +153,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                     </div>
 
                                     {/* Right: Photographic Evidence & Refund */}
-                                    <div className="md:col-span-5 space-y-3 font-mono text-xs">
+                                    <div className="md:col-span-5 space-y-3 font-sans text-xs">
                                         <div>
                                             <span className="text-[10px] text-slate-400 uppercase block mb-1">Uploaded Evidence</span>
                                             {item.proof_image && (
@@ -177,7 +177,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                 </div>
 
                                 {/* Tripartite Timeline Progression */}
-                                <div className="pt-4 border-t border-slate-100 font-mono text-xs">
+                                <div className="pt-4 border-t border-slate-100 font-sans text-xs">
                                     <span className="text-[10px] text-slate-400 uppercase font-bold block mb-3">Tripartite Mediation Workflow</span>
                                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                                         {item.timeline.map((step, idx) => (
@@ -207,7 +207,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                 {showNewModal && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in max-h-[92vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-mono">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
                                 <h3 className="font-bold text-slate-900 text-base">File Return & Defect Claim</h3>
                                 <button 
                                     onClick={() => setShowNewModal(false)}
@@ -219,7 +219,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
 
                             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">Select Delivered Order</label>
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">Select Delivered Order</label>
                                     <select
                                         value={data.order_id}
                                         onChange={(e) => setData('order_id', e.target.value)}
@@ -234,7 +234,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">Reason for Claim</label>
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">Reason for Claim</label>
                                     <select
                                         value={data.reason}
                                         onChange={(e) => setData('reason', e.target.value)}
@@ -248,7 +248,7 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                 </div>
 
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-mono">Detailed Issue Description</label>
+                                    <label className="block font-bold text-slate-700 mb-1 font-sans">Detailed Issue Description</label>
                                     <textarea
                                         rows={3}
                                         value={data.description}
@@ -263,14 +263,14 @@ export default function BuyerDisputes({ disputes, eligibleOrders }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => setShowNewModal(false)}
-                                        className="px-4 py-2 rounded-xl border border-slate-200 font-mono text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                        className="px-4 py-2 rounded-xl border border-slate-200 font-sans text-xs font-bold text-slate-700 hover:bg-slate-50"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-xs font-bold uppercase shadow-xs transition"
+                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-sans text-xs font-bold uppercase shadow-xs transition"
                                     >
                                         {processing ? 'Submitting...' : 'Submit Claim'}
                                     </button>

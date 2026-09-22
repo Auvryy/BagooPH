@@ -112,7 +112,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             actions={
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-mono rounded-xs shadow-xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
                 >
                     <ScanLine className="w-3.5 h-3.5" />
                     <span>Station Scanner</span>
@@ -127,18 +127,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Awaiting Pickup</span>
                                 <Store className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counterParcels.length}{' '}
                                     <span className="text-xs font-bold text-slate-400">ready</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Station Shelves:</span>
                             <span className="font-bold text-slate-800">Organized</span>
                         </div>
@@ -146,18 +146,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Handover Fee</span>
                                 <Tag className="w-3.5 h-3.5 text-emerald-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-emerald-700 font-sans tracking-tight">
                                     ₱0.00{' '}
                                     <span className="text-xs font-bold text-emerald-700">FREE</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Customer Incentive:</span>
                             <span className="font-bold text-emerald-700">Zero Shipping</span>
                         </div>
@@ -165,18 +165,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Recently Claimed</span>
                                 <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {recentlyCollected.length}{' '}
                                     <span className="text-xs font-bold text-slate-400">released</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Today's Handover:</span>
                             <span className="font-bold text-slate-800">100% Verified</span>
                         </div>
@@ -184,9 +184,9 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Station Location</span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-mono">
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-sans">
                                     {activeHub?.code || 'STATION'}
                                 </span>
                             </div>
@@ -194,12 +194,12 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <p className="text-base font-black text-slate-900 truncate">
                                     {activeHub?.name || 'Local Bayan Hub'}
                                 </p>
-                                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                <p className="text-xs text-slate-500 font-sans mt-0.5">
                                     {activeHub?.city_municipality || 'Laguna'}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Self-Pickup Desk:</span>
                             <span className="font-bold text-emerald-700">Open For Claims</span>
                         </div>
@@ -215,11 +215,11 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Scan or enter Tracking # / Recipient Name..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </form>
 
-                    <div className="text-xs font-mono text-slate-500 flex items-center gap-2">
+                    <div className="text-xs font-sans text-slate-500 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         <span>Verify Customer Government ID or SMS Claim Code before release</span>
                     </div>
@@ -233,17 +233,17 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div className="flex items-center gap-2">
                                 <Store className="w-4 h-4 text-slate-700" />
-                                <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
+                                <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
                                     Parcels Ready For Customer Handover
                                 </h3>
                             </div>
-                            <span className="text-xs font-mono text-slate-500 font-bold">
+                            <span className="text-xs font-sans text-slate-500 font-bold">
                                 {counterParcels.length} on shelves
                             </span>
                         </div>
 
                         {counterParcels.length === 0 ? (
-                            <div className="py-12 text-center font-mono">
+                            <div className="py-12 text-center font-sans">
                                 <Store className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                                 <p className="text-xs font-bold text-slate-700">No parcels waiting at this counter</p>
                                 <p className="text-[11px] text-slate-400 mt-1">
@@ -255,7 +255,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 {counterParcels.map((parcel) => (
                                     <div key={parcel.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap font-mono">
+                                            <div className="flex items-center gap-2 flex-wrap font-sans">
                                                 <span className="font-bold text-slate-900 text-xs">
                                                     {parcel.tracking_number}
                                                 </span>
@@ -268,24 +268,24 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                             </div>
 
                                             <div className="mt-1 flex items-center gap-3 text-xs text-slate-600">
-                                                <span className="font-bold text-slate-900 flex items-center gap-1 font-mono">
+                                                <span className="font-bold text-slate-900 flex items-center gap-1 font-sans">
                                                     <User className="w-3 h-3 text-slate-400" />
                                                     {parcel.buyer_name}
                                                 </span>
                                                 {parcel.buyer_phone !== 'N/A' && (
-                                                    <span className="text-slate-500 font-mono flex items-center gap-1 text-[11px]">
+                                                    <span className="text-slate-500 font-sans flex items-center gap-1 text-[11px]">
                                                         <Phone className="w-3 h-3 text-slate-400" />
                                                         {parcel.buyer_phone}
                                                     </span>
                                                 )}
-                                                <span className="text-slate-400 font-mono text-[10px]">
+                                                <span className="text-slate-400 font-sans text-[10px]">
                                                     Arrived: {parcel.arrived_at}
                                                 </span>
                                             </div>
 
                                             {/* Item breakdown preview */}
                                             {parcel.items && parcel.items.length > 0 && (
-                                                <div className="mt-1.5 text-[11px] text-slate-500 font-mono">
+                                                <div className="mt-1.5 text-[11px] text-slate-500 font-sans">
                                                     {parcel.items.map((it, idx) => (
                                                         <span key={idx} className="mr-3">
                                                             {it.quantity}x {it.name}
@@ -295,7 +295,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-3 sm:text-right shrink-0 font-mono">
+                                        <div className="flex items-center gap-3 sm:text-right shrink-0 font-sans">
                                             <div>
                                                 <span className="text-xs font-bold text-slate-900 block">
                                                     ₱{parcel.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -308,7 +308,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                             <button
                                                 type="button"
                                                 onClick={() => openReleaseModal(parcel)}
-                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-mono shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-sans shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 <span>Release</span>
@@ -325,21 +325,21 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                                <h3 className="text-xs font-black text-slate-900 font-mono uppercase tracking-wider">
+                                <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
                                     Recent Handover Log
                                 </h3>
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
+                            <span className="text-[10px] font-sans font-bold text-slate-400 uppercase">
                                 Verified
                             </span>
                         </div>
 
                         {recentlyCollected.length === 0 ? (
-                            <div className="py-10 text-center text-slate-400 text-xs font-mono">
+                            <div className="py-10 text-center text-slate-400 text-xs font-sans">
                                 No claims released recently.
                             </div>
                         ) : (
-                            <div className="divide-y divide-slate-200 mt-1 font-mono">
+                            <div className="divide-y divide-slate-200 mt-1 font-sans">
                                 {recentlyCollected.map((item) => (
                                     <div key={item.id} className="py-2.5">
                                         <div className="flex items-center justify-between">
@@ -359,11 +359,11 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         )}
 
                         <div className="mt-3.5 p-2.5 rounded-xs bg-slate-50 border border-slate-300 text-xs text-slate-800">
-                            <p className="font-bold flex items-center gap-1.5 font-mono text-[11px]">
+                            <p className="font-bold flex items-center gap-1.5 font-sans text-[11px]">
                                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
                                 Verified Station Handover
                             </p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            <p className="text-[10px] text-slate-500 font-sans mt-0.5">
                                 Counter handovers automatically resolve status to "Customer Collected" with audit timestamps.
                             </p>
                         </div>
@@ -375,7 +375,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
             {/* RELEASE VERIFICATION MODAL */}
             {selectedParcel && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-mono">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-sans">
                     <div className="bg-white rounded-xs max-w-md w-full p-5 shadow-2xl border border-slate-300 animate-scale-in">
                         <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
                             <div>
@@ -405,7 +405,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     required
                                     value={recipientName}
                                     onChange={(e) => setRecipientName(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
@@ -418,7 +418,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     value={claimCode}
                                     onChange={(e) => setClaimCode(e.target.value)}
                                     placeholder="e.g. CLAIM-8849"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
@@ -431,7 +431,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="e.g. Valid Driver's License inspected"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-mono focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
@@ -444,7 +444,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </div>
                             )}
 
-                            <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-200 font-mono">
+                            <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-200 font-sans">
                                 <button
                                     type="button"
                                     onClick={() => setSelectedParcel(null)}

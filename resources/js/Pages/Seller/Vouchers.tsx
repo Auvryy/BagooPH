@@ -87,7 +87,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
             actions={
                 <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-mono rounded-xl shadow-xs transition uppercase"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-xl shadow-xs transition uppercase"
                 >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Create Voucher</span>
@@ -100,7 +100,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                 
                 {/* 1. TOP PROMO STATS */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-mono">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-sans">
                         <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
                             <span>Active Promotions</span>
                             <Tag className="w-4 h-4 text-[#E00D42]" />
@@ -111,7 +111,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                         <p className="text-[11px] text-slate-400">Published to your store</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-mono">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-sans">
                         <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
                             <span>Customer Redemptions</span>
                             <Gift className="w-4 h-4 text-emerald-600" />
@@ -122,7 +122,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                         <p className="text-[11px] text-slate-400">Total applied in checkout</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-mono">
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-sans">
                         <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
                             <span>Default Delivery Voucher</span>
                             <Truck className="w-4 h-4 text-indigo-600" />
@@ -139,13 +139,13 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                     <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
                         <div>
                             <h3 className="font-bold text-sm text-slate-900">Store Promotional Codes</h3>
-                            <p className="text-xs text-slate-400 font-mono">Manage store discounts applied by shoppers</p>
+                            <p className="text-xs text-slate-400 font-sans">Manage store discounts applied by shoppers</p>
                         </div>
-                        <span className="text-xs font-mono text-slate-500">Showing {vouchers.data.length} vouchers</span>
+                        <span className="text-xs font-sans text-slate-500">Showing {vouchers.data.length} vouchers</span>
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left font-mono text-xs text-slate-700">
+                        <table className="w-full text-left font-sans text-xs text-slate-700">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider">
                                 <tr>
                                     <th className="py-3.5 px-5 font-bold">Voucher Code</th>
@@ -234,7 +234,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreate} className="space-y-4 text-xs font-mono">
+                        <form onSubmit={handleCreate} className="space-y-4 text-xs font-sans">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase mb-1">Voucher Code</label>

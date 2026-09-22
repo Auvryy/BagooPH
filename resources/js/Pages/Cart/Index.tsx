@@ -149,13 +149,13 @@ export default function CartIndex({ cart, items, total }: Props) {
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Shopping Bag</h1>
-                            <p className="text-xs text-slate-500 font-mono">{items.length} items ready for doorstep dispatch</p>
+                            <p className="text-xs text-slate-500 font-sans">{items.length} items ready for doorstep dispatch</p>
                         </div>
                     </div>
 
                     <Link
                         href={route('buyer.index')}
-                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-mono uppercase w-fit"
+                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase w-fit"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Continue Shopping</span>
@@ -296,7 +296,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                 setSearchQuery('');
                                                 setSortBy('recent');
                                             }}
-                                            className="text-xs text-[#E00D42] font-bold hover:underline font-mono"
+                                            className="text-xs text-[#E00D42] font-bold hover:underline font-sans"
                                         >
                                             Reset Filters
                                         </button>
@@ -328,12 +328,12 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                                 {item.product?.name}
                                                             </Link>
                                                             {item.id === mostRecentId && (
-                                                                <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-mono">
+                                                                <span className="shrink-0 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] text-[10px] font-bold font-sans">
                                                                     Recent
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-xs font-mono">
+                                                        <div className="flex items-center gap-2 text-xs font-sans">
                                                             <span className="font-black text-[#E00D42]">
                                                                 {formatPrice(item.unit_price)}
                                                             </span>
@@ -344,7 +344,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                 </div>
 
                                                 {/* Quantity & Delete Controls */}
-                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-mono text-xs">
+                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-sans text-xs">
                                                     <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
                                                         <button
                                                             type="button"
@@ -385,7 +385,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                         {/* Order Summary */}
                         <div className="lg:col-span-4 space-y-4">
                             {/* Summary Totals Card */}
-                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4 font-mono text-xs">
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4 font-sans text-xs">
                                 <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
                                     Order Summary
                                 </h3>

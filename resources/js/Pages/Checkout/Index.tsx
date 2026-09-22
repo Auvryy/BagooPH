@@ -404,11 +404,11 @@ export default function CheckoutIndex({
                                                 <p className="text-[11px] text-slate-500">Direct handover at your gate / door</p>
                                             </div>
                                         </div>
-                                        <span className="text-xs font-bold font-mono text-slate-900">
+                                        <span className="text-xs font-bold font-sans text-slate-900">
                                             {subtotal > 1500 ? 'FREE' : '₱50.00'}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 mt-2 font-mono">
+                                    <p className="text-[10px] text-slate-400 mt-2 font-sans">
                                         {subtotal > 1500 ? '✓ Free shipping threshold reached' : 'Standard contiguous road freight'}
                                     </p>
                                 </div>
@@ -430,18 +430,18 @@ export default function CheckoutIndex({
                                             <div>
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-100 text-emerald-800 font-mono">
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-100 text-emerald-800 font-sans">
                                                         100% FREE
                                                     </span>
                                                 </div>
                                                 <p className="text-[11px] text-slate-500">Pick up at municipal station</p>
                                             </div>
                                         </div>
-                                        <span className="text-xs font-black font-mono text-emerald-600">
+                                        <span className="text-xs font-black font-sans text-emerald-600">
                                             ₱0.00
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-emerald-700 mt-2 font-mono">
+                                    <p className="text-[10px] text-emerald-700 mt-2 font-sans">
                                         ✓ Zero delivery fees • QR claim code verification
                                     </p>
                                 </div>
@@ -504,7 +504,7 @@ export default function CheckoutIndex({
                                                     <>
                                                         <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
                                                         <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                        <p className="text-[10px] text-emerald-700 font-mono pt-1">
+                                                        <p className="text-[10px] text-emerald-700 font-sans pt-1">
                                                             Station Hours: Mon–Sat 8:00 AM – 6:00 PM • Bring valid ID & Order Pickup QR
                                                         </p>
                                                     </>
@@ -692,32 +692,32 @@ export default function CheckoutIndex({
                                             </div>
 
                                             {gpsStatus && (
-                                                <p className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                                <p className="text-[10px] font-sans text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                                                     {gpsStatus}
                                                 </p>
                                             )}
 
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <label className="block text-[10px] text-slate-500 font-mono mb-0.5">Latitude</label>
+                                                    <label className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>
                                                     <input
                                                         type="number"
                                                         step="any"
                                                         placeholder="e.g. 14.0682"
                                                         value={data.shipping_latitude}
                                                         onChange={(e) => setData('shipping_latitude', e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-slate-500 font-mono mb-0.5">Longitude</label>
+                                                    <label className="block text-[10px] text-slate-500 font-sans mb-0.5">Longitude</label>
                                                     <input
                                                         type="number"
                                                         step="any"
                                                         placeholder="e.g. 121.3256"
                                                         value={data.shipping_longitude}
                                                         onChange={(e) => setData('shipping_longitude', e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
                                                     />
                                                 </div>
                                             </div>
@@ -824,7 +824,7 @@ export default function CheckoutIndex({
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
                                             <span>{isHubPickup ? 'Bayan Hub Municipal Station Network' : 'Bagoo Express Logistics'}</span>
-                                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-mono font-bold ${
+                                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-sans font-bold ${
                                                 isHubPickup ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-800'
                                             }`}>
                                                 {isHubPickup ? 'FREE SELF-PICKUP' : 'CONTIGUOUS ROAD FREIGHT'}
@@ -835,13 +835,13 @@ export default function CheckoutIndex({
                                                 ? 'Feeder transit straight to local municipal station. Package stored in designated bin for collection via QR code.'
                                                 : 'Integrated sorting center routing: Merchant Pickup → Sorting Hub → Assigned Rider → Doorstep Handover.'}
                                         </p>
-                                        <p className="text-slate-400 text-[10px] font-mono">
+                                        <p className="text-slate-400 text-[10px] font-sans">
                                             {isHubPickup ? 'Estimated Transit to Hub: 1–2 Business Days' : 'Estimated Doorstep Delivery: 2–4 Business Days'}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <span className="text-[10px] text-slate-400 block font-mono">SHIPPING RATE</span>
+                                    <span className="text-[10px] text-slate-400 block font-sans">SHIPPING RATE</span>
                                     <span className={`text-sm font-black ${finalShippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
                                         {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
                                     </span>
@@ -859,7 +859,7 @@ export default function CheckoutIndex({
                                     <h2 className="font-bold text-sm text-slate-900">
                                         Payment Method
                                     </h2>
-                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-xs bg-emerald-100 text-emerald-800">
+                                    <span className="text-[10px] font-sans font-bold px-2 py-0.5 rounded-xs bg-emerald-100 text-emerald-800">
                                         EXCLUSIVE PAYMENT MODE
                                     </span>
                                 </div>
@@ -873,7 +873,7 @@ export default function CheckoutIndex({
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
                                             <span>Cash on Delivery (COD)</span>
-                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-mono">DOORSTEP CASH</span>
+                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-sans">DOORSTEP CASH</span>
                                         </div>
                                         <p className="text-slate-600 text-[11px] leading-relaxed">
                                             Pay in cash directly to your assigned Bagoo Express rider only after inspecting your parcel at your doorstep. Zero advance online payment required.
@@ -967,7 +967,7 @@ export default function CheckoutIndex({
 
                                 <div className="flex justify-between">
                                     <span>Payment Mode:</span>
-                                    <span className="font-bold text-emerald-700 font-mono">CASH ON DELIVERY (COD)</span>
+                                    <span className="font-bold text-emerald-700 font-sans">CASH ON DELIVERY (COD)</span>
                                 </div>
                             </div>
 
@@ -1123,7 +1123,7 @@ export default function CheckoutIndex({
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
-                                        <span className="font-bold text-emerald-700 font-mono">CASH ON DELIVERY (COD)</span>
+                                        <span className="font-bold text-emerald-700 font-sans">CASH ON DELIVERY (COD)</span>
                                     </div>
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Applied Voucher</span>

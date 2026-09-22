@@ -180,7 +180,7 @@ export default function ChatModal({
                                 <h3 className="font-bold text-sm text-white truncate max-w-[200px]">{shopName}</h3>
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             </div>
-                            <p className="text-[11px] text-slate-400 font-mono">Typically replies within 5 mins</p>
+                            <p className="text-[11px] text-slate-400 font-sans">Typically replies within 5 mins</p>
                         </div>
                     </div>
                     <button
@@ -193,7 +193,7 @@ export default function ChatModal({
 
                 {/* Staged Product Header Banner with 1-Click Send Button */}
                 {product && (
-                    <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 text-xs font-mono shrink-0">
+                    <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 text-xs font-sans shrink-0">
                         <div className="flex items-center gap-2.5 min-w-0">
                             <img
                                 src={product.featured_image || ''}
@@ -206,7 +206,7 @@ export default function ChatModal({
                             </div>
                         </div>
                         {hasInquiredProduct ? (
-                            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-[10px] font-bold uppercase tracking-wider shrink-0 flex items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-sans text-[10px] font-bold uppercase tracking-wider shrink-0 flex items-center gap-1">
                                 <Check className="w-3 h-3" />
                                 <span>Inquiry Sent</span>
                             </span>
@@ -215,7 +215,7 @@ export default function ChatModal({
                                 type="button"
                                 onClick={handleSendProductInquiry}
                                 disabled={sending || cooldown || !currentUser}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white font-mono text-[10px] font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white font-sans text-[10px] font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Send product details to seller"
                             >
                                 <Send className="w-3 h-3" />
@@ -237,7 +237,7 @@ export default function ChatModal({
                         </p>
                         <a
                             href="/login"
-                            className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-xl text-xs font-mono uppercase tracking-wider transition shadow-xs cursor-pointer"
+                            className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-xl text-xs font-sans uppercase tracking-wider transition shadow-xs cursor-pointer"
                         >
                             Sign In to Chat
                         </a>
@@ -247,11 +247,11 @@ export default function ChatModal({
                         {/* Messages Body */}
                         <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#F8FAFC]">
                             {loading ? (
-                                <div className="flex items-center justify-center h-full text-slate-400 font-mono text-xs">
+                                <div className="flex items-center justify-center h-full text-slate-400 font-sans text-xs">
                                     Loading conversation history...
                                 </div>
                             ) : messages.length === 0 ? (
-                                <div className="text-center py-12 space-y-2 font-mono text-xs text-slate-400">
+                                <div className="text-center py-12 space-y-2 font-sans text-xs text-slate-400">
                                     <MessageSquare className="w-10 h-10 mx-auto text-slate-300" />
                                     <p className="font-bold text-slate-700 font-sans text-sm">Direct Merchant Messaging</p>
                                     <p className="text-[11px]">Inquire about sizing, custom orders, or delivery details.</p>
@@ -261,7 +261,7 @@ export default function ChatModal({
                                                 type="button"
                                                 onClick={handleSendProductInquiry}
                                                 disabled={sending || cooldown}
-                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] font-mono text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] font-sans text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <Send className="w-3.5 h-3.5" />
                                                 <span>Send Product Inquiry to Merchant</span>
@@ -301,7 +301,7 @@ export default function ChatModal({
                                                             alt={msg.product.name}
                                                             className="w-11 h-11 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
                                                         />
-                                                        <div className="min-w-0 flex-1 font-mono text-[11px]">
+                                                        <div className="min-w-0 flex-1 font-sans text-[11px]">
                                                             <div className="flex items-center gap-1">
                                                                 <span className="px-1.5 py-0.2 rounded bg-red-100 text-[#E00D42] text-[8px] uppercase font-bold">
                                                                     Product Inquiry
@@ -319,7 +319,7 @@ export default function ChatModal({
 
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                             </div>
-                                            <span className="text-[9px] font-mono text-slate-400 mt-1 px-1">
+                                            <span className="text-[9px] font-sans text-slate-400 mt-1 px-1">
                                                 {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
@@ -338,7 +338,7 @@ export default function ChatModal({
                                         type="button"
                                         onClick={() => handleSendSuggestion(quickText)}
                                         disabled={sending || cooldown}
-                                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-mono whitespace-nowrap transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-sans whitespace-nowrap transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
                                     >
                                         {quickText}
                                     </button>

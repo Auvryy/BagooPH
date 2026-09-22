@@ -242,7 +242,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             <div>
                                 <span className="text-base font-black tracking-tight text-slate-900">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                                <span className="block text-[9px] uppercase font-bold tracking-widest text-slate-500 -mt-0.5 font-mono">
+                                <span className="block text-[9px] uppercase font-bold tracking-widest text-slate-500 -mt-0.5 font-sans">
                                     {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : role === 'logistics' ? 'Logistics Hub' : 'Portal'}
                                 </span>
                             </div>
@@ -260,7 +260,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {role === 'seller' && currentShop && (
                     <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
                                 <Store className="w-3 h-3 text-[#E00D42]" /> Store Profile
                             </span>
                             {currentShop.root_category && (
@@ -279,14 +279,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#E00D42] transition">{currentShop.name}</p>
-                                    <p className="text-[10px] text-slate-500 font-mono truncate">{shops.length} profile{shops.length === 1 ? '' : 's'} managed</p>
+                                    <p className="text-[10px] text-slate-500 font-sans truncate">{shops.length} profile{shops.length === 1 ? '' : 's'} managed</p>
                                 </div>
                                 <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${shopSwitcherOpen ? 'rotate-180' : ''}`} />
                             </button>
 
                             {shopSwitcherOpen && (
                                 <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
-                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans">
                                         Switch Store Profile
                                     </div>
                                     <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
@@ -306,7 +306,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             >
                                                 <div className="min-w-0 flex-1 pr-2">
                                                     <p className="truncate">{s.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                    <p className="text-[10px] text-slate-400 font-sans truncate">
                                                         Enclosure: {s.root_category?.name || 'General'}
                                                     </p>
                                                 </div>
@@ -340,10 +340,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {role === 'logistics' && (
                     <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
                                 <Building2 className="w-3 h-3 text-blue-600" /> Facility Station
                             </span>
-                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase font-mono">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase font-sans">
                                 {activeHub?.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                             </span>
                         </div>
@@ -359,7 +359,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition">
                                         {activeHub?.name || logisticsCompany?.name || 'Logistics Terminal'}
                                     </p>
-                                    <p className="text-[10px] text-slate-500 font-mono truncate">
+                                    <p className="text-[10px] text-slate-500 font-sans truncate">
                                         Station: {activeHub?.code || 'STATION-01'} • {activeHub?.city_municipality || 'Laguna'}
                                     </p>
                                 </div>
@@ -368,7 +368,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                             {hubSwitcherOpen && allHubs && allHubs.length > 0 && (
                                 <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
-                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans">
                                         Switch Operating Hub
                                     </div>
                                     <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
@@ -388,7 +388,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             >
                                                 <div className="min-w-0 flex-1 pr-2">
                                                     <p className="truncate">{h.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                    <p className="text-[10px] text-slate-400 font-sans truncate">
                                                         {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                                                     </p>
                                                 </div>
@@ -410,7 +410,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     {/* Non-Logistics Main Navigation (Admin / Seller / Courier) */}
                     {role !== 'logistics' && (
                         <div className="space-y-0.5">
-                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
                                 Menu
                             </p>
                             {navItems.map((item) => (
@@ -440,7 +440,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         <div className="space-y-4">
                             {/* Tier 1: Corporate & Fleet Management */}
                             <div className="space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
                                     <span>Corporate & Fleet</span>
                                     <span className="text-[9px] text-slate-400">Admin</span>
                                 </p>
@@ -495,7 +495,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Personnel & Riders</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -511,7 +511,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Rates & Zones</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -519,7 +519,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                             {/* Tier 2: Parcel Operations & Logistics */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
                                     <span>Parcel Operations</span>
                                     <span className="text-[9px] text-slate-400">Logistics</span>
                                 </p>
@@ -548,7 +548,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <RotateCcw className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Exceptions & RTS</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -564,7 +564,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Cpu className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Barangay AI Density</span>
                                     </div>
-                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
+                                    <span className="text-[9px] font-sans px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
                                         AI
                                     </span>
                                 </Link>
@@ -572,7 +572,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                             {/* Tier 3: Financials & Remittances */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
                                     <span>Financials & COD</span>
                                     <span className="text-[9px] text-slate-400">Ledger</span>
                                 </p>
@@ -588,7 +588,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Wallet className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>COD Cash Ledger</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -600,7 +600,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <TrendingUp className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
                                         <span>Platform Payouts</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
                                         Planned
                                     </span>
                                 </Link>
@@ -608,9 +608,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                             {/* Tier 4: Branch Switcher Context (Floor Operations UI) */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono flex items-center justify-between">
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
                                     <span>Floor Operations</span>
-                                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span className="text-[9px] font-sans px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                                         {activeHub?.code || 'Station'}
                                     </span>
                                 </p>
@@ -626,7 +626,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
                                         <span>Scan Station</span>
                                     </div>
-                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                    <span className={`text-[9px] font-sans px-1.5 py-0.5 rounded ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                         PWA
                                     </span>
                                 </Link>
@@ -642,7 +642,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Store className={`w-4 h-4 shrink-0 ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
                                         <span>Counter Self-Pickup</span>
                                     </div>
-                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                                    <span className={`text-[9px] font-sans px-1.5 py-0.5 rounded ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
                                         Free
                                     </span>
                                 </Link>
@@ -653,7 +653,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     {/* Quick Links (Storefront & Settings) */}
                     {(user?.shop || role === 'seller') && (
                         <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
                                 Quick Links
                             </p>
                             {user?.shop && (
@@ -705,7 +705,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-rose-600 hover:bg-rose-50 transition border border-slate-200 hover:border-rose-200 uppercase tracking-wider shadow-2xs cursor-pointer font-mono"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-rose-600 hover:bg-rose-50 transition border border-slate-200 hover:border-rose-200 uppercase tracking-wider shadow-2xs cursor-pointer font-sans"
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -752,11 +752,11 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         className="w-8 h-8 rounded-xs object-cover border border-slate-200 shrink-0"
                                     />
                                 ) : (
-                                    <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-mono">
+                                    <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-sans">
                                         {user?.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
-                                <div className="hidden sm:block text-left font-mono">
+                                <div className="hidden sm:block text-left font-sans">
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
                                         <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
@@ -775,7 +775,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     onMouseLeave={handleUserMenuLeave}
                                 >
                                     <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
-                                        <div className="px-4 py-2.5 border-b border-slate-200 font-mono text-xs flex items-center gap-2.5">
+                                        <div className="px-4 py-2.5 border-b border-slate-200 font-sans text-xs flex items-center gap-2.5">
                                             {user?.avatar ? (
                                                 <img
                                                     src={user.avatar}
@@ -783,7 +783,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     className="w-8 h-8 rounded-xs object-cover border border-slate-200 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-xs bg-slate-900 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
+                                                <div className="w-8 h-8 rounded-xs bg-slate-900 text-white font-bold text-xs flex items-center justify-center font-sans shrink-0">
                                                     {user?.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -882,13 +882,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                 {/* Flash Alerts */}
                 {flash.success && (
-                    <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs flex items-center gap-2 shrink-0">
+                    <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-sans shadow-xs flex items-center gap-2 shrink-0">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>{flash.success}</span>
                     </div>
                 )}
                 {flash.error && (
-                    <div className="bg-[#E00D42] text-white py-2.5 px-6 text-xs font-bold font-mono shadow-xs shrink-0">
+                    <div className="bg-[#E00D42] text-white py-2.5 px-6 text-xs font-bold font-sans shadow-xs shrink-0">
                         {flash.error}
                     </div>
                 )}

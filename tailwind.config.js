@@ -13,8 +13,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Plus Jakarta Sans"', 'Inter', ...defaultTheme.fontFamily.sans],
-                mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                sans: ['"Plus Jakarta Sans"', ...defaultTheme.fontFamily.sans],
             },
             borderRadius: {
                 none: '0px',

@@ -67,7 +67,7 @@ export default function ProductCard({
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
                         <ShoppingBag className="w-8 h-8 stroke-[1.25]" />
-                        <span className="text-[9px] font-mono text-slate-400 mt-1 uppercase">No Preview</span>
+                        <span className="text-[9px] font-sans text-slate-400 mt-1 uppercase">No Preview</span>
                     </div>
                 )}
 
@@ -75,7 +75,7 @@ export default function ProductCard({
                 <div className="absolute bottom-0 left-0 flex items-center pointer-events-none z-10 drop-shadow-xs">
                     {/* Free Delivery Ribbon (Red background) */}
                     <div
-                        className="bg-[#E00D42] text-white h-5 sm:h-5.5 flex items-center gap-1 pl-2 pr-2.5 sm:pr-3 text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider leading-none"
+                        className="bg-[#E00D42] text-white h-5 sm:h-5.5 flex items-center gap-1 pl-2 pr-2.5 sm:pr-3 text-[8px] sm:text-[9px] font-sans font-bold uppercase tracking-wider leading-none"
                         style={{
                             clipPath: discountPct
                                 ? 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)'
@@ -89,7 +89,7 @@ export default function ProductCard({
                     {/* Discount Ribbon (Interlocking puzzle chevron + swallowtail V-notch end) */}
                     {discountPct && (
                         <div
-                            className="-ml-[6px] bg-amber-400 text-slate-950 h-5 sm:h-5.5 flex items-center pl-2.5 pr-3 sm:pr-3.5 text-[9px] sm:text-[10px] font-mono font-black tracking-tight leading-none"
+                            className="-ml-[6px] bg-amber-400 text-slate-950 h-5 sm:h-5.5 flex items-center pl-2.5 pr-3 sm:pr-3.5 text-[9px] sm:text-[10px] font-sans font-black tracking-tight leading-none"
                             style={{
                                 clipPath: 'polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%, 6px 50%)',
                             }}
@@ -109,7 +109,7 @@ export default function ProductCard({
                     </h4>
 
                     {/* Price Block */}
-                    <div className="flex items-baseline gap-1.5 pt-0.5 font-mono">
+                    <div className="flex items-baseline gap-1.5 pt-0.5 font-sans">
                         <span className="text-sm sm:text-base font-black text-[#E00D42]">
                             {formatPrice(product.price)}
                         </span>
@@ -124,11 +124,11 @@ export default function ProductCard({
                 {/* Footer: Rating, Sold count & Store Location */}
                 <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
                     <div className="flex items-center gap-1.5">
-                        <div className="flex items-center gap-0.5 text-amber-500 font-bold font-mono">
+                        <div className="flex items-center gap-0.5 text-amber-500 font-bold font-sans">
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                             <span>{ratingVal}</span>
                         </div>
-                        <span className="text-slate-400 font-mono">
+                        <span className="text-slate-400 font-sans">
                             {salesCountVal > 0 ? `${salesCountVal} sold` : '0 sold'}
                         </span>
                     </div>
@@ -154,7 +154,7 @@ export default function ProductCard({
                             onQuickAdd(product);
                         }}
                         disabled={isAdding || product.stock === 0}
-                        className={`w-full py-1.5 px-2 rounded-xs font-mono text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
+                        className={`w-full py-1.5 px-2 rounded-xs font-sans text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
                             isSuccess
                                 ? 'bg-emerald-600 text-white'
                                 : product.stock === 0
