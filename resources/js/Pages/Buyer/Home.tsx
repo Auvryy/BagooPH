@@ -51,8 +51,9 @@ interface Banner {
     image: string;
     cta: string;
     badge: string;
-    bgGradient: string;
 }
+
+type BannerTextTone = 'light' | 'dark';
 
 interface QuickService {
     id: string;
@@ -119,6 +120,36 @@ export default function BuyerHome({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+    const [bannerTextTones, setBannerTextTones] = useState<Record<number, BannerTextTone>>({});
+
+    const detectBannerTextTone = (bannerId: number, image: HTMLImageElement) => {
+        try {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) return;
+
+            canvas.width = 32;
+            canvas.height = 18;
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            const pixels = context.getImageData(0, 0, Math.ceil(canvas.width * 0.65), canvas.height).data;
+            let luminanceTotal = 0;
+            let pixelCount = 0;
+
+            for (let index = 0; index < pixels.length; index += 4) {
+                luminanceTotal += (pixels[index] * 0.2126) + (pixels[index + 1] * 0.7152) + (pixels[index + 2] * 0.0722);
+                pixelCount += 1;
+            }
+
+            const averageLuminance = luminanceTotal / Math.max(pixelCount, 1);
+            setBannerTextTones((current) => ({
+                ...current,
+                [bannerId]: averageLuminance >= 145 ? 'dark' : 'light',
+            }));
+        } catch {
+            setBannerTextTones((current) => ({ ...current, [bannerId]: 'light' }));
+        }
+    };
 
     // Auto-advance hero carousel
     useEffect(() => {
@@ -322,20 +353,27 @@ export default function BuyerHome({
                                 <img
                                     src={banner.image}
                                     alt={banner.title}
-                                    className="w-full h-full object-cover opacity-60"
+                                    crossOrigin="anonymous"
+                                    onLoad={(event) => detectBannerTextTone(banner.id, event.currentTarget)}
+                                    className="w-full h-full object-cover"
                                 />
-                                <div className={`absolute inset-0 bg-gradient-to-r ${banner.bgGradient} opacity-80 mix-blend-multiply`}></div>
 
                                 {/* Banner Text Content */}
-                                <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-between text-white z-20">
-                                    <div>
+                                <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-between z-20">
+                                    <div className={`self-start max-w-xl rounded-md border p-4 sm:p-5 backdrop-blur-sm shadow-lg ${
+                                        bannerTextTones[banner.id] === 'dark'
+                                            ? 'bg-white/90 border-white text-slate-950'
+                                            : 'bg-slate-950/75 border-slate-700 text-white'
+                                    }`}>
                                         <span className="inline-block px-2.5 py-1 rounded bg-[#E00D42] text-white font-sans text-[10px] font-bold uppercase tracking-wider mb-2 shadow-xs">
                                             {banner.badge}
                                         </span>
-                                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight max-w-xl">
+                                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight max-w-xl text-current">
                                             {banner.title}
                                         </h2>
-                                        <p className="text-xs sm:text-sm text-white/80 font-sans mt-1 uppercase">
+                                        <p className={`text-xs sm:text-sm font-sans mt-1 uppercase ${
+                                            bannerTextTones[banner.id] === 'dark' ? 'text-slate-700' : 'text-slate-200'
+                                        }`}>
                                             {banner.subtitle}
                                         </p>
                                     </div>
