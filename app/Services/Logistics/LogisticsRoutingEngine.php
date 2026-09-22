@@ -184,70 +184,92 @@ class LogisticsRoutingEngine
         $hub = $currentHub ?? $delivery->currentHub;
         $status = strtolower($delivery->status);
 
-        // 1. Check if at Destination Bayan Hub (Priority if parcel is destination-bound or arrived)
-        if ($hub && $hub->id === $delivery->destination_bayan_hub_id && (
-            $hub->id !== $delivery->origin_bayan_hub_id ||
-            in_array($status, ['arrived_at_destination_hub', 'sorted_to_barangay_bin', 'ready_for_hub_pickup', 'in_transit_to_destination_hub'])
-        )) {
+        // 1. Destination Bayan Hub inbound custody must be recorded before sorting.
+        if ($hub && $hub->id === $delivery->destination_bayan_hub_id && $status === OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB) {
+            return [
+                'action' => 'RECEIVE_AT_DESTINATION_HUB',
+                'prompt' => "RECEIVE AT DESTINATION HUB: [{$hub->code}]",
+                'next_status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+                'color' => 'green',
+            ];
+        }
+
+        // 2. A parcel already received at the destination is staged or awaits a separate sort action.
+        if ($hub && $hub->id === $delivery->destination_bayan_hub_id && $status === OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB) {
             if ($delivery->isSelfPickup()) {
                 return [
                     'action' => 'STAGE_FOR_PICKUP',
                     'prompt' => 'STAGE AT COUNTER: SHELF-PICKUP-BAY-A (NOTIFY BUYER)',
-                    'next_status' => 'ready_for_hub_pickup',
+                    'next_status' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
                     'color' => 'green',
                 ];
             }
 
             $binCode = $delivery->destination_bin ?? 'BIN: GENERAL-DELIVERY';
-            $riderName = $delivery->assignedRider?->name ?? 'ASSIGN RIDER';
             return [
-                'action' => 'BIN_TO_BARANGAY',
-                'prompt' => "{$binCode} | RIDER: {$riderName}",
-                'next_status' => 'out_for_delivery',
+                'action' => 'AWAIT_BARANGAY_SORT',
+                'prompt' => "SORT REQUIRED: {$binCode}",
+                'next_status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                 'color' => 'emerald',
             ];
         }
 
-        // 2. At Origin Bayan Hub
-        if ($hub && $hub->id === $delivery->origin_bayan_hub_id && in_array($status, ['assigned', 'picked_up', 'arrived_at_origin_hub', 'placed', 'preparing', 'ready_for_pickup'])) {
-            $motherHubCode = $delivery->originMotherHub?->code ?? 'MOTHER-HUB';
+        // 3. Origin Bayan Hub receives custody from the pickup rider.
+        if ($hub && $hub->id === $delivery->origin_bayan_hub_id && in_array($status, ['assigned', 'assigned_pickup', 'picked_up'], true)) {
             return [
-                'action' => 'DISPATCH_TO_FEEDER',
-                'prompt' => "LOAD TO SHUTTLE: L300-FEEDER -> [{$motherHubCode}]",
-                'next_status' => 'in_transit_to_mother_hub',
+                'action' => 'RECEIVE_FROM_PICKUP_RIDER',
+                'prompt' => "RECEIVE AT ORIGIN HUB: [{$hub->code}]",
+                'next_status' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
                 'color' => 'blue',
             ];
         }
 
-        // 3. At Regional Mother Hub
-        if ($hub && ($hub->id === $delivery->origin_mother_hub_id || $hub->id === $delivery->destination_mother_hub_id || $hub->isMotherHub())) {
-            $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
+        // 4. A second scan at the origin loads the parcel onto a feeder manifest.
+        if ($hub && $hub->id === $delivery->origin_bayan_hub_id && $status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB) {
+            $motherHubCode = $delivery->originMotherHub?->code ?? 'MOTHER-HUB';
             return [
-                'action' => 'SORT_TO_LINE_HAUL',
-                'prompt' => "SORT TO TRUCK BAY: HIGHWAY-LINE-HAUL -> [{$destHubCode}]",
-                'next_status' => 'in_transit_to_destination_hub',
-                'color' => 'indigo',
+                'action' => 'DISPATCH_TO_FEEDER',
+                'prompt' => "LOAD TO SHUTTLE: L300-FEEDER -> [{$motherHubCode}]",
+                'next_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+                'color' => 'blue',
             ];
         }
 
-        // 4. Default Destination Bayan Hub check
-        if ($hub && $hub->id === $delivery->destination_bayan_hub_id) {
-            if ($delivery->isSelfPickup()) {
+        // 5. Mother Hub inbound and outbound scans are separate custody events.
+        if ($hub && ($hub->id === $delivery->origin_mother_hub_id || $hub->id === $delivery->destination_mother_hub_id || $hub->isMotherHub())) {
+            if ($status === OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB) {
                 return [
-                    'action' => 'STAGE_FOR_PICKUP',
-                    'prompt' => 'STAGE AT COUNTER: SHELF-PICKUP-BAY-A (NOTIFY BUYER)',
-                    'next_status' => 'ready_for_hub_pickup',
-                    'color' => 'green',
+                    'action' => 'RECEIVE_AT_MOTHER_HUB',
+                    'prompt' => "RECEIVE AT MOTHER HUB: [{$hub->code}]",
+                    'next_status' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                    'color' => 'indigo',
                 ];
             }
 
-            $binCode = $delivery->destination_bin ?? 'BIN: GENERAL-DELIVERY';
-            $riderName = $delivery->assignedRider?->name ?? 'ASSIGN RIDER';
+            if ($status === OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB) {
+                return [
+                    'action' => 'SORT_TO_LINE_HAUL',
+                    'prompt' => 'SORT TO DESTINATION LINE-HAUL CAGE',
+                    'next_status' => OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+                    'color' => 'indigo',
+                ];
+            }
+
+            if ($status !== OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL) {
+                return [
+                    'action' => 'INSPECT_WAYBILL',
+                    'prompt' => "PARCEL: {$delivery->tracking_number} | STATUS: " . strtoupper($status),
+                    'next_status' => $status,
+                    'color' => 'gray',
+                ];
+            }
+
+            $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
             return [
-                'action' => 'BIN_TO_BARANGAY',
-                'prompt' => "{$binCode} | RIDER: {$riderName}",
-                'next_status' => 'out_for_delivery',
-                'color' => 'emerald',
+                'action' => 'DISPATCH_LINE_HAUL',
+                'prompt' => "LOAD TO DESTINATION MANIFEST -> [{$destHubCode}]",
+                'next_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                'color' => 'indigo',
             ];
         }
 

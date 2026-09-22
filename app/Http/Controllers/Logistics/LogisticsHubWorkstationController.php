@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Logistics;
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\CourierProfile;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
@@ -15,6 +16,7 @@ use App\Services\Logistics\OrderStateMachineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -335,7 +337,7 @@ class LogisticsHubWorkstationController extends Controller
             'originMotherHub',
             'destinationBayanHub',
             'destinationMotherHub',
-            'assignedRider.user',
+            'assignedRider',
             'currentHub',
         ])
             ->when($activeHub, function ($q) use ($activeHub) {
@@ -376,7 +378,7 @@ class LogisticsHubWorkstationController extends Controller
                 'destination_bin' => $d->destination_bin ?? 'STAGE: UNASSIGNED',
                 'current_hub' => $d->currentHub?->name ?? 'In Transit',
                 'destination_hub' => $d->destinationBayanHub?->name ?? 'Local Hub',
-                'rider_name' => $d->assignedRider?->user?->name ?? 'Unassigned',
+                'rider_name' => $d->assignedRider?->name ?? 'Unassigned',
                 'total_amount' => (float) ($d->order?->total_amount ?? 0),
                 'payment_method' => $d->order?->payment_method ?? 'cod',
                 'item_count' => $d->order?->items?->count() ?? 1,
@@ -392,11 +394,28 @@ class LogisticsHubWorkstationController extends Controller
             'completed' => Delivery::when($activeHub, fn ($q) => $q->where('current_hub_id', $activeHub->id))->whereIn('status', ['delivered', 'customer_collected'])->count(),
         ];
 
+        $eligibleRiders = CourierProfile::with('user')
+            ->when($activeHub, fn ($query) => $query->where('assigned_hub_id', $activeHub->id))
+            ->where('is_available', true)
+            ->whereHas('user', fn ($query) => $query
+                ->where('role', 'courier')
+                ->where('status', 'active')
+                ->where('kyc_status', 'approved'))
+            ->get()
+            ->map(fn ($profile) => [
+                'id' => $profile->user_id,
+                'name' => $profile->user?->name ?? 'Rider',
+                'assigned_barangay' => $profile->assigned_barangay,
+                'vehicle_type' => $profile->vehicle_type,
+            ])
+            ->values();
+
         return Inertia::render('Hub/Deliveries', [
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'deliveries' => $deliveries,
             'counts' => $counts,
+            'eligibleRiders' => $eligibleRiders,
             'filters' => [
                 'search' => $search,
                 'status' => $statusFilter,
@@ -616,7 +635,7 @@ class LogisticsHubWorkstationController extends Controller
             'originMotherHub',
             'destinationBayanHub',
             'destinationMotherHub',
-            'assignedRider.user',
+            'assignedRider',
         ])
             ->where('tracking_number', $barcode)
             ->orWhereHas('order', fn ($q) => $q->where('order_number', $barcode))
@@ -669,17 +688,6 @@ class LogisticsHubWorkstationController extends Controller
             'hub_id' => $hub?->id,
             'facility_code' => $hub?->code,
         ]);
-
-        if (in_array($delivery->status, ['assigned', 'picked_up'])) {
-            $updatedDelivery->update(['status' => 'in_transit']);
-            if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
-                $delivery->order->update(['status' => 'shipped']);
-            }
-        } elseif (in_array($delivery->status, ['in_transit_to_mother_hub', 'in_transit_to_destination_hub'])) {
-            if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
-                $delivery->order->update(['status' => 'shipped']);
-            }
-        }
 
         $payload = [
             'success' => true,
@@ -792,11 +800,23 @@ class LogisticsHubWorkstationController extends Controller
             'delivery_id' => 'required|exists:deliveries,id',
             'barangay' => 'nullable|string',
             'bin' => 'nullable|string',
-            'rider_id' => 'nullable|exists:users,id',
             'notes' => 'nullable|string',
         ]);
 
-        $delivery = Delivery::findOrFail($validated['delivery_id']);
+        $delivery = Delivery::with('order')->findOrFail($validated['delivery_id']);
+
+        if ($delivery->delivery_type !== 'doorstep') {
+            return $this->operationError($request, 'Self-pickup parcels must be staged at the counter, not assigned to a barangay bin.');
+        }
+
+        if ($delivery->status !== OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB) {
+            return $this->operationError($request, 'Parcel must be scanned into its destination Bayan Hub before sorting.');
+        }
+
+        if (! $delivery->destination_bayan_hub_id || $delivery->current_hub_id !== $delivery->destination_bayan_hub_id) {
+            return $this->operationError($request, 'Parcel is not physically recorded at its destination Bayan Hub.');
+        }
+
         $stateMachine = app(OrderStateMachineService::class);
 
         $barangay = $validated['barangay'] ?? ($delivery->order?->destination_barangay ?? 'GENERAL');
@@ -815,7 +835,6 @@ class LogisticsHubWorkstationController extends Controller
                 'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
                 'location_name' => $locationName,
                 'notes' => $validated['notes'] ?? "Sorted to bin {$bin} for {$barangay}",
-                'rider_id' => $validated['rider_id'] ?? null,
             ]
         );
 
@@ -830,11 +849,6 @@ class LogisticsHubWorkstationController extends Controller
             'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
         ]);
 
-        $delivery->update(['status' => 'out_for_delivery']);
-        if ($delivery->order && ! in_array($delivery->order->status, ['delivered', 'completed', 'cancelled'])) {
-            $delivery->order->update(['status' => 'shipped']);
-        }
-
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -844,5 +858,90 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         return back()->with('success', "Parcel #{$delivery->tracking_number} sorted to {$bin}.");
+    }
+
+    /**
+     * Assign a sorted doorstep parcel to an eligible final-mile rider.
+     */
+    public function assignRider(Request $request, Delivery $delivery): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'rider_id' => 'required|exists:users,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $rider = User::with('courierProfile')->findOrFail($validated['rider_id']);
+
+        if ($rider->role !== 'courier' || $rider->status !== 'active' || $rider->kyc_status !== 'approved') {
+            return $this->operationError($request, 'Selected rider is not an active, approved courier.');
+        }
+
+        $profile = $rider->courierProfile;
+        if (! $profile || ! $profile->is_available) {
+            return $this->operationError($request, 'Selected rider is not currently available for dispatch.');
+        }
+
+        if (! $delivery->destination_bayan_hub_id || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id) {
+            return $this->operationError($request, 'Selected rider is not assigned to this destination hub.');
+        }
+
+        $destinationBarangay = trim((string) $delivery->order?->destination_barangay);
+        if ($profile->assigned_barangay && $destinationBarangay !== '' && strcasecmp(trim($profile->assigned_barangay), $destinationBarangay) !== 0) {
+            return $this->operationError($request, 'Selected rider does not cover the parcel destination barangay.');
+        }
+
+        $result = DB::transaction(function () use ($delivery, $rider, $request, $validated) {
+            $lockedDelivery = Delivery::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedDelivery->delivery_type !== 'doorstep') {
+                return ['error' => 'Self-pickup parcels cannot be assigned to a delivery rider.'];
+            }
+
+            if ($lockedDelivery->status !== OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN) {
+                return ['error' => 'Parcel must be sorted into its destination bin before rider assignment.'];
+            }
+
+            if ($lockedDelivery->assigned_rider_id) {
+                return ['error' => 'Parcel is already assigned to a final-mile rider.'];
+            }
+
+            $updated = app(OrderStateMachineService::class)->transition(
+                delivery: $lockedDelivery,
+                targetStatus: OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
+                actor: $request->user(),
+                scanMetadata: [
+                    'hub_id' => $lockedDelivery->destination_bayan_hub_id,
+                    'rider_id' => $rider->id,
+                    'location_name' => $lockedDelivery->destinationBayanHub?->name ?? 'Destination Bayan Hub',
+                    'notes' => $validated['notes'] ?? "Assigned to final-mile rider {$rider->name}",
+                ]
+            );
+
+            return ['delivery' => $updated];
+        });
+
+        if (isset($result['error'])) {
+            return $this->operationError($request, $result['error']);
+        }
+
+        $message = "Parcel #{$delivery->tracking_number} assigned to {$rider->name}.";
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'delivery' => $result['delivery']->fresh(),
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    private function operationError(Request $request, string $message): JsonResponse|RedirectResponse
+    {
+        if ($request->wantsJson()) {
+            return response()->json(['success' => false, 'error' => $message], 422);
+        }
+
+        return back()->with('error', $message);
     }
 }

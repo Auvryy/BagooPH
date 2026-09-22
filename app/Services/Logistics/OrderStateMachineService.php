@@ -27,6 +27,7 @@ class OrderStateMachineService
     public const STATUS_IN_TRANSIT_TO_DEST_HUB     = 'in_transit_to_destination_hub';
     public const STATUS_ARRIVED_AT_DEST_HUB        = 'arrived_at_destination_hub';
     public const STATUS_SORTED_TO_BARANGAY_BIN     = 'sorted_to_barangay_bin';
+    public const STATUS_ASSIGNED_TO_RIDER          = 'assigned_to_rider';
     public const STATUS_READY_FOR_HUB_PICKUP       = 'ready_for_hub_pickup';
     public const STATUS_OUT_FOR_DELIVERY           = 'out_for_delivery';
     public const STATUS_DELIVERED                  = 'delivered';
@@ -63,14 +64,24 @@ class OrderStateMachineService
                     if (! $delivery->courier_id && $actor->isCourier()) {
                         $delivery->courier_id = $actor->id;
                     }
+                    $order->status = self::STATUS_PICKED_UP;
+                    break;
+
+                case self::STATUS_ARRIVED_AT_ORIGIN_HUB:
+                case self::STATUS_ARRIVED_AT_MOTHER_HUB:
+                case self::STATUS_SORTED_TO_LINE_HAUL:
+                case self::STATUS_ARRIVED_AT_DEST_HUB:
+                    $order->status = 'at_sorting_center';
                     break;
 
                 case self::STATUS_IN_TRANSIT_TO_MOTHER_HUB:
                     $delivery->shuttle_manifest_number = $scanMetadata['manifest_number'] ?? ('SHUTTLE-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4)));
+                    $order->status = 'at_sorting_center';
                     break;
 
                 case self::STATUS_IN_TRANSIT_TO_DEST_HUB:
                     $delivery->truck_manifest_number = $scanMetadata['manifest_number'] ?? ('TRUCK-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4)));
+                    $order->status = 'at_sorting_center';
                     break;
 
                 case self::STATUS_OUT_FOR_DELIVERY:
@@ -79,6 +90,17 @@ class OrderStateMachineService
                     } elseif ($actor->isCourier()) {
                         $delivery->assigned_rider_id = $actor->id;
                     }
+                    $order->status = self::STATUS_OUT_FOR_DELIVERY;
+                    break;
+
+                case self::STATUS_SORTED_TO_BARANGAY_BIN:
+                    $order->status = 'sorted';
+                    break;
+
+                case self::STATUS_ASSIGNED_TO_RIDER:
+                    $delivery->assigned_rider_id = $scanMetadata['rider_id'] ?? $delivery->assigned_rider_id;
+                    $delivery->assigned_at = now();
+                    $order->status = self::STATUS_ASSIGNED_TO_RIDER;
                     break;
 
                 case self::STATUS_DELIVERED:

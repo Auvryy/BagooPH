@@ -355,6 +355,7 @@ class LogisticsNetworkSeeder extends Seeder
                 [
                     'logistics_company_id' => $bgxCompany->id,
                     'assigned_hub_id'      => $santaCruzHub->id,
+                    'assigned_barangay'    => 'Poblacion III',
                     'vehicle_type'         => 'Motorcycle',
                     'plate_number'         => 'BG-MTR-101',
                     'license_number'       => 'N01-26-888999',
