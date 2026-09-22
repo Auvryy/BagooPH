@@ -196,26 +196,7 @@ class SellerOrderController extends Controller
             abort(403, 'Unauthorized action for this order.');
         }
 
-        $order->update(['status' => 'picked_up']);
-
-        if ($order->delivery) {
-            $order->delivery->update([
-                'status' => 'picked_up',
-                'picked_up_at' => now(),
-            ]);
-
-            DeliveryCheckpoint::firstOrCreate(
-                ['delivery_id' => $order->delivery->id, 'checkpoint_type' => 'courier_pickup'],
-                [
-                    'location_name' => $order->delivery->pickup_store_name ?? $shop->name ?? 'Merchant Store',
-                    'barcode_scanned' => $order->delivery->tracking_number,
-                    'notes' => 'Merchant handed parcel to courier driver',
-                    'scanned_by_id' => $request->user()->id,
-                ]
-            );
-        }
-
-        return back()->with('success', "Order #{$order->order_number} confirmed handed over to courier.");
+        return back()->with('error', "Order #{$order->order_number} must be scanned as picked up by its assigned rider.");
     }
 
     public function batchReady(Request $request): RedirectResponse

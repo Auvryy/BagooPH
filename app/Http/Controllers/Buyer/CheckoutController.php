@@ -259,7 +259,7 @@ class CheckoutController extends Controller
                     'total_amount' => $totalAmount,
                     'payment_method' => 'cod',
                     'payment_status' => 'pending',
-                    'status' => 'pending',
+                    'status' => 'placed',
                     'delivery_type' => $deliveryType,
                     'pickup_hub_id' => ($deliveryType === 'hub_self_pickup') ? ($validated['pickup_hub_id'] ?? null) : null,
                     'destination_barangay' => $validated['destination_barangay'] ?? null,

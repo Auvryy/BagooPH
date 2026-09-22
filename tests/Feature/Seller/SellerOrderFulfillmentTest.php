@@ -217,7 +217,7 @@ class SellerOrderFulfillmentTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_seller_can_confirm_handover_to_courier(): void
+    public function test_seller_cannot_bypass_the_assigned_rider_pickup_scan(): void
     {
         $order = $this->createOrderForShop('ready_for_pickup');
         $delivery = Delivery::create([
@@ -234,15 +234,10 @@ class SellerOrderFulfillmentTest extends TestCase
         $response = $this->actingAs($this->seller)->post(route('seller.orders.handover', $order));
 
         $response->assertRedirect();
-        $response->assertSessionHas('success');
-        $this->assertEquals('picked_up', $order->fresh()->status);
-        $this->assertEquals('picked_up', $delivery->fresh()->status);
-        $this->assertNotNull($delivery->fresh()->picked_up_at);
-
-        $this->assertDatabaseHas('delivery_checkpoints', [
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'courier_pickup',
-        ]);
+        $response->assertSessionHas('error');
+        $this->assertEquals('ready_for_pickup', $order->fresh()->status);
+        $this->assertEquals('unassigned', $delivery->fresh()->status);
+        $this->assertNull($delivery->fresh()->picked_up_at);
     }
 
     public function test_seller_orders_paginated_to_10_per_page(): void
@@ -280,4 +275,3 @@ class SellerOrderFulfillmentTest extends TestCase
         );
     }
 }
-
