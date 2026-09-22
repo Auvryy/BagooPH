@@ -59,7 +59,6 @@ interface QuickService {
     id: string;
     name: string;
     icon: string;
-    color: string;
     tag: string;
 }
 
@@ -258,6 +257,20 @@ export default function BuyerHome({
             case 'Coins': return Coins;
             case 'Crown': return Crown;
             default: return Sparkles;
+        }
+    };
+
+    const getServiceIconColor = (serviceId: string) => {
+        switch (serviceId) {
+            case 'freeship': return 'bg-emerald-500';
+            case 'new': return 'bg-amber-500';
+            case 'mall': return 'bg-[#E00D42]';
+            case 'vouchers': return 'bg-purple-500';
+            case 'top': return 'bg-blue-500';
+            case 'global': return 'bg-cyan-500';
+            case 'cashback': return 'bg-rose-500';
+            case 'vip': return 'bg-yellow-500';
+            default: return 'bg-slate-700';
         }
     };
 
@@ -474,7 +487,7 @@ export default function BuyerHome({
                                     onClick={() => handleTabChange(service.id === 'new' ? 'new_arrivals' : service.id === 'top' ? 'top_sales' : 'all')}
                                     className="flex flex-col items-center group focus:outline-hidden"
                                 >
-                                    <div className={`w-12 h-12 rounded-2xl ${service.color} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
+                                    <div className={`w-12 h-12 rounded-2xl ${getServiceIconColor(service.id)} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
                                         <IconComponent className="w-6 h-6" />
                                     </div>
                                     <span className="text-xs font-bold text-slate-800 mt-2 truncate w-full group-hover:text-[#E00D42] transition">

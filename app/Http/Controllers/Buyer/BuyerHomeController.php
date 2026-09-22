@@ -82,14 +82,14 @@ class BuyerHomeController extends Controller
 
         // 2. 8 Quick Service Icon Actions
         $quickServices = [
-            ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'color' => 'bg-emerald-500', 'tag' => '₱0 Min'],
-            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'color' => 'bg-amber-500', 'tag' => 'Just In'],
-            ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'color' => 'bg-[#E00D42]', 'tag' => '100% Authentic'],
-            ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'color' => 'bg-purple-500', 'tag' => 'Claim All'],
-            ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'color' => 'bg-blue-500', 'tag' => 'Best Seller'],
-            ['id' => 'global', 'name' => 'Global Finds', 'icon' => 'Globe', 'color' => 'bg-cyan-500', 'tag' => 'Direct Import'],
-            ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'color' => 'bg-rose-500', 'tag' => 'Coins Back'],
-            ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'color' => 'bg-yellow-500', 'tag' => 'Perks'],
+            ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'tag' => '₱0 Min'],
+            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'tag' => 'Just In'],
+            ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'tag' => '100% Authentic'],
+            ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'tag' => 'Claim All'],
+            ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'tag' => 'Best Seller'],
+            ['id' => 'global', 'name' => 'Global Finds', 'icon' => 'Globe', 'tag' => 'Direct Import'],
+            ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'tag' => 'Coins Back'],
+            ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'tag' => 'Perks'],
         ];
 
         // 4. 14 Verified Departments with Visual Data
