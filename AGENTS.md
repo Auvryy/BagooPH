@@ -32,6 +32,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Preserve the 14 master categories in `docs/CATEGORIES.md`.
 - The `User` password cast hashes values; seed/factory passwords must be raw strings to avoid double hashing.
 - Preserve verified seed accounts for buyer, seller, courier, logistics hub, and admin.
+- For local demo sign-in, inspect `database/seeders/DatabaseSeeder.php` instead of guessing credentials. The current seeded accounts use `@bagoo.test` emails and the password `Password1234`.
 
 ## Product Language and UI
 
