@@ -85,6 +85,7 @@ class HandleInertiaRequests extends Middleware
                             ? \App\Models\LogisticsCompany::where('is_active', true)->first()
                             : \App\Models\HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
                         : null,
+                    'canSwitchHubs' => $user->role === 'logistics' && (bool) $user->logisticsCompany,
                     'activeHub' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
                         ? (function () use ($request, $user) {
                             $accessibleHubs = \App\Models\LogisticsHub::query()

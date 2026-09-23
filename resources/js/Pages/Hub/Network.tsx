@@ -348,7 +348,7 @@ export default function HubNetwork({ scope, hubs }: Props) {
             </div>
 
             {selectedHub && (
-                <div className="fixed inset-0 z-50 font-sans">
+                <div className="!mt-0 fixed inset-0 z-50 font-sans">
                     <button
                         type="button"
                         aria-label="Close facility details"

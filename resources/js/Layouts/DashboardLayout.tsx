@@ -58,6 +58,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const activeHub = (user as any)?.activeHub;
     const allHubs = (user as any)?.allHubs || [];
     const logisticsCompany = (user as any)?.logisticsCompany;
+    const canSwitchHubs = Boolean((user as any)?.canSwitchHubs);
 
     const handleCreateShop = (e: React.FormEvent) => {
         e.preventDefault();
@@ -335,9 +336,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
-                                <Building2 className="w-3 h-3 text-blue-600" /> Facility Station
+                                <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Working Facility' : 'Assigned Facility'}
                             </span>
-                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase font-sans">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-xs bg-slate-50 text-slate-700 border border-slate-300 uppercase font-sans">
                                 {activeHub?.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                             </span>
                         </div>
@@ -346,22 +347,27 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         <div className="relative">
                             <button
                                 type="button"
-                                onClick={() => setHubSwitcherOpen(!hubSwitcherOpen)}
-                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
+                                onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
+                                disabled={!canSwitchHubs}
+                                className={`w-full flex items-center justify-between p-2 rounded-xs bg-white border border-slate-300 text-left transition shadow-2xs group ${
+                                    canSwitchHubs ? 'hover:border-slate-400 cursor-pointer' : 'cursor-default'
+                                }`}
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition">
+                                    <p className={`text-xs font-bold text-slate-800 truncate transition ${canSwitchHubs ? 'group-hover:text-[#E00D42]' : ''}`}>
                                         {activeHub?.name || logisticsCompany?.name || 'Logistics Terminal'}
                                     </p>
                                     <p className="text-[10px] text-slate-500 font-sans truncate">
                                         Station: {activeHub?.code || 'STATION-01'} • {activeHub?.city_municipality || 'Laguna'}
                                     </p>
                                 </div>
-                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                                {canSwitchHubs && (
+                                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                                )}
                             </button>
 
-                            {hubSwitcherOpen && allHubs && allHubs.length > 0 && (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
+                            {canSwitchHubs && hubSwitcherOpen && allHubs && allHubs.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-md shadow-xl border border-slate-300 py-1.5 z-50 text-slate-800">
                                     <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans">
                                         Switch Operating Hub
                                     </div>
@@ -377,7 +383,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     }
                                                 }}
                                                 className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
-                                                    h.id === activeHub?.id ? 'bg-slate-50 font-bold text-blue-600' : 'text-slate-700'
+                                                    h.id === activeHub?.id ? 'bg-slate-50 font-bold text-[#E00D42]' : 'text-slate-700'
                                                 }`}
                                             >
                                                 <div className="min-w-0 flex-1 pr-2">
@@ -387,7 +393,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     </p>
                                                 </div>
                                                 {h.id === activeHub?.id && (
-                                                    <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                    <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
                                                 )}
                                             </button>
                                         ))}
