@@ -31,6 +31,9 @@ Audit date: September 23, 2026.
 | Area | State | Evidence and gap |
 |---|---|---|
 | Account roles and approval | Partial | Buyer, seller, courier, logistics, and admin portals exist; approval and tenant boundaries need one cross-role verification pass. |
+| Cross-cutting input and mutation safety | Partial | Many controllers use basic string validation, but canonical phone/postal/text rules, idempotency, stale-state conflicts, and adversarial authorization are not consistently enforced. |
+| Alternate lifecycle entry points | Critical gap | Authenticated simulator routes and public tracking actions can mutate order/delivery state outside the canonical custody rules. |
+| Secret and KYC protection | Critical gap | KYC uploads use public storage paths, and OTP mail failure logging can include the generated code. |
 | Multi-shop checkout | Missing | Checkout currently creates one order and one delivery using the first shop instead of one independent fulfillment unit per shop. |
 | Voucher allocation | Partial | Shop ownership exists on vouchers, but checkout does not correctly isolate a shop voucher or proportionally divide a platform voucher across generated orders. |
 | Seller fulfillment | Partial | Accept, pack, ready, and cancel actions exist, but transitions are not centrally enforced and legacy shared orders can cross shop boundaries. |
@@ -46,9 +49,39 @@ Audit date: September 23, 2026.
 | Admin governance and audit | Partial | Platform logistics views and overrides exist; corrections are not consistently routed through lifecycle rules with immutable audit records. |
 | Cross-role presentation | Partial | Portals mix canonical and legacy statuses, rider earnings use inconsistent rider fields, and dispute/sample responses may imply unfinished behavior is available. |
 
+## Quality Baseline and Target
+
+These scores measure the approved core flow, not deferred enterprise features. Documentation changes do not raise the current implementation score until the corresponding controls are implemented and tested.
+
+| Role or flow | Current implementation | Target after required phases | Main improvement required |
+|---|---:|---:|---|
+| Buyer | 5/10 | 10/10 | Safe input, idempotent multi-shop checkout, private tracking, self-pickup, notification, and completion guards |
+| Seller | 6/10 | 10/10 | Central lifecycle, ownership, cancellation boundary, archival history, RTS receipt, and settlement states |
+| Pickup Rider | 8/10 | 10/10 | Claim release/recovery, facility handoff validation, malformed scan handling, and durable notifications |
+| Delivery Rider | 6.5/10 | 10/10 | Proof contract, attempt records, hub-return custody, retry/RTS, correct earnings, and COD remittance |
+| Hub Handler | 5.5/10 | 10/10 | Facility scope, manifest lifecycle, discrepancy handling, secure counter release, and duplicate scan safety |
+| Logistics Company Admin | 6/10 | 10/10 | Tenant-safe personnel/fleet controls, manifest supervision, exceptions, and remittance reconciliation |
+| Platform Admin | 5/10 | 10/10 | Private KYC, safe approvals/suspensions, immutable overrides, COD audit, and removal of fake operations |
+| End-to-end cross-role flow | 5.5/10 | 10/10 | One canonical mutation path with transaction, custody, money, recovery, and adversarial test coverage |
+
+Before this validation audit, the documents described the happy path well but left malformed input, duplicate requests, concurrency, alternate endpoints, privacy, and recovery behavior open to interpretation. `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` closes those design gaps; the phases below close the implementation gaps.
+
 ## Delivery Phases
 
 Work on one phase at a time. Do not begin a later phase until the current phase has focused tests and its cross-role acceptance path passes.
+
+Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`. A happy-path test alone is not completion.
+
+### Phase 0: Security and Lifecycle Entry-Point Lockdown
+
+- Disable simulator advance/reset routes outside isolated local or test environments and prevent ordinary authenticated users from invoking them.
+- Make public tracking read-only by default; route every authorized tracking action through the same lifecycle services as its owning portal.
+- Move KYC and accreditation files to private storage with authorized download access.
+- Remove OTP/claim/password/token values from logs and fail safely when delivery fails.
+- Establish shared canonical validators for names, phones, postal codes, codes, plain text, files, and role-specific registration fields.
+- Remove fake proof, sample dispute/message success, and seeded operational fallbacks from live paths.
+
+Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
 
 ### Phase 1: Normal Order and Seller Flow
 
@@ -120,11 +153,11 @@ Do not add these items while completing the core flow:
 ```text
 Continue improving the BagooPH core cross-role transaction flow.
 
-Read AGENTS.md, docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md, docs/CORE_FLOW_ROADMAP.md, and only the role documents relevant to the selected phase. Treat docs/SORTING_CENTER_LOGISTICS_FLOW.md as authoritative for physical custody.
+Read AGENTS.md, docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md, docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md, docs/CORE_FLOW_ROADMAP.md, and only the role documents relevant to the selected phase. Treat docs/SORTING_CENTER_LOGISTICS_FLOW.md as authoritative for physical custody.
 
 Work only on Phase [NUMBER AND NAME]. Inspect current code before editing and update the roadmap evidence if the implementation differs from its audit. Preserve one order per shop, mandatory Mother-Hub custody, buyer-only completion, separate COD custody, the 90/10 product-subtotal split, and existing seed accounts.
 
-Do not implement deferred scope or features from later phases. Keep business rules in backend services, enforce authorization and transitions server-side, use isolated SQLite :memory: tests, and run the production frontend build for UI changes.
+Do not implement deferred scope or features from later phases. Keep business rules in backend services, enforce authorization and transitions server-side, test malformed input, wrong actors, stale states, duplicate requests, concurrency, rollback, and audit behavior, use isolated SQLite :memory: tests, and run the production frontend build for UI changes.
 
 Create small logical local commits, report every hash and subject, and never push.
 ```
