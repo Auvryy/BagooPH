@@ -71,6 +71,66 @@ class LogisticsNetworkSeeder extends Seeder
                 'kyc_reviewed_at' => now(),
             ]
         );
+        $manilaMotherHubUser = User::updateOrCreate(
+            ['email' => 'manila.motherhub@bagoo.test'],
+            [
+                'name' => 'Metro Manila Mother Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0012',
+                'address' => 'Metro Manila Sortation Center',
+                'city' => 'Taguig City, Metro Manila',
+                'postal_code' => '1630',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $pagsanjanHubUser = User::updateOrCreate(
+            ['email' => 'pagsanjan.hub@bagoo.test'],
+            [
+                'name' => 'Pagsanjan Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0013',
+                'address' => 'Pagsanjan Bayan Hub',
+                'city' => 'Pagsanjan, Laguna',
+                'postal_code' => '4008',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $losBanosHubUser = User::updateOrCreate(
+            ['email' => 'losbanos.hub@bagoo.test'],
+            [
+                'name' => 'Los Banos Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0014',
+                'address' => 'Los Banos Bayan Hub',
+                'city' => 'Los Banos, Laguna',
+                'postal_code' => '4030',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $sanPabloHubUser = User::updateOrCreate(
+            ['email' => 'sanpablo.hub@bagoo.test'],
+            [
+                'name' => 'San Pablo Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0015',
+                'address' => 'San Pablo Bayan Hub',
+                'city' => 'San Pablo City, Laguna',
+                'postal_code' => '4000',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
         $shop = Shop::where('user_id', $seller?->id)->first();
 
         // 1. Multi-Tenant Logistics Companies
@@ -399,6 +459,23 @@ class LogisticsNetworkSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        $additionalHubHandlers = [
+            [$manilaMotherHubUser, $manilaMotherHub, 'Mother Hub Sortation Operator'],
+            [$pagsanjanHubUser, $pagsanjanHub, 'Bayan Hub Operations Handler'],
+            [$losBanosHubUser, $losBanosHub, 'Bayan Hub Operations Handler'],
+            [$sanPabloHubUser, $sanPabloHub, 'Bayan Hub Operations Handler'],
+        ];
+
+        foreach ($additionalHubHandlers as [$user, $hub, $roleTitle]) {
+            HubHandler::updateOrCreate(
+                ['user_id' => $user->id, 'hub_id' => $hub->id],
+                [
+                    'role_title' => $roleTitle,
+                    'is_active' => true,
+                ]
+            );
+        }
 
         // 5. Courier Profile Link
         if ($courier) {

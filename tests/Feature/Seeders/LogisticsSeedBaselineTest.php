@@ -4,6 +4,7 @@ namespace Tests\Feature\Seeders;
 
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\HubHandler;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,5 +49,40 @@ class LogisticsSeedBaselineTest extends TestCase
         $this->assertDatabaseMissing('hub_handlers', [
             'user_id' => $companyAdmin->id,
         ]);
+
+        $expectedFacilityAccounts = [
+            'MH-LAG-01' => 'motherhub@bagoo.test',
+            'MH-MNL-01' => 'manila.motherhub@bagoo.test',
+            'BH-SCZ-01' => 'logistics@bagoo.test',
+            'BH-PGS-01' => 'pagsanjan.hub@bagoo.test',
+            'BH-LBN-01' => 'losbanos.hub@bagoo.test',
+            'BH-SPB-01' => 'sanpablo.hub@bagoo.test',
+        ];
+
+        foreach ($expectedFacilityAccounts as $hubCode => $email) {
+            $facility = LogisticsHub::where('logistics_company_id', $company->id)
+                ->where('code', $hubCode)
+                ->firstOrFail();
+            $facilityOperator = User::where('email', $email)->firstOrFail();
+
+            $this->assertSame('logistics', $facilityOperator->role);
+            $this->assertSame('active', $facilityOperator->status);
+            $this->assertSame('approved', $facilityOperator->kyc_status);
+            $this->assertTrue(Hash::check('Password1234', $facilityOperator->password));
+            $this->assertDatabaseHas('hub_handlers', [
+                'user_id' => $facilityOperator->id,
+                'hub_id' => $facility->id,
+                'is_active' => true,
+            ]);
+        }
+
+        $this->assertSame(
+            6,
+            HubHandler::query()
+                ->where('is_active', true)
+                ->whereHas('hub', fn ($query) => $query->where('logistics_company_id', $company->id))
+                ->distinct('hub_id')
+                ->count('hub_id')
+        );
     }
 }
