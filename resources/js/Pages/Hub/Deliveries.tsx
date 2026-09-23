@@ -67,10 +67,17 @@ interface Props {
         status: string;
         delivery_type: string;
     };
+    eligibleRiders: Array<{
+        id: number;
+        name: string;
+        assigned_barangay: string | null;
+        vehicle_type: string;
+    }>;
 }
 
-export default function HubDeliveries({ activeHub, deliveries, counts, filters }: Props) {
+export default function HubDeliveries({ activeHub, deliveries, counts, filters, eligibleRiders }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const [selectedRiders, setSelectedRiders] = useState<Record<number, string>>({});
 
     const handleFilter = (status?: string, deliveryType?: string, search?: string) => {
         router.get(
@@ -87,6 +94,23 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         handleFilter(undefined, undefined, searchTerm);
+    };
+
+    const sortParcel = (delivery: DeliveryItem) => {
+        router.post(route('hub.sort'), {
+            delivery_id: delivery.id,
+            barangay: delivery.destination_barangay,
+            bin: delivery.destination_bin,
+        }, { preserveScroll: true });
+    };
+
+    const assignRider = (delivery: DeliveryItem) => {
+        const riderId = selectedRiders[delivery.id];
+        if (!riderId) return;
+
+        router.post(route('hub.assignRider', delivery.id), {
+            rider_id: Number(riderId),
+        }, { preserveScroll: true });
     };
 
     const getStatusPill = (status: string) => {
@@ -303,12 +327,13 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
                                     <th className="py-2.5 px-3.5">Courier / Rider</th>
                                     <th className="py-2.5 px-3.5">Order Value</th>
                                     <th className="py-2.5 px-3.5 text-right">Status</th>
+                                    <th className="py-2.5 px-3.5 text-right">Hub Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 text-xs">
                                 {deliveries.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-10 text-center text-slate-400 font-sans">
+                                        <td colSpan={8} className="py-10 text-center text-slate-400 font-sans">
                                             No waybills found matching current filter criteria.
                                         </td>
                                     </tr>
@@ -373,6 +398,52 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters }
 
                                             <td className="py-3 px-3.5 text-right">
                                                 {getStatusPill(delivery.status)}
+                                            </td>
+
+                                            <td className="py-3 px-3.5 text-right">
+                                                {delivery.status === 'arrived_at_destination_hub' && delivery.delivery_type === 'doorstep' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => sortParcel(delivery)}
+                                                        className="px-2.5 py-1.5 rounded-xs bg-slate-900 hover:bg-[#E00D42] text-white text-[10px] font-bold uppercase transition"
+                                                    >
+                                                        Sort to Bin
+                                                    </button>
+                                                )}
+
+                                                {delivery.status === 'sorted_to_barangay_bin' && delivery.delivery_type === 'doorstep' && (
+                                                    <div className="flex items-center justify-end gap-1.5 min-w-[260px]">
+                                                        <select
+                                                            value={selectedRiders[delivery.id] || ''}
+                                                            onChange={(event) => setSelectedRiders((current) => ({
+                                                                ...current,
+                                                                [delivery.id]: event.target.value,
+                                                            }))}
+                                                            className="min-w-0 flex-1 border border-slate-300 rounded-xs px-2 py-1.5 text-[10px] font-sans"
+                                                        >
+                                                            <option value="">Select area rider</option>
+                                                            {eligibleRiders
+                                                                .filter((rider) => !rider.assigned_barangay || rider.assigned_barangay.toLowerCase() === delivery.destination_barangay.toLowerCase())
+                                                                .map((rider) => (
+                                                                    <option key={rider.id} value={rider.id}>
+                                                                        {rider.name}{rider.assigned_barangay ? ` — ${rider.assigned_barangay}` : ''}
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            disabled={!selectedRiders[delivery.id]}
+                                                            onClick={() => assignRider(delivery)}
+                                                            className="px-2.5 py-1.5 rounded-xs bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
+                                                        >
+                                                            Assign
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {!['arrived_at_destination_hub', 'sorted_to_barangay_bin'].includes(delivery.status) && (
+                                                    <span className="text-[10px] text-slate-400">No action</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))

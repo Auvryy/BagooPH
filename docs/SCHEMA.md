@@ -2,6 +2,8 @@
 
 This document defines the database tables and columns for the platform.
 
+> **Authority:** Supporting schema context only. Current migrations and models are executable truth; required future persistence is tracked in `docs/CORE_FLOW_ROADMAP.md` and must follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
+
 ---
 
 ## Core Tables

@@ -178,7 +178,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                     </div>
 
                     <span className="hidden sm:inline text-[11px] text-slate-500 pr-3">
-                        {activeTab === 'pool' ? '⚡ Broadcasted in real-time (First-Come, First-Served)' : '📍 Follow standard 4-step dispatch workflow'}
+                        {activeTab === 'pool' ? 'Broadcast in real time (first-come, first-served)' : 'Follow the verified custody workflow'}
                     </span>
                 </div>
 
@@ -292,7 +292,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                             {/* Stage Transitions */}
                                             <div className="flex items-center gap-2">
-                                                {delivery.status === 'assigned' && (
+                                                {['assigned', 'assigned_pickup'].includes(delivery.status) && (
                                                     <button
                                                         onClick={() => openStatusModal(delivery, 'picked_up')}
                                                         className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
@@ -303,22 +303,19 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                                 )}
 
                                                 {delivery.status === 'picked_up' && (
-                                                    <button
-                                                        onClick={() => openStatusModal(delivery, 'in_transit')}
-                                                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
-                                                    >
+                                                    <span className="px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 font-bold uppercase flex items-center gap-1.5">
                                                         <Building2 className="w-3.5 h-3.5" />
-                                                        <span>Scan into Sorting Hub</span>
-                                                    </button>
+                                                        <span>Deliver to origin hub for intake scan</span>
+                                                    </span>
                                                 )}
 
-                                                {delivery.status === 'in_transit' && (
+                                                {delivery.status === 'assigned_to_rider' && (
                                                     <button
                                                         onClick={() => openStatusModal(delivery, 'out_for_delivery')}
                                                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                                                     >
                                                         <Truck className="w-3.5 h-3.5" />
-                                                        <span>Dispatch: Out for Delivery</span>
+                                                        <span>Scan Out for Delivery</span>
                                                     </button>
                                                 )}
 

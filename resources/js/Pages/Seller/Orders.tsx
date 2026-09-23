@@ -234,14 +234,6 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
         });
     };
 
-    const handleHandoverOrder = (orderId: number) => {
-        setIsSubmitting(true);
-        router.post(route('seller.orders.handover', orderId), {}, {
-            preserveScroll: true,
-            onFinish: () => setIsSubmitting(false),
-        });
-    };
-
     const handleBatchSchedulePickup = () => {
         if (selectedOrderIds.length === 0) return;
         setIsSubmitting(true);
@@ -690,15 +682,10 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             )}
 
                                             {orderStatus === 'ready_for_pickup' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleHandoverOrder(item.order_id)}
-                                                    disabled={isSubmitting}
-                                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
-                                                >
-                                                    <Check className="w-3.5 h-3.5" />
-                                                    <span>Handover</span>
-                                                </button>
+                                                <span className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold flex items-center gap-1.5 font-sans text-xs">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span>Awaiting Rider Scan</span>
+                                                </span>
                                             )}
 
                                             {['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'].includes(orderStatus) && (

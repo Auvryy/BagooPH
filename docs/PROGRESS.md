@@ -1,6 +1,7 @@
 # Project Progress & Milestone Log
 
 > **Tracking Policy:** Concise milestone tracking focusing on system features and architectural outcomes. Milestones are recorded in compact, high-density format.
+> **Authority:** Historical record only. Passing counts and legacy flows describe their original date and do not prove current behavior or override the normative documents listed in `docs/README.md`.
 
 ---
 

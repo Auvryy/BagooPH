@@ -247,7 +247,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
         $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit', $courier);
+        $delivery = $this->createE2EDelivery($order, 'assigned_to_rider', $courier);
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'out_for_delivery',

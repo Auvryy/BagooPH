@@ -2,6 +2,8 @@
 
 > **Executive Overview:**
 > BagooPH ("Bag & Go") is an enterprise multi-role e-commerce and logistics ecosystem built for the Philippine market. It seamlessly interconnects Buyers, Sellers, Logistics Sorting Hubs / Couriers, and Platform Administrators in a single, high-performance architecture.
+>
+> **Authority:** Strategic overview only. Use `docs/README.md` for the authority map and the normative flow documents for implementation decisions.
 
 ---
 
@@ -31,30 +33,37 @@ graph TD
 
 ## 2. Logistics, Sorting Center & GIS Fleet Architecture
 
+The detailed operational authority is `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. This overview must not be used to bypass its custody scans or Mother-Hub route.
+
 ```mermaid
 sequenceDiagram
     autonumber
     participant Buyer
     participant Seller
     participant PickupRider as Pickup Rider
-    participant Hub as Logistics Sorting Center
+    participant OriginHub as Origin Bayan Hub
+    participant MotherHub as Regional Mother Hub
+    participant DestinationHub as Destination Bayan Hub
     participant DeliveryRider as Barangay Delivery Rider
 
-    Buyer->>Seller: Places Order (COD / Simulated Payment)
+    Buyer->>Seller: Places Order (COD)
     Seller->>Seller: Packs Items & Prints Thermal Waybill
     Seller->>PickupRider: Requests Dispatch Pickup
-    PickupRider->>Hub: Transports Parcel to Regional Sorting Hub
-    Hub->>Hub: Scans, Batches & Sorts by Destination Zone / Barangay
-    Hub->>DeliveryRider: Assigns Parcel to Local Barangay Rider
+    PickupRider->>OriginHub: Waybill scan and origin intake
+    OriginHub->>MotherHub: Feeder manifest transfer
+    MotherHub->>DestinationHub: Sort and destination feeder transfer
+    DestinationHub->>DestinationHub: Sort to barangay bin
+    DestinationHub->>DeliveryRider: Assign and scan parcel out
     DeliveryRider->>Buyer: Last-Mile Delivery & COD Collection
-    DeliveryRider->>Hub: Confirms Delivery & Remits Collected Funds
+    DeliveryRider->>DestinationHub: Remits collected COD funds
 ```
 
 ### Sorting Center & Rider Mechanics:
-1. **Two-Tier Delivery Chain:**
-   * **Stage 1 (First-Mile):** Pickup rider collects parcels from merchant locations and transports them to the regional Logistics Sorting Center.
-   * **Stage 2 (Hub Sorting):** Sorting center scans barcodes, updates status to *In Sorting Hub*, and clusters packages by destination municipality and barangay.
-   * **Stage 3 (Last-Mile):** Sorting center assigns clustered parcels to specific courier riders assigned to that particular Barangay / Delivery Zone.
+1. **Hub-and-Spoke Delivery Chain:**
+   * **Stage 1 (First-Mile):** Pickup rider collects parcels from merchants and transports them to the assigned origin Bayan Hub.
+   * **Stage 2 (Regional Sort):** Every parcel passes through at least one Mother Hub before destination distribution.
+   * **Stage 3 (Destination Sort):** Destination Bayan Hub sorts parcels by barangay and assigns eligible delivery riders.
+   * **Stage 4 (Last-Mile):** Assigned rider scans out, delivers, and records COD custody and proof.
 2. **GIS / Proximity-Based Fleet Matching:**
    * Parcels are routed to the nearest operational sorting facility based on geographic coordinates and PSGC address hierarchy.
    * Ensures merchant dispatch connects to the optimal logistics hub in their territory.
@@ -77,13 +86,12 @@ sequenceDiagram
 ### Fee Calculations & Revenue Sharing:
 1. **Platform Commission:** Standard 10% commission automatically deducted from gross product sales and credited to the platform ledger.
 2. **Handling & Shipping Fees:**
-   * Standard Flat Rate: ₱50.00 (Local/Intra-Zone).
-   * Distance/Weight-Adjusted Rate: ₱80.00 (Inter-Zone / Express).
+   * Current checkout uses the configured BagooPH delivery fee rules.
+   * Future rate matrices may use package size, weight, and service zone after those inputs are validated.
 3. **Shipping Revenue Split:**
    * The collected shipping fee is divided between the Logistics Sorting Hub (operational facility fee) and the Assigned Rider (delivery compensation).
-4. **Payment Options:**
-   * **Cash on Delivery (COD):** Primary mandatory method across all Philippine locations.
-   * **Simulated Digital Payment Sandbox ("Simulation"):** An in-house isolated digital wallet and payment simulation environment enabling instant authorized settlement and transaction ledger verification without paid external gateways.
+4. **Payment Option:**
+   * **Cash on Delivery (COD):** Baseline supported method. Cash custody and reconciliation follow the logistics specification.
 
 ---
 

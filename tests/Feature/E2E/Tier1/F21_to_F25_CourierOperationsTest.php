@@ -246,7 +246,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         ]);
 
         $delivery->refresh();
-        $this->assertEquals('failed', $delivery->status);
+        $this->assertEquals('delivery_failed', $delivery->status);
     }
 
     public function test_t1_f24_05_delivery_notes_storage(): void

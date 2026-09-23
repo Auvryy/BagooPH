@@ -1,91 +1,67 @@
-# Buyer-Side Process Flowchart & Lifecycle Diagram
+# Buyer Module Flow
 
-This document presents the complete visual process flow for the **Buyer Module** of the platform as mandated by the project activity specifications.
+This document defines buyer actions. Parcel custody, hub transfers, COD, and exceptions follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Input, ownership, duplicate-submission, and recovery rules follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
----
+## 1. Account and Shopping
 
-## Buyer Lifecycle Flowchart (Mermaid)
-
-```mermaid
-flowchart TD
-    START([START]) --> DecisionEntry{Already have an account?}
-
-    %% REGISTRATION BRANCH
-    DecisionEntry -- No --> RegPage[Open Registration Page]
-    RegPage --> InputRegDetails[Enter: Last Name, First Name, MI, Sex, Email, Contact No, Birthday, Age, Address via API Dropdown]
-    InputRegDetails --> UploadID[Upload Government / Valid ID]
-    UploadID --> SubmitReg[Submit Registration Application]
-    SubmitReg --> PendingApproval[Account Status: PENDING_APPROVAL]
-    PendingApproval --> AdminReview[Admin Reviews Identification & Information]
-    AdminReview --> AdminDecision{Admin Approved?}
-    AdminDecision -- Rejected --> NotifyReject[Receive Disapproval Email with Reason]
-    NotifyReject --> RegPage
-    AdminDecision -- Approved --> NotifyApprove[Receive Approval Notification Email]
-    NotifyApprove --> LoginPage
-
-    %% LOGIN BRANCH
-    DecisionEntry -- Yes --> LoginPage[Open Login Page]
-    LoginPage --> InputCredentials[Enter Email & Password]
-    InputCredentials --> CheckCreds{Valid Credentials & Approved?}
-    CheckCreds -- Invalid Password / Email --> LoginError[Display Error: Invalid Credentials]
-    LoginError --> LoginPage
-    CheckCreds -- Account Still Pending --> PendingNotice[Display Notice: Awaiting Admin Approval]
-    PendingNotice --> LoginPage
-    CheckCreds -- Approved & Valid --> MainMenu[Enter Marketplace Main Menu]
-
-    %% BROWSE / SEARCH / PRODUCT VIEW
-    MainMenu --> NavAction{Choose Action}
-    NavAction --> ViewCategories[Browse by Category & Subcategories]
-    NavAction --> SearchBar[Search Products by Keywords / Filters]
-    ViewCategories --> ProductList[View Product Grid]
-    SearchBar --> ProductList
-    ProductList --> ViewProduct[Select & Open Product Details Page]
-    ViewProduct --> ChooseVariations[Select Product Variations: Color, Size, Specs]
-    ChooseVariations --> SelectQty[Select Quantity within Stock Limit]
-    SelectQty --> AddToCart[Click 'Add to Bag']
-    AddToCart --> ContinueShopping{Continue Shopping?}
-    ContinueShopping -- Yes --> MainMenu
-    ContinueShopping -- No --> ViewCart[Open Shopping Bag Page]
-
-    %% CART & CHECKOUT
-    ViewCart --> ReviewCartItems[Review Selected Items & Quantities]
-    ReviewCartItems --> ApplyVoucher{Have Promo Voucher?}
-    ApplyVoucher -- Yes --> EnterVoucherCode[Enter Voucher Code & Apply Discount]
-    EnterVoucherCode --> FinalizeOrder[Finalize Order Subtotal & Delivery Details]
-    ApplyVoucher -- No --> FinalizeOrder
-    FinalizeOrder --> SelectPayment[Payment Mode: Cash on Delivery (COD)]
-    SelectPayment --> PlaceOrder[Click 'Place Order']
-    PlaceOrder --> OrderCreated[Order Record & Delivery Shipment Initialized]
-
-    %% POST-ORDER & TRACKING
-    OrderCreated --> ViewOrderStatus[View Live Order Status & Tracking Timeline]
-    ViewOrderStatus --> StatusMilestones{Delivery Milestone}
-    StatusMilestones --> M1[Packaging by Merchant]
-    M1 --> M2[Ready for Courier Pickup]
-    M2 --> M3[Picked Up & In Transit]
-    M3 --> M4[Out for Delivery]
-    M4 --> M5[Delivered to Doorstep]
-    M5 --> RateFeedback[Submit Product Rating 1-5 Stars & Feedback Review]
-
-    %% ACCOUNT, CHAT & LOGOUT
-    RateFeedback --> AccountHub[Account Management Hub]
-    MainMenu --> ChatAction[In-App Chat / Messaging with Seller & Courier]
-    MainMenu --> AccountHub
-    ChatAction --> AccountHub
-    AccountHub --> LogoutAction[Click 'Sign Out']
-    LogoutAction --> END([END / Session Terminated])
+```text
+Register and submit identity requirements
+-> Admin approves account
+-> Sign in
+-> Browse or search the 14 master categories
+-> Select product variants and quantity within stock
+-> Add to Bag
+-> Review Shopping Bag and voucher
+-> Checkout
 ```
 
----
+Checkout requires the recipient, phone, serviceable road-based address, barangay, delivery type, and COD confirmation. Adding to the Shopping Bag does not reserve stock; checkout validates and decrements it atomically.
 
-## Buyer Flow Functional Checklist
+If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, shipping fee, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent. A shop voucher reduces only its matching shop order; a platform voucher is divided proportionally without exceeding its calculated checkout discount.
 
-- [x] **Registration Included:** Capture full name, sex, email, contact, birthday, autogen age, cascading address dropdowns, and ID upload.
-- [x] **Admin Approval Represented:** Mandatory admin approval gate before login access.
-- [x] **Login & Validation:** Credential check + approval status verification.
-- [x] **Main Menu & Catalog:** 14 Master categories, keyword search, dynamic sorting.
-- [x] **Product Details & Variants:** Color, size, stock boundaries, and quantity selection.
-- [x] **Cart & Checkout Engine:** Voucher discounts, exclusive Cash on Delivery (COD) payment mode, instant dispatch initialization.
-- [x] **Live Tracking Milestones:** Multi-stage shipment tracking from packaging to delivery.
-- [x] **Rating & Feedback:** Review submissions post-delivery.
-- [x] **In-App Messaging & Account Settings:** Direct buyer-to-seller/courier chat.
+## 2. Doorstep Delivery
+
+```text
+PLACED
+-> Seller CONFIRMED
+-> PREPARING
+-> READY_FOR_PICKUP
+-> PICKED_UP
+-> AT_SORTING_CENTER
+-> SORTED
+-> ASSIGNED_TO_RIDER
+-> OUT_FOR_DELIVERY
+-> DELIVERED
+-> Buyer confirms receipt
+-> COMPLETED
+```
+
+The buyer tracking page shows Mother-Hub and Bayan-Hub checkpoints beneath `AT_SORTING_CENTER`. The buyer cannot choose or assign riders.
+
+At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. After physical handover, the order is `DELIVERED`. Only the buyer's confirmation makes it `COMPLETED` and enables final settlement.
+
+## 3. Hub Self-Pickup
+
+The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and one-time claim code. Reminders are sent on days three and six.
+
+At the counter, the buyer presents the claim code and identity confirmation and pays COD if required. Collection maps the order to `DELIVERED`; the buyer then confirms receipt to complete it.
+
+## 4. Failure and Return
+
+If delivery fails, the buyer sees the reason and whether the parcel is awaiting address clarification, rescheduled, or returning to the seller. The buyer may provide corrected directions but cannot directly change delivery status or assign a retry rider.
+
+Three total delivery attempts are allowed. Attempts one and two may be scheduled for retry by the destination hub. After the third failure, the buyer sees reverse-hub checkpoints until the seller receives the returned parcel and the order becomes `RETURNED`.
+
+## 5. Required Buyer Notifications
+
+- Seller confirmation and preparation milestones.
+- Pickup and tracking availability.
+- Out-for-delivery reminder and exact COD amount.
+- Delivery failure reason and required buyer action.
+- Self-pickup claim code, reminders, and expiry.
+- Delivered prompt to confirm receipt.
+- Return-to-sender progress and result.
+
+## 6. Implementation Status
+
+Current buyer gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.

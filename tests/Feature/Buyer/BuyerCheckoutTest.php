@@ -95,6 +95,7 @@ class BuyerCheckoutTest extends TestCase
         $this->assertNotNull($order);
         $this->assertEquals('cod', $order->payment_method);
         $this->assertEquals('pending', $order->payment_status);
+        $this->assertEquals('placed', $order->status);
         $this->assertEquals(600.00, (float) $order->subtotal);
         $this->assertEquals(50.00, (float) $order->shipping_fee);
         $this->assertEquals(650.00, (float) $order->total_amount);

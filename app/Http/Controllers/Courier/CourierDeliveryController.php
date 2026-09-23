@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Courier;
 
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Logistics\OrderStateMachineService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,24 +22,31 @@ class CourierDeliveryController extends Controller
         $isOnline = session('courier_duty_status', true);
 
         // My active and recent deliveries
-        $myDeliveries = Delivery::where('courier_id', $user->id)
+        $myDeliveries = Delivery::where(function ($query) use ($user) {
+                $query->where('courier_id', $user->id)
+                    ->orWhere('assigned_rider_id', $user->id);
+            })
             ->with(['order.items.product', 'order.buyer'])
             ->latest()
             ->get();
 
         // Unassigned deliveries available for broadcast (FCFS)
         $availableJobs = Delivery::whereNull('courier_id')
-            ->whereIn('status', ['unassigned', 'assigned'])
+            ->where('status', 'unassigned')
+            ->whereHas('order', fn ($query) => $query->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
             ->with(['order.items.product', 'order.buyer'])
             ->latest()
             ->get();
 
-        $completedDeliveries = Delivery::where('courier_id', $user->id)
+        $completedDeliveries = Delivery::where('assigned_rider_id', $user->id)
             ->where('status', 'delivered')
             ->get();
 
-        $activeDeliveries = Delivery::where('courier_id', $user->id)
-            ->whereIn('status', ['assigned', 'picked_up', 'in_transit', 'out_for_delivery'])
+        $activeDeliveries = Delivery::where(function ($query) use ($user) {
+                $query->where('courier_id', $user->id)
+                    ->orWhere('assigned_rider_id', $user->id);
+            })
+            ->whereIn('status', ['assigned', 'assigned_pickup', 'picked_up', 'assigned_to_rider', 'out_for_delivery'])
             ->get();
 
         // Total COD cash collected on-hand
@@ -63,136 +73,132 @@ class CourierDeliveryController extends Controller
 
     public function claim(Request $request, Delivery $delivery): RedirectResponse
     {
-        if ($delivery->courier_id !== null) {
-            return back()->with('error', 'This delivery has already been claimed by another rider.');
+        $rider = $request->user()->load('courierProfile');
+        if ($rider->status !== 'active' || $rider->kyc_status !== 'approved' || ! $rider->courierProfile?->is_available) {
+            return back()->with('error', 'Only active, approved, and available riders may claim pickup jobs.');
         }
 
-        $delivery->update([
-            'courier_id' => $request->user()->id,
-            'status' => 'assigned',
-            'assigned_at' => now(),
-        ]);
+        $claimed = DB::transaction(function () use ($delivery, $rider) {
+            $lockedDelivery = Delivery::with('order')->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedDelivery->courier_id !== null || $lockedDelivery->status !== 'unassigned') {
+                return false;
+            }
+
+            if ($lockedDelivery->order?->status !== OrderStateMachineService::STATUS_READY_FOR_PICKUP) {
+                return false;
+            }
+
+            $lockedDelivery->update([
+                'courier_id' => $rider->id,
+                'status' => 'assigned_pickup',
+                'assigned_at' => now(),
+            ]);
+
+            DeliveryCheckpoint::record(
+                delivery: $lockedDelivery,
+                type: 'assigned_pickup',
+                location: $lockedDelivery->pickup_store_name ?? 'Merchant Store',
+                notes: "Pickup job claimed by {$rider->name}",
+                actor: $rider
+            );
+
+            return true;
+        });
+
+        if (! $claimed) {
+            return back()->with('error', 'This pickup job is unavailable or has already been claimed.');
+        }
 
         return back()->with('success', "Delivery task #{$delivery->tracking_number} claimed! Proceed to store for pickup.");
     }
 
     public function updateStatus(Request $request, Delivery $delivery): RedirectResponse
     {
-        if ($delivery->courier_id !== $request->user()->id && ! $request->user()->isAdmin()) {
-            abort(403);
-        }
-
         $validated = $request->validate([
             'status' => 'required|in:picked_up,in_transit,out_for_delivery,delivered,failed',
             'courier_notes' => 'nullable|string|max:500',
             'proof_image' => 'nullable|string',
         ]);
+        $rider = $request->user();
+        $delivery->load('order.items.product.shop');
+        $requestedStatus = $validated['status'];
 
-        $updates = [
-            'status' => $validated['status'],
-            'courier_notes' => $validated['courier_notes'] ?? $delivery->courier_notes,
-        ];
-
-        if (! empty($validated['proof_image'])) {
-            $updates['proof_image'] = $validated['proof_image'];
+        if ($requestedStatus === 'in_transit') {
+            return back()->with('error', 'Hub arrival must be recorded by an authorized hub waybill scan.');
         }
 
-        if ($validated['status'] === 'picked_up' && ! $delivery->picked_up_at) {
-            $updates['picked_up_at'] = now();
-            if ($delivery->order) {
-                $delivery->order->update(['status' => 'shipped']);
+        if ($requestedStatus === 'picked_up') {
+            if ($delivery->courier_id !== $rider->id || ! in_array($delivery->status, ['assigned', 'assigned_pickup'], true)) {
+                return back()->with('error', 'Only the assigned pickup rider may collect this ready parcel.');
             }
-            \App\Models\DeliveryCheckpoint::firstOrCreate(
+            $targetStatus = OrderStateMachineService::STATUS_PICKED_UP;
+        } elseif ($requestedStatus === 'out_for_delivery') {
+            if ($delivery->assigned_rider_id !== $rider->id || $delivery->status !== OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER) {
+                return back()->with('error', 'Only the assigned final-mile rider may dispatch this parcel from the hub.');
+            }
+            $targetStatus = OrderStateMachineService::STATUS_OUT_FOR_DELIVERY;
+        } elseif (in_array($requestedStatus, ['delivered', 'failed'], true)) {
+            if ($delivery->assigned_rider_id !== $rider->id || $delivery->status !== OrderStateMachineService::STATUS_OUT_FOR_DELIVERY) {
+                return back()->with('error', 'Only the assigned final-mile rider may submit the delivery outcome.');
+            }
+            $targetStatus = $requestedStatus === 'delivered'
+                ? OrderStateMachineService::STATUS_DELIVERED
+                : OrderStateMachineService::STATUS_DELIVERY_FAILED;
+        } else {
+            return back()->with('error', 'Unsupported delivery transition.');
+        }
+
+        $updatedDelivery = app(OrderStateMachineService::class)->transition(
+            delivery: $delivery,
+            targetStatus: $targetStatus,
+            actor: $rider,
+            scanMetadata: [
+                'rider_id' => $rider->id,
+                'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
+                    ? ($delivery->pickup_store_name ?? 'Merchant Store')
+                    : ($delivery->delivery_address ?? 'Buyer Destination'),
+                'notes' => $validated['courier_notes'] ?? null,
+                'proof_image' => $validated['proof_image'] ?? null,
+            ]
+        );
+
+        $updatedDelivery->update([
+            'courier_notes' => $validated['courier_notes'] ?? $updatedDelivery->courier_notes,
+        ]);
+
+        if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
+            DeliveryCheckpoint::firstOrCreate(
                 ['delivery_id' => $delivery->id, 'checkpoint_type' => 'courier_pickup'],
                 [
                     'location_name' => $delivery->pickup_store_name ?? 'Merchant Store',
                     'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Courier verified barcode and picked up parcel from store',
-                    'scanned_by_id' => $request->user()->id,
+                    'notes' => $validated['courier_notes'] ?? 'Pickup rider scanned and collected the seller parcel',
+                    'scanned_by_id' => $rider->id,
                 ]
             );
         }
 
-        if ($validated['status'] === 'in_transit') {
-            \App\Models\DeliveryCheckpoint::firstOrCreate(
-                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'hub_intake'],
+        if ($targetStatus === OrderStateMachineService::STATUS_DELIVERED) {
+            $delivery->order?->update(['payment_status' => 'paid']);
+            $gross = (float) ($delivery->order?->subtotal ?? 0);
+            $sellerUser = $delivery->order?->items->first()?->product?->shop?->user_id;
+
+            \App\Models\CommissionLedger::firstOrCreate(
+                ['order_id' => $delivery->order_id],
                 [
-                    'location_name' => 'Metro Manila Central Sorting Station',
-                    'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Central logistics hub intake scan complete',
-                    'scanned_by_id' => $request->user()->id,
+                    'seller_id' => $sellerUser,
+                    'courier_id' => $rider->id,
+                    'gross_amount' => $gross,
+                    'seller_amount' => round($gross * 0.90, 2),
+                    'platform_commission' => round($gross * 0.10, 2),
+                    'delivery_fee' => 60.00,
+                    'status' => 'settled',
                 ]
             );
         }
 
-        if ($validated['status'] === 'out_for_delivery') {
-            \App\Models\DeliveryCheckpoint::firstOrCreate(
-                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'barangay_sort'],
-                [
-                    'location_name' => 'Destination Delivery Bay',
-                    'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Parcel sorted for last-mile doorstep delivery',
-                    'scanned_by_id' => $request->user()->id,
-                ]
-            );
-        }
-
-        if ($validated['status'] === 'failed') {
-            \App\Models\DeliveryCheckpoint::create([
-                'delivery_id' => $delivery->id,
-                'checkpoint_type' => 'delivery_failed',
-                'location_name' => $delivery->delivery_address,
-                'barcode_scanned' => $delivery->tracking_number,
-                'notes' => $validated['courier_notes'] ?? 'Recipient unreachable at destination address',
-                'scanned_by_id' => $request->user()->id,
-            ]);
-        }
-
-        if ($validated['status'] === 'delivered' && ! $delivery->delivered_at) {
-            $updates['delivered_at'] = now();
-            if (! isset($updates['proof_image']) || empty($updates['proof_image'])) {
-                $updates['proof_image'] = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=60';
-            }
-            if ($delivery->order) {
-                $delivery->order->update([
-                    'status' => 'delivered',
-                    'payment_status' => 'paid',
-                ]);
-
-                $gross = (float) $delivery->order->subtotal;
-                $sellerAmount = round($gross * 0.90, 2);
-                $platformCommission = round($gross * 0.10, 2);
-                $sellerUser = $delivery->order->items->first()?->product?->shop?->user_id;
-
-                \App\Models\CommissionLedger::firstOrCreate(
-                    ['order_id' => $delivery->order->id],
-                    [
-                        'seller_id' => $sellerUser,
-                        'courier_id' => $delivery->courier_id ?? $request->user()->id,
-                        'gross_amount' => $gross,
-                        'seller_amount' => $sellerAmount,
-                        'platform_commission' => $platformCommission,
-                        'delivery_fee' => 60.00,
-                        'status' => 'settled',
-                    ]
-                );
-            }
-
-            \App\Models\DeliveryCheckpoint::firstOrCreate(
-                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'doorstep_handover'],
-                [
-                    'location_name' => $delivery->delivery_address,
-                    'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Recipient verified parcel and confirmed handover with proof photo',
-                    'scanned_by_id' => $request->user()->id,
-                    'proof_image' => $updates['proof_image'],
-                ]
-            );
-        }
-
-        $delivery->update($updates);
-
-        return back()->with('success', "Delivery status updated to {$validated['status']}.");
+        return back()->with('success', "Delivery status updated to {$targetStatus}.");
     }
 
     public function earnings(Request $request): Response

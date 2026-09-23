@@ -125,6 +125,7 @@ trait CreatesE2EOrders
         return Delivery::factory()->create(array_merge([
             'order_id' => $order->id,
             'courier_id' => $courier?->id,
+            'assigned_rider_id' => in_array($status, ['assigned_to_rider', 'out_for_delivery', 'delivered', 'delivery_failed'], true) ? $courier?->id : null,
             'tracking_number' => 'BGO-TRK-' . strtoupper(Str::random(8)),
             'logistics_partner' => 'Bagoo Express Dispatch Fleet',
             'status' => $status,

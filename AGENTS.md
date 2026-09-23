@@ -26,7 +26,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Canonical order flow:
   `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> PICKED_UP -> AT_SORTING_CENTER -> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED`.
 - Failure branch: `DELIVERY_FAILED -> RETURNED` or documented rescheduling.
-- Parcels follow `Seller -> Pickup Rider -> Sorting Center -> Delivery Rider -> Buyer`; do not create direct seller-to-buyer delivery.
+- Parcels follow `Seller -> Pickup Rider -> Origin Bayan Hub -> at least one Mother Hub -> Destination Bayan Hub -> Delivery Rider or Self-Pickup Counter -> Buyer`; do not create direct seller-to-buyer or Bayan-Hub-to-Bayan-Hub delivery.
 - Only the buyer's receipt confirmation advances `DELIVERED` to `COMPLETED`.
 - Platform commission is 10% of product sales; seller share is 90%. Keep shipping/handling accounting separate.
 - Preserve the 14 master categories in `docs/CATEGORIES.md`.
@@ -52,7 +52,10 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 
 Read only the documentation relevant to the task:
 
+- Documentation authority and routing overview: `docs/README.md`
 - System lifecycle or cross-role logic: `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`
+- Input validation, authorization, idempotency, concurrency, failure recovery, and adversarial tests: `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`
+- Current implementation gaps, phase order, and deferred scope: `docs/CORE_FLOW_ROADMAP.md`
 - Buyer/shopping: `docs/BUYER_FLOWCHART.md`
 - Seller/shop: `docs/SELLER_FLOW.md`
 - Courier: `docs/COURIER_FLOW.md`
@@ -62,7 +65,7 @@ Read only the documentation relevant to the task:
 - Schema: inspect migrations/models first; use `docs/SCHEMA.md` as supporting context.
 - History only when requested: `docs/PROGRESS.md`.
 
-When documentation conflicts with executable code, identify the mismatch. For curriculum workflow, the canonical flow above and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` are authoritative unless the user explicitly changes them.
+When documentation conflicts with executable code, identify the mismatch. For curriculum workflow, the canonical flow above and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` are authoritative unless the user explicitly changes them. Do not put changing implementation-status lists in role or logistics specifications; update `docs/CORE_FLOW_ROADMAP.md` instead.
 
 ## Verification and Responses
 
