@@ -2,6 +2,7 @@
 
 > Official specification transcribed verbatim from docs/ERP-Components-updated.pdf and docs/ERP-Flow.pdf.
 > Zero additions, zero cuts, retaining all 14 master product categories.
+> **Authority:** Historical curriculum source only. Simplified statuses and handoffs here must not override `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`, `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`, or `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
 
 ---
 

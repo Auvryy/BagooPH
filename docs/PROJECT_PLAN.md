@@ -2,6 +2,8 @@
 
 > **Executive Overview:**
 > BagooPH ("Bag & Go") is an enterprise multi-role e-commerce and logistics ecosystem built for the Philippine market. It seamlessly interconnects Buyers, Sellers, Logistics Sorting Hubs / Couriers, and Platform Administrators in a single, high-performance architecture.
+>
+> **Authority:** Strategic overview only. Use `docs/README.md` for the authority map and the normative flow documents for implementation decisions.
 
 ---
 

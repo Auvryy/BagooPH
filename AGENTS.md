@@ -52,6 +52,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 
 Read only the documentation relevant to the task:
 
+- Documentation authority and routing overview: `docs/README.md`
 - System lifecycle or cross-role logic: `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`
 - Input validation, authorization, idempotency, concurrency, failure recovery, and adversarial tests: `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`
 - Current implementation gaps, phase order, and deferred scope: `docs/CORE_FLOW_ROADMAP.md`

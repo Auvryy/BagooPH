@@ -2,6 +2,8 @@
 
 This document describes how the platform's backend, frontend, and database connect together.
 
+> **Authority:** Supporting architecture only. Use `docs/README.md` for documentation authority, `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` for lifecycle rules, and `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` for safety rules.
+
 ---
 
 ## 1. Tech Stack Overview
