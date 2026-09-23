@@ -18,10 +18,15 @@ class LogisticsSeedBaselineTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
+        $companyAdmin = User::where('email', 'logistics.admin@bagoo.test')->firstOrFail();
         $operator = User::where('email', 'logistics@bagoo.test')->firstOrFail();
+        $motherHubOperator = User::where('email', 'motherhub@bagoo.test')->firstOrFail();
         $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
         $hub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
 
+        $this->assertSame($companyAdmin->id, $company->user_id);
+        $this->assertTrue(Hash::check('Password1234', $companyAdmin->password));
         $this->assertSame('logistics', $operator->role);
         $this->assertSame('active', $operator->status);
         $this->assertSame('approved', $operator->kyc_status);
@@ -31,6 +36,17 @@ class LogisticsSeedBaselineTest extends TestCase
             'user_id' => $operator->id,
             'hub_id' => $hub->id,
             'is_active' => true,
+        ]);
+        $this->assertSame('logistics', $motherHubOperator->role);
+        $this->assertTrue(Hash::check('Password1234', $motherHubOperator->password));
+        $this->assertDatabaseHas('hub_handlers', [
+            'user_id' => $motherHubOperator->id,
+            'hub_id' => $motherHub->id,
+            'role_title' => 'Mother Hub Sortation Operator',
+            'is_active' => true,
+        ]);
+        $this->assertDatabaseMissing('hub_handlers', [
+            'user_id' => $companyAdmin->id,
         ]);
     }
 }

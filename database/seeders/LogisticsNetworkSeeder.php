@@ -26,14 +26,58 @@ class LogisticsNetworkSeeder extends Seeder
         $buyer = User::where('email', 'buyer@bagoo.test')->first();
         $seller = User::where('email', 'seller@bagoo.test')->first();
         $courier = User::where('email', 'rider@bagoo.test')->first();
-        $logisticsUser = User::where('email', 'logistics@bagoo.test')->first();
+        $logisticsAdmin = User::updateOrCreate(
+            ['email' => 'logistics.admin@bagoo.test'],
+            [
+                'name' => 'Bagoo Express Administrator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0010',
+                'address' => 'Bagoo Central Dispatch, C5 Road',
+                'city' => 'Pasig City',
+                'postal_code' => '1604',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $logisticsUser = User::updateOrCreate(
+            ['email' => 'logistics@bagoo.test'],
+            [
+                'name' => 'Santa Cruz Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0005',
+                'address' => 'Santa Cruz Bayan Hub',
+                'city' => 'Santa Cruz, Laguna',
+                'postal_code' => '4009',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $motherHubUser = User::updateOrCreate(
+            ['email' => 'motherhub@bagoo.test'],
+            [
+                'name' => 'Laguna Mother Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0011',
+                'address' => 'Laguna Regional Mother Hub',
+                'city' => 'Calamba City, Laguna',
+                'postal_code' => '4027',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
         $shop = Shop::where('user_id', $seller?->id)->first();
 
         // 1. Multi-Tenant Logistics Companies
         $bgxCompany = LogisticsCompany::updateOrCreate(
             ['code' => 'BGX'],
             [
-                'user_id'              => $admin?->id,
+                'user_id'              => $logisticsAdmin->id,
                 'name'                 => 'Bagoo Express Dispatch Fleet',
                 'slug'                 => 'bagoo-express-dispatch-fleet',
                 'contact_email'        => 'dispatch@bagooph.shop',
@@ -347,6 +391,14 @@ class LogisticsNetworkSeeder extends Seeder
                 ]
             );
         }
+
+        HubHandler::updateOrCreate(
+            ['user_id' => $motherHubUser->id, 'hub_id' => $lagunaMotherHub->id],
+            [
+                'role_title' => 'Mother Hub Sortation Operator',
+                'is_active' => true,
+            ]
+        );
 
         // 5. Courier Profile Link
         if ($courier) {
