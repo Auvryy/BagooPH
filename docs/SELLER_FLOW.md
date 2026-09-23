@@ -26,6 +26,8 @@ The seller cannot mark an order `PICKED_UP`. The pickup rider's authenticated sc
 
 Each seller parcel has its own order and waybill. Items from another shop cannot share that parcel.
 
+The seller controls only `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`. Repeated, skipped, or backward transitions are rejected. Seller cancellation is allowed only before pickup and before a rider has claimed custody; after that point, the parcel must follow delivery or return-to-sender.
+
 ## 3. Waybill Requirements
 
 - Order and tracking numbers.

@@ -23,7 +23,14 @@ Platform Admin does not perform routine parcel scans or silently change custody 
 - Reconcile rider and counter COD remittances before platform handoff.
 - Configure supported road zones and shipping rates when those modules are implemented.
 
-## 3. Commission and Payout Governance
+## 3. Hub Handler Responsibilities
+
+- Perform inbound, sorting, manifest, outbound, counter, failed-return, and seller-return scans only at assigned facilities.
+- Verify that the parcel expects the handler's facility and action before accepting custody.
+- Record COD received at the self-pickup counter and hand it into the logistics remittance chain.
+- Never approve platform settlement, edit another logistics company's records, or silently replace custody history.
+
+## 4. Commission and Payout Governance
 
 - Commission base is the order product subtotal.
 - Platform commission is 10%; seller share is 90%.
@@ -32,13 +39,13 @@ Platform Admin does not perform routine parcel scans or silently change custody 
 - Rider earnings and logistics revenue do not reduce or merge into the seller/product split.
 - Refunds, reversals, shortages, and corrections use traceable adjustment records.
 
-## 4. Dispute Evidence
+## 5. Dispute Evidence
 
 Admin review may include account documents, order items, waybill and hub checkpoints, manifest history, rider assignment, delivery proof, failure reasons, COD custody records, buyer confirmation, and role messages.
 
-Resolution may approve a refund, seller payout, return, account penalty, or further investigation. A resolution cannot erase the original audit trail.
+The core baseline preserves evidence and may show dispute handling as unavailable until the separate post-delivery dispute milestone is approved. Complete refund, exchange, and automated dispute processing must not be implied by placeholder screens or fake success responses. Any future resolution cannot erase the original audit trail.
 
-## 5. Remaining Admin Work
+## 6. Remaining Admin Work
 
 - Connect logistics-company approval and tenant isolation to the main KYC workflow.
 - Add COD reconciliation and payout approval views.

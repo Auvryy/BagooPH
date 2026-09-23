@@ -89,9 +89,10 @@ Legacy values such as `pending`, `processing`, `shipped`, generic `in_transit`, 
 1. The buyer selects COD, confirms the delivery address, barangay, contact number, and doorstep delivery.
 2. The backend validates service coverage and atomically checks and decrements stock.
 3. A multi-shop Shopping Bag is split by shop. Each resulting order receives one delivery record, tracking number, route, and seller pickup origin.
-4. The routing engine assigns the origin Bayan Hub, origin Mother Hub, destination Mother Hub when different, destination Bayan Hub, and barangay bin.
-5. Order status becomes `PLACED`.
-6. The seller receives a persistent in-app new-order notification.
+4. Shop vouchers affect only the matching shop order. Platform vouchers are divided proportionally without exceeding the calculated checkout discount.
+5. The routing engine assigns the origin Bayan Hub, origin Mother Hub, destination Mother Hub when different, destination Bayan Hub, and barangay bin.
+6. Order status becomes `PLACED`.
+7. The seller receives a persistent in-app new-order notification.
 
 ### B. Seller Preparation
 
@@ -205,7 +206,7 @@ Default holding period is seven calendar days. The buyer receives reminders on d
 
 ## 6. Basic In-App Notifications
 
-Notifications are persistent records with unread/read state and a link to the relevant order, parcel, or task. Email and push delivery are optional enhancements; they do not replace the in-app record.
+Notifications are persistent records with unread/read state and a link to the relevant order, parcel, or task. Email, SMS, push services, and real-time sockets are deferred and do not replace the baseline in-app record.
 
 | Event | Recipient | Required message/action |
 |---|---|---|

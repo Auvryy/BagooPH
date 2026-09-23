@@ -14,6 +14,75 @@ When documents disagree, use this order:
 
 Internal delivery statuses and checkpoints may be more detailed than the 13 customer-facing statuses, but they must map back to this lifecycle.
 
+## Core Transaction Contract
+
+The complete baseline transaction is:
+
+```text
+Buyer checkout
+-> Seller fulfillment
+-> Pickup Rider
+-> Origin Bayan Hub
+-> at least one Mother Hub
+-> Destination Bayan Hub
+-> Delivery Rider or Self-Pickup Counter
+-> Buyer confirmation
+-> COD reconciliation
+-> Seller settlement
+```
+
+The following rules apply across every portal:
+
+- A multi-shop Shopping Bag creates one independent order, parcel, waybill, logistics route, and shipping fee per shop.
+- A shop voucher affects only its matching shop order. A platform voucher is divided proportionally among the generated orders without exceeding its calculated checkout discount.
+- Pickup and delivery riders are assignment phases of the same approved `courier` account, not separate account roles.
+- Every parcel passes through at least one Regional Mother Hub. Direct seller-to-buyer and Bayan-Hub-to-Bayan-Hub transport are prohibited.
+- Only the buyer may advance `DELIVERED` to `COMPLETED`.
+- Parcel status and COD custody are separate. Delivery does not prove platform remittance.
+- Seller settlement requires both `COMPLETED` and platform-level COD reconciliation.
+- The 90% seller and 10% platform split applies only to product subtotal. Shipping, handling, logistics revenue, and rider earnings remain separate.
+
+### Status Ownership
+
+| Transition | Authorized actor | Required evidence or condition |
+|---|---|---|
+| Checkout -> `PLACED` | Buyer through validated checkout | Stock, price, voucher, address, delivery type, and route validated atomically |
+| `PLACED -> CONFIRMED` | Seller | Seller owns the complete shop order |
+| `CONFIRMED -> PREPARING` | Seller | Accepted order |
+| `PREPARING -> READY_FOR_PICKUP` | Seller | Packed parcel and attached waybill |
+| `READY_FOR_PICKUP -> PICKED_UP` | Assigned pickup rider | Authenticated seller handoff scan |
+| `PICKED_UP -> AT_SORTING_CENTER` | Origin Bayan Hub Handler | Expected-hub inbound scan |
+| `AT_SORTING_CENTER -> SORTED` | Destination Bayan Hub Handler | Required Mother-Hub checkpoints and destination-bin scan complete |
+| `SORTED -> ASSIGNED_TO_RIDER` | Destination Bayan Hub Handler or scoped Logistics Company Admin | One eligible final-mile rider assigned |
+| `ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY` | Assigned delivery rider | Destination-hub outbound scan |
+| `OUT_FOR_DELIVERY -> DELIVERED` | Assigned delivery rider | Handover proof and COD collection when applicable |
+| Self-pickup ready -> `DELIVERED` | Destination Bayan Hub Counter Handler | Valid one-time code, identity, destination hub, ready state, and COD collection |
+| `OUT_FOR_DELIVERY -> DELIVERY_FAILED` | Assigned delivery rider | Reason, notes, attempt number, and proof |
+| `DELIVERY_FAILED -> SORTED` | Destination Bayan Hub Handler | Failed parcel returned to hub and retry approved |
+| RTS in progress -> `RETURNED` | Seller through authenticated receipt | Reverse route complete and parcel handed back |
+| `DELIVERED -> COMPLETED` | Buyer | Buyer confirms receipt |
+
+Seller cancellation is allowed only before pickup and before any rider has claimed parcel custody. Cancellation is a terminal commercial outcome and cannot replace a delivery or return scan.
+
+### Custody Handoffs
+
+| Current custodian | Handoff evidence | Next custodian |
+|---|---|---|
+| Seller | Pickup rider scans the waybill at the seller | Pickup Rider |
+| Pickup Rider | Assigned Origin Bayan Hub scans inbound | Origin Bayan Hub |
+| Origin Bayan Hub | Parcel scanned onto a feeder manifest | Feeder manifest and vehicle |
+| Feeder manifest and vehicle | Mother Hub receives manifest and parcel | Origin Mother Hub |
+| Origin Mother Hub | Line-haul manifest when regions differ, otherwise destination feeder manifest | Destination Mother Hub or destination feeder manifest |
+| Destination Mother Hub or feeder manifest | Destination Bayan Hub receives parcel | Destination Bayan Hub |
+| Destination Bayan Hub | Assigned rider scans outbound | Delivery Rider |
+| Delivery Rider | Recipient handoff, proof, and COD record | Buyer |
+| Destination Bayan Hub Counter | One-time claim verification, identity, and COD record | Buyer |
+| Reverse network | Seller return-receipt scan | Seller |
+
+Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Logistics Company Admin manages only its own facilities, personnel, manifests, exceptions, and operational remittance. Hub Handlers perform scans only at facilities assigned to them.
+
+Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, complete dispute/refund/exchange processing, and external notification services are outside the core baseline.
+
 ---
 
 ## 1. Sorting Center / Logistics

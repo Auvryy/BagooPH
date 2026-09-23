@@ -17,7 +17,7 @@ Register and submit identity requirements
 
 Checkout requires the recipient, phone, serviceable road-based address, barangay, delivery type, and COD confirmation. Adding to the Shopping Bag does not reserve stock; checkout validates and decrements it atomically.
 
-If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent.
+If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, shipping fee, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent. A shop voucher reduces only its matching shop order; a platform voucher is divided proportionally without exceeding its calculated checkout discount.
 
 ## 2. Doorstep Delivery
 
@@ -42,7 +42,7 @@ At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. Afte
 
 ## 3. Hub Self-Pickup
 
-The parcel still travels through the origin Bayan Hub, Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, expiry, and one-time claim code.
+The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and one-time claim code. Reminders are sent on days three and six.
 
 At the counter, the buyer presents the claim code and identity confirmation and pays COD if required. Collection maps the order to `DELIVERED`; the buyer then confirms receipt to complete it.
 
@@ -50,7 +50,7 @@ At the counter, the buyer presents the claim code and identity confirmation and 
 
 If delivery fails, the buyer sees the reason and whether the parcel is awaiting address clarification, rescheduled, or returning to the seller. The buyer may provide corrected directions but cannot directly change delivery status or assign a retry rider.
 
-After the allowed attempts are exhausted, the buyer sees reverse-hub checkpoints until the seller receives the returned parcel and the order becomes `RETURNED`.
+Three total delivery attempts are allowed. Attempts one and two may be scheduled for retry by the destination hub. After the third failure, the buyer sees reverse-hub checkpoints until the seller receives the returned parcel and the order becomes `RETURNED`.
 
 ## 5. Required Buyer Notifications
 

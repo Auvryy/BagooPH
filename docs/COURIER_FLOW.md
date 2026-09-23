@@ -20,7 +20,7 @@ Seller marks READY_FOR_PICKUP
 -> Pickup assignment complete
 ```
 
-The pickup rider cannot move the parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. The hub controls all facility custody after intake.
+The pickup rider cannot move the parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. The pickup assignment ends when the assigned Origin Bayan Hub scans the parcel inbound. The hub controls all facility custody after intake.
 
 ## 3. Delivery-Rider Phase
 
@@ -41,7 +41,7 @@ Only the assigned final-mile rider can scan out or submit the result. Successful
 
 Rider selects a valid failure reason, adds notes, and returns the parcel to the destination Bayan Hub. Hub inbound scan ends rider custody. The hub decides retry scheduling and reassignment. A rider cannot repeatedly reschedule a parcel independently.
 
-After the third failed attempt, logistics starts return-to-sender through the Mother-Hub network.
+Attempts one and two may be retried only after the destination hub receives the parcel and approves a schedule. After the third failed attempt, logistics starts return-to-sender through the Mother-Hub network. The rider cannot mark the parcel `RETURNED`.
 
 ## 5. COD Remittance and Earnings
 
@@ -62,4 +62,3 @@ The rider's COD ledger distinguishes cash held, cash remitted, discrepancies, an
 - Build failed-parcel return-to-hub scan and retry assignment flow.
 - Add COD remittance records instead of a calculated on-hand total only.
 - Separate pickup tasks, final-mile tasks, and completed earnings clearly.
-
