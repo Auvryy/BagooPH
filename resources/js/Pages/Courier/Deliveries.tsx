@@ -43,7 +43,9 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [nextStatus, setNextStatus] = useState<string>('');
     const [courierNotes, setCourierNotes] = useState<string>('');
-    const [proofImage, setProofImage] = useState<string>('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=60');
+    const [failureReason, setFailureReason] = useState<string>('');
+    const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+    const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
     const claimDelivery = (deliveryId: number) => {
@@ -58,6 +60,9 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
         setSelectedDelivery(delivery);
         setNextStatus(targetStatus);
         setCourierNotes('');
+        setFailureReason('');
+        setProofImageFile(null);
+        setProofPreview(null);
         setStatusModalOpen(true);
     };
 
@@ -66,11 +71,13 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
         if (!selectedDelivery || !nextStatus) return;
 
         setActionLoading(true);
-        router.patch(route('courier.updateStatus', selectedDelivery.id), {
+        router.post(route('courier.updateStatus', selectedDelivery.id), {
+            _method: 'patch',
             status: nextStatus,
-            courier_notes: courierNotes || undefined,
-            proof_image: nextStatus === 'delivered' ? proofImage : undefined,
+            courier_notes: nextStatus === 'failed' ? failureReason : (courierNotes || undefined),
+            proof_image_file: nextStatus === 'delivered' ? proofImageFile : undefined,
         }, {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 setStatusModalOpen(false);
@@ -446,14 +453,26 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                 {nextStatus === 'delivered' && (
                                     <div>
                                         <label className="block font-bold text-slate-700 mb-1 font-sans">
-                                            Drop-off Proof Photo (Required for Settlement)
+                                            Drop-off proof photo
                                         </label>
-                                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 relative group">
-                                            <img src={proofImage} alt="Drop-off Proof" className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white font-sans text-[10px] font-bold">
-                                                Photo Captured with GPS Metadata
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            required
+                                            onChange={(event) => {
+                                                const file = event.target.files?.[0] ?? null;
+                                                setProofImageFile(file);
+                                                setProofPreview(file ? URL.createObjectURL(file) : null);
+                                            }}
+                                            className="block w-full rounded-sm border border-slate-300 bg-white p-2.5 text-xs text-slate-700 file:mr-3 file:rounded-xs file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-xs file:font-bold file:text-white"
+                                        />
+                                        {proofPreview && (
+                                            <div className="mt-2 aspect-video w-full rounded-md overflow-hidden bg-slate-100 border border-slate-300">
+                                                <img src={proofPreview} alt="Selected delivery proof" className="w-full h-full object-cover" />
                                             </div>
-                                        </div>
+                                        )}
+                                        <p className="mt-1 text-[11px] text-slate-500">Required evidence only; delivery does not settle COD automatically.</p>
                                     </div>
                                 )}
 
@@ -463,8 +482,9 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                             Delivery Failure Reason (Required)
                                         </label>
                                         <select
-                                            value={courierNotes}
-                                            onChange={(e) => setCourierNotes(e.target.value)}
+                                            value={failureReason}
+                                            onChange={(e) => setFailureReason(e.target.value)}
+                                            required
                                             className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
                                         >
                                             <option value="">Select reason for failed attempt...</option>
@@ -477,6 +497,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                     </div>
                                 )}
 
+                                {nextStatus !== 'failed' && nextStatus !== 'delivery_failed' && (
                                 <div>
                                     <label className="block font-bold text-slate-700 mb-1 font-sans">
                                         Rider Operational Notes (Optional)
@@ -489,6 +510,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
                                         className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
                                     />
                                 </div>
+                                )}
 
                                 <div className="flex items-center justify-end gap-2 pt-2">
                                     <button
