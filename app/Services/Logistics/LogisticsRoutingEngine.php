@@ -2,13 +2,13 @@
 
 namespace App\Services\Logistics;
 
-use App\Models\Address;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Shop;
 use Exception;
+use Illuminate\Support\Str;
 
 class LogisticsRoutingEngine
 {
@@ -63,14 +63,17 @@ class LogisticsRoutingEngine
             $query->where('logistics_company_id', $company->id);
         }
 
-        // 1. Try matching municipality/city
-        $cityMatch = (clone $query)->where('city_municipality', 'ilike', '%' . trim($shop->city ?? '') . '%')->first();
+        $city = $this->normalizePlace((string) $shop->city);
+        $cityMatch = $city === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($city) {
+            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
+
+            return $hubCity !== '' && (str_contains($city, $hubCity) || str_contains($hubCity, $city));
+        });
         if ($cityMatch) {
             return $cityMatch;
         }
 
-        // 2. Fallback to any active Bayan Hub in the same company
-        return $query->first();
+        return null;
     }
 
     /**
@@ -96,18 +99,17 @@ class LogisticsRoutingEngine
         }
 
         // 2. Match city/municipality
-        $cityMatch = (clone $query)->where('city_municipality', 'ilike', '%' . trim($city) . '%')->first();
+        $normalizedCity = $this->normalizePlace($city);
+        $cityMatch = $normalizedCity === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($normalizedCity) {
+            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
+
+            return $hubCity !== '' && (str_contains($normalizedCity, $hubCity) || str_contains($hubCity, $normalizedCity));
+        });
         if ($cityMatch) {
             return $cityMatch;
         }
 
-        // 3. Match province
-        $provinceMatch = (clone $query)->where('province', 'ilike', '%' . trim($province) . '%')->first();
-        if ($provinceMatch) {
-            return $provinceMatch;
-        }
-
-        return $query->first();
+        return null;
     }
 
     /**
@@ -115,17 +117,13 @@ class LogisticsRoutingEngine
      */
     public function resolveMotherHubForBayanHub(LogisticsHub $bayanHub): ?LogisticsHub
     {
+        $province = $this->normalizePlace((string) $bayanHub->province);
+
         return LogisticsHub::where('logistics_company_id', $bayanHub->logistics_company_id)
             ->where('tier', 'regional_mother_hub')
             ->where('is_active', true)
-            ->where(function ($q) use ($bayanHub) {
-                $q->where('province', 'ilike', '%' . trim($bayanHub->province) . '%')
-                  ->orWhere('city_municipality', 'ilike', '%' . trim($bayanHub->city_municipality) . '%');
-            })
-            ->first() ?? LogisticsHub::where('logistics_company_id', $bayanHub->logistics_company_id)
-                ->where('tier', 'regional_mother_hub')
-                ->where('is_active', true)
-                ->first();
+            ->get()
+            ->first(fn (LogisticsHub $hub) => $this->normalizePlace((string) $hub->province) === $province);
     }
 
     /**
@@ -133,47 +131,96 @@ class LogisticsRoutingEngine
      */
     public function planDeliveryRoute(Delivery $delivery, Order $order, Shop $shop): Delivery
     {
-        $company = $delivery->company ?? LogisticsCompany::where('is_active', true)->first();
-        if (!$company) {
-            throw new Exception('No active logistics partner available for delivery routing.');
-        }
+        $company = $delivery->company ?? $this->resolveCompanyForRoute($order, $shop);
 
         $delivery->logistics_company_id = $company->id;
         $delivery->logistics_partner = $company->name;
 
         // Origin Legs
         $originBayan = $this->resolveOriginBayanHub($shop, $company);
-        $delivery->origin_bayan_hub_id = $originBayan?->id;
-        $delivery->current_hub_id = $originBayan?->id;
+        if (! $originBayan) {
+            throw new Exception('No origin Bayan Hub serves the seller location.');
+        }
+        $delivery->origin_bayan_hub_id = $originBayan->id;
+        $delivery->current_hub_id = null;
 
-        $originMother = $originBayan ? $this->resolveMotherHubForBayanHub($originBayan) : null;
-        $delivery->origin_mother_hub_id = $originMother?->id;
+        $originMother = $this->resolveMotherHubForBayanHub($originBayan);
+        if (! $originMother) {
+            throw new Exception('No active Mother Hub serves the seller origin hub.');
+        }
+        $delivery->origin_mother_hub_id = $originMother->id;
 
         // Destination Legs
         if ($order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id) {
-            $destBayan = LogisticsHub::find($order->pickup_hub_id);
+            $destBayan = LogisticsHub::whereKey($order->pickup_hub_id)
+                ->where('logistics_company_id', $company->id)
+                ->where('tier', 'local_bayan_hub')
+                ->where('is_active', true)
+                ->first();
         } else {
             $destBayan = $this->resolveDestinationBayanHub(
-                $order->shipping_city ?? 'Laguna',
-                $order->shipping_city ?? 'Santa Cruz',
+                $order->shipping_province ?? '',
+                $order->shipping_city ?? '',
                 $order->destination_barangay,
                 $company
             );
         }
 
-        $delivery->destination_bayan_hub_id = $destBayan?->id;
-        $destMother = $destBayan ? $this->resolveMotherHubForBayanHub($destBayan) : null;
-        $delivery->destination_mother_hub_id = $destMother?->id;
+        if (! $destBayan) {
+            throw new Exception('No destination Bayan Hub serves the buyer address.');
+        }
+
+        $delivery->destination_bayan_hub_id = $destBayan->id;
+        $destMother = $this->resolveMotherHubForBayanHub($destBayan);
+        if (! $destMother) {
+            throw new Exception('No active Mother Hub serves the buyer destination hub.');
+        }
+        $delivery->destination_mother_hub_id = $destMother->id;
 
         // Set destination sorting bin code
         $targetBarangay = $order->destination_barangay ?? 'GENERAL';
         $delivery->destination_bin = $order->delivery_type === 'hub_self_pickup'
             ? 'STAGE: SELF-PICKUP-SHELF'
-            : 'BIN: BRGY-' . strtoupper(str_replace(' ', '-', $targetBarangay));
+            : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $targetBarangay));
 
         $delivery->save();
 
         return $delivery;
+    }
+
+    private function resolveCompanyForRoute(Order $order, Shop $shop): LogisticsCompany
+    {
+        $companies = LogisticsCompany::where('is_active', true)->where('status', 'active')->get();
+
+        foreach ($companies as $company) {
+            $origin = $this->resolveOriginBayanHub($shop, $company);
+            $destination = $order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id
+                ? LogisticsHub::whereKey($order->pickup_hub_id)
+                    ->where('logistics_company_id', $company->id)
+                    ->where('tier', 'local_bayan_hub')
+                    ->where('is_active', true)
+                    ->first()
+                : $this->resolveDestinationBayanHub(
+                    $order->shipping_province ?? '',
+                    $order->shipping_city ?? '',
+                    $order->destination_barangay,
+                    $company
+                );
+
+            if ($origin && $destination && $this->resolveMotherHubForBayanHub($origin) && $this->resolveMotherHubForBayanHub($destination)) {
+                return $company;
+            }
+        }
+
+        throw new Exception('No logistics company can provide the complete seller-to-buyer hub route.');
+    }
+
+    private function normalizePlace(string $value): string
+    {
+        return (string) Str::of(Str::ascii($value))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish();
     }
 
     /**
@@ -206,6 +253,7 @@ class LogisticsRoutingEngine
             }
 
             $binCode = $delivery->destination_bin ?? 'BIN: GENERAL-DELIVERY';
+
             return [
                 'action' => 'AWAIT_BARANGAY_SORT',
                 'prompt' => "SORT REQUIRED: {$binCode}",
@@ -227,6 +275,7 @@ class LogisticsRoutingEngine
         // 4. A second scan at the origin loads the parcel onto a feeder manifest.
         if ($hub && $hub->id === $delivery->origin_bayan_hub_id && $status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB) {
             $motherHubCode = $delivery->originMotherHub?->code ?? 'MOTHER-HUB';
+
             return [
                 'action' => 'DISPATCH_TO_FEEDER',
                 'prompt' => "LOAD TO SHUTTLE: L300-FEEDER -> [{$motherHubCode}]",
@@ -258,13 +307,14 @@ class LogisticsRoutingEngine
             if ($status !== OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL) {
                 return [
                     'action' => 'INSPECT_WAYBILL',
-                    'prompt' => "PARCEL: {$delivery->tracking_number} | STATUS: " . strtoupper($status),
+                    'prompt' => "PARCEL: {$delivery->tracking_number} | STATUS: ".strtoupper($status),
                     'next_status' => $status,
                     'color' => 'gray',
                 ];
             }
 
             $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
+
             return [
                 'action' => 'DISPATCH_LINE_HAUL',
                 'prompt' => "LOAD TO DESTINATION MANIFEST -> [{$destHubCode}]",
@@ -275,7 +325,7 @@ class LogisticsRoutingEngine
 
         return [
             'action' => 'INSPECT_WAYBILL',
-            'prompt' => "PARCEL: {$delivery->tracking_number} | STATUS: " . strtoupper($status),
+            'prompt' => "PARCEL: {$delivery->tracking_number} | STATUS: ".strtoupper($status),
             'next_status' => $status,
             'color' => 'gray',
         ];

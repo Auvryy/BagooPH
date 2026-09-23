@@ -4,17 +4,13 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\Delivery;
-use App\Models\Order;
 use App\Models\LogisticsHub;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Voucher;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Orders\CheckoutOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,6 +39,7 @@ class CheckoutController extends Controller
                 if ($timeDiff !== 0) {
                     return $timeDiff;
                 }
+
                 return $b->id <=> $a->id;
             })->first();
             $checkoutItems = $mostRecentItem ? collect([$mostRecentItem]) : $cart->items;
@@ -121,7 +118,7 @@ class CheckoutController extends Controller
         ]);
 
         $user = $request->user();
-        $idPath = '/storage/' . $request->file('id_document')->store('kyc_documents', 'public');
+        $idPath = '/storage/'.$request->file('id_document')->store('kyc_documents', 'public');
 
         $user->update([
             'id_document_path' => $idPath,
@@ -162,19 +159,20 @@ class CheckoutController extends Controller
             'recipient_phone' => 'required|string|max:50',
             'shipping_address' => 'required|string|max:500',
             'shipping_city' => 'required|string|max:100',
-            'shipping_province' => 'nullable|string|max:100',
-            'shipping_postal_code' => 'nullable|string|max:20',
+            'shipping_province' => 'required|string|max:100',
+            'shipping_postal_code' => 'required|regex:/^[0-9]{4}$/',
             'shipping_latitude' => 'nullable|numeric|between:-90,90',
             'shipping_longitude' => 'nullable|numeric|between:-180,180',
             'landmark' => 'nullable|string|max:255',
             'delivery_type' => 'nullable|string|in:doorstep,hub_self_pickup',
             'pickup_hub_id' => 'nullable|exists:logistics_hubs,id',
-            'destination_barangay' => 'nullable|string|max:100',
+            'destination_barangay' => 'required|string|max:100',
             'payment_method' => 'nullable|string|in:cod,card,bank_transfer,e_wallet',
             'notes' => 'nullable|string|max:500',
             'voucher_code' => 'nullable|string|max:50',
             'save_address' => 'nullable|boolean',
-            'item_ids' => 'nullable',
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'required|integer|distinct',
         ]);
 
         // Contiguous Land Delimitation: strictly reject non-contiguous island addresses
@@ -184,155 +182,37 @@ class CheckoutController extends Controller
             return back()->with('error', 'Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
         }
 
-        $rawItemIds = $request->input('item_ids');
-        if (! empty($rawItemIds)) {
-            $itemIds = is_array($rawItemIds) ? $rawItemIds : explode(',', (string) $rawItemIds);
-            $itemIds = array_filter(array_map('intval', $itemIds));
-            $checkoutItems = $cart->items()->whereIn('id', $itemIds)->with(['product.shop'])->get();
-        } else {
-            $checkoutItems = $cart->items()->with(['product.shop'])->get();
-        }
-
-        if ($checkoutItems->isEmpty()) {
-            return redirect()->route('buyer.cart')->with('error', 'No items selected for checkout.');
-        }
-
-        if ($request->boolean('save_address') && ! empty($validated['shipping_address'])) {
-            $hasExisting = $user->addresses()->exists();
-            $user->addresses()->create([
-                'recipient_name' => $user->name,
-                'phone' => $validated['recipient_phone'],
-                'city' => $validated['shipping_city'],
-                'province' => $province,
-                'barangay' => $validated['destination_barangay'] ?? null,
-                'street' => $validated['shipping_address'],
-                'postal_code' => $validated['shipping_postal_code'] ?? null,
-                'latitude' => $validated['shipping_latitude'] ?? null,
-                'longitude' => $validated['shipping_longitude'] ?? null,
-                'landmark' => $validated['landmark'] ?? null,
-                'type' => 'Home',
-                'is_default' => ! $hasExisting,
-            ]);
-        }
-
         try {
-            $order = DB::transaction(function () use ($user, $cart, $checkoutItems, $validated, $routingEngine) {
-                // Recompute exact total from database to prevent price manipulation
-                $subtotal = 0;
-                foreach ($checkoutItems as $item) {
-                    $product = Product::where('id', $item->product_id)->lockForUpdate()->firstOrFail();
-                    
-                    if ($product->status !== 'active') {
-                        throw new \Exception("'{$product->name}' is no longer active.");
-                    }
+            $orders = app(CheckoutOrderService::class)->place(
+                $user,
+                $cart,
+                $validated['item_ids'],
+                $validated
+            );
 
-                    if ($product->stock < $item->quantity) {
-                        throw new \Exception("'{$product->name}' does not have enough stock (Only {$product->stock} available).");
-                    }
-
-                    $subtotal += $product->price * $item->quantity;
-                }
-
-                $deliveryType = $validated['delivery_type'] ?? 'doorstep';
-                // Free Bayan Hub Self-Pickup
-                $shippingFee = ($deliveryType === 'hub_self_pickup') ? 0.00 : ($subtotal > 1500 ? 0.00 : 50.00);
-                $voucherDiscount = 0.0;
-                $appliedVoucher = null;
-
-                if (! empty($validated['voucher_code'])) {
-                    $code = strtoupper(trim($validated['voucher_code']));
-                    $appliedVoucher = Voucher::where('code', $code)->where('is_active', true)->first();
-
-                    if ($appliedVoucher && $appliedVoucher->isValidForAmount($subtotal)) {
-                        $voucherDiscount = $appliedVoucher->calculateDiscount($subtotal, $shippingFee);
-                        $appliedVoucher->increment('used_count');
-                    }
-                }
-
-                $totalAmount = max(0, ($subtotal + $shippingFee) - $voucherDiscount);
-
-                $order = Order::create([
-                    'order_number' => 'BGO-' . strtoupper(Str::random(8)),
-                    'buyer_id' => $user->id,
-                    'subtotal' => $subtotal,
-                    'shipping_fee' => $shippingFee,
-                    'total_amount' => $totalAmount,
-                    'payment_method' => 'cod',
-                    'payment_status' => 'pending',
-                    'status' => 'placed',
-                    'delivery_type' => $deliveryType,
-                    'pickup_hub_id' => ($deliveryType === 'hub_self_pickup') ? ($validated['pickup_hub_id'] ?? null) : null,
-                    'destination_barangay' => $validated['destination_barangay'] ?? null,
-                    'destination_latitude' => $validated['shipping_latitude'] ?? null,
-                    'destination_longitude' => $validated['shipping_longitude'] ?? null,
+            if ($request->boolean('save_address')) {
+                $hasExisting = $user->addresses()->exists();
+                $user->addresses()->create([
                     'recipient_name' => $validated['recipient_name'],
-                    'recipient_phone' => $validated['recipient_phone'],
-                    'shipping_address' => $validated['shipping_address'],
-                    'shipping_city' => $validated['shipping_city'],
-                    'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
-                    'notes' => (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') . ($validated['notes'] ?? ''),
+                    'phone' => $validated['recipient_phone'],
+                    'city' => $validated['shipping_city'],
+                    'province' => $province,
+                    'barangay' => $validated['destination_barangay'],
+                    'street' => $validated['shipping_address'],
+                    'postal_code' => $validated['shipping_postal_code'],
+                    'latitude' => $validated['shipping_latitude'] ?? null,
+                    'longitude' => $validated['shipping_longitude'] ?? null,
+                    'landmark' => $validated['landmark'] ?? null,
+                    'type' => 'Home',
+                    'is_default' => ! $hasExisting,
                 ]);
+            }
 
-                $firstShop = null;
-                foreach ($checkoutItems as $item) {
-                    $product = Product::findOrFail($item->product_id);
-                    
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item->product_id,
-                        'shop_id' => $product->shop_id,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $product->price,
-                        'subtotal' => $item->quantity * $product->price,
-                        'color' => $item->color,
-                        'size' => $item->size,
-                        'sku_snapshot' => $item->sku_snapshot,
-                    ]);
+            $message = $orders->count() === 1
+                ? "Order #{$orders->first()->order_number} successfully placed."
+                : "{$orders->count()} shop orders successfully placed.";
 
-                    // Atomically reduce stock & increment sales counter
-                    $product->decrement('stock', $item->quantity);
-                    $product->increment('sales_count', $item->quantity);
-
-                    if (! $firstShop && $product->shop) {
-                        $firstShop = $product->shop;
-                    }
-                }
-
-                // Create Delivery record for courier pool
-                $formattedDeliveryAddress = (! empty($validated['landmark']) ? "[Landmark: {$validated['landmark']}] " : '') 
-                    . $validated['shipping_address'] . ', ' . $validated['shipping_city'];
-
-                $delivery = Delivery::create([
-                    'order_id' => $order->id,
-                    'tracking_number' => 'BGO-' . strtoupper(Str::random(10)),
-                    'logistics_partner' => 'Bagoo Express Dispatch Fleet',
-                    'delivery_type' => $deliveryType,
-                    'status' => 'unassigned',
-                    'pickup_store_name' => $firstShop?->name ?? 'Bagoo Prime Store',
-                    'pickup_address' => ($firstShop?->address ?? 'Artisan District') . ', ' . ($firstShop?->city ?? 'Metro Manila'),
-                    'delivery_recipient_name' => $validated['recipient_name'],
-                    'delivery_address' => $formattedDeliveryAddress,
-                    'delivery_phone' => $validated['recipient_phone'],
-                    'estimated_delivery_at' => now()->addDays(3),
-                ]);
-
-                // Automatically generate facility-to-facility hops and destination bin
-                if ($firstShop) {
-                    try {
-                        $routingEngine->planDeliveryRoute($delivery, $order, $firstShop);
-                    } catch (\Throwable $e) {
-                        // Keep fallback if hubs are not fully seeded yet
-                    }
-                }
-
-                // Clear only the purchased items from the shopping bag
-                $checkoutItemIds = $checkoutItems->pluck('id')->all();
-                $cart->items()->whereIn('id', $checkoutItemIds)->delete();
-
-                return $order;
-            });
-
-            return redirect()->route('buyer.orders.index')->with('success', "Order #{$order->order_number} successfully placed!");
+            return redirect()->route('buyer.orders.index')->with('success', $message);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

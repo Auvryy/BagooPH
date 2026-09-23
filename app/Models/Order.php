@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Order extends Model
 {
@@ -16,7 +17,9 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'buyer_id',
+        'voucher_id',
         'subtotal',
+        'voucher_discount',
         'shipping_fee',
         'total_amount',
         'payment_method',
@@ -26,17 +29,23 @@ class Order extends Model
         'recipient_phone',
         'shipping_address',
         'shipping_city',
+        'shipping_province',
         'shipping_postal_code',
         'delivery_type', // doorstep, hub_self_pickup
         'pickup_hub_id',
         'destination_barangay',
+        'destination_latitude',
+        'destination_longitude',
         'notes',
     ];
 
     protected $casts = [
         'subtotal' => 'decimal:2',
+        'voucher_discount' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'destination_latitude' => 'float',
+        'destination_longitude' => 'float',
     ];
 
     public function newEloquentBuilder($query): OrderBuilder
@@ -112,7 +121,7 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function shop(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function shop(): HasOneThrough
     {
         return $this->hasOneThrough(Shop::class, OrderItem::class, 'order_id', 'id', 'id', 'shop_id');
     }

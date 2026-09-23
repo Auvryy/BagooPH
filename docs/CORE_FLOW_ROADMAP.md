@@ -21,7 +21,7 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 ## Current Implementation Audit
 
-Audit date: September 23, 2026.
+Audit date: September 24, 2026.
 
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
@@ -34,20 +34,22 @@ Audit date: September 23, 2026.
 | Cross-cutting input and mutation safety | Partial | Many controllers use basic string validation, but canonical phone/postal/text rules, idempotency, stale-state conflicts, and adversarial authorization are not consistently enforced. |
 | Alternate lifecycle entry points | Critical gap | Authenticated simulator routes and public tracking actions can mutate order/delivery state outside the canonical custody rules. |
 | Secret and KYC protection | Critical gap | KYC uploads use public storage paths, and OTP mail failure logging can include the generated code. |
-| Multi-shop checkout | Missing | Checkout currently creates one order and one delivery using the first shop instead of one independent fulfillment unit per shop. |
-| Voucher allocation | Partial | Shop ownership exists on vouchers, but checkout does not correctly isolate a shop voucher or proportionally divide a platform voucher across generated orders. |
-| Seller fulfillment | Partial | Accept, pack, ready, and cancel actions exist, but transitions are not centrally enforced and legacy shared orders can cross shop boundaries. |
-| Pickup rider handoff | Implemented | Atomic pickup claiming, assigned-rider checks, and rider pickup scan checkpoints exist. Preserve these controls. |
-| Facility routing | Partial | Delivery route fields and Bayan/Mother-Hub resolution exist, but checkout may silently accept an incomplete route. |
+| Multi-shop checkout | Implemented | Checkout transactionally creates an independent order, delivery, waybill, shipping fee, and route per shop; routing failure rolls back the checkout. |
+| Voucher allocation | Implemented | Shop vouchers are isolated to their owning shop, while platform discounts are proportionally divided without exceeding the calculated discount. |
+| Seller fulfillment | Implemented | A central lifecycle service enforces `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`, shop ownership, and the pre-custody cancellation boundary. |
+| Pickup rider handoff | Implemented | Pickup claims use row locking and enforce ready state, assigned rider, logistics company, and origin-hub scope. Pickup checkpoints record the acting rider. |
+| Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub, and destination Bayan Hub route and rejects incomplete routing. |
 | Manifest custody | Missing | Manifest numbers exist as delivery/checkpoint fields; there are no manifest and manifest-parcel records with dispatcher, receiver, vehicle, and close/receive control. |
-| Destination sort and rider assignment | Partial | Sorting and assignment foundations exist; full handler facility/company scope and end-to-end route verification remain required. |
+| Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
+| Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Partial | Failure count and a third-attempt trigger exist; attempt records, hub-return custody, retry dates, reverse manifests, and seller receipt are missing. |
 | Hub self-pickup | Partial | Counter staging and release screens exist; the claim code is optional and lacks secure hashing, expiry, reuse prevention, identity enforcement, and COD custody. |
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
-| COD reconciliation | Partial | A simple commission ledger exists, but delivery currently marks COD paid and settled too early; custody, remittance, discrepancy, and platform reconciliation records are missing. |
-| Buyer-only completion | Partial | Completion concepts and endpoints exist, but the full settlement gate must be tested against all delivery paths. |
+| COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
+| Buyer-only completion | Implemented | Only the owning buyer can advance a delivered order to `COMPLETED`; normal-flow coverage verifies delivery remains financially pending before reconciliation. |
 | Admin governance and audit | Partial | Platform logistics views and overrides exist; corrections are not consistently routed through lifecycle rules with immutable audit records. |
-| Cross-role presentation | Partial | Portals mix canonical and legacy statuses, rider earnings use inconsistent rider fields, and dispute/sample responses may imply unfinished behavior is available. |
+| Cross-role presentation | Partial | Final-mile earnings use the assigned delivery rider and fake delivery proof is removed, but portals still need a complete canonical-status and unfinished-feature cleanup. |
+| Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
 ## Quality Baseline and Target
 
@@ -55,14 +57,14 @@ These scores measure the approved core flow, not deferred enterprise features. D
 
 | Role or flow | Current implementation | Target after required phases | Main improvement required |
 |---|---:|---:|---|
-| Buyer | 5/10 | 10/10 | Safe input, idempotent multi-shop checkout, private tracking, self-pickup, notification, and completion guards |
-| Seller | 6/10 | 10/10 | Central lifecycle, ownership, cancellation boundary, archival history, RTS receipt, and settlement states |
-| Pickup Rider | 8/10 | 10/10 | Claim release/recovery, facility handoff validation, malformed scan handling, and durable notifications |
-| Delivery Rider | 6.5/10 | 10/10 | Proof contract, attempt records, hub-return custody, retry/RTS, correct earnings, and COD remittance |
-| Hub Handler | 5.5/10 | 10/10 | Facility scope, manifest lifecycle, discrepancy handling, secure counter release, and duplicate scan safety |
+| Buyer | 7/10 | 10/10 | Private tracking, secure self-pickup, notifications, and COD-aware completion/settlement visibility |
+| Seller | 8/10 | 10/10 | RTS receipt, settlement states, archival history, and notifications |
+| Pickup Rider | 9/10 | 10/10 | Claim release/recovery, complete handoff evidence, and durable notifications |
+| Delivery Rider | 7.5/10 | 10/10 | Attempt records, hub-return custody, retry/RTS, and COD remittance |
+| Hub Handler | 7/10 | 10/10 | Manifest lifecycle, discrepancy handling, and secure counter release |
 | Logistics Company Admin | 6/10 | 10/10 | Tenant-safe personnel/fleet controls, manifest supervision, exceptions, and remittance reconciliation |
 | Platform Admin | 5/10 | 10/10 | Private KYC, safe approvals/suspensions, immutable overrides, COD audit, and removal of fake operations |
-| End-to-end cross-role flow | 5.5/10 | 10/10 | One canonical mutation path with transaction, custody, money, recovery, and adversarial test coverage |
+| End-to-end cross-role flow | 7.5/10 | 10/10 | Normal delivery is enforced and tested; recovery, self-pickup, COD reconciliation, and settlement remain |
 
 Before this validation audit, the documents described the happy path well but left malformed input, duplicate requests, concurrency, alternate endpoints, privacy, and recovery behavior open to interpretation. `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` closes those design gaps; the phases below close the implementation gaps.
 
@@ -73,6 +75,8 @@ Work on one phase at a time. Do not begin a later phase until the current phase 
 Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`. A happy-path test alone is not completion.
 
 ### Phase 0: Security and Lifecycle Entry-Point Lockdown
+
+**State: Partial.** Core order, rider, and scanner mutations now use guarded services and real delivery proof; simulator/public mutation paths and private KYC/secret handling still require review.
 
 - Disable simulator advance/reset routes outside isolated local or test environments and prevent ordinary authenticated users from invoking them.
 - Make public tracking read-only by default; route every authorized tracking action through the same lifecycle services as its owning portal.
@@ -85,6 +89,8 @@ Acceptance: direct URLs, stale pages, alternate portals, simulators, and malform
 
 ### Phase 1: Normal Order and Seller Flow
 
+**State: Implemented and covered by focused tests.**
+
 - Split selected Shopping Bag items into one transactional order, delivery, waybill, shipping fee, and route per shop.
 - Limit shop vouchers to their shop and proportionally allocate platform voucher discounts.
 - Enforce `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP` centrally.
@@ -95,6 +101,8 @@ Acceptance: two-shop checkout produces two isolated fulfillment units; invalid t
 
 ### Phase 2: Mother-Hub and Manifest Custody
 
+**State: Partial.** Ordered hub scans and mandatory Mother-Hub custody are enforced; durable manifest records and dispatch/receive controls remain.
+
 - Add feeder and line-haul manifests with source, destination, vehicle, dispatcher, receiver, timestamps, and included parcels.
 - Require manifest outbound and receiving-facility inbound scans.
 - Require at least one Mother Hub and enforce handler facility and logistics-company scope.
@@ -103,6 +111,8 @@ Acceptance: two-shop checkout produces two isolated fulfillment units; invalid t
 Acceptance: same-region and cross-region parcels cannot skip their required Mother-Hub custody.
 
 ### Phase 3: Delivery Exceptions and Self-Pickup
+
+**State: Partial.** Basic failure counting and counter screens exist; the required attempt, retry, reverse-custody, and secure claim contracts remain.
 
 - Record each delivery attempt with rider, number, reason, notes, proof, attempt time, hub return, and retry date.
 - Allow retries after attempts one and two; begin reverse routing after the third failure.
@@ -113,6 +123,8 @@ Acceptance: custody always returns to the hub after failure; expired or invalid 
 
 ### Phase 4: Basic In-App Notifications
 
+**State: Missing.**
+
 - Persist unread/read notifications linked to orders, deliveries, and tasks.
 - Cover only meaningful order, custody, failure, pickup, completion, and RTS events.
 - Keep rider boards and assignment queues as operational task notifications.
@@ -120,6 +132,8 @@ Acceptance: custody always returns to the hub after failure; expired or invalid 
 Acceptance: each event produces one notification for the correct recipient without duplicates.
 
 ### Phase 5: COD and Admin Reconciliation
+
+**State: Partial.** Early COD payment and commission settlement were removed from normal delivery; the custody ledger and reconciliation workflow remain.
 
 - Add append-only COD entries for collection, rider-to-hub remittance, counter collection, hub-to-platform remittance, and adjustments.
 - Keep commission pending until the buyer completes the order and COD reaches platform reconciliation.
@@ -129,6 +143,8 @@ Acceptance: each event produces one notification for the correct recipient witho
 Acceptance: delivery never marks COD reconciled or seller proceeds settled early, and every correction retains actor and reason.
 
 ### Phase 6: Cross-Role Cleanup
+
+**State: Partial.** Final-mile rider ownership, earnings, real proof upload, and normal-path cross-role validation are complete; broader portal cleanup and deferred-path coverage remain.
 
 - Use the assigned final-mile rider for delivery earnings.
 - Present canonical statuses and Mother-Hub checkpoints consistently in every portal.

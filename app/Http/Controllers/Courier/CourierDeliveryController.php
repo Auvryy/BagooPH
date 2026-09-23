@@ -19,13 +19,14 @@ class CourierDeliveryController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $profile = $user->courierProfile;
         $isOnline = session('courier_duty_status', true);
 
         // My active and recent deliveries
         $myDeliveries = Delivery::where(function ($query) use ($user) {
-                $query->where('courier_id', $user->id)
-                    ->orWhere('assigned_rider_id', $user->id);
-            })
+            $query->where('courier_id', $user->id)
+                ->orWhere('assigned_rider_id', $user->id);
+        })
             ->with(['order.items.product', 'order.buyer'])
             ->latest()
             ->get();
@@ -33,6 +34,10 @@ class CourierDeliveryController extends Controller
         // Unassigned deliveries available for broadcast (FCFS)
         $availableJobs = Delivery::whereNull('courier_id')
             ->where('status', 'unassigned')
+            ->when($profile, fn ($query) => $query
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('origin_bayan_hub_id', $profile->assigned_hub_id))
+            ->when(! $profile, fn ($query) => $query->whereRaw('1 = 0'))
             ->whereHas('order', fn ($query) => $query->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
             ->with(['order.items.product', 'order.buyer'])
             ->latest()
@@ -43,9 +48,9 @@ class CourierDeliveryController extends Controller
             ->get();
 
         $activeDeliveries = Delivery::where(function ($query) use ($user) {
-                $query->where('courier_id', $user->id)
-                    ->orWhere('assigned_rider_id', $user->id);
-            })
+            $query->where('courier_id', $user->id)
+                ->orWhere('assigned_rider_id', $user->id);
+        })
             ->whereIn('status', ['assigned', 'assigned_pickup', 'picked_up', 'assigned_to_rider', 'out_for_delivery'])
             ->get();
 
@@ -89,6 +94,15 @@ class CourierDeliveryController extends Controller
                 return false;
             }
 
+            $profile = $rider->courierProfile;
+            if (
+                ! $profile
+                || $profile->logistics_company_id !== $lockedDelivery->logistics_company_id
+                || $profile->assigned_hub_id !== $lockedDelivery->origin_bayan_hub_id
+            ) {
+                return false;
+            }
+
             $lockedDelivery->update([
                 'courier_id' => $rider->id,
                 'status' => 'assigned_pickup',
@@ -118,7 +132,7 @@ class CourierDeliveryController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:picked_up,in_transit,out_for_delivery,delivered,failed',
             'courier_notes' => 'nullable|string|max:500',
-            'proof_image' => 'nullable|string',
+            'proof_image_file' => 'nullable|image|max:5120',
         ]);
         $rider = $request->user();
         $delivery->load('order.items.product.shop');
@@ -145,23 +159,45 @@ class CourierDeliveryController extends Controller
             $targetStatus = $requestedStatus === 'delivered'
                 ? OrderStateMachineService::STATUS_DELIVERED
                 : OrderStateMachineService::STATUS_DELIVERY_FAILED;
+
+            if (
+                $targetStatus === OrderStateMachineService::STATUS_DELIVERED
+                && ! $request->hasFile('proof_image_file')
+            ) {
+                return back()->with('error', 'Proof of delivery is required before completing the handover.');
+            }
+            if ($targetStatus === OrderStateMachineService::STATUS_DELIVERY_FAILED && empty($validated['courier_notes'])) {
+                return back()->with('error', 'A delivery failure reason is required.');
+            }
         } else {
             return back()->with('error', 'Unsupported delivery transition.');
         }
 
-        $updatedDelivery = app(OrderStateMachineService::class)->transition(
-            delivery: $delivery,
-            targetStatus: $targetStatus,
-            actor: $rider,
-            scanMetadata: [
-                'rider_id' => $rider->id,
-                'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
-                    ? ($delivery->pickup_store_name ?? 'Merchant Store')
-                    : ($delivery->delivery_address ?? 'Buyer Destination'),
-                'notes' => $validated['courier_notes'] ?? null,
-                'proof_image' => $validated['proof_image'] ?? null,
-            ]
-        );
+        $proofImage = null;
+        if ($request->hasFile('proof_image_file')) {
+            $proofImage = '/storage/'.$request->file('proof_image_file')->store('delivery-proofs', 'public');
+        }
+
+        try {
+            $updatedDelivery = app(OrderStateMachineService::class)->transition(
+                delivery: $delivery,
+                targetStatus: $targetStatus,
+                actor: $rider,
+                scanMetadata: [
+                    'rider_id' => $rider->id,
+                    'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
+                        ? ($delivery->pickup_store_name ?? 'Merchant Store')
+                        : ($delivery->delivery_address ?? 'Buyer Destination'),
+                    'notes' => $validated['courier_notes'] ?? null,
+                    'reason' => $targetStatus === OrderStateMachineService::STATUS_DELIVERY_FAILED
+                        ? $validated['courier_notes']
+                        : null,
+                    'proof_image' => $proofImage,
+                ]
+            );
+        } catch (\DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
         $updatedDelivery->update([
             'courier_notes' => $validated['courier_notes'] ?? $updatedDelivery->courier_notes,
@@ -179,25 +215,6 @@ class CourierDeliveryController extends Controller
             );
         }
 
-        if ($targetStatus === OrderStateMachineService::STATUS_DELIVERED) {
-            $delivery->order?->update(['payment_status' => 'paid']);
-            $gross = (float) ($delivery->order?->subtotal ?? 0);
-            $sellerUser = $delivery->order?->items->first()?->product?->shop?->user_id;
-
-            \App\Models\CommissionLedger::firstOrCreate(
-                ['order_id' => $delivery->order_id],
-                [
-                    'seller_id' => $sellerUser,
-                    'courier_id' => $rider->id,
-                    'gross_amount' => $gross,
-                    'seller_amount' => round($gross * 0.90, 2),
-                    'platform_commission' => round($gross * 0.10, 2),
-                    'delivery_fee' => 60.00,
-                    'status' => 'settled',
-                ]
-            );
-        }
-
         return back()->with('success', "Delivery status updated to {$targetStatus}.");
     }
 
@@ -205,7 +222,7 @@ class CourierDeliveryController extends Controller
     {
         $user = $request->user();
 
-        $completed = Delivery::where('courier_id', $user->id)
+        $completed = Delivery::where('assigned_rider_id', $user->id)
             ->where('status', 'delivered')
             ->with(['order.items.product', 'order.buyer'])
             ->latest('delivered_at')

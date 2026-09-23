@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Seeders;
 
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
-use App\Models\HubHandler;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\Review;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,11 +55,8 @@ class LogisticsSeedBaselineTest extends TestCase
 
         $expectedFacilityAccounts = [
             'MH-LAG-01' => 'motherhub@bagoo.test',
-            'MH-MNL-01' => 'manila.motherhub@bagoo.test',
             'BH-SCZ-01' => 'logistics@bagoo.test',
-            'BH-PGS-01' => 'pagsanjan.hub@bagoo.test',
             'BH-LBN-01' => 'losbanos.hub@bagoo.test',
-            'BH-SPB-01' => 'sanpablo.hub@bagoo.test',
         ];
 
         foreach ($expectedFacilityAccounts as $hubCode => $email) {
@@ -77,12 +77,34 @@ class LogisticsSeedBaselineTest extends TestCase
         }
 
         $this->assertSame(
-            6,
+            3,
             HubHandler::query()
                 ->where('is_active', true)
                 ->whereHas('hub', fn ($query) => $query->where('logistics_company_id', $company->id))
                 ->distinct('hub_id')
                 ->count('hub_id')
         );
+
+        $this->assertSame(3, LogisticsHub::where('logistics_company_id', $company->id)->count());
+        $this->assertSame(2, User::where('role', 'courier')->count());
+        $this->assertDatabaseHas('courier_profiles', [
+            'user_id' => User::where('email', 'pickup.rider@bagoo.test')->firstOrFail()->id,
+            'logistics_company_id' => $company->id,
+            'assigned_hub_id' => LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail()->id,
+        ]);
+        $this->assertDatabaseHas('courier_profiles', [
+            'user_id' => User::where('email', 'rider@bagoo.test')->firstOrFail()->id,
+            'logistics_company_id' => $company->id,
+            'assigned_hub_id' => $hub->id,
+            'assigned_barangay' => 'Poblacion III',
+        ]);
+
+        $this->assertSame('Los Banos, Laguna', User::where('email', 'seller@bagoo.test')->value('city'));
+        $this->assertSame('Santa Cruz, Laguna', User::where('email', 'buyer@bagoo.test')->value('city'));
+        $this->assertSame(0, Order::count());
+        $this->assertSame(0, Review::count());
+        $this->assertTrue(Product::all()->every(
+            fn (Product $product) => $product->sales_count === 0 && (float) $product->rating === 0.0
+        ));
     }
 }

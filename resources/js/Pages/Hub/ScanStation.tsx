@@ -15,7 +15,6 @@ import {
     Search,
     RefreshCw,
     Clock,
-    Hash,
     Layers,
     ShieldCheck,
     Boxes,
@@ -75,7 +74,6 @@ interface ScanStationProps {
         ready_pickup: number;
         dispatched_today: number;
     };
-    sampleTrackingNumbers: string[];
 }
 
 interface DynamicPrompt {
@@ -83,6 +81,8 @@ interface DynamicPrompt {
     prompt: string;
     next_status: string;
     color: string;
+    expected_status: string;
+    requires_confirmation: boolean;
 }
 
 interface ScannedDeliveryResult {
@@ -122,7 +122,6 @@ export default function ScanStation({
     recentScans,
     counterPickups,
     stats,
-    sampleTrackingNumbers,
 }: ScanStationProps) {
     const [activeTab, setActiveTab] = useState<'scan' | 'counter' | 'logs'>('scan');
     const [barcodeInput, setBarcodeInput] = useState('');
@@ -135,6 +134,7 @@ export default function ScanStation({
         delivery: ScannedDeliveryResult;
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
+    const [scanMessage, setScanMessage] = useState<string | null>(null);
 
     // Counter pickup claim form state
     const [pickupSearch, setPickupSearch] = useState('');
@@ -276,6 +276,7 @@ export default function ScanStation({
 
         setIsSubmitting(true);
         setScanError(null);
+        setScanMessage(null);
 
         try {
             const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
@@ -289,6 +290,7 @@ export default function ScanStation({
                 body: JSON.stringify({
                     barcode: code,
                     hub_id: activeHub?.id,
+                    mode: 'inspect',
                 }),
             });
 
@@ -300,9 +302,8 @@ export default function ScanStation({
                     prompt: data.prompt,
                     delivery: data.delivery,
                 });
+                setScanMessage(data.message);
                 setBarcodeInput('');
-                // Refresh recent scans in background
-                router.reload({ only: ['recentScans', 'stats', 'counterPickups'] });
             } else {
                 playSound('error');
                 setScanError(data.error || 'Failed to process barcode. Parcel not found.');
@@ -315,6 +316,48 @@ export default function ScanStation({
             setTimeout(() => {
                 barcodeInputRef.current?.focus();
             }, 100);
+        }
+    };
+
+    const confirmScanAction = async () => {
+        if (!lastResult || !lastResult.prompt.requires_confirmation || isSubmitting) return;
+
+        setIsSubmitting(true);
+        setScanError(null);
+        setScanMessage(null);
+
+        try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+            const response = await fetch(route('hub.scan'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                },
+                body: JSON.stringify({
+                    barcode: lastResult.delivery.tracking_number,
+                    hub_id: activeHub?.id,
+                    mode: 'confirm',
+                    action: lastResult.prompt.action,
+                    expected_status: lastResult.prompt.expected_status,
+                }),
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'The custody action could not be recorded.');
+            }
+
+            playSound('success');
+            setLastResult({ prompt: data.prompt, delivery: data.delivery });
+            setScanMessage(data.message);
+            router.reload({ only: ['recentScans', 'stats', 'counterPickups'] });
+        } catch (err: any) {
+            playSound('error');
+            setScanError(err.message || 'Network error while confirming the custody action.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -504,6 +547,13 @@ export default function ScanStation({
                         </div>
                     )}
 
+                    {scanMessage && (
+                        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs font-sans">{scanMessage}</div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* LEFT COLUMN: Physical & Optical Barcode Scanner (col-span-6) */}
                         <div className="lg:col-span-6 space-y-4">
@@ -563,30 +613,6 @@ export default function ScanStation({
                                     </div>
                                 </form>
 
-                                {/* Sample Test Barcodes */}
-                                {sampleTrackingNumbers && sampleTrackingNumbers.length > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-slate-200">
-                                        <div className="text-[11px] text-slate-500 font-sans mb-2 flex items-center gap-1.5 font-medium">
-                                            <Hash className="w-3 h-3 text-slate-400" />
-                                            Sample Waybills (Click to scan):
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {sampleTrackingNumbers.map((track) => (
-                                                <button
-                                                    key={track}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setBarcodeInput(track);
-                                                        handleBarcodeProcess(track);
-                                                    }}
-                                                    className="text-[11px] font-sans bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-2 py-1 rounded-xs transition font-semibold cursor-pointer shadow-2xs"
-                                                >
-                                                    {track}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Camera Viewfinder Card (Minimalist Clean Style) */}
@@ -679,6 +705,22 @@ export default function ScanStation({
                                             {lastResult.prompt.prompt}
                                         </div>
                                     </div>
+
+                                    {lastResult.prompt.requires_confirmation && (
+                                        <div className="rounded-xs border border-amber-300 bg-amber-50 p-3.5">
+                                            <p className="text-xs text-amber-900 font-sans mb-3">
+                                                Verify the parcel and physical handoff before recording this custody action.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={confirmScanAction}
+                                                disabled={isSubmitting}
+                                                className="w-full rounded-xs bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#C20836] disabled:bg-slate-300"
+                                            >
+                                                {isSubmitting ? 'Recording action...' : 'Confirm custody action'}
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Assigned Sort Bin */}
                                     <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xs border border-slate-300">

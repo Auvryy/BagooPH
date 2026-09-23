@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
+use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
-use App\Models\CourierProfile;
 use App\Models\HubHandler;
-use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\User;
@@ -57,7 +56,7 @@ class LogisticsHubWorkstationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $requestedHubId = $request->query('hub_id') ?? session('active_hub_id');
+        $requestedHubId = $request->input('hub_id') ?? session('active_hub_id');
         $activeHub = null;
 
         if ($requestedHubId) {
@@ -456,16 +455,16 @@ class LogisticsHubWorkstationController extends Controller
             ->when($activeHub, function ($q) use ($activeHub) {
                 $q->where(function ($sq) use ($activeHub) {
                     $sq->where('current_hub_id', $activeHub->id)
-                       ->orWhere('destination_bayan_hub_id', $activeHub->id)
-                       ->orWhere('origin_bayan_hub_id', $activeHub->id);
+                        ->orWhere('destination_bayan_hub_id', $activeHub->id)
+                        ->orWhere('origin_bayan_hub_id', $activeHub->id);
                 });
             });
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('tracking_number', 'like', "%{$search}%")
-                  ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
-                  ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
+                    ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -559,8 +558,8 @@ class LogisticsHubWorkstationController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('tracking_number', 'like', "%{$search}%")
-                  ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
-                  ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
+                    ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -636,34 +635,10 @@ class LogisticsHubWorkstationController extends Controller
     public function scanStation(Request $request): Response
     {
         $user = $request->user();
-        $hubs = LogisticsHub::with('company')
-            ->where('is_active', true)
-            ->orderBy('tier')
-            ->orderBy('name')
-            ->get();
+        abort_unless($user?->isLogistics(), 403, 'Platform administrators may audit logistics but cannot operate a scan station.');
+        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
-        // Determine active hub
-        $requestedHubId = $request->query('hub_id') ?? session('active_hub_id');
-        $activeHub = null;
-
-        if ($requestedHubId) {
-            $activeHub = $hubs->firstWhere('id', (int) $requestedHubId);
-        }
-
-        if (! $activeHub && $user) {
-            $handler = HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
-            if ($handler) {
-                $activeHub = $hubs->firstWhere('id', $handler->hub_id);
-            }
-        }
-
-        if (! $activeHub) {
-            $activeHub = $hubs->first();
-        }
-
-        if ($activeHub) {
-            session(['active_hub_id' => $activeHub->id]);
-        }
+        abort_unless($activeHub, 403, 'No active facility is assigned to this account.');
 
         // Recent scans at this hub
         $recentScans = DeliveryCheckpoint::with(['delivery.order.buyer', 'delivery.destinationBayanHub', 'scannedBy'])
@@ -719,11 +694,15 @@ class LogisticsHubWorkstationController extends Controller
         $stats = [
             'parcels_in_hub' => $activeHub ? Delivery::where('current_hub_id', $activeHub->id)->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])->count() : 0,
             'ready_pickup' => $activeHub ? Delivery::where('destination_bayan_hub_id', $activeHub->id)->where('delivery_type', 'hub_self_pickup')->where('status', OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP)->count() : 0,
-            'dispatched_today' => $activeHub ? DeliveryCheckpoint::where('hub_id', $activeHub->id)->whereDate('created_at', today())->count() : 0,
+            'dispatched_today' => $activeHub ? DeliveryCheckpoint::where('hub_id', $activeHub->id)
+                ->whereIn('checkpoint_type', [
+                    OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+                    OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                    OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+                ])
+                ->whereDate('created_at', today())
+                ->count() : 0,
         ];
-
-        // Sample tracking numbers for quick barcode testing in development
-        $sampleTrackingNumbers = Delivery::latest()->limit(8)->pluck('tracking_number')->all();
 
         return Inertia::render('Hub/ScanStation', [
             'activeHub' => $activeHub,
@@ -731,7 +710,6 @@ class LogisticsHubWorkstationController extends Controller
             'recentScans' => $recentScans,
             'counterPickups' => $counterPickups,
             'stats' => $stats,
-            'sampleTrackingNumbers' => $sampleTrackingNumbers,
         ]);
     }
 
@@ -740,10 +718,15 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function scanIntake(Request $request): JsonResponse|RedirectResponse
     {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may scan parcel custody.');
+
         $validated = $request->validate([
             'barcode' => 'required|string',
             'hub_id' => 'nullable|exists:logistics_hubs,id',
             'notes' => 'nullable|string',
+            'mode' => 'nullable|in:inspect,confirm',
+            'action' => 'required_if:mode,confirm|nullable|string',
+            'expected_status' => 'required_if:mode,confirm|nullable|string',
         ]);
 
         $barcode = trim($validated['barcode']);
@@ -768,58 +751,121 @@ class LogisticsHubWorkstationController extends Controller
                     'error' => "Parcel #{$barcode} not found in logistics registry.",
                 ], 404);
             }
+
             return back()->with('error', "Parcel #{$barcode} not found in logistics registry.");
         }
 
-        $hub = null;
-        if (! empty($validated['hub_id'])) {
-            $hub = LogisticsHub::find($validated['hub_id']);
-        }
-        if (! $hub) {
-            $hub = $delivery->currentHub ?? LogisticsHub::where('is_active', true)->first();
+        [$hub] = $this->getActiveHub($request, $request->user());
+
+        if (! $hub || $hub->logistics_company_id !== $delivery->logistics_company_id) {
+            return $this->operationError($request, 'This parcel is outside the active facility company.', 403);
         }
 
         $routingEngine = app(LogisticsRoutingEngine::class);
         $prompt = $routingEngine->getDynamicScanPrompt($delivery, $hub);
 
-        $stateMachine = app(OrderStateMachineService::class);
-        $nextStatus = $prompt['next_status'] ?? $delivery->status;
+        if ($prompt['action'] === 'INSPECT_WAYBILL') {
+            return $this->operationError(
+                $request,
+                'This parcel is not expected at the active facility for its current custody state.',
+                409
+            );
+        }
 
-        $updatedDelivery = $stateMachine->transition(
-            delivery: $delivery,
-            targetStatus: $nextStatus,
-            actor: $request->user() ?? User::where('role', 'logistics')->first(),
-            scanMetadata: [
-                'hub_id' => $hub?->id,
-                'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
-                'facility_code' => $hub?->code,
-                'notes' => $validated['notes'] ?? "Floor Scan: {$prompt['action']} - {$prompt['prompt']}",
-            ]
+        if (($validated['mode'] ?? 'inspect') !== 'confirm') {
+            $requiresConfirmation = $prompt['action'] !== 'AWAIT_BARANGAY_SORT';
+
+            return response()->json($this->scanPayload(
+                delivery: $delivery,
+                hub: $hub,
+                prompt: $prompt,
+                message: $requiresConfirmation
+                    ? 'Waybill verified. Confirm the displayed custody action to continue.'
+                    : 'Waybill verified. Use the destination sorting action to continue.',
+                requiresConfirmation: $requiresConfirmation
+            ));
+        }
+
+        $requestedAction = strtoupper(trim($validated['action']));
+        $expectedStatus = strtolower(trim($validated['expected_status']));
+        $targetStatus = $this->scanTargetForAction($requestedAction);
+
+        if (! $targetStatus) {
+            return $this->operationError($request, 'The requested scan action is not a recognized custody handoff.', 422);
+        }
+
+        if ($delivery->status === $expectedStatus && ($prompt['action'] !== $requestedAction || $prompt['next_status'] !== $targetStatus)) {
+            return $this->operationError($request, 'The scan instruction no longer matches the parcel route. Scan the waybill again.', 409);
+        }
+
+        $stateMachine = app(OrderStateMachineService::class);
+
+        try {
+            $updatedDelivery = $stateMachine->transition(
+                delivery: $delivery,
+                targetStatus: $targetStatus,
+                actor: $request->user(),
+                scanMetadata: [
+                    'hub_id' => $hub?->id,
+                    'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
+                    'facility_code' => $hub?->code,
+                    'scan_action' => $requestedAction,
+                    'expected_status' => $expectedStatus,
+                    'notes' => $validated['notes'] ?? "Floor Scan: {$requestedAction}",
+                ]
+            );
+        } catch (\DomainException $exception) {
+            return $this->operationError($request, $exception->getMessage(), 409);
+        }
+
+        $payload = $this->scanPayload(
+            delivery: $updatedDelivery,
+            hub: $hub,
+            prompt: $prompt,
+            message: "Custody action recorded for parcel #{$delivery->tracking_number}.",
+            requiresConfirmation: false,
+            confirmed: true
         );
 
-        // Always log canonical hub_intake checkpoint for audit and test compatibility
-        DeliveryCheckpoint::create([
-            'delivery_id' => $updatedDelivery->id,
-            'checkpoint_type' => 'hub_intake',
-            'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
-            'barcode_scanned' => $updatedDelivery->tracking_number,
-            'notes' => $validated['notes'] ?? "Scanned at sorting hub intake",
-            'scanned_by_id' => $request->user()?->id,
-            'hub_id' => $hub?->id,
-            'facility_code' => $hub?->code,
-        ]);
+        if ($request->wantsJson()) {
+            return response()->json($payload);
+        }
 
-        $payload = [
+        return back()->with('scan_result', $payload);
+    }
+
+    private function scanPayload(
+        Delivery $delivery,
+        LogisticsHub $hub,
+        array $prompt,
+        string $message,
+        bool $requiresConfirmation,
+        bool $confirmed = false
+    ): array {
+        $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub']);
+        $custodyHub = $delivery->currentHub;
+
+        return [
             'success' => true,
-            'message' => "Parcel #{$delivery->tracking_number} processed successfully.",
-            'prompt' => $prompt,
+            'message' => $message,
+            'confirmed' => $confirmed,
+            'prompt' => [
+                ...$prompt,
+                'expected_status' => $delivery->status,
+                'requires_confirmation' => $requiresConfirmation,
+            ],
             'delivery' => [
-                'id' => $updatedDelivery->id,
-                'tracking_number' => $updatedDelivery->tracking_number,
-                'status' => $updatedDelivery->status,
-                'delivery_type' => $updatedDelivery->delivery_type,
-                'destination_bin' => $updatedDelivery->destination_bin,
-                'current_hub' => $hub ? ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'tier' => $hub->tier] : null,
+                'id' => $delivery->id,
+                'tracking_number' => $delivery->tracking_number,
+                'status' => $delivery->status,
+                'delivery_type' => $delivery->delivery_type,
+                'destination_bin' => $delivery->destination_bin,
+                'current_hub' => $custodyHub ? [
+                    'id' => $custodyHub->id,
+                    'name' => $custodyHub->name,
+                    'code' => $custodyHub->code,
+                    'tier' => $custodyHub->tier,
+                ] : null,
                 'buyer' => [
                     'name' => $delivery->order?->buyer?->name ?? 'Customer',
                     'phone' => $delivery->order?->buyer?->phone ?? 'N/A',
@@ -839,12 +885,20 @@ class LogisticsHubWorkstationController extends Controller
                 ],
             ],
         ];
+    }
 
-        if ($request->wantsJson()) {
-            return response()->json($payload);
-        }
-
-        return back()->with('scan_result', $payload);
+    private function scanTargetForAction(string $action): ?string
+    {
+        return match ($action) {
+            'RECEIVE_FROM_PICKUP_RIDER' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+            'DISPATCH_TO_FEEDER' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+            'RECEIVE_AT_MOTHER_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+            'SORT_TO_LINE_HAUL' => OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+            'DISPATCH_LINE_HAUL' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+            'RECEIVE_AT_DESTINATION_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+            'STAGE_FOR_PICKUP' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
+            default => null,
+        };
     }
 
     /**
@@ -852,6 +906,8 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function releasePickup(Request $request): JsonResponse|RedirectResponse
     {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may release counter parcels.');
+
         $validated = $request->validate([
             'barcode' => 'required|string',
             'claim_code' => 'nullable|string',
@@ -870,29 +926,39 @@ class LogisticsHubWorkstationController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'error' => "Parcel #{$barcode} not found."], 404);
             }
+
             return back()->with('error', "Parcel #{$barcode} not found.");
         }
 
-        $hub = ! empty($validated['hub_id'])
-            ? LogisticsHub::find($validated['hub_id'])
-            : ($delivery->currentHub ?? LogisticsHub::where('is_active', true)->first());
+        [$hub] = $this->getActiveHub($request, $request->user());
+        if (
+            ! $hub
+            || $hub->logistics_company_id !== $delivery->logistics_company_id
+            || $hub->id !== $delivery->destination_bayan_hub_id
+        ) {
+            return $this->operationError($request, 'This parcel is outside the active counter facility.', 403);
+        }
 
         $stateMachine = app(OrderStateMachineService::class);
         $recipient = $validated['recipient_name'] ?: ($delivery->order?->buyer?->name ?? 'Customer');
-        $notes = "Counter Pickup Handover. Verified ID/Claim for {$recipient}." . (! empty($validated['notes']) ? " Note: {$validated['notes']}" : '');
+        $notes = "Counter Pickup Handover. Verified ID/Claim for {$recipient}.".(! empty($validated['notes']) ? " Note: {$validated['notes']}" : '');
 
-        $updatedDelivery = $stateMachine->transition(
-            delivery: $delivery,
-            targetStatus: OrderStateMachineService::STATUS_CUSTOMER_COLLECTED,
-            actor: $request->user() ?? User::where('role', 'logistics')->first(),
-            scanMetadata: [
-                'hub_id' => $hub?->id,
-                'location_name' => ($hub?->name ?? 'Bayan Hub') . ' Counter',
-                'facility_code' => $hub?->code,
-                'notes' => $notes,
-                'geofence_verified' => true,
-            ]
-        );
+        try {
+            $updatedDelivery = $stateMachine->transition(
+                delivery: $delivery,
+                targetStatus: OrderStateMachineService::STATUS_CUSTOMER_COLLECTED,
+                actor: $request->user(),
+                scanMetadata: [
+                    'hub_id' => $hub->id,
+                    'location_name' => $hub->name.' Counter',
+                    'facility_code' => $hub->code,
+                    'notes' => $notes,
+                    'geofence_verified' => true,
+                ]
+            );
+        } catch (\DomainException $exception) {
+            return $this->operationError($request, $exception->getMessage(), 409);
+        }
 
         $payload = [
             'success' => true,
@@ -916,6 +982,8 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function sortBarangay(Request $request): JsonResponse|RedirectResponse
     {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may sort parcels.');
+
         $validated = $request->validate([
             'delivery_id' => 'required|exists:deliveries,id',
             'barangay' => 'nullable|string',
@@ -924,6 +992,15 @@ class LogisticsHubWorkstationController extends Controller
         ]);
 
         $delivery = Delivery::with('order')->findOrFail($validated['delivery_id']);
+        [$activeHub] = $this->getActiveHub($request, $request->user());
+
+        if (
+            ! $activeHub
+            || $activeHub->logistics_company_id !== $delivery->logistics_company_id
+            || $activeHub->id !== $delivery->destination_bayan_hub_id
+        ) {
+            return $this->operationError($request, 'This parcel is outside the active destination facility.', 403);
+        }
 
         if ($delivery->delivery_type !== 'doorstep') {
             return $this->operationError($request, 'Self-pickup parcels must be staged at the counter, not assigned to a barangay bin.');
@@ -940,34 +1017,25 @@ class LogisticsHubWorkstationController extends Controller
         $stateMachine = app(OrderStateMachineService::class);
 
         $barangay = $validated['barangay'] ?? ($delivery->order?->destination_barangay ?? 'GENERAL');
-        $bin = $validated['bin'] ?? ($delivery->destination_bin ?? ('BIN: BRGY-' . strtoupper(str_replace(' ', '-', $barangay))));
-
-        $delivery->destination_bin = $bin;
-        $delivery->save();
+        $bin = $validated['bin'] ?? ($delivery->destination_bin ?? ('BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay))));
 
         $locationName = "Hub Sorting Bay ({$barangay} / {$bin})";
 
-        $stateMachine->transition(
-            delivery: $delivery,
-            targetStatus: OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
-            actor: $request->user() ?? User::where('role', 'logistics')->first(),
-            scanMetadata: [
-                'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
-                'location_name' => $locationName,
-                'notes' => $validated['notes'] ?? "Sorted to bin {$bin} for {$barangay}",
-            ]
-        );
-
-        // Always log canonical barangay_sort checkpoint for test compatibility and audit
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'barangay_sort',
-            'location_name' => $locationName,
-            'barcode_scanned' => $delivery->tracking_number,
-            'notes' => $validated['notes'] ?? "Sorted for dispatch to {$barangay} ({$bin})",
-            'scanned_by_id' => $request->user()?->id,
-            'hub_id' => $delivery->destination_bayan_hub_id ?? $delivery->current_hub_id,
-        ]);
+        try {
+            $stateMachine->transition(
+                delivery: $delivery,
+                targetStatus: OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+                actor: $request->user(),
+                scanMetadata: [
+                    'hub_id' => $activeHub->id,
+                    'destination_bin' => $bin,
+                    'location_name' => $locationName,
+                    'notes' => $validated['notes'] ?? "Sorted to bin {$bin} for {$barangay}",
+                ]
+            );
+        } catch (\DomainException $exception) {
+            return $this->operationError($request, $exception->getMessage(), 409);
+        }
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -985,10 +1053,21 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function assignRider(Request $request, Delivery $delivery): JsonResponse|RedirectResponse
     {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may assign final-mile riders.');
+
         $validated = $request->validate([
             'rider_id' => 'required|exists:users,id',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        [$activeHub] = $this->getActiveHub($request, $request->user());
+        if (
+            ! $activeHub
+            || $activeHub->logistics_company_id !== $delivery->logistics_company_id
+            || $activeHub->id !== $delivery->destination_bayan_hub_id
+        ) {
+            return $this->operationError($request, 'This parcel is outside the active destination facility.', 403);
+        }
 
         $rider = User::with('courierProfile')->findOrFail($validated['rider_id']);
 
@@ -999,6 +1078,10 @@ class LogisticsHubWorkstationController extends Controller
         $profile = $rider->courierProfile;
         if (! $profile || ! $profile->is_available) {
             return $this->operationError($request, 'Selected rider is not currently available for dispatch.');
+        }
+
+        if ($profile->logistics_company_id !== $delivery->logistics_company_id) {
+            return $this->operationError($request, 'Selected rider belongs to another logistics company.');
         }
 
         if (! $delivery->destination_bayan_hub_id || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id) {
@@ -1025,17 +1108,21 @@ class LogisticsHubWorkstationController extends Controller
                 return ['error' => 'Parcel is already assigned to a final-mile rider.'];
             }
 
-            $updated = app(OrderStateMachineService::class)->transition(
-                delivery: $lockedDelivery,
-                targetStatus: OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
-                actor: $request->user(),
-                scanMetadata: [
-                    'hub_id' => $lockedDelivery->destination_bayan_hub_id,
-                    'rider_id' => $rider->id,
-                    'location_name' => $lockedDelivery->destinationBayanHub?->name ?? 'Destination Bayan Hub',
-                    'notes' => $validated['notes'] ?? "Assigned to final-mile rider {$rider->name}",
-                ]
-            );
+            try {
+                $updated = app(OrderStateMachineService::class)->transition(
+                    delivery: $lockedDelivery,
+                    targetStatus: OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
+                    actor: $request->user(),
+                    scanMetadata: [
+                        'hub_id' => $lockedDelivery->destination_bayan_hub_id,
+                        'rider_id' => $rider->id,
+                        'location_name' => $lockedDelivery->destinationBayanHub?->name ?? 'Destination Bayan Hub',
+                        'notes' => $validated['notes'] ?? "Assigned to final-mile rider {$rider->name}",
+                    ]
+                );
+            } catch (\DomainException $exception) {
+                return ['error' => $exception->getMessage()];
+            }
 
             return ['delivery' => $updated];
         });
@@ -1056,10 +1143,10 @@ class LogisticsHubWorkstationController extends Controller
         return back()->with('success', $message);
     }
 
-    private function operationError(Request $request, string $message): JsonResponse|RedirectResponse
+    private function operationError(Request $request, string $message, int $status = 422): JsonResponse|RedirectResponse
     {
         if ($request->wantsJson()) {
-            return response()->json(['success' => false, 'error' => $message], 422);
+            return response()->json(['success' => false, 'error' => $message], $status);
         }
 
         return back()->with('error', $message);

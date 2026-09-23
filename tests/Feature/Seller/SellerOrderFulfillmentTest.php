@@ -4,6 +4,8 @@ namespace Tests\Feature\Seller;
 
 use App\Models\Category;
 use App\Models\Delivery;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -18,10 +20,22 @@ class SellerOrderFulfillmentTest extends TestCase
     use RefreshDatabase;
 
     private User $seller;
+
     private Shop $shop;
+
     private User $buyer;
+
     private Product $product;
+
     private Category $category;
+
+    private LogisticsCompany $company;
+
+    private LogisticsHub $originHub;
+
+    private LogisticsHub $motherHub;
+
+    private LogisticsHub $destinationHub;
 
     protected function setUp(): void
     {
@@ -63,6 +77,17 @@ class SellerOrderFulfillmentTest extends TestCase
             'stock_quantity' => 20,
             'status' => 'approved',
         ]);
+
+        $this->company = LogisticsCompany::create([
+            'name' => 'Test Logistics',
+            'slug' => 'test-logistics',
+            'code' => 'TLX',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $this->originHub = $this->hub('BH-ORG-01', 'Origin Hub', 'local_bayan_hub', 'Naval');
+        $this->motherHub = $this->hub('MH-REG-01', 'Mother Hub', 'regional_mother_hub', 'Tacloban City');
+        $this->destinationHub = $this->hub('BH-DST-01', 'Destination Hub', 'local_bayan_hub', 'Tacloban City');
     }
 
     private function createOrderForShop(string $status = 'pending', ?Shop $targetShop = null): Order
@@ -72,7 +97,7 @@ class SellerOrderFulfillmentTest extends TestCase
             'shop_id' => $shop->id,
             'category_id' => $this->category->id,
             'name' => 'Other Product',
-            'slug' => 'other-product-' . uniqid(),
+            'slug' => 'other-product-'.uniqid(),
             'price' => 300,
             'stock_quantity' => 10,
             'status' => 'approved',
@@ -80,7 +105,7 @@ class SellerOrderFulfillmentTest extends TestCase
 
         $order = Order::create([
             'buyer_id' => $this->buyer->id,
-            'order_number' => 'BGO-' . strtoupper(uniqid()),
+            'order_number' => 'BGO-'.strtoupper(uniqid()),
             'status' => $status,
             'subtotal' => 500,
             'total_amount' => 500,
@@ -99,6 +124,21 @@ class SellerOrderFulfillmentTest extends TestCase
             'quantity' => 1,
             'unit_price' => 500,
             'subtotal' => 500,
+        ]);
+
+        Delivery::create([
+            'order_id' => $order->id,
+            'tracking_number' => 'BGO-'.strtoupper(uniqid()),
+            'logistics_company_id' => $this->company->id,
+            'origin_bayan_hub_id' => $this->originHub->id,
+            'origin_mother_hub_id' => $this->motherHub->id,
+            'destination_mother_hub_id' => $this->motherHub->id,
+            'destination_bayan_hub_id' => $this->destinationHub->id,
+            'status' => 'unassigned',
+            'pickup_address' => $shop->address ?? 'Seller address',
+            'delivery_address' => '123 Pine St, Tacloban City',
+            'delivery_recipient_name' => 'Juan Dela Cruz',
+            'delivery_phone' => '+63 917 111 2222',
         ]);
 
         return $order;
@@ -147,7 +187,9 @@ class SellerOrderFulfillmentTest extends TestCase
 
     public function test_seller_can_mark_order_ready_for_pickup(): void
     {
-        $order = $this->createOrderForShop('processing');
+        $order = $this->createOrderForShop('confirmed');
+
+        $this->actingAs($this->seller)->post(route('seller.orders.pack', $order))->assertSessionHas('success');
 
         $response = $this->actingAs($this->seller)->post(route('seller.orders.ready', $order));
 
@@ -168,8 +210,11 @@ class SellerOrderFulfillmentTest extends TestCase
 
     public function test_seller_can_batch_mark_orders_ready_for_pickup(): void
     {
-        $order1 = $this->createOrderForShop('processing');
+        $order1 = $this->createOrderForShop('confirmed');
         $order2 = $this->createOrderForShop('confirmed');
+
+        $this->actingAs($this->seller)->post(route('seller.orders.pack', $order1))->assertSessionHas('success');
+        $this->actingAs($this->seller)->post(route('seller.orders.pack', $order2))->assertSessionHas('success');
 
         $response = $this->actingAs($this->seller)->post(route('seller.orders.batchReady'), [
             'order_ids' => [$order1->id, $order2->id],
@@ -220,16 +265,7 @@ class SellerOrderFulfillmentTest extends TestCase
     public function test_seller_cannot_bypass_the_assigned_rider_pickup_scan(): void
     {
         $order = $this->createOrderForShop('ready_for_pickup');
-        $delivery = Delivery::create([
-            'order_id' => $order->id,
-            'tracking_number' => 'BGO-TEST-HANDOVER',
-            'status' => 'unassigned',
-            'pickup_store_name' => $this->shop->name,
-            'pickup_address' => $this->shop->address,
-            'delivery_recipient_name' => $order->recipient_name,
-            'delivery_address' => $order->shipping_address,
-            'delivery_phone' => $order->recipient_phone,
-        ]);
+        $delivery = $order->delivery;
 
         $response = $this->actingAs($this->seller)->post(route('seller.orders.handover', $order));
 
@@ -273,5 +309,19 @@ class SellerOrderFulfillmentTest extends TestCase
             ->has('orderItems.data', 1)
             ->where('currentStatus', 'to_pack')
         );
+    }
+
+    private function hub(string $code, string $name, string $tier, string $city): LogisticsHub
+    {
+        return LogisticsHub::create([
+            'logistics_company_id' => $this->company->id,
+            'name' => $name,
+            'code' => $code,
+            'tier' => $tier,
+            'province' => 'Leyte',
+            'city_municipality' => $city,
+            'address' => "{$name} address",
+            'is_active' => true,
+        ]);
     }
 }

@@ -377,10 +377,10 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 
 /*
 |--------------------------------------------------------------------------
-| Courier & Logistics Portal Routes
+| Courier Portal Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:courier,logistics'])->prefix('courier')->name('courier.')->group(function () {
+Route::middleware(['auth', 'role:courier'])->prefix('courier')->name('courier.')->group(function () {
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
