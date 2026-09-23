@@ -1,6 +1,6 @@
 # Buyer Module Flow
 
-This document defines buyer actions. Parcel custody, hub transfers, COD, and exceptions follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+This document defines buyer actions. Parcel custody, hub transfers, COD, and exceptions follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Input, ownership, duplicate-submission, and recovery rules follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ## 1. Account and Shopping
 

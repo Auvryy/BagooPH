@@ -1,6 +1,6 @@
 # Seller Module Flow
 
-This document defines seller actions. Parcel custody and settlement follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+This document defines seller actions. Parcel custody and settlement follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Input, ownership, lifecycle, cancellation, concurrency, and recovery rules follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ## 1. Registration and Store Management
 

@@ -2,6 +2,7 @@
 
 > **Status:** Authoritative operational specification.
 > This document defines parcel custody from checkout through completion, including normal doorstep delivery, Mother-Hub transfers, failed delivery, hub self-pickup, basic in-app notifications, and COD custody. It intentionally excludes maritime transport, air freight, live GPS fleet optimization, and automated warehouse machinery.
+> Input validation, authorization, concurrency, idempotency, and recovery rules are authoritative in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ## 1. Scope and Non-Negotiable Rules
 
@@ -158,14 +159,16 @@ Each manifest records its number, sending hub, receiving hub, vehicle when used,
 
 Only the assigned delivery rider may record a failed attempt. The rider must select a reason and enter useful notes.
 
-Allowed baseline reasons:
+Allowed baseline reasons and retry policy:
 
-- Customer unreachable.
-- Customer unavailable or requested reschedule.
-- Incorrect or incomplete address.
-- Customer refused the parcel.
-- Unsafe access or severe weather.
-- COD amount unavailable.
+| Reason | Retry policy |
+|---|---|
+| Customer unreachable | Retryable after hub return and review |
+| Customer unavailable or requested reschedule | Retryable after hub return and an approved retry date |
+| Incorrect or incomplete address | Retryable only when clarification stays inside the assigned destination service area |
+| Unsafe access or severe weather | Retryable after hub review confirms service can resume |
+| COD amount unavailable | Retryable after buyer confirmation that exact payment will be available |
+| Customer refused the parcel | Non-retryable; begin RTS after destination-hub return |
 
 The event increments the attempt count, records time and location, changes the order to `DELIVERY_FAILED`, and instructs the rider to return the parcel to the destination Bayan Hub. A failed parcel must not remain in the rider's active custody after the hub return scan.
 
@@ -177,7 +180,7 @@ The event increments the attempt count, records time and location, changes the o
 4. The hub may assign the same or another eligible rider.
 5. Retry follows `SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY`.
 
-The baseline permits three total delivery attempts. Attempts one and two may be retried. The third failure starts return-to-sender.
+The baseline permits no more than three total delivery attempts. Retryable attempts one and two may be retried. Customer refusal may start RTS earlier; otherwise the third failure starts return-to-sender.
 
 ### Return-to-Sender
 
@@ -202,7 +205,7 @@ Self-pickup follows the same seller, pickup-rider, origin Bayan Hub, Mother Hub,
 6. Release consumes the claim code and records `customer_collected`.
 7. The order maps to `DELIVERED`; the buyer then confirms receipt to reach `COMPLETED`.
 
-Default holding period is seven calendar days. The buyer receives reminders on days three and six. An uncollected parcel enters the exception queue after expiry and follows return-to-sender unless a hub administrator approves an extension.
+Default holding period is exactly seven calendar days. The buyer receives reminders on days three and six. An uncollected parcel enters the exception queue after expiry and follows return-to-sender. Silent or ad hoc extensions are not allowed in the baseline.
 
 ## 6. Basic In-App Notifications
 

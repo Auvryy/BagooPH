@@ -1,6 +1,6 @@
 # Courier and Rider Flow
 
-Pickup and delivery riders are phases of the same approved `courier` account. A rider may perform either phase only through a valid assignment. Hub and Mother-Hub custody follows `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+Pickup and delivery riders are phases of the same approved `courier` account. A rider may perform either phase only through a valid assignment. Hub and Mother-Hub custody follows `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Eligibility, scan validation, concurrency, COD, and recovery rules follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ## 1. Registration and Availability
 

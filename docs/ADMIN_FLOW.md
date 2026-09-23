@@ -1,6 +1,6 @@
 # Administrator Governance Flow
 
-Platform Admin governs marketplace access, compliance, disputes, commissions, and financial audit. Logistics Company Admin manages its own facilities, personnel, manifests, exceptions, and operational COD remittance. These authorities must remain separate.
+Platform Admin governs marketplace access, compliance, commissions, and financial audit. Logistics Company Admin manages its own facilities, personnel, manifests, exceptions, and operational COD remittance. These authorities must remain separate. Input, scope, override, suspension, and immutable-audit rules follow `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ## 1. Platform Admin Responsibilities
 

@@ -8,9 +8,11 @@
 When documents disagree, use this order:
 
 1. This document for the canonical customer-facing order statuses.
-2. `docs/SORTING_CENTER_LOGISTICS_FLOW.md` for parcel custody and logistics operations.
-3. The buyer, seller, courier, and admin documents for role-specific screens and actions.
-4. `docs/MASTER_LOGISTICS_SPECIFICATION.md` for architecture and future scope only.
+2. `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` for input, authorization, concurrency, idempotency, and recovery rules.
+3. `docs/SORTING_CENTER_LOGISTICS_FLOW.md` for parcel custody and logistics operations.
+4. The buyer, seller, courier, and admin documents for role-specific screens and actions.
+5. `docs/CORE_FLOW_ROADMAP.md` for current gaps and approved implementation order.
+6. `docs/MASTER_LOGISTICS_SPECIFICATION.md` for architecture and future scope only.
 
 Internal delivery statuses and checkpoints may be more detailed than the 13 customer-facing statuses, but they must map back to this lifecycle.
 
@@ -82,6 +84,8 @@ Seller cancellation is allowed only before pickup and before any rider has claim
 Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Logistics Company Admin manages only its own facilities, personnel, manifests, exceptions, and operational remittance. Hub Handlers perform scans only at facilities assigned to them.
 
 Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, complete dispute/refund/exchange processing, and external notification services are outside the core baseline.
+
+All inputs, actor permissions, transitions, duplicate requests, concurrent operations, and recovery paths must satisfy `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 
 ---
 
