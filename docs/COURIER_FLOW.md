@@ -56,9 +56,6 @@ The rider's COD ledger distinguishes cash held, cash remitted, discrepancies, an
 - Failed-parcel return instruction.
 - COD remittance due and reconciliation result.
 
-## 7. Remaining Courier Work
+## 7. Implementation Status
 
-- Require proof fields appropriate to successful and failed delivery.
-- Build failed-parcel return-to-hub scan and retry assignment flow.
-- Add COD remittance records instead of a calculated on-hand total only.
-- Separate pickup tasks, final-mile tasks, and completed earnings clearly.
+Current courier gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.

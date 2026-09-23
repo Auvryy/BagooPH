@@ -53,6 +53,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 Read only the documentation relevant to the task:
 
 - System lifecycle or cross-role logic: `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`
+- Current implementation gaps, phase order, and deferred scope: `docs/CORE_FLOW_ROADMAP.md`
 - Buyer/shopping: `docs/BUYER_FLOWCHART.md`
 - Seller/shop: `docs/SELLER_FLOW.md`
 - Courier: `docs/COURIER_FLOW.md`
@@ -62,7 +63,7 @@ Read only the documentation relevant to the task:
 - Schema: inspect migrations/models first; use `docs/SCHEMA.md` as supporting context.
 - History only when requested: `docs/PROGRESS.md`.
 
-When documentation conflicts with executable code, identify the mismatch. For curriculum workflow, the canonical flow above and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` are authoritative unless the user explicitly changes them.
+When documentation conflicts with executable code, identify the mismatch. For curriculum workflow, the canonical flow above and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` are authoritative unless the user explicitly changes them. Do not put changing implementation-status lists in role or logistics specifications; update `docs/CORE_FLOW_ROADMAP.md` instead.
 
 ## Verification and Responses
 

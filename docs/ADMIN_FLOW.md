@@ -45,10 +45,6 @@ Admin review may include account documents, order items, waybill and hub checkpo
 
 The core baseline preserves evidence and may show dispute handling as unavailable until the separate post-delivery dispute milestone is approved. Complete refund, exchange, and automated dispute processing must not be implied by placeholder screens or fake success responses. Any future resolution cannot erase the original audit trail.
 
-## 6. Remaining Admin Work
+## 6. Implementation Status
 
-- Connect logistics-company approval and tenant isolation to the main KYC workflow.
-- Add COD reconciliation and payout approval views.
-- Add complete parcel exception and RTS audit views.
-- Add immutable financial adjustments and discrepancy handling.
-- Clarify refund rules for cancellation, failed delivery, and returned orders.
+Current admin and logistics-company gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.

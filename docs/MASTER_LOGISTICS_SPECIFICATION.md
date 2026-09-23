@@ -3,7 +3,7 @@
 *Platform Design, Entity Hierarchy & Highway Network Delimitation*
 
 > **Source:** Master Architecture Technical Specification & Teacher Brainstorming Notes (September 2026).
-> Operational behavior is authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. This document describes architecture and future scope.
+> Operational behavior is authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Canonical statuses and role ownership are authoritative in `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`. Current implementation status belongs only in `docs/CORE_FLOW_ROADMAP.md`. This document describes architecture and future scope.
 
 ---
 
@@ -195,23 +195,25 @@ Recorded from foundational domain brainstorming:
 
 ---
 
-## 8. Enterprise Company Admin Modules & Future Roadmap (Probably Might Add Feature Section)
+## 8. Optional Enterprise Company Admin Modules
 
-### Baseline Comparison: What We Have vs. Enterprise Roadmap
+This section is architectural reference only. It must not be treated as implemented behavior or allowed to delay the core roadmap.
 
-#### Core Baseline Modules (Implemented Foundation)
-- **Overview & Analytics:** Aggregated metrics, KPI cards, and Catmull-Rom throughput spline charts across all operating hubs.
-- **Scan Station / Barcode Scanner Terminal:** Responsive barcode/QR waybill scanning foundation for inbound and outbound custody; remaining transfer controls are listed in the operational specification.
-- **Facility Network:** Creating and managing Regional Mother Hubs and Local Bayan Hubs, with real-time capacity and utilization tracking.
-- **Fleet Management:** Registering multi-tier vehicles: motorcycles/tricycles, four-wheel closed vans, and closed wing trucks.
-- **Parcels & Waybills:** Customer lifecycle, internal scan checkpoints, and public tracking foundation.
-- **Counter Self-Pickup:** Counter screen foundation; claim-code, expiry, identity, and COD enforcement remain required.
+### Architectural Module Reference
+
+#### Baseline Module Concepts
+- **Overview:** Operational totals needed to supervise the core parcel flow without advanced analytics.
+- **Scan Station:** Responsive barcode or QR scanning for authenticated inbound and outbound custody.
+- **Facility Network:** Regional Mother Hub and Local Bayan Hub management.
+- **Fleet Management:** Motorcycles or tricycles, closed feeder vans, and closed line-haul trucks.
+- **Parcels and Waybills:** Customer lifecycle, internal checkpoints, and public tracking.
+- **Counter Self-Pickup:** Controlled release using claim, identity, expiry, facility, state, and COD checks.
 
 ---
 
 ### Critical Enterprise Modules for Corporate Logistics Admins
 
-To manage an entire nationwide courier company, the **Logistics Corporate Admin Portal** includes the following 5 roadmap modules:
+The following are potential enterprise modules, not commitments in the core roadmap:
 
 #### 1. Personnel & Onboarding Management (Riders & Sorters)
 - **Rider Accreditation & KYC:** Dedicated compliance queue to review and approve driver's licenses, vehicle OR/CR, and NBI clearances submitted by riders applying to work across network hubs.

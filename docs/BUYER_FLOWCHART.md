@@ -62,10 +62,6 @@ Three total delivery attempts are allowed. Attempts one and two may be scheduled
 - Delivered prompt to confirm receipt.
 - Return-to-sender progress and result.
 
-## 6. Remaining Buyer Work
+## 6. Implementation Status
 
-- Split multi-shop checkout into one order and waybill per shop.
-- Add a persistent notification center.
-- Show complete Mother-Hub checkpoint detail consistently.
-- Add self-pickup claim code and expiry presentation.
-- Improve failed-delivery clarification and reschedule views.
+Current buyer gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.

@@ -52,10 +52,6 @@ Product settlement is not released merely because a rider marks the parcel deliv
 - Return-to-sender started and ready for seller receipt.
 - Buyer completion and payout eligibility.
 
-## 6. Remaining Seller Work
+## 6. Implementation Status
 
-- Add persistent order and settlement notifications.
-- Show pickup rider identity before handover.
-- Add seller-facing return receipt scan or confirmation workflow.
-- Separate completed sales, pending COD reconciliation, and paid payouts.
-- Ensure multi-shop checkout never produces a shared seller parcel.
+Current seller gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.

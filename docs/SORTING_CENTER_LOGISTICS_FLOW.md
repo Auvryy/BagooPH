@@ -274,28 +274,6 @@ Financial rules:
 - Cancelled, completed, or returned parcels cannot re-enter active dispatch.
 - Claim codes are one-time, stored securely, expire, and are never displayed to unauthorized users.
 
-## 9. Implementation Alignment as of September 23, 2026
+## 9. Implementation Status
 
-| Area | Current state | Required follow-up |
-|---|---|---|
-| Normal doorstep custody | Core path implemented | Add full end-to-end coverage through buyer confirmation |
-| Mother-Hub scans | Origin/Mother scan path exists | Complete destination-Mother and manifest close/receive controls |
-| Pickup rider claim | Implemented as atomic job claim | Add persistent seller/buyer notifications |
-| Destination sort and rider assignment | Core safeguards implemented | Add personnel/capacity management UI |
-| Failed delivery | Failure count and terminal trigger partly exist | Build hub return scan, retry scheduling, reverse route, and seller receipt |
-| Hub self-pickup | Counter release screen exists | Enforce ready state, hub, one-time claim code, expiry, identity, and COD checks |
-| In-app notifications | Rider boards/queues provide operational notice | Add persistent buyer/seller notification storage and UI |
-| COD | Delivery currently marks payment paid and creates a simple ledger | Add custody/remittance records and delay seller settlement until completion and reconciliation |
-| Multi-shop checkout | One order can currently include multiple shops | Split checkout into one order, parcel, and waybill per shop |
-
-The designed flow is complete enough for the intended road-based e-commerce scope. The implementation is not yet complete until the required follow-ups above are delivered and verified.
-
-## 10. Recommended Implementation Order
-
-1. **Complete normal doorstep delivery:** split multi-shop checkout, enforce handler facility scope, finish destination-Mother transfers and manifests, and add one end-to-end test from checkout through buyer confirmation.
-2. **Complete failed delivery and RTS:** destination-hub return scan, retry schedule, reassignment, reverse route, and seller receipt.
-3. **Secure hub self-pickup:** ready-state and destination-hub checks, one-time claim code, identity verification, hold expiry, and COD collection.
-4. **Add basic persistent notifications:** use the event matrix in Section 6; keep rider boards and queues as their operational task notifications.
-5. **Build COD custody and settlement:** rider/counter collection, hub remittance, platform reconciliation, completion gate, and separate seller, platform, logistics, and rider ledgers.
-
-After these five items pass cross-role tests, the core buyer-seller-rider-logistics-admin transaction flow is functionally complete. Rates, advanced fleet analytics, density assistance, and live vehicle tracking remain optional enhancements.
+This document defines the required logistics behavior and does not track changing implementation claims. Current evidence, gaps, delivery phases, and deferred scope are maintained only in `docs/CORE_FLOW_ROADMAP.md`.
