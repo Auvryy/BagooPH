@@ -26,14 +26,118 @@ class LogisticsNetworkSeeder extends Seeder
         $buyer = User::where('email', 'buyer@bagoo.test')->first();
         $seller = User::where('email', 'seller@bagoo.test')->first();
         $courier = User::where('email', 'rider@bagoo.test')->first();
-        $logisticsUser = User::where('email', 'logistics@bagoo.test')->first();
+        $logisticsAdmin = User::updateOrCreate(
+            ['email' => 'logistics.admin@bagoo.test'],
+            [
+                'name' => 'Bagoo Express Administrator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0010',
+                'address' => 'Bagoo Central Dispatch, C5 Road',
+                'city' => 'Pasig City',
+                'postal_code' => '1604',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $logisticsUser = User::updateOrCreate(
+            ['email' => 'logistics@bagoo.test'],
+            [
+                'name' => 'Santa Cruz Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0005',
+                'address' => 'Santa Cruz Bayan Hub',
+                'city' => 'Santa Cruz, Laguna',
+                'postal_code' => '4009',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $motherHubUser = User::updateOrCreate(
+            ['email' => 'motherhub@bagoo.test'],
+            [
+                'name' => 'Laguna Mother Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0011',
+                'address' => 'Laguna Regional Mother Hub',
+                'city' => 'Calamba City, Laguna',
+                'postal_code' => '4027',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $manilaMotherHubUser = User::updateOrCreate(
+            ['email' => 'manila.motherhub@bagoo.test'],
+            [
+                'name' => 'Metro Manila Mother Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0012',
+                'address' => 'Metro Manila Sortation Center',
+                'city' => 'Taguig City, Metro Manila',
+                'postal_code' => '1630',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $pagsanjanHubUser = User::updateOrCreate(
+            ['email' => 'pagsanjan.hub@bagoo.test'],
+            [
+                'name' => 'Pagsanjan Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0013',
+                'address' => 'Pagsanjan Bayan Hub',
+                'city' => 'Pagsanjan, Laguna',
+                'postal_code' => '4008',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $losBanosHubUser = User::updateOrCreate(
+            ['email' => 'losbanos.hub@bagoo.test'],
+            [
+                'name' => 'Los Banos Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0014',
+                'address' => 'Los Banos Bayan Hub',
+                'city' => 'Los Banos, Laguna',
+                'postal_code' => '4030',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
+        $sanPabloHubUser = User::updateOrCreate(
+            ['email' => 'sanpablo.hub@bagoo.test'],
+            [
+                'name' => 'San Pablo Hub Operator',
+                'password' => 'Password1234',
+                'role' => 'logistics',
+                'phone' => '+63 917 000 0015',
+                'address' => 'San Pablo Bayan Hub',
+                'city' => 'San Pablo City, Laguna',
+                'postal_code' => '4000',
+                'status' => 'active',
+                'kyc_status' => 'approved',
+                'kyc_reviewed_at' => now(),
+            ]
+        );
         $shop = Shop::where('user_id', $seller?->id)->first();
 
         // 1. Multi-Tenant Logistics Companies
         $bgxCompany = LogisticsCompany::updateOrCreate(
             ['code' => 'BGX'],
             [
-                'user_id'              => $admin?->id,
+                'user_id'              => $logisticsAdmin->id,
                 'name'                 => 'Bagoo Express Dispatch Fleet',
                 'slug'                 => 'bagoo-express-dispatch-fleet',
                 'contact_email'        => 'dispatch@bagooph.shop',
@@ -344,6 +448,31 @@ class LogisticsNetworkSeeder extends Seeder
                     'hub_id'     => $santaCruzHub->id,
                     'role_title' => 'Floor Intake & Counter Lead Specialist',
                     'is_active'  => true,
+                ]
+            );
+        }
+
+        HubHandler::updateOrCreate(
+            ['user_id' => $motherHubUser->id, 'hub_id' => $lagunaMotherHub->id],
+            [
+                'role_title' => 'Mother Hub Sortation Operator',
+                'is_active' => true,
+            ]
+        );
+
+        $additionalHubHandlers = [
+            [$manilaMotherHubUser, $manilaMotherHub, 'Mother Hub Sortation Operator'],
+            [$pagsanjanHubUser, $pagsanjanHub, 'Bayan Hub Operations Handler'],
+            [$losBanosHubUser, $losBanosHub, 'Bayan Hub Operations Handler'],
+            [$sanPabloHubUser, $sanPabloHub, 'Bayan Hub Operations Handler'],
+        ];
+
+        foreach ($additionalHubHandlers as [$user, $hub, $roleTitle]) {
+            HubHandler::updateOrCreate(
+                ['user_id' => $user->id, 'hub_id' => $hub->id],
+                [
+                    'role_title' => $roleTitle,
+                    'is_active' => true,
                 ]
             );
         }

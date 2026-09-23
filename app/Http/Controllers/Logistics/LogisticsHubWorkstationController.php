@@ -35,8 +35,24 @@ class LogisticsHubWorkstationController extends Controller
      */
     protected function getActiveHub(Request $request, ?User $user): array
     {
-        $hubs = LogisticsHub::with('company')
-            ->where('is_active', true)
+        $hubsQuery = LogisticsHub::with('company')
+            ->where('is_active', true);
+
+        if ($user && ! $user->isAdmin()) {
+            $companyId = $user->logisticsCompany?->id;
+
+            if ($companyId) {
+                $hubsQuery->where('logistics_company_id', $companyId);
+            } else {
+                $handlerHubIds = HubHandler::where('user_id', $user->id)
+                    ->where('is_active', true)
+                    ->pluck('hub_id');
+
+                $hubsQuery->whereIn('id', $handlerHubIds);
+            }
+        }
+
+        $hubs = $hubsQuery
             ->orderBy('tier')
             ->orderBy('name')
             ->get();
@@ -67,121 +83,209 @@ class LogisticsHubWorkstationController extends Controller
     }
 
     /**
-     * High-contrast logistics operations dashboard.
+     * Company command center with an optional owned-facility filter.
      */
     public function dashboard(Request $request): Response
     {
         $user = $request->user();
-        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
+        [, $accessibleHubs] = $this->getActiveHub($request, $user);
+        $company = $user?->logisticsCompany ?? $accessibleHubs->first()?->company;
+        $isCompanyAdministrator = (bool) $user?->logisticsCompany;
 
-        // Compute KPIs for active hub
-        $parcelsInHub = $activeHub
-            ? Delivery::where('current_hub_id', $activeHub->id)
-                ->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])
-                ->count()
-            : 0;
+        $requestedHubId = $request->integer('hub_id');
+        $scopeHub = $requestedHubId > 0
+            ? $accessibleHubs->firstWhere('id', $requestedHubId)
+            : null;
 
-        $dispatchedToday = $activeHub
-            ? DeliveryCheckpoint::where('hub_id', $activeHub->id)
-                ->whereDate('created_at', today())
-                ->count()
-            : 0;
-
-        $readyPickup = $activeHub
-            ? Delivery::where('destination_bayan_hub_id', $activeHub->id)
-                ->where('delivery_type', 'hub_self_pickup')
-                ->whereIn('status', [
-                    OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-                    OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                    OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
-                ])
-                ->count()
-            : 0;
-
-        $activeFleetCount = $activeHub
-            ? LogisticsFleet::where('hub_id', $activeHub->id)->where('status', 'active')->count()
-            : LogisticsFleet::where('status', 'active')->count();
-
-        $capacity = $activeHub?->capacity ?? 2500;
-        $utilizationRate = $capacity > 0 ? round(($parcelsInHub / $capacity) * 100, 1) : 0;
-
-        // 7-day dispatch volume history (for the Catmull-Rom spline chart)
-        $dailyDispatch = [];
-        $baseSplineCounts = [35, 52, 48, 76, 84, 110, 68];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $dateStr = $date->format('Y-m-d');
-            $dayLabel = $date->format('M d');
-            $count = DeliveryCheckpoint::where('hub_id', $activeHub?->id)
-                ->whereDate('created_at', $dateStr)
-                ->count();
-            if ($count === 0) {
-                $count = $baseSplineCounts[6 - $i] + ($activeHub?->id ?? 1) * 3;
-            }
-            $dailyDispatch[] = [
-                'date' => $dayLabel,
-                'full_date' => $dateStr,
-                'dispatches' => $count,
-                'inflow' => (int) round($count * 1.15),
-            ];
+        if (! $isCompanyAdministrator) {
+            $scopeHub = $accessibleHubs->first();
         }
 
-        // Recent checkpoints stream
-        $recentCheckpoints = DeliveryCheckpoint::with(['delivery.order.buyer', 'delivery.destinationBayanHub', 'scannedBy'])
-            ->when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))
-            ->latest()
-            ->limit(10)
-            ->get()
-            ->map(function ($cp) {
-                return [
-                    'id' => $cp->id,
-                    'tracking_number' => $cp->delivery?->tracking_number ?? $cp->barcode_scanned,
-                    'checkpoint_type' => $cp->checkpoint_type,
-                    'location_name' => $cp->location_name,
-                    'notes' => $cp->notes,
-                    'scanned_by' => $cp->scannedBy?->name ?? 'Floor Staff',
-                    'created_at' => $cp->created_at->diffForHumans(),
-                    'timestamp' => $cp->created_at->format('M d, H:i'),
-                    'status' => $cp->delivery?->status ?? 'in_transit',
-                    'delivery_type' => $cp->delivery?->delivery_type ?? 'doorstep',
-                    'buyer_name' => $cp->delivery?->order?->buyer?->name ?? 'Customer',
-                    'destination_bin' => $cp->delivery?->destination_bin ?? 'N/A',
-                ];
-            });
+        $scopeHubIds = $scopeHub
+            ? collect([$scopeHub->id])
+            : $accessibleHubs->pluck('id');
 
-        // Hub fleet snapshot
-        $hubFleet = LogisticsFleet::with('driver')
-            ->when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))
-            ->limit(6)
+        $terminalStatuses = ['delivered', 'customer_collected', 'completed', 'cancelled', 'returned'];
+        $exceptionStatuses = ['failed', OrderStateMachineService::STATUS_DELIVERY_FAILED, OrderStateMachineService::STATUS_RETURN_TO_SENDER];
+        $outboundCheckpointTypes = [
+            OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+            OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+            OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+        ];
+
+        $deliveryQuery = fn () => Delivery::query()->whereIn('current_hub_id', $scopeHubIds);
+
+        $parcelsInCustody = $deliveryQuery()->whereNotIn('status', $terminalStatuses)->count();
+        $readyForDispatch = $deliveryQuery()->whereIn('status', [
+            OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+            OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
+        ])->count();
+        $exceptions = $deliveryQuery()->whereIn('status', $exceptionStatuses)->count();
+        $dispatchedToday = DeliveryCheckpoint::query()
+            ->whereIn('hub_id', $scopeHubIds)
+            ->whereIn('checkpoint_type', $outboundCheckpointTypes)
+            ->whereDate('created_at', today())
+            ->count();
+
+        $inboundCheckpointTypes = [
+            OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+            OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+            OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+        ];
+        $movementCheckpoints = DeliveryCheckpoint::query()
+            ->whereIn('hub_id', $scopeHubIds)
+            ->whereIn('checkpoint_type', [...$inboundCheckpointTypes, ...$outboundCheckpointTypes])
+            ->where('created_at', '>=', today()->subDays(6)->startOfDay())
+            ->get(['checkpoint_type', 'created_at'])
+            ->groupBy(fn (DeliveryCheckpoint $checkpoint) => $checkpoint->created_at->toDateString());
+
+        $movement = collect(range(6, 0))->map(function (int $daysAgo) use (
+            $movementCheckpoints,
+            $inboundCheckpointTypes,
+            $outboundCheckpointTypes
+        ) {
+            $date = today()->subDays($daysAgo);
+            $dayCheckpoints = $movementCheckpoints->get($date->toDateString(), collect());
+
+            return [
+                'date' => $date->toDateString(),
+                'label' => $date->format('D'),
+                'inbound' => $dayCheckpoints->whereIn('checkpoint_type', $inboundCheckpointTypes)->count(),
+                'outbound' => $dayCheckpoints->whereIn('checkpoint_type', $outboundCheckpointTypes)->count(),
+            ];
+        });
+
+        $counterPickupCount = $deliveryQuery()
+            ->where('delivery_type', 'hub_self_pickup')
+            ->whereIn('status', [
+                OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+                OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
+            ])
+            ->count();
+
+        $attentionQueue = [
+            [
+                'key' => 'failed_delivery',
+                'label' => 'Failed deliveries',
+                'count' => $exceptions,
+                'href' => route('hub.deliveries', ['status' => 'delivery_failed']),
+                'tone' => 'danger',
+            ],
+            [
+                'key' => 'awaiting_rider',
+                'label' => 'Waiting for rider assignment',
+                'count' => $deliveryQuery()->where('status', OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN)->count(),
+                'href' => route('hub.deliveries', ['status' => 'sorted_to_barangay_bin']),
+                'tone' => 'warning',
+            ],
+            [
+                'key' => 'counter_pickup',
+                'label' => 'Awaiting counter collection',
+                'count' => $counterPickupCount,
+                'href' => route('hub.counter'),
+                'tone' => 'info',
+            ],
+            [
+                'key' => 'next_scan',
+                'label' => 'Awaiting next hub scan',
+                'count' => $deliveryQuery()->whereIn('status', [
+                    OrderStateMachineService::STATUS_PICKED_UP,
+                    OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+                    OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+                    OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                    OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+                    OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                ])->count(),
+                'href' => route('hub.scan.station'),
+                'tone' => 'neutral',
+            ],
+        ];
+
+        $parcelFlow = [
+            'origin_hub' => $deliveryQuery()->where('status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->count(),
+            'mother_hub_transit' => $deliveryQuery()->whereIn('status', [
+                OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
+                OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+                OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+            ])->count(),
+            'destination_hub' => $deliveryQuery()
+                ->where('delivery_type', '!=', 'hub_self_pickup')
+                ->whereIn('status', [
+                    OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+                    OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+                    OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
+                ])->count(),
+            'final_mile' => $deliveryQuery()->where('status', OrderStateMachineService::STATUS_OUT_FOR_DELIVERY)->count(),
+            'counter_pickup' => $counterPickupCount,
+        ];
+
+        $facilities = LogisticsHub::query()
+            ->whereIn('id', $scopeHubIds)
+            ->withCount([
+                'currentDeliveries as parcels_count' => fn ($query) => $query->whereNotIn('status', $terminalStatuses),
+                'currentDeliveries as exceptions_count' => fn ($query) => $query->whereIn('status', $exceptionStatuses),
+                'fleet as active_fleet_count' => fn ($query) => $query->where('status', 'active'),
+            ])
+            ->orderBy('tier')
+            ->orderBy('name')
             ->get()
-            ->map(fn ($f) => [
-                'id' => $f->id,
-                'plate_number' => $f->plate_number,
-                'vehicle_type' => $f->vehicle_type,
-                'model' => $f->model,
-                'capacity_kg' => (float) $f->capacity_kg,
-                'status' => $f->status,
-                'driver_name' => $f->driver?->name ?? 'Unassigned Driver',
+            ->map(fn (LogisticsHub $hub) => [
+                'id' => $hub->id,
+                'name' => $hub->name,
+                'code' => $hub->code,
+                'tier' => $hub->tier,
+                'city_municipality' => $hub->city_municipality,
+                'parcels' => $hub->parcels_count,
+                'exceptions' => $hub->exceptions_count,
+                'active_fleet' => $hub->active_fleet_count,
+                'capacity' => $hub->capacity,
+                'utilization_rate' => $hub->capacity > 0
+                    ? round(($hub->parcels_count / $hub->capacity) * 100, 1)
+                    : 0,
             ]);
 
-        // Sample tracking numbers for quick testing in dev/demo
-        $sampleTrackingNumbers = Delivery::latest()->limit(6)->pluck('tracking_number')->all();
+        $recentActivity = DeliveryCheckpoint::query()
+            ->with(['delivery', 'hub', 'scannedBy'])
+            ->whereIn('hub_id', $scopeHubIds)
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(fn (DeliveryCheckpoint $checkpoint) => [
+                'id' => $checkpoint->id,
+                'tracking_number' => $checkpoint->delivery?->tracking_number ?? $checkpoint->barcode_scanned,
+                'event' => $checkpoint->checkpoint_type,
+                'facility' => $checkpoint->hub?->name ?? $checkpoint->location_name,
+                'operator' => $checkpoint->scannedBy?->name ?? 'System',
+                'timestamp' => $checkpoint->created_at->format('M d, Y · H:i'),
+                'relative_time' => $checkpoint->created_at->diffForHumans(),
+            ]);
 
         return Inertia::render('Hub/Dashboard', [
-            'activeHub' => $activeHub,
-            'hubs' => $hubs,
-            'stats' => [
-                'parcels_in_hub' => $parcelsInHub,
-                'dispatched_today' => $dispatchedToday,
-                'ready_pickup' => $readyPickup,
-                'active_fleet' => $activeFleetCount,
-                'capacity' => $capacity,
-                'utilization_rate' => $utilizationRate,
+            'scope' => [
+                'mode' => $scopeHub ? 'hub' : 'company',
+                'company_name' => $company?->name ?? 'Logistics Company',
+                'company_code' => $company?->code,
+                'selected_hub_id' => $scopeHub?->id,
+                'hubs' => $accessibleHubs->map(fn (LogisticsHub $hub) => [
+                    'id' => $hub->id,
+                    'name' => $hub->name,
+                    'code' => $hub->code,
+                    'tier' => $hub->tier,
+                ])->values(),
+                'can_view_company' => $isCompanyAdministrator,
             ],
-            'dailyDispatch' => $dailyDispatch,
-            'recentCheckpoints' => $recentCheckpoints,
-            'hubFleet' => $hubFleet,
-            'sampleTrackingNumbers' => $sampleTrackingNumbers,
+            'stats' => [
+                'parcels_in_custody' => $parcelsInCustody,
+                'ready_for_dispatch' => $readyForDispatch,
+                'exceptions' => $exceptions,
+                'dispatched_today' => $dispatchedToday,
+            ],
+            'attentionQueue' => $attentionQueue,
+            'movement' => $movement,
+            'parcelFlow' => $parcelFlow,
+            'facilities' => $facilities,
+            'recentActivity' => $recentActivity,
         ]);
     }
 
@@ -191,26 +295,30 @@ class LogisticsHubWorkstationController extends Controller
     public function network(Request $request): Response
     {
         $user = $request->user();
-        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
+        [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
+        $company = $user?->logisticsCompany ?? $accessibleHubs->first()?->company;
+        $isCompanyAdministrator = (bool) $user?->logisticsCompany;
+        $terminalStatuses = ['delivered', 'customer_collected', 'completed', 'cancelled', 'returned'];
 
-        $networkHubs = LogisticsHub::with(['company'])
-            ->withCount(['handlers', 'fleet'])
-            ->where('is_active', true)
-            ->orderBy('tier')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($h) {
-                $parcelCount = Delivery::where('current_hub_id', $h->id)
-                    ->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])
-                    ->count();
-                $readyPickupCount = Delivery::where('destination_bayan_hub_id', $h->id)
+        $networkHubs = LogisticsHub::query()
+            ->with('company')
+            ->withCount([
+                'handlers as handlers_count' => fn ($query) => $query->where('is_active', true),
+                'fleet as fleet_count' => fn ($query) => $query->where('status', 'active'),
+                'currentDeliveries as parcel_count' => fn ($query) => $query->whereNotIn('status', $terminalStatuses),
+                'currentDeliveries as ready_pickup_count' => fn ($query) => $query
                     ->where('delivery_type', 'hub_self_pickup')
                     ->whereIn('status', [
                         OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                         OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                    ])
-                    ->count();
-                $utilization = $h->capacity > 0 ? round(($parcelCount / $h->capacity) * 100, 1) : 0;
+                    ]),
+            ])
+            ->whereIn('id', $accessibleHubs->pluck('id'))
+            ->orderBy('tier')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($h) {
+                $utilization = $h->capacity > 0 ? round(($h->parcel_count / $h->capacity) * 100, 1) : 0;
 
                 return [
                     'id' => $h->id,
@@ -231,14 +339,19 @@ class LogisticsHubWorkstationController extends Controller
                     'is_active' => (bool) $h->is_active,
                     'handlers_count' => $h->handlers_count,
                     'fleet_count' => $h->fleet_count,
-                    'parcel_count' => $parcelCount,
-                    'ready_pickup_count' => $readyPickupCount,
+                    'parcel_count' => $h->parcel_count,
+                    'ready_pickup_count' => $h->ready_pickup_count,
                     'utilization' => $utilization,
                 ];
             });
 
         return Inertia::render('Hub/Network', [
-            'activeHub' => $activeHub,
+            'scope' => [
+                'company_name' => $company?->name ?? 'Logistics Company',
+                'company_code' => $company?->code,
+                'active_hub_id' => $activeHub?->id,
+                'can_switch_facility' => $isCompanyAdministrator,
+            ],
             'hubs' => $networkHubs,
         ]);
     }
@@ -504,7 +617,14 @@ class LogisticsHubWorkstationController extends Controller
             'hub_id' => 'required|exists:logistics_hubs,id',
         ]);
 
-        $hub = LogisticsHub::findOrFail($validated['hub_id']);
+        $user = $request->user();
+        [, $accessibleHubs] = $this->getActiveHub($request, $user);
+
+        abort_unless($user?->logisticsCompany, 403, 'Only a logistics company administrator can change the working facility.');
+
+        $hub = $accessibleHubs->firstWhere('id', (int) $validated['hub_id']);
+        abort_unless($hub, 403, 'You cannot access this facility.');
+
         session(['active_hub_id' => $hub->id]);
 
         return back()->with('success', "Active facility switched to {$hub->name} ({$hub->code}).");
