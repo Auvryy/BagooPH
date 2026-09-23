@@ -8,6 +8,7 @@ use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Shop;
 use Exception;
+use Illuminate\Support\Str;
 
 class LogisticsRoutingEngine
 {
@@ -62,11 +63,12 @@ class LogisticsRoutingEngine
             $query->where('logistics_company_id', $company->id);
         }
 
-        // 1. Try matching municipality/city
-        $city = strtolower(trim((string) $shop->city));
-        $cityMatch = $city !== ''
-            ? (clone $query)->whereRaw('LOWER(city_municipality) LIKE ?', ["%{$city}%"])->first()
-            : null;
+        $city = $this->normalizePlace((string) $shop->city);
+        $cityMatch = $city === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($city) {
+            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
+
+            return $hubCity !== '' && (str_contains($city, $hubCity) || str_contains($hubCity, $city));
+        });
         if ($cityMatch) {
             return $cityMatch;
         }
@@ -97,10 +99,12 @@ class LogisticsRoutingEngine
         }
 
         // 2. Match city/municipality
-        $normalizedCity = strtolower(trim($city));
-        $cityMatch = $normalizedCity !== ''
-            ? (clone $query)->whereRaw('LOWER(city_municipality) LIKE ?', ["%{$normalizedCity}%"])->first()
-            : null;
+        $normalizedCity = $this->normalizePlace($city);
+        $cityMatch = $normalizedCity === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($normalizedCity) {
+            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
+
+            return $hubCity !== '' && (str_contains($normalizedCity, $hubCity) || str_contains($hubCity, $normalizedCity));
+        });
         if ($cityMatch) {
             return $cityMatch;
         }
@@ -113,11 +117,13 @@ class LogisticsRoutingEngine
      */
     public function resolveMotherHubForBayanHub(LogisticsHub $bayanHub): ?LogisticsHub
     {
+        $province = $this->normalizePlace((string) $bayanHub->province);
+
         return LogisticsHub::where('logistics_company_id', $bayanHub->logistics_company_id)
             ->where('tier', 'regional_mother_hub')
             ->where('is_active', true)
-            ->whereRaw('LOWER(province) = ?', [strtolower(trim($bayanHub->province))])
-            ->first();
+            ->get()
+            ->first(fn (LogisticsHub $hub) => $this->normalizePlace((string) $hub->province) === $province);
     }
 
     /**
@@ -207,6 +213,14 @@ class LogisticsRoutingEngine
         }
 
         throw new Exception('No logistics company can provide the complete seller-to-buyer hub route.');
+    }
+
+    private function normalizePlace(string $value): string
+    {
+        return (string) Str::of(Str::ascii($value))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish();
     }
 
     /**

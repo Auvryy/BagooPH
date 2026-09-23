@@ -3,8 +3,6 @@
 namespace Tests\Feature\E2E\Tier2;
 
 use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
@@ -16,8 +14,8 @@ use Tests\TestCase;
 
 class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Boundary 21: Split Tab Pickup Boundary
@@ -216,7 +214,7 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
         ]);
 
         $delivery->refresh();
-        $this->assertEquals('failed', $delivery->status);
+        $this->assertEquals('delivery_failed', $delivery->status);
     }
 
     public function test_t2_b24_03_whitespace_only_reason_rejected(): void

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LogisticsOrderCustodyFlowTest extends TestCase
@@ -25,11 +26,12 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
     public function test_waybill_scans_record_origin_and_mother_hub_custody_one_step_at_a_time(): void
     {
-        $logistics = User::where('email', 'logistics@bagoo.test')->firstOrFail();
-        $pickupRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
-        $originHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $motherHandler = User::where('email', 'motherhub@bagoo.test')->firstOrFail();
+        $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
         $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
-        $destinationHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
         $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
         $order = $this->createOrder('picked_up', 'Batong Malake');
         $delivery = Delivery::factory()->create([
@@ -40,32 +42,41 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'origin_mother_hub_id' => $motherHub->id,
             'destination_mother_hub_id' => $motherHub->id,
             'destination_bayan_hub_id' => $destinationHub->id,
-            'current_hub_id' => $originHub->id,
+            'current_hub_id' => null,
             'delivery_type' => 'doorstep',
             'status' => OrderStateMachineService::STATUS_PICKED_UP,
         ]);
 
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-            'hub_id' => $originHub->id,
-        ])->assertOk();
+        $this->confirmScan(
+            $originHandler,
+            $delivery,
+            $originHub,
+            'RECEIVE_FROM_PICKUP_RIDER',
+            OrderStateMachineService::STATUS_PICKED_UP
+        );
 
         $this->assertSame(OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB, $delivery->fresh()->status);
         $this->assertSame('at_sorting_center', $order->fresh()->status);
 
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-            'hub_id' => $originHub->id,
-        ])->assertOk();
+        $this->confirmScan(
+            $originHandler,
+            $delivery,
+            $originHub,
+            'DISPATCH_TO_FEEDER',
+            OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
+        );
 
         $delivery->refresh();
         $this->assertSame(OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB, $delivery->status);
         $this->assertNotNull($delivery->shuttle_manifest_number);
 
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-            'hub_id' => $motherHub->id,
-        ])->assertOk();
+        $this->confirmScan(
+            $motherHandler,
+            $delivery,
+            $motherHub,
+            'RECEIVE_AT_MOTHER_HUB',
+            OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB
+        );
 
         $delivery->refresh();
         $this->assertSame(OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB, $delivery->status);
@@ -131,6 +142,135 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         $this->assertSame('out_for_delivery', $order->fresh()->status);
     }
 
+    public function test_handler_scan_station_cannot_switch_to_another_facility(): void
+    {
+        $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+
+        $this->actingAs($originHandler)
+            ->get(route('hub.scan.station', ['hub_id' => $destinationHub->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Hub/ScanStation')
+                ->where('activeHub.id', $originHub->id)
+                ->has('hubs', 1)
+                ->where('hubs.0.id', $originHub->id)
+            );
+    }
+
+    public function test_inspection_is_read_only_and_wrong_facility_or_tampered_action_is_rejected(): void
+    {
+        $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $destinationHandler = User::where('email', 'logistics@bagoo.test')->firstOrFail();
+        $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        $order = $this->createOrder('picked_up', 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id,
+            'courier_id' => $pickupRider->id,
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $originHub->id,
+            'origin_mother_hub_id' => $motherHub->id,
+            'destination_mother_hub_id' => $motherHub->id,
+            'destination_bayan_hub_id' => $destinationHub->id,
+            'current_hub_id' => null,
+            'delivery_type' => 'doorstep',
+            'status' => OrderStateMachineService::STATUS_PICKED_UP,
+        ]);
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->actingAs($originHandler)->postJson(route('hub.scan'), [
+                'barcode' => $delivery->tracking_number,
+                'hub_id' => $originHub->id,
+                'mode' => 'inspect',
+            ])->assertOk()->assertJsonPath('prompt.action', 'RECEIVE_FROM_PICKUP_RIDER');
+        }
+
+        $this->assertSame(OrderStateMachineService::STATUS_PICKED_UP, $delivery->fresh()->status);
+        $this->assertDatabaseMissing('delivery_checkpoints', [
+            'delivery_id' => $delivery->id,
+            'checkpoint_type' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+        ]);
+
+        $this->actingAs($destinationHandler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $originHub->id,
+            'mode' => 'inspect',
+        ])->assertStatus(409);
+
+        $this->actingAs($originHandler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $originHub->id,
+            'mode' => 'confirm',
+            'action' => 'DISPATCH_LINE_HAUL',
+            'expected_status' => OrderStateMachineService::STATUS_PICKED_UP,
+        ])->assertStatus(409);
+
+        $this->assertSame(OrderStateMachineService::STATUS_PICKED_UP, $delivery->fresh()->status);
+    }
+
+    public function test_rider_cannot_view_or_claim_another_company_pickup_job(): void
+    {
+        $bagooCompany = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $order = $this->createOrder('ready_for_pickup', 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id,
+            'logistics_company_id' => $bagooCompany->id,
+            'origin_bayan_hub_id' => $originHub->id,
+            'origin_mother_hub_id' => $motherHub->id,
+            'destination_mother_hub_id' => $motherHub->id,
+            'destination_bayan_hub_id' => $destinationHub->id,
+            'status' => 'unassigned',
+        ]);
+
+        $foreignCompany = LogisticsCompany::create([
+            'name' => 'Independent Road Carrier',
+            'slug' => 'independent-road-carrier',
+            'code' => 'IRC',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $foreignHub = LogisticsHub::create([
+            'logistics_company_id' => $foreignCompany->id,
+            'name' => 'Foreign Bayan Hub',
+            'code' => 'BH-IRC-01',
+            'tier' => 'local_bayan_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Bay',
+            'barangay' => 'Dila',
+            'address' => 'Bay, Laguna',
+            'is_active' => true,
+        ]);
+        $foreignRider = User::factory()->courier()->create([
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+        CourierProfile::factory()->create([
+            'user_id' => $foreignRider->id,
+            'logistics_company_id' => $foreignCompany->id,
+            'assigned_hub_id' => $foreignHub->id,
+            'is_available' => true,
+        ]);
+
+        $this->actingAs($foreignRider)->get(route('courier.deliveries'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Courier/Deliveries')
+                ->has('availableJobs', 0)
+            );
+
+        $this->actingAs($foreignRider)->post(route('courier.claim', $delivery))
+            ->assertSessionHas('error');
+        $this->assertNull($delivery->fresh()->courier_id);
+    }
+
     private function createOrder(string $status, string $barangay): Order
     {
         $buyer = User::where('email', 'buyer@bagoo.test')->firstOrFail();
@@ -142,5 +282,27 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'destination_barangay' => $barangay,
             'shipping_city' => 'Santa Cruz',
         ]);
+    }
+
+    private function confirmScan(
+        User $operator,
+        Delivery $delivery,
+        LogisticsHub $hub,
+        string $action,
+        string $expectedStatus
+    ): void {
+        $this->actingAs($operator)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $hub->id,
+            'mode' => 'inspect',
+        ])->assertOk()->assertJsonPath('prompt.action', $action);
+
+        $this->actingAs($operator)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $hub->id,
+            'mode' => 'confirm',
+            'action' => $action,
+            'expected_status' => $expectedStatus,
+        ])->assertOk()->assertJsonPath('confirmed', true);
     }
 }

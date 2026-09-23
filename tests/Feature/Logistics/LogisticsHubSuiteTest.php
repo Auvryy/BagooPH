@@ -24,8 +24,11 @@ class LogisticsHubSuiteTest extends TestCase
     use RefreshDatabase;
 
     private User $logisticsUser;
+
     private LogisticsCompany $company;
+
     private LogisticsHub $motherHub;
+
     private LogisticsHub $bayanHub;
 
     protected function setUp(): void
@@ -514,6 +517,7 @@ class LogisticsHubSuiteTest extends TestCase
         $delivery = Delivery::factory()->create([
             'order_id' => $order->id,
             'tracking_number' => 'BGX-TEST-PICKUP-01',
+            'logistics_company_id' => $this->company->id,
             'status' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
             'delivery_type' => 'hub_self_pickup',
             'current_hub_id' => $this->bayanHub->id,
