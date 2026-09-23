@@ -4,6 +4,8 @@ namespace Tests\Feature\Logistics;
 
 use App\Models\Category;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
@@ -101,12 +103,151 @@ class LogisticsHubSuiteTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Hub/Dashboard')
-            ->has('activeHub')
-            ->has('hubs')
+            ->has('scope')
             ->has('stats')
-            ->has('dailyDispatch')
-            ->has('recentCheckpoints')
-            ->has('hubFleet')
+            ->has('attentionQueue', 4)
+            ->has('parcelFlow')
+            ->has('facilities', 2)
+            ->has('recentActivity')
+            ->where('scope.mode', 'company')
+            ->where('scope.company_name', $this->company->name)
+        );
+    }
+
+    public function test_company_dashboard_uses_real_owned_facility_metrics_only(): void
+    {
+        $ownedDelivery = Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'current_hub_id' => $this->bayanHub->id,
+            'status' => OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+        ]);
+
+        DeliveryCheckpoint::record(
+            delivery: $ownedDelivery,
+            type: OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+            actor: $this->logisticsUser,
+            hub: $this->bayanHub,
+        );
+        DeliveryCheckpoint::record(
+            delivery: $ownedDelivery,
+            type: OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+            actor: $this->logisticsUser,
+            hub: $this->bayanHub,
+        );
+
+        $foreignOwner = User::factory()->create(['role' => 'logistics', 'status' => 'active']);
+        $foreignCompany = LogisticsCompany::create([
+            'user_id' => $foreignOwner->id,
+            'name' => 'Foreign Logistics Company',
+            'slug' => 'foreign-logistics-company',
+            'code' => 'FLC',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $foreignHub = LogisticsHub::create([
+            'logistics_company_id' => $foreignCompany->id,
+            'name' => 'Foreign Bayan Hub',
+            'code' => 'BH-FRG-01',
+            'tier' => 'local_bayan_hub',
+            'province' => 'Quezon',
+            'city_municipality' => 'Lucena City',
+            'barangay' => 'Ibabang Dupay',
+            'address' => 'Foreign facility address',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+        $foreignDelivery = Delivery::factory()->create([
+            'logistics_company_id' => $foreignCompany->id,
+            'current_hub_id' => $foreignHub->id,
+            'status' => OrderStateMachineService::STATUS_DELIVERY_FAILED,
+        ]);
+        DeliveryCheckpoint::record(
+            delivery: $foreignDelivery,
+            type: OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+            actor: $foreignOwner,
+            hub: $foreignHub,
+        );
+
+        $response = $this->actingAs($this->logisticsUser)
+            ->get(route('hub.dashboard', ['hub_id' => $foreignHub->id]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('scope.mode', 'company')
+            ->where('scope.selected_hub_id', null)
+            ->has('scope.hubs', 2)
+            ->has('facilities', 2)
+            ->where('stats.parcels_in_custody', 1)
+            ->where('stats.ready_for_dispatch', 1)
+            ->where('stats.exceptions', 0)
+            ->where('stats.dispatched_today', 1)
+            ->has('recentActivity', 2)
+        );
+    }
+
+    public function test_company_dashboard_can_filter_to_an_owned_hub(): void
+    {
+        Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'current_hub_id' => $this->bayanHub->id,
+            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+        ]);
+        Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'current_hub_id' => $this->motherHub->id,
+            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+        ]);
+
+        $response = $this->actingAs($this->logisticsUser)
+            ->get(route('hub.dashboard', ['hub_id' => $this->bayanHub->id]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('scope.mode', 'hub')
+            ->where('scope.selected_hub_id', $this->bayanHub->id)
+            ->where('stats.parcels_in_custody', 1)
+            ->has('facilities', 1)
+            ->where('facilities.0.id', $this->bayanHub->id)
+        );
+    }
+
+    public function test_hub_handler_is_forced_to_the_assigned_facility(): void
+    {
+        $handler = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+        HubHandler::create([
+            'user_id' => $handler->id,
+            'hub_id' => $this->bayanHub->id,
+            'role_title' => 'Hub Handler',
+            'is_active' => true,
+        ]);
+
+        Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'current_hub_id' => $this->bayanHub->id,
+            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+        ]);
+        Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'current_hub_id' => $this->motherHub->id,
+            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+        ]);
+
+        $response = $this->actingAs($handler)
+            ->get(route('hub.dashboard', ['hub_id' => $this->motherHub->id]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('scope.mode', 'hub')
+            ->where('scope.can_view_company', false)
+            ->where('scope.selected_hub_id', $this->bayanHub->id)
+            ->has('scope.hubs', 1)
+            ->has('facilities', 1)
+            ->where('facilities.0.id', $this->bayanHub->id)
+            ->where('stats.parcels_in_custody', 1)
         );
     }
 

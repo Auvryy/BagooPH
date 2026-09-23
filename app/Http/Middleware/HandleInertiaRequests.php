@@ -81,24 +81,52 @@ class HandleInertiaRequests extends Middleware
                         ->get() : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
                     'logisticsCompany' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
-                        ? ($user->logisticsCompany ?? \App\Models\LogisticsCompany::where('is_active', true)->first())
+                        ? ($user->logisticsCompany ?? ($user->isAdmin()
+                            ? \App\Models\LogisticsCompany::where('is_active', true)->first()
+                            : \App\Models\HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
                         : null,
                     'activeHub' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
                         ? (function () use ($request, $user) {
+                            $accessibleHubs = \App\Models\LogisticsHub::query()
+                                ->where('is_active', true)
+                                ->when(! $user->isAdmin(), function ($query) use ($user) {
+                                    $companyId = $user->logisticsCompany?->id;
+                                    if ($companyId) {
+                                        $query->where('logistics_company_id', $companyId);
+                                    } else {
+                                        $query->whereIn('id', \App\Models\HubHandler::where('user_id', $user->id)
+                                            ->where('is_active', true)
+                                            ->pluck('hub_id'));
+                                    }
+                                });
                             $hubId = $request->session()->get('active_hub_id');
                             if ($hubId) {
-                                $h = \App\Models\LogisticsHub::find($hubId);
+                                $h = (clone $accessibleHubs)->find($hubId);
                                 if ($h) return $h;
                             }
-                            $handler = \App\Models\HubHandler::where('user_id', $user->id)->first();
+                            $handler = \App\Models\HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
                             if ($handler) {
-                                return $handler->hub;
+                                $handlerHub = (clone $accessibleHubs)->find($handler->hub_id);
+                                if ($handlerHub) return $handlerHub;
                             }
-                            return \App\Models\LogisticsHub::where('is_active', true)->first();
+                            return $accessibleHubs->first();
                         })()
                         : null,
                     'allHubs' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
-                        ? \App\Models\LogisticsHub::where('is_active', true)->orderBy('tier')->get(['id', 'name', 'code', 'tier', 'city_municipality'])
+                        ? \App\Models\LogisticsHub::query()
+                            ->where('is_active', true)
+                            ->when(! $user->isAdmin(), function ($query) use ($user) {
+                                $companyId = $user->logisticsCompany?->id;
+                                if ($companyId) {
+                                    $query->where('logistics_company_id', $companyId);
+                                } else {
+                                    $query->whereIn('id', \App\Models\HubHandler::where('user_id', $user->id)
+                                        ->where('is_active', true)
+                                        ->pluck('hub_id'));
+                                }
+                            })
+                            ->orderBy('tier')
+                            ->get(['id', 'name', 'code', 'tier', 'city_municipality'])
                         : [],
                 ] : null,
             ],
