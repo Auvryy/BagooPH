@@ -1,7 +1,18 @@
 # System Flow & Specifications
 
 > **Official Curriculum Reference Specification**
-> This document records the exact system flows, role responsibilities, order state machines, and routing rules as mandated by the updated curriculum document, retaining the 14 master product categories.
+> This document records the customer-facing lifecycle and cross-role responsibilities. The physical custody, mother-hub, exception, self-pickup, notification, and COD rules are authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+
+## Documentation Authority
+
+When documents disagree, use this order:
+
+1. This document for the canonical customer-facing order statuses.
+2. `docs/SORTING_CENTER_LOGISTICS_FLOW.md` for parcel custody and logistics operations.
+3. The buyer, seller, courier, and admin documents for role-specific screens and actions.
+4. `docs/MASTER_LOGISTICS_SPECIFICATION.md` for architecture and future scope only.
+
+Internal delivery statuses and checkpoints may be more detailed than the 13 customer-facing statuses, but they must map back to this lifecycle.
 
 ---
 
@@ -70,7 +81,7 @@ Wait for Seller to Prepare Order
 
 ### Post-Preparation Logistics Chain & Handover:
 ```
-Seller → Rider Pickup → Sorting Center → Assigned Rider → Buyer
+Seller → Pickup Rider → Origin Bayan Hub → Mother Hub → Destination Bayan Hub → Delivery Rider → Buyer
 ↓
 Receive Product
 ↓
@@ -103,13 +114,13 @@ PRINT/ATTACH SHIPPING LABEL
 ↓
 MARK AS READY FOR PICKUP
 ↓
-WAIT FOR RIDER ASSIGNMENT
+WAIT FOR PICKUP JOB CLAIM
 ↓
 RIDER ARRIVES
 ↓
 HAND OVER PARCEL
 ↓
-CONFIRM RIDER PICKUP
+RIDER SCANS WAYBILL AND CONFIRMS PICKUP
 ↓
 STATUS: PICKED UP
 ```
@@ -200,8 +211,10 @@ Reschedule Delivery / Return Parcel
 
 ### Process Summary:
 ```
-Buyer orders → Seller prepares → Rider picks up → Sorting Center sorts → Sorting Center assigns Rider → Rider delivers → Buyer confirms → Order completed.
+Buyer orders → Seller prepares → Pickup Rider collects → Origin Bayan Hub receives → Mother Hub sorts → Destination Bayan Hub receives and sorts → Hub assigns Delivery Rider → Rider delivers → Buyer confirms → Order completed.
 ```
+
+`AT_SORTING_CENTER` covers the internal Bayan-Hub and Mother-Hub transfer checkpoints shown to the buyer through the tracking timeline. The system must not add internal transport statuses to the 13 customer-facing order statuses.
 
 ---
 

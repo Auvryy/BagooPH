@@ -3,13 +3,13 @@
 *Platform Design, Entity Hierarchy & Highway Network Delimitation*
 
 > **Source:** Master Architecture Technical Specification & Teacher Brainstorming Notes (September 2026).
-> **Implementation Branch:** `user/logistic`
+> Operational behavior is authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. This document describes architecture and future scope.
 
 ---
 
 ## 1. Executive Summary & Foundational Scope
 
-BagooPH couples a multi-vendor retail marketplace with a multi-tenant, land-based parcel network modeled after top-tier e-commerce logistics platforms like Shopee and Lazada. Rather than outsourcing shipping to an unmonitored external black box, the platform integrates logistics into its core transactional lifecycle.
+BagooPH couples a multi-vendor retail marketplace with a multi-tenant, land-based parcel network modeled after established hub-and-spoke e-commerce logistics. Rather than outsourcing shipping to an unmonitored external system, the platform integrates logistics into its core transactional lifecycle.
 
 ### Contiguous Land Delimitation
 - **100% Road-Based Freight:** All logistics operations are strictly delimited to domestic, contiguous land highway networks (e.g., Mainland Luzon and interconnected provincial roads).
@@ -28,7 +28,7 @@ The system operates across three administrative tiers, maintaining separation be
        ┌─────────────────────┴─────────────────────┐
        ▼                                           ▼
 [Marketplace Management]                 [Logistics Company Admin]
-├── Seller Profiles                      (e.g., Bagoo Express, Tamaraw Freight Express)
+├── Seller Profiles                      (BagooPH marketplace merchants)
 └── Buyer Accounts                                 │
                                                    ▼
                                         [Branch / Hub Network]
@@ -68,13 +68,13 @@ Courier Admins register physical branches categorized into two functional tiers:
    ▼ (First-Mile Pickup via Motorcycle)
 [Origin Local Bayan Hub] (Municipal Intake & Staging)
    │
-   ▼ (Feeder Shuttle: L300 / Closed Van)
-[Regional Mother Hub] (High-Speed Conveyor Sorting)
+   ▼ (Feeder Shuttle: Closed Van)
+[Regional Mother Hub] (Regional Sorting)
    │
    ▼ (Line-Haul Highway Trunk: Closed Wing Trucks)
-[Destination Mother Hub] (Optional Regional Cross-Dock)
+[Destination Mother Hub] (Only when the destination uses a different region)
    │
-   ▼ (Distribution Shuttle: L300 / Closed Van)
+   ▼ (Distribution Shuttle: Closed Van)
 [Destination Local Bayan Hub] (Municipal Delivery Station)
    ├── Option A: Free Buyer Self-Pickup Counter
    └── Option B: Last-Mile Doorstep Delivery via Barangay Rider
@@ -82,7 +82,7 @@ Courier Admins register physical branches categorized into two functional tiers:
 
 ### Vehicle Categorization & Movement Types
 - **Motorcycles & Tricycles:** First-mile collection from sellers and last-mile residential delivery within neighborhood barangays.
-- **Light Utility Vehicles (L300 / 4-Wheel Closed Vans):** Short-distance feeder runs moving consolidated batches between Local Bayan Hubs and Regional Mother Hubs.
+- **Light Utility Vehicles (4-Wheel Closed Vans):** Short-distance feeder runs moving consolidated batches between Local Bayan Hubs and Regional Mother Hubs.
 - **Heavy Freight Trucks (6-to-10 Wheeler Closed Wing Trucks):** High-capacity highway line-haul transit connecting distant Mother Hubs across provincial expressways.
 
 ### The Routing Engine: Facility-to-Facility Hops
@@ -94,11 +94,11 @@ Parcels do not route via continuous street directions from the merchant's doorst
   - Leg 3: Mother Hub → Destination Mother Hub (for long-haul routes)
   - Leg 4: Destination Mother Hub → Destination Bayan Hub
   - Leg 5: Destination Bayan Hub → Customer Doorstep (or Self-Pickup Shelf)
-- **Dynamic Scan Prompts:** Handlers do not need to memorize national geography. When scanning a waybill, the screen displays operational instructions, such as: `LOAD TO SHUTTLE: TRUCK-L300-NORTH` or `BIN: BRGY-POBLACION-1`.
+- **Dynamic Scan Prompts:** Handlers do not need to memorize national geography. When scanning a waybill, the screen displays operational instructions, such as: `LOAD TO FEEDER: VAN-NORTH-01` or `BIN: BRGY-POBLACION-1`.
 
-### Sorting Center Automation & High-Speed Rails
-- **Regional Mother Hubs:** High-throughput facilities handling thousands of packages daily using automated sorting mechanisms (DWS conveyor tunnels for dimensioning, weighing, scanning, and cross-belt sorter tracks to destination chutes).
-- **Mobile Batch Inbound & Outbound:** For Local Bayan Hubs without automated conveyors, staff use smartphone cameras (PWA) to scan batches in rapid succession, with audio feedback confirming each scan.
+### Baseline Sorting Equipment
+- **Regional Mother Hubs:** Operators use authenticated barcode or QR scans, destination cages, and outbound manifests. Automated conveyors and industrial dimensioning equipment are outside the baseline project scope.
+- **Mobile Batch Inbound & Outbound:** Hub staff use responsive camera-enabled screens to scan parcel batches with visible confirmation and error feedback.
 
 ---
 
@@ -118,10 +118,10 @@ Every physical movement must correspond to an authenticated digital scan. Custod
    ▼ (Inbound Mobile Scan at Origin Local Station)
 [ARRIVED AT ORIGIN BAYAN HUB]
    │
-   ▼ (Scanned onto L300 Shuttle Manifest)
+   ▼ (Scanned onto Feeder Van Manifest)
 [IN TRANSIT TO MOTHER HUB]
    │
-   ▼ (DWS Tunnel or Rapid Mobile Scan)
+   ▼ (Authenticated Inbound Scan)
 [ARRIVED AT REGIONAL MOTHER HUB] ➔ [SORTED TO LINE-HAUL CAGE]
    │
    ▼ (Scanned onto Highway Truck Manifest)
@@ -130,20 +130,26 @@ Every physical movement must correspond to an authenticated digital scan. Custod
    ▼ (Inbound Intake Scan at Destination Local Station)
 [ARRIVED AT DESTINATION BAYAN HUB]
    │
-   ├── IF Hub Self-Pickup: ➔ [READY FOR HUB PICKUP] ➔ [CUSTOMER COLLECTED]
+   ├── IF Hub Self-Pickup: ➔ [READY FOR HUB PICKUP] ➔ [CUSTOMER COLLECTED] ➔ [DELIVERED]
    │
    └── IF Doorstep Delivery: ➔ [SORTED TO BARANGAY BIN]
                                    │
-                                   ▼ (Rider Batch Scan Out)
+                                   ▼ (Hub Assigns Eligible Barangay Rider)
+                           [ASSIGNED TO RIDER]
+                                   │
+                                   ▼ (Assigned Rider Scans Out)
                              [OUT FOR DELIVERY]
                                    │
-                                   ▼ (Photo & GPS Proof of Delivery)
+                                   ▼ (Delivery Proof and Notes)
                                [DELIVERED]
+                                   │
+                                   ▼ (Buyer Receipt Confirmation)
+                               [COMPLETED]
 ```
 
 ### Exception & Delivery Failure Protocols
 - **Delivery Failure:** If a customer is unreachable, the rider logs the failure reason (e.g., `Customer Unreachable - Attempt 1`). The parcel returns to the Bayan Hub in `DELIVERY_FAILED` status.
-- **Re-attempt & Return-to-Sender (RTS):** The system permits up to two re-delivery attempts (3 total). If the third attempt fails, the package transitions to `RETURN_TO_SENDER`, routing backward through the hub network to the original merchant.
+- **Re-attempt & Return-to-Sender (RTS):** The system permits up to two re-delivery attempts (3 total). If the third attempt fails, the delivery transitions internally to `return_to_sender` and routes backward through the Mother-Hub network. The customer-facing order becomes `RETURNED` only after seller receipt.
 
 ---
 
@@ -165,12 +171,14 @@ Every physical movement must correspond to an authenticated digital scan. Custod
 
 ---
 
-## 6. Integrated Artificial Intelligence Subsystems
+## 6. Optional Future Enhancements
+
+The following ideas are not required for the complete baseline order and logistics flow. They must not delay custody scans, failed delivery, self-pickup, notifications, or COD reconciliation.
 
 1. **Conversational Shopping Assistant (Digital Concierge):** An interactive shopping assistant helps consumers discover products using open-ended natural language queries grounded directly in the store's product database.
 2. **Multimodal Address & Document OCR:** Vision models extract address records from government IDs, business permits, and utility bills during merchant and customer KYC verification.
-3. **Barangay Rider Density Engine:** Every morning, an automated calculation checks package density across municipal barangays. If a specific barangay exceeds standard parcel volume limits (e.g., 60 packages for one rider), the system alerts the hub manager to assign auxiliary riders to that zone.
-4. **Proof of Delivery (POD) Validation:** Computer vision evaluates doorstep delivery photos uploaded by riders, validating package placement, date-time metadata, and GPS geofencing (≤ 100m of the destination pin) before releasing seller payments and processing platform commissions.
+3. **Barangay Rider Density Assistant:** A future calculation may alert the hub manager when a barangay needs an auxiliary rider.
+4. **Proof of Delivery Assistance:** Future validation may flag incomplete proof for human review. It must not autonomously release seller payments.
 5. **Ethical Guardrails & Privacy Protections:** Customer data, uploaded images, and delivery telemetry are governed by strict data privacy guardrails, ensuring automated processes operate transparently without bias or unauthorized data retention.
 
 ---
@@ -182,7 +190,7 @@ Recorded from foundational domain brainstorming:
 - **Mobile-First Scanning:** Sorting center/hub handlers do not require heavy desktop terminals; operations are driven via mobile/responsive PWA camera barcode/QR waybill scanners.
 - **Rider Allocation:** Default baseline is 1 rider dedicated per barangay, with dynamic auxiliary assignment for heavy volume.
 - **Free Hub Pickup:** Buyers can choose free self-pickup at their local municipal Bayan Hub rather than doorstep delivery.
-- **Vehicle Hierarchy:** Explicit fleet registration including Motorcycles/Tricycles (first/last mile), L300 / Closed Vans (feeder shuttles between Bayan Hub & Mother Hub), and Wing Trucks (inter-hub line-haul).
+- **Vehicle Hierarchy:** Explicit fleet registration including motorcycles/tricycles for first and last mile, closed vans for feeder shuttles, and closed wing trucks for inter-hub line-haul.
 - **Facility-Hop Dispatching:** Inter-bayan and inter-provincial routing occurs strictly via facility-to-facility hops (Bayan Hub → Mother Hub → Destination Mother Hub → Destination Bayan Hub → Rider/Counter).
 
 ---
@@ -191,13 +199,13 @@ Recorded from foundational domain brainstorming:
 
 ### Baseline Comparison: What We Have vs. Enterprise Roadmap
 
-#### Core Baseline Modules (Implemented)
+#### Core Baseline Modules (Implemented Foundation)
 - **Overview & Analytics:** Aggregated metrics, KPI cards, and Catmull-Rom throughput spline charts across all operating hubs.
-- **Scan Station / Barcode Scanner Terminal & PWA:** Mobile and terminal barcode/QR waybill scanning for inbound sortation, line-haul transfer, and outbound staging.
+- **Scan Station / Barcode Scanner Terminal:** Responsive barcode/QR waybill scanning foundation for inbound and outbound custody; remaining transfer controls are listed in the operational specification.
 - **Facility Network:** Creating and managing Regional Mother Hubs and Local Bayan Hubs, with real-time capacity and utilization tracking.
-- **Fleet Management:** Registering multi-tier vehicles: 2W motorcycles/tricycles, 4W L300/closed vans, and 10W closed wing trucks.
-- **Parcels & Waybills:** Real-time 13-stage order state machine, unbroken audit checkpoint streams, and public waybill telemetry.
-- **Counter Self-Pickup:** Managing free ₱0.00 customer claims and counter release verification at local Bayan Hubs.
+- **Fleet Management:** Registering multi-tier vehicles: motorcycles/tricycles, four-wheel closed vans, and closed wing trucks.
+- **Parcels & Waybills:** Customer lifecycle, internal scan checkpoints, and public tracking foundation.
+- **Counter Self-Pickup:** Counter screen foundation; claim-code, expiry, identity, and COD enforcement remain required.
 
 ---
 
@@ -216,14 +224,14 @@ To manage an entire nationwide courier company, the **Logistics Corporate Admin 
 - **Platform & Merchant Remittance:** Tracking shipping fee earnings, deducting marketplace commission, and remitting collected COD funds back to the escrow/merchant settlement accounts.
 
 #### 3. Shipping Rates & Service Zone Mapping
-- **Rate Matrix Configuration:** Dynamic calculation tiers based on package weight, volume (DWS tunnel calculations), and distance (intra-bayan municipal vs. inter-provincial highway line-hauls).
+- **Rate Matrix Configuration:** Calculation tiers based on declared package weight, size, and service zone.
 - **Service Coverage Matrix:** Interactive administrative toggles for provinces, bayans, and barangays actively serviced by the company, including unserviceable boundary rules and remote exclusions.
 
 #### 4. Exception & Return-to-Sender (RTS) Protocols
 - **Delivery Failure Queue:** Real-time monitor for parcels marked `DELIVERY_FAILED` (e.g., customer unreachable, bad weather, or invalid address).
 - **RTS Reverse Logistics:** Automated routing engine for packages hitting the 3-attempt failure threshold, generating reverse waybills to return stock back through the hub network to merchants.
 
-#### 5. AI Density & Dispatch Load Balancing
+#### 5. Optional Density & Dispatch Load Balancing
 - **Morning Barangay Density Alert:** Automated 06:00 AM dispatch engine evaluating parcel volume per barangay. If a barangay exceeds threshold (e.g., >60 parcels), the system recommends and provisions auxiliary overflow riders.
 
 ---
@@ -233,7 +241,7 @@ To manage an entire nationwide courier company, the **Logistics Corporate Admin 
 To maintain zero UI clutter, navigation strictly separates **Global Corporate Management** from **Hub Station Floor Operations**:
 
 ```
-Logistics Company Admin Portal (e.g., Tamaraw Freight Express / TFX Master)
+Logistics Company Admin Portal
 │
 ├── Corporate & Fleet Management
 │   ├── Overview / Global Analytics
@@ -252,8 +260,7 @@ Logistics Company Admin Portal (e.g., Tamaraw Freight Express / TFX Master)
 │   └── Platform Payouts & Shipping Earnings [Roadmap]
 │
 └── Branch Switcher Context (Floor Operations UI)
-    └── [Dropdown: Select Specific Hub, e.g., "TFX - Santa Cruz Bayan Hub"]
+    └── [Dropdown: Select Specific Hub, e.g., "Santa Cruz Bayan Hub"]
         ├── Mobile PWA / Camera Scan Station (Inbound/Outbound)
         └── Counter Self-Pickup Terminal
 ```
-
