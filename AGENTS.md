@@ -71,5 +71,6 @@ When documentation conflicts with executable code, identify the mismatch. For cu
 
 - Run focused tests for changed behavior, then broader tests when risk warrants it.
 - For frontend changes, run `npm run build`; for backend/domain changes, run the relevant PHP tests. Use `./bagoo.sh` equivalents when host permissions or dependencies require Docker.
+- Never open a visible browser, use browser automation, or take screenshots for routine testing or visual checks. Prefer automated tests, builds, static inspection, and user-provided screenshots. Use browser UI testing only when the user explicitly requests it for that task.
 - Do not claim success when checks are blocked or failing; state the exact blocker.
 - Keep final responses short: outcome, verification, commits created, and any blocker. Do not include token estimates or a commit command unless requested.

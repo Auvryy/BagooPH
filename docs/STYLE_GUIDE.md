@@ -132,11 +132,52 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ---
 
-## 6. Standard Code Snippets
+## 6. Dashboard Composition Pattern
+
+The Seller Dashboard establishes the preferred composition for role dashboards. Reuse its information rhythm across seller, logistics, courier, buyer, and admin pages without copying fabricated metrics, oversized radii, or decorative effects.
+
+### Required Page Rhythm
+
+1. **Header and Primary Action:** Use one clear page title, optional scope context, one primary action, and at most one secondary action.
+2. **Four KPI Cards:** Each card contains a short sentence-case label, one prominent real value, a restrained icon or status, and one useful supporting fact.
+3. **Primary Bento Row:** Use an 8/4 or 7/5 grid. The larger panel contains one meaningful visual or operational list; the smaller panel contains tasks requiring action.
+4. **Operational Detail Row:** Follow with recent records, ranked items, facilities, orders, or exceptions. Prefer tables and compact lists over more KPI cards.
+5. **Truthful Empty State:** When data is absent, show a calm empty state. Never generate sample values to make a dashboard appear active.
+
+### Visual Hierarchy
+
+- Use `text-2xl` or `text-3xl` for KPI values, `text-sm` for panel titles, and at least `text-xs` for supporting text.
+- Use sentence case for navigation, labels, and headings. Reserve uppercase for short status badges only.
+- Use one soft icon tile per KPI or action. Icons support the label and must not become decoration.
+- Use the BagooPH crimson only for the primary action, active navigation, selected data, or a critical highlight.
+- Use semantic rose, amber, emerald, and sky colors only when the underlying state justifies them.
+- Keep cards at `rounded-md` or `rounded-lg`, with `border-slate-300`, white surfaces, and subtle shadows.
+
+### Charts and Flow Visuals
+
+- Charts must use real chronological data and label their time range. Every timeframe control must change the returned dataset.
+- Never inject fallback revenue, parcel, order, or performance values into an empty series.
+- Avoid gradients. Prefer a crisp line, bar, segmented progress, connected journey, or table depending on the relationship being shown.
+- Use connected nodes for lifecycle stages. A branch such as counter pickup or return-to-sender must visually branch from the correct stage rather than appear as another unrelated sequential box.
+- Make operational stages link to their filtered record list when that filter exists.
+
+### Operational Commerce Reference
+
+Use the interaction principles common to large Southeast Asian commerce operations tools without copying their branding:
+
+- Put status counts and work queues ahead of generic analytics.
+- Keep search, scope, facility, date, and status filters close to the records they affect.
+- Surface overdue or failed work with the required next action.
+- Keep fulfillment stages scan-friendly and easy to compare at a glance.
+- Do not add advanced analytics, SLA claims, countdowns, or performance targets unless the backend owns and verifies those values.
+
+---
+
+## 7. Standard Code Snippets
 
 ### Primary Action Button (2px Radius):
 ```tsx
-<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition duration-150 uppercase tracking-wider">
+<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition duration-150">
     <Plus className="w-3.5 h-3.5" />
     <span>New Listing</span>
 </button>
@@ -174,10 +215,11 @@ All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adher
 
 ---
 
-## 7. Forbidden Anti-Patterns (Do NOT Introduce)
+## 8. Forbidden Anti-Patterns (Do NOT Introduce)
 
 1. **No `rounded-full` or `rounded-3xl` on buttons and cards:** Keep buttons strictly at 2px (`rounded-xs`/`rounded-sm`).
 2. **No faint or washed-out borders (`border-slate-100`):** Always use `border-slate-300` for clear visual distinction.
 3. **No pure `#000000` body text:** Use soft, eye-friendly `#1E293B` (`text-slate-800`).
 4. **No continuous GPU animations on scroll:** Avoid heavy SVG `feTurbulence` grain filters or full-screen mouse spotlight canvas overlays.
 5. **No non-absolute dropdowns:** Floating menus must never shift or push navbar elements.
+6. **No fabricated dashboard activity:** Never substitute generated values, hard-coded success rates, or sample operational records when real data is zero.
