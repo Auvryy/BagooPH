@@ -347,7 +347,7 @@ export default function CourierDeliveries({ myDeliveries, availableJobs, isOnlin
 
                                                 {isDelivered && (
                                                     <span className="text-emerald-600 font-bold flex items-center gap-1.5">
-                                                        <CheckCircle2 className="w-4 h-4" /> Delivery Completed & Settled (+₱60.00 Payout)
+                                                        <CheckCircle2 className="w-4 h-4" /> Delivery recorded — awaiting buyer confirmation
                                                     </span>
                                                 )}
                                             </div>
