@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
-    ArrowRight,
     Building2,
     Check,
     ChevronRight,
@@ -92,9 +91,14 @@ export default function HubNetwork({ scope, hubs }: Props) {
 
     const motherHubs = hubs.filter((hub) => hub.tier === 'regional_mother_hub');
     const bayanHubs = hubs.filter((hub) => hub.tier === 'local_bayan_hub');
-    const pickupCounters = bayanHubs.filter((hub) => hub.allows_self_pickup);
-    const totalCapacity = hubs.reduce((total, hub) => total + hub.capacity, 0);
     const parcelsInCustody = hubs.reduce((total, hub) => total + hub.parcel_count, 0);
+    const activeHub = hubs.find((hub) => hub.id === scope.active_hub_id) ?? null;
+    const networkMetrics = [
+        { label: 'Active facilities', value: hubs.length, detail: 'Owned by this company', icon: Building2 },
+        { label: 'Mother Hubs', value: motherHubs.length, detail: 'Regional sortation', icon: Warehouse },
+        { label: 'Bayan Hubs', value: bayanHubs.length, detail: 'Local operations', icon: Store },
+        { label: 'Parcels in custody', value: parcelsInCustody, detail: 'Across active facilities', icon: Package },
+    ];
 
     const closeDetails = () => {
         setSelectedHub(null);
@@ -135,80 +139,42 @@ export default function HubNetwork({ scope, hubs }: Props) {
             <Head title="Facility Network — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
-                    <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h2 className="text-base font-bold text-slate-900">Connected road network</h2>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">
-                                    Every parcel enters through a Bayan Hub, passes through a Mother Hub, then reaches its destination Bayan Hub.
+                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
+                    <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900">Company facilities</h2>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                Only active facilities owned by {scope.company_name} are listed below.
+                            </p>
+                        </div>
+                        {activeHub && (
+                            <div className="rounded-md border border-[#E00D42]/30 bg-[#FDF2F4] px-3 py-2">
+                                <p className="text-xs text-slate-500">Working facility</p>
+                                <p className="mt-0.5 text-sm font-bold text-slate-900">
+                                    {activeHub.name} <span className="text-xs font-semibold text-[#E00D42]">{activeHub.code}</span>
                                 </p>
                             </div>
-                            <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-xs border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 sm:mt-0">
-                                <Package className="h-3.5 w-3.5" />
-                                {parcelsInCustody.toLocaleString()} in custody
-                            </span>
-                        </div>
-
-                        <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
-                            <div className="rounded-md border border-slate-300 bg-slate-50 p-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700">
-                                        <Store className="h-4 w-4" />
-                                    </span>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-900">Origin Bayan Hub</p>
-                                        <p className="mt-0.5 text-xs text-slate-500">Local intake and feeder dispatch</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <ArrowRight className="mx-auto hidden h-4 w-4 text-slate-400 sm:block" />
-                            <div className="rounded-md border border-[#E00D42]/40 bg-[#FDF2F4] p-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-md border border-[#E00D42]/30 bg-white text-[#E00D42]">
-                                        <Warehouse className="h-4 w-4" />
-                                    </span>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-900">Mother Hub</p>
-                                        <p className="mt-0.5 text-xs text-slate-500">Required regional sortation</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <ArrowRight className="mx-auto hidden h-4 w-4 text-slate-400 sm:block" />
-                            <div className="rounded-md border border-slate-300 bg-slate-50 p-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700">
-                                        <Store className="h-4 w-4" />
-                                    </span>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-900">Destination Bayan Hub</p>
-                                        <p className="mt-0.5 text-xs text-slate-500">Rider dispatch or counter pickup</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </div>
 
-                    <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
-                        <h2 className="text-base font-bold text-slate-900">Network at a glance</h2>
-                        <div className="mt-4 divide-y divide-slate-200">
-                            <div className="flex items-center justify-between py-3 first:pt-0">
-                                <span className="text-xs text-slate-500">Owned facilities</span>
-                                <span className="text-sm font-bold text-slate-900">{hubs.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3">
-                                <span className="text-xs text-slate-500">Mother / Bayan Hubs</span>
-                                <span className="text-sm font-bold text-slate-900">{motherHubs.length} / {bayanHubs.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3">
-                                <span className="text-xs text-slate-500">Total staging capacity</span>
-                                <span className="text-sm font-bold text-slate-900">{totalCapacity.toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3 pb-0">
-                                <span className="text-xs text-slate-500">Self-pickup counters</span>
-                                <span className="text-sm font-bold text-slate-900">{pickupCounters.length}</span>
-                            </div>
-                        </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        {networkMetrics.map((metric) => {
+                            const Icon = metric.icon;
+                            return (
+                                <div key={metric.label} className="rounded-md border border-slate-300 bg-slate-50 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs text-slate-500">{metric.label}</p>
+                                            <p className="mt-1 text-xl font-extrabold text-slate-900">{metric.value.toLocaleString()}</p>
+                                        </div>
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600">
+                                            <Icon className="h-4 w-4" />
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-xs text-slate-500">{metric.detail}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
