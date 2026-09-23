@@ -295,26 +295,30 @@ class LogisticsHubWorkstationController extends Controller
     public function network(Request $request): Response
     {
         $user = $request->user();
-        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
+        [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
+        $company = $user?->logisticsCompany ?? $accessibleHubs->first()?->company;
+        $isCompanyAdministrator = (bool) $user?->logisticsCompany;
+        $terminalStatuses = ['delivered', 'customer_collected', 'completed', 'cancelled', 'returned'];
 
-        $networkHubs = LogisticsHub::with(['company'])
-            ->withCount(['handlers', 'fleet'])
-            ->where('is_active', true)
-            ->orderBy('tier')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($h) {
-                $parcelCount = Delivery::where('current_hub_id', $h->id)
-                    ->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])
-                    ->count();
-                $readyPickupCount = Delivery::where('destination_bayan_hub_id', $h->id)
+        $networkHubs = LogisticsHub::query()
+            ->with('company')
+            ->withCount([
+                'handlers as handlers_count' => fn ($query) => $query->where('is_active', true),
+                'fleet as fleet_count' => fn ($query) => $query->where('status', 'active'),
+                'currentDeliveries as parcel_count' => fn ($query) => $query->whereNotIn('status', $terminalStatuses),
+                'currentDeliveries as ready_pickup_count' => fn ($query) => $query
                     ->where('delivery_type', 'hub_self_pickup')
                     ->whereIn('status', [
                         OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                         OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                    ])
-                    ->count();
-                $utilization = $h->capacity > 0 ? round(($parcelCount / $h->capacity) * 100, 1) : 0;
+                    ]),
+            ])
+            ->whereIn('id', $accessibleHubs->pluck('id'))
+            ->orderBy('tier')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($h) {
+                $utilization = $h->capacity > 0 ? round(($h->parcel_count / $h->capacity) * 100, 1) : 0;
 
                 return [
                     'id' => $h->id,
@@ -335,14 +339,19 @@ class LogisticsHubWorkstationController extends Controller
                     'is_active' => (bool) $h->is_active,
                     'handlers_count' => $h->handlers_count,
                     'fleet_count' => $h->fleet_count,
-                    'parcel_count' => $parcelCount,
-                    'ready_pickup_count' => $readyPickupCount,
+                    'parcel_count' => $h->parcel_count,
+                    'ready_pickup_count' => $h->ready_pickup_count,
                     'utilization' => $utilization,
                 ];
             });
 
         return Inertia::render('Hub/Network', [
-            'activeHub' => $activeHub,
+            'scope' => [
+                'company_name' => $company?->name ?? 'Logistics Company',
+                'company_code' => $company?->code,
+                'active_hub_id' => $activeHub?->id,
+                'can_switch_facility' => $isCompanyAdministrator,
+            ],
             'hubs' => $networkHubs,
         ]);
     }
@@ -608,7 +617,14 @@ class LogisticsHubWorkstationController extends Controller
             'hub_id' => 'required|exists:logistics_hubs,id',
         ]);
 
-        $hub = LogisticsHub::findOrFail($validated['hub_id']);
+        $user = $request->user();
+        [, $accessibleHubs] = $this->getActiveHub($request, $user);
+
+        abort_unless($user?->logisticsCompany, 403, 'Only a logistics company administrator can change the working facility.');
+
+        $hub = $accessibleHubs->firstWhere('id', (int) $validated['hub_id']);
+        abort_unless($hub, 403, 'You cannot access this facility.');
+
         session(['active_hub_id' => $hub->id]);
 
         return back()->with('success', "Active facility switched to {$hub->name} ({$hub->code}).");

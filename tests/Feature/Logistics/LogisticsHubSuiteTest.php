@@ -274,7 +274,70 @@ class LogisticsHubSuiteTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Hub/Network')
             ->has('hubs', 2)
-            ->has('activeHub')
+            ->where('scope.company_name', $this->company->name)
+            ->where('scope.active_hub_id', $this->bayanHub->id)
+            ->where('scope.can_switch_facility', true)
+        );
+    }
+
+    public function test_facility_network_excludes_other_logistics_companies(): void
+    {
+        $foreignOwner = User::factory()->create(['role' => 'logistics', 'status' => 'active']);
+        $foreignCompany = LogisticsCompany::create([
+            'user_id' => $foreignOwner->id,
+            'name' => 'Foreign Logistics Company',
+            'slug' => 'foreign-logistics-company-network',
+            'code' => 'FLC',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        LogisticsHub::create([
+            'logistics_company_id' => $foreignCompany->id,
+            'name' => 'Foreign Bayan Hub',
+            'code' => 'BH-FRG-02',
+            'tier' => 'local_bayan_hub',
+            'province' => 'Quezon',
+            'city_municipality' => 'Lucena City',
+            'barangay' => 'Ibabang Dupay',
+            'address' => 'Foreign facility address',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->logisticsUser)
+            ->get(route('hub.network'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->has('hubs', 2)
+            ->where('hubs.0.company_code', $this->company->code)
+            ->where('hubs.1.company_code', $this->company->code)
+        );
+    }
+
+    public function test_hub_handler_sees_only_the_assigned_facility_in_network(): void
+    {
+        $handler = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+        HubHandler::create([
+            'user_id' => $handler->id,
+            'hub_id' => $this->bayanHub->id,
+            'role_title' => 'Hub Handler',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($handler)
+            ->get(route('hub.network', ['hub_id' => $this->motherHub->id]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->has('hubs', 1)
+            ->where('hubs.0.id', $this->bayanHub->id)
+            ->where('scope.active_hub_id', $this->bayanHub->id)
+            ->where('scope.can_switch_facility', false)
         );
     }
 
@@ -328,6 +391,59 @@ class LogisticsHubSuiteTest extends TestCase
 
         $response->assertRedirect();
         $this->assertEquals($this->motherHub->id, session('active_hub_id'));
+    }
+
+    public function test_logistics_operator_cannot_switch_to_another_company_facility(): void
+    {
+        $foreignOwner = User::factory()->create(['role' => 'logistics', 'status' => 'active']);
+        $foreignCompany = LogisticsCompany::create([
+            'user_id' => $foreignOwner->id,
+            'name' => 'Foreign Switch Company',
+            'slug' => 'foreign-switch-company',
+            'code' => 'FSC',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $foreignHub = LogisticsHub::create([
+            'logistics_company_id' => $foreignCompany->id,
+            'name' => 'Foreign Switch Hub',
+            'code' => 'BH-FSW-01',
+            'tier' => 'local_bayan_hub',
+            'province' => 'Quezon',
+            'city_municipality' => 'Lucena City',
+            'barangay' => 'Gulang-gulang',
+            'address' => 'Foreign switch address',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->logisticsUser)
+            ->withSession(['active_hub_id' => $this->bayanHub->id])
+            ->post(route('hub.switchHub'), ['hub_id' => $foreignHub->id]);
+
+        $response->assertForbidden();
+        $this->assertEquals($this->bayanHub->id, session('active_hub_id'));
+    }
+
+    public function test_hub_handler_cannot_change_the_working_facility(): void
+    {
+        $handler = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+        HubHandler::create([
+            'user_id' => $handler->id,
+            'hub_id' => $this->bayanHub->id,
+            'role_title' => 'Hub Handler',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($handler)
+            ->post(route('hub.switchHub'), ['hub_id' => $this->motherHub->id]);
+
+        $response->assertForbidden();
+        $this->assertEquals($this->bayanHub->id, session('active_hub_id'));
     }
 
     public function test_unauthorized_buyer_cannot_access_hub_dashboard(): void
