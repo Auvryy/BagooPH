@@ -127,6 +127,34 @@ class LogisticsHubWorkstationController extends Controller
             ->whereDate('created_at', today())
             ->count();
 
+        $inboundCheckpointTypes = [
+            OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+            OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+            OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+        ];
+        $movementCheckpoints = DeliveryCheckpoint::query()
+            ->whereIn('hub_id', $scopeHubIds)
+            ->whereIn('checkpoint_type', [...$inboundCheckpointTypes, ...$outboundCheckpointTypes])
+            ->where('created_at', '>=', today()->subDays(6)->startOfDay())
+            ->get(['checkpoint_type', 'created_at'])
+            ->groupBy(fn (DeliveryCheckpoint $checkpoint) => $checkpoint->created_at->toDateString());
+
+        $movement = collect(range(6, 0))->map(function (int $daysAgo) use (
+            $movementCheckpoints,
+            $inboundCheckpointTypes,
+            $outboundCheckpointTypes
+        ) {
+            $date = today()->subDays($daysAgo);
+            $dayCheckpoints = $movementCheckpoints->get($date->toDateString(), collect());
+
+            return [
+                'date' => $date->toDateString(),
+                'label' => $date->format('D'),
+                'inbound' => $dayCheckpoints->whereIn('checkpoint_type', $inboundCheckpointTypes)->count(),
+                'outbound' => $dayCheckpoints->whereIn('checkpoint_type', $outboundCheckpointTypes)->count(),
+            ];
+        });
+
         $counterPickupCount = $deliveryQuery()
             ->where('delivery_type', 'hub_self_pickup')
             ->whereIn('status', [
@@ -254,6 +282,7 @@ class LogisticsHubWorkstationController extends Controller
                 'dispatched_today' => $dispatchedToday,
             ],
             'attentionQueue' => $attentionQueue,
+            'movement' => $movement,
             'parcelFlow' => $parcelFlow,
             'facilities' => $facilities,
             'recentActivity' => $recentActivity,

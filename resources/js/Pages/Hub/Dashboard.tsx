@@ -43,6 +43,12 @@ interface DashboardProps {
         href: string;
         tone: 'danger' | 'warning' | 'info' | 'neutral';
     }>;
+    movement: Array<{
+        date: string;
+        label: string;
+        inbound: number;
+        outbound: number;
+    }>;
     parcelFlow: {
         origin_hub: number;
         mother_hub_transit: number;
@@ -90,12 +96,15 @@ export default function HubDashboard({
     scope,
     stats,
     attentionQueue,
+    movement,
     parcelFlow,
     facilities,
     recentActivity,
 }: DashboardProps) {
     const activeAttention = attentionQueue.filter((item) => item.count > 0);
     const selectedHub = scope.hubs.find((hub) => hub.id === scope.selected_hub_id);
+    const maxMovement = Math.max(1, ...movement.flatMap((day) => [day.inbound, day.outbound]));
+    const hasMovement = movement.some((day) => day.inbound > 0 || day.outbound > 0);
 
     const changeScope = (value: string) => {
         router.get(
@@ -137,11 +146,10 @@ export default function HubDashboard({
     ];
 
     const flowStages = [
-        { label: 'Origin hub', value: parcelFlow.origin_hub },
-        { label: 'Mother-hub route', value: parcelFlow.mother_hub_transit },
-        { label: 'Destination hub', value: parcelFlow.destination_hub },
-        { label: 'Final mile', value: parcelFlow.final_mile },
-        { label: 'Counter pickup', value: parcelFlow.counter_pickup },
+        { label: 'Origin Bayan Hub', value: parcelFlow.origin_hub, icon: Building2, status: 'arrived_at_origin_hub' },
+        { label: 'Mother Hub route', value: parcelFlow.mother_hub_transit, icon: Truck, status: 'arrived_at_mother_hub' },
+        { label: 'Destination Bayan Hub', value: parcelFlow.destination_hub, icon: MapPin, status: 'arrived_at_destination_hub' },
+        { label: 'Final-mile delivery', value: parcelFlow.final_mile, icon: Send, status: 'out_for_delivery' },
     ];
 
     return (
@@ -226,6 +234,49 @@ export default function HubDashboard({
                 </section>
 
                 <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                    <div className="rounded-lg border border-slate-300 bg-white shadow-xs xl:col-span-7">
+                        <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-900">Parcel movement</h2>
+                                <p className="mt-0.5 text-xs text-slate-500">Verified inbound and outbound scans · last 7 days</p>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] font-medium text-slate-600">
+                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-slate-800" />Inbound</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />Outbound</span>
+                            </div>
+                        </div>
+                        {hasMovement ? (
+                            <div className="flex h-56 items-end gap-2 px-4 pb-4 pt-6 sm:gap-4">
+                                {movement.map((day) => (
+                                    <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col justify-end">
+                                        <div className="flex flex-1 items-end justify-center gap-1 sm:gap-1.5">
+                                            <div
+                                                className="w-2.5 rounded-t-xs bg-slate-800 sm:w-4"
+                                                style={{ height: `${Math.max(day.inbound > 0 ? 8 : 0, (day.inbound / maxMovement) * 100)}%` }}
+                                                title={`${day.date}: ${day.inbound} inbound`}
+                                            />
+                                            <div
+                                                className="w-2.5 rounded-t-xs bg-[#E00D42] sm:w-4"
+                                                style={{ height: `${Math.max(day.outbound > 0 ? 8 : 0, (day.outbound / maxMovement) * 100)}%` }}
+                                                title={`${day.date}: ${day.outbound} outbound`}
+                                            />
+                                        </div>
+                                        <div className="mt-2 border-t border-slate-200 pt-2 text-center">
+                                            <p className="text-[11px] font-semibold text-slate-600">{day.label}</p>
+                                            <p className="text-[10px] text-slate-400">{day.inbound}/{day.outbound}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex min-h-56 flex-col items-center justify-center px-5 py-8 text-center">
+                                <ScanLine className="h-8 w-8 text-slate-300" />
+                                <p className="mt-3 text-sm font-semibold text-slate-800">No parcel movement this week</p>
+                                <p className="mt-1 text-xs text-slate-500">Inbound and outbound scans will build this view.</p>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="rounded-lg border border-slate-300 bg-white shadow-xs xl:col-span-5">
                         <div className="border-b border-slate-300 px-4 py-3">
                             <h2 className="text-sm font-bold text-slate-900">Needs attention</h2>
@@ -258,24 +309,81 @@ export default function HubDashboard({
                         )}
                     </div>
 
-                    <div className="rounded-lg border border-slate-300 bg-white shadow-xs xl:col-span-7">
-                        <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
-                            <div>
-                                <h2 className="text-sm font-bold text-slate-900">Parcel flow</h2>
-                                <p className="mt-0.5 text-xs text-slate-500">Current custody stage</p>
-                            </div>
-                            <Link href={route('hub.deliveries')} className="text-xs font-semibold text-[#E00D42] hover:underline">
-                                View parcels
+                </section>
+
+                <section className="rounded-lg border border-slate-300 bg-white shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900">Parcel journey</h2>
+                            <p className="mt-0.5 text-xs text-slate-500">Current physical custody across the road network</p>
+                        </div>
+                        <Link href={route('hub.deliveries')} className="text-xs font-semibold text-[#E00D42] hover:underline">
+                            View parcels
+                        </Link>
+                    </div>
+
+                    <div className="hidden p-6 md:block">
+                        <div className="relative grid grid-cols-4 gap-6">
+                            <div className="absolute left-[12.5%] right-[12.5%] top-6 border-t-2 border-slate-300" />
+                            {flowStages.map((stage) => {
+                                const Icon = stage.icon;
+                                return (
+                                    <Link
+                                        key={stage.label}
+                                        href={route('hub.deliveries', { status: stage.status })}
+                                        className="group relative z-10 flex flex-col items-center text-center"
+                                    >
+                                        <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-slate-300 bg-white text-slate-600 shadow-xs transition group-hover:border-[#E00D42] group-hover:text-[#E00D42]">
+                                            <Icon className="h-5 w-5" />
+                                        </span>
+                                        <span className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">{stage.value}</span>
+                                        <span className="mt-0.5 text-xs font-semibold text-slate-600 group-hover:text-slate-900">{stage.label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-3 grid grid-cols-4 gap-6">
+                            <Link
+                                href={route('hub.counter')}
+                                className="relative col-start-3 flex items-center justify-center gap-3 border-t border-dashed border-sky-300 pt-4 text-left group"
+                            >
+                                <span className="flex h-9 w-9 items-center justify-center rounded-md border border-sky-300 bg-sky-50 text-sky-700">
+                                    <Store className="h-4 w-4" />
+                                </span>
+                                <span>
+                                    <span className="block text-base font-extrabold text-slate-900">{parcelFlow.counter_pickup}</span>
+                                    <span className="block text-xs font-semibold text-slate-600 group-hover:text-sky-700">Counter pickup branch</span>
+                                </span>
                             </Link>
                         </div>
-                        <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-5">
-                            {flowStages.map((stage) => (
-                                <div key={stage.label} className="rounded-md border border-slate-300 bg-slate-50 p-3 sm:min-h-24">
-                                    <p className="text-2xl font-extrabold tracking-tight text-slate-900">{stage.value}</p>
-                                    <p className="mt-1 text-xs font-medium leading-5 text-slate-600">{stage.label}</p>
-                                </div>
-                            ))}
-                        </div>
+                    </div>
+
+                    <div className="p-4 md:hidden">
+                        {flowStages.map((stage, index) => {
+                            const Icon = stage.icon;
+                            return (
+                                <React.Fragment key={stage.label}>
+                                    <Link href={route('hub.deliveries', { status: stage.status })} className="grid grid-cols-[44px_1fr] gap-3">
+                                        <div className="flex flex-col items-center">
+                                            <span className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-slate-300 bg-white text-slate-600">
+                                                <Icon className="h-4 w-4" />
+                                            </span>
+                                            {index < flowStages.length - 1 && <span className="min-h-8 flex-1 border-l-2 border-slate-300" />}
+                                        </div>
+                                        <div className="pb-5">
+                                            <p className="text-xl font-extrabold text-slate-900">{stage.value}</p>
+                                            <p className="text-xs font-semibold text-slate-600">{stage.label}</p>
+                                            {index === 2 && (
+                                                <div className="mt-3 flex items-center gap-2 border-l-2 border-dashed border-sky-300 pl-3 text-sky-700">
+                                                    <Store className="h-4 w-4" />
+                                                    <span className="text-xs font-semibold">{parcelFlow.counter_pickup} at counter pickup</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Link>
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
                 </section>
 

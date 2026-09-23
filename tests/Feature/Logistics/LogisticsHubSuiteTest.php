@@ -106,6 +106,7 @@ class LogisticsHubSuiteTest extends TestCase
             ->has('scope')
             ->has('stats')
             ->has('attentionQueue', 4)
+            ->has('movement', 7)
             ->has('parcelFlow')
             ->has('facilities', 2)
             ->has('recentActivity')
@@ -181,6 +182,8 @@ class LogisticsHubSuiteTest extends TestCase
             ->where('stats.ready_for_dispatch', 1)
             ->where('stats.exceptions', 0)
             ->where('stats.dispatched_today', 1)
+            ->where('movement.6.inbound', 1)
+            ->where('movement.6.outbound', 1)
             ->has('recentActivity', 2)
         );
     }
