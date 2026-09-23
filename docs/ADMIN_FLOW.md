@@ -1,68 +1,47 @@
-# Administrator Module Specification & Governance Flow
+# Administrator Governance Flow
 
-This document details the administrative control center, verification workflows, 10% commission calculations, dispute resolution, and compliance mechanisms.
+Platform Admin governs marketplace access, compliance, disputes, commissions, and financial audit. Logistics Company Admin manages its own facilities, personnel, manifests, exceptions, and operational COD remittance. These authorities must remain separate.
 
----
+## 1. Platform Admin Responsibilities
 
-## 1. Admin Functional Overview
+- Approve, reject, suspend, or reactivate buyer, seller, courier, and logistics-company applications.
+- Review seller category and product compliance.
+- Audit orders, waybill checkpoints, disputes, COD reconciliation, commissions, and payouts.
+- Resolve disputes using order, parcel, proof, cash, and message evidence.
+- Manage platform policies and announcements.
+- Prevent cross-company logistics data access.
 
-```mermaid
-graph TD
-    Admin[Administrator] --> Dashboard[Telemetry Dashboard]
-    Admin --> AppQueue[Account Registration Verification Queue]
-    Admin --> UserGov[User Account Management: Activate/Suspend]
-    Admin --> Compliance[Seller Category & Product Compliance]
-    Admin --> Disputes[Dispute & Complaint Resolution Center]
-    Admin --> CommissionEngine[10% Platform Commission Management]
-    Admin --> Reports[Financial & Sales Summary Reports]
-    Admin --> Settings[Announcements & Platform Policies]
-```
+Platform Admin does not perform routine parcel scans or silently change custody and cash history. Corrections must be auditable adjustments.
 
----
+## 2. Logistics Company Admin Responsibilities
 
-## 2. Registration Approval Queue (KYC Verification)
+- Manage its Mother Hubs and Bayan Hubs.
+- Create and scope hub-handler access.
+- Approve or assign active riders to hubs and barangays within its company.
+- Manage vehicles and road-based manifests.
+- Monitor parcels, failed delivery, retries, and return-to-sender.
+- Reconcile rider and counter COD remittances before platform handoff.
+- Configure supported road zones and shipping rates when those modules are implemented.
 
-Admin must verify applicants before they can log in:
+## 3. Commission and Payout Governance
 
-1. **Buyer Verification:**
-   - Inspect Name, Contact Number, Address, and uploaded Government ID image.
-   - Action: `Approve` (Status becomes `active`) or `Disapprove` (Provide reason, dispatch email).
-2. **Seller Verification:**
-   - Inspect Business Name, Registered Line of Business Category, Government ID, and uploaded Business Permit (DTI/Mayor's Permit).
-   - Action: `Approve` or `Disapprove`.
-3. **Courier Verification:**
-   - Inspect Vehicle Type, Plate Number, Driver's License, and OR/CR document.
-   - Action: `Approve` or `Disapprove`.
+- Commission base is the order product subtotal.
+- Platform commission is 10%; seller share is 90%.
+- Shipping and handling are tracked separately.
+- Payout eligibility requires order `COMPLETED` and platform-level COD reconciliation.
+- Rider earnings and logistics revenue do not reduce or merge into the seller/product split.
+- Refunds, reversals, shortages, and corrections use traceable adjustment records.
 
----
+## 4. Dispute Evidence
 
-## 3. Seller Compliance & Product Moderation
+Admin review may include account documents, order items, waybill and hub checkpoints, manifest history, rider assignment, delivery proof, failure reasons, COD custody records, buyer confirmation, and role messages.
 
-- **Category Verification:** Ensure products listed by a seller fall strictly under their approved registered line of business (category).
-- **Prohibited Product Removal:** Immediate takedown button for flagged or counterfeit listings.
-- **Enforcement Actions:**
-  - Issue official warning to merchant.
-  - Suspend merchant account (hides all active listings from the marketplace).
+Resolution may approve a refund, seller payout, return, account penalty, or further investigation. A resolution cannot erase the original audit trail.
 
----
+## 5. Remaining Admin Work
 
-## 4. Dispute & Complaint Resolution
-
-- **Tripartite Mediation:** Handles disputes between Buyers, Sellers, and Couriers (e.g. damaged goods, missing items, delivery delays).
-- **Evidence Review:** View uploaded complaint evidence photos, order details, courier logs, and message history.
-- **Resolution Outcomes:**
-  - Issue full / partial refund to Buyer.
-  - Settle payout to Seller.
-  - Penalize courier or seller for negligence.
-
----
-
-## 5. Platform Commission Engine (10%)
-
-- On every successful order completion:
-  - System automatically calculates **$10\%$ Platform Commission** from the item subtotal.
-  - $90\%$ is credited to the Seller's store ledger.
-  - $100\%$ of the Delivery Fee is credited to the Courier.
-- **Auditing & Reporting:**
-  - Generate Commission Reports filtered by date range (`from_date` to `to_date`).
-  - Total Platform Commission Collected, Total Seller Payouts, Total Gross Transaction Volume.
+- Connect logistics-company approval and tenant isolation to the main KYC workflow.
+- Add COD reconciliation and payout approval views.
+- Add complete parcel exception and RTS audit views.
+- Add immutable financial adjustments and discrepancy handling.
+- Clarify refund rules for cancellation, failed delivery, and returned orders.

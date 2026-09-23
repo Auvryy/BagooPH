@@ -29,6 +29,8 @@ When a user logs in, `RoleMiddleware` checks their role and routes them to their
 
 ## 3. Order & Delivery Flow
 
+The detailed authoritative lifecycle is maintained in `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` and `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
+
 ```
 [Buyer Places Order]
          │
@@ -42,8 +44,17 @@ When a user logs in, `RoleMiddleware` checks their role and routes them to their
 [Courier Accepts Job (First-Come, First-Served)]
          │
          ▼
-[Courier Picks Up from Store -> In Transit -> Doorstep Delivery]
+[Pickup Rider Scans at Seller]
          │
          ▼
-[Order Completed -> 10% Commission Calculated]
+[Origin Bayan Hub -> Mother Hub -> Destination Bayan Hub]
+         │
+         ▼
+[Hub Sorts and Assigns Delivery Rider]
+         │
+         ▼
+[Delivery Rider Delivers -> Buyer Confirms Receipt]
+         │
+         ▼
+[COD Reconciled -> 90% Seller / 10% Platform Product Split]
 ```

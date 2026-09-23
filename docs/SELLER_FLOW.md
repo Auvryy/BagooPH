@@ -1,60 +1,59 @@
-# Seller (Merchant) Module Specification & Flow
+# Seller Module Flow
 
-This document details the complete end-to-end workflow, data points, and operational requirements for Sellers.
+This document defines seller actions. Parcel custody and settlement follow `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
 
----
+## 1. Registration and Store Management
 
-## 1. Seller Registration & Verification
+Seller submits identity and business requirements. Admin approval is required before portal access. Each shop keeps its approved root category and manages products, stock, variants, prices, images, and vouchers within that scope.
 
-1. **Required Input Fields:**
-   - **Personal:** Last Name*, First Name*, Middle Initial, Sex*, Email*, Contact No.*, Birthday*, Age (auto-generated)*.
-   - **Address:** Province (Dropdown API), Municipality/City (Dropdown API), Barangay (Dropdown API), Street & House No. (Manual Entry).
-   - **Business Profile:** Business Name*, Line of Business (Registered Master Category)*.
-   - **Verification Documents:** Upload Government ID*, Upload Valid Business Permit (DTI / Mayor's Permit)*.
-2. **State Transition:**
-   - Account starts as `pending_approval`.
-   - Admin inspects business permit and category alignment.
-   - Email dispatch upon approval/disapproval.
+## 2. Order Fulfillment
 
----
-
-## 2. Store & Inventory Management
-
-- **Product Catalog Control:**
-  - Create, edit, and archive products.
-  - Set unit prices, promotional compare prices, stock counts, SKU, and weight.
-  - Add product variations (Color, Size, Specification).
-  - Category Compliance: Products must strictly belong to the Seller's registered line of business.
-- **Promotions & Vouchers:**
-  - Create store-exclusive promo vouchers (e.g., 10% off on $50 minimum purchase).
-
----
-
-## 3. Order Processing & Fulfillment Pipeline
-
-```mermaid
-flowchart LR
-    NewOrder[New Order Notification] --> ReviewOrder[Review Order Items]
-    ReviewOrder --> PackItems[Pack Items & Change Status: Packaging]
-    PackItems --> PrintWaybill[Generate & Print Shipping Label / Waybill]
-    PrintWaybill --> SchedulePickup[Schedule Courier Pickup]
-    SchedulePickup --> Handover[Handover Parcel to Courier at Store]
-    Handover --> TrackParcel[Monitor Real-time Shipment Status]
-    TrackParcel --> DeliveryDone[Delivery Notification Received]
+```text
+New-order notification
+-> Review items, buyer delivery details, and stock
+-> Accept: PLACED -> CONFIRMED
+-> Prepare and pack: CONFIRMED -> PREPARING
+-> Print and attach one parcel waybill
+-> Mark READY_FOR_PICKUP
+-> Wait for pickup rider claim
+-> Verify rider and parcel
+-> Pickup rider scans the waybill
+-> PICKED_UP
+-> Track parcel until DELIVERED, COMPLETED, or RETURNED
 ```
 
-- **Waybill / Shipping Label Specification:**
-  - Must include: Order Number, Tracking Barcode/QR, Pickup Store Name & Address, Recipient Name & Phone, Drop-off Address, Payment Mode (e.g. COD Amount to Collect), Special Handling Instructions.
+The seller cannot mark an order `PICKED_UP`. The pickup rider's authenticated scan is the custody handover.
 
----
+Each seller parcel has its own order and waybill. Items from another shop cannot share that parcel.
 
-## 4. Financial Analytics & Sales Reports
+## 3. Waybill Requirements
 
-- **Date Filtered Reports:**
-  - Dynamic `From Date` and `To Date` selection.
-  - Metric 1: **Gross Sales Revenue** ($\sum \text{Orders}$).
-  - Metric 2: **Platform Commission** ($10\% \times \text{Subtotal}$).
-  - Metric 3: **Net Seller Profit** ($\text{Gross} - \text{Commission}$).
-  - Metric 4: Units Sold, Customer Conversion Rate, and Top Selling Inventory items.
-- **Customer Feedback Management:**
-  - View buyer reviews, ratings, and reply to comments.
+- Order and tracking numbers.
+- Barcode or QR code.
+- Seller pickup name, address, and phone.
+- Recipient name, phone, destination, and barangay.
+- Delivery type and facility route codes.
+- Exact COD amount and handling notes.
+
+## 4. Returns and Settlement
+
+For return-to-sender, the seller sees reverse-hub checkpoints and receives the parcel through a final authenticated scan. Only that scan makes the order `RETURNED`.
+
+Product settlement is not released merely because a rider marks the parcel delivered. The order must be `COMPLETED`, and COD must be reconciled at platform level. The product split is 90% seller and 10% platform; shipping and handling remain separate.
+
+## 5. Required Seller Notifications
+
+- New order requiring review.
+- Pickup rider claim and rider details.
+- Successful pickup and tracking link.
+- Delivery failure when seller action may become necessary.
+- Return-to-sender started and ready for seller receipt.
+- Buyer completion and payout eligibility.
+
+## 6. Remaining Seller Work
+
+- Add persistent order and settlement notifications.
+- Show pickup rider identity before handover.
+- Add seller-facing return receipt scan or confirmation workflow.
+- Separate completed sales, pending COD reconciliation, and paid payouts.
+- Ensure multi-shop checkout never produces a shared seller parcel.

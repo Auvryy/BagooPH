@@ -1,68 +1,65 @@
-# Courier & Logistics Module Specification & Flow
+# Courier and Rider Flow
 
-This document details the complete operational lifecycle, dispatch algorithms, and task execution for Couriers and Logistics Partners.
+Pickup and delivery riders are phases of the same approved `courier` account. A rider may perform either phase only through a valid assignment. Hub and Mother-Hub custody follows `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
 
----
+## 1. Registration and Availability
 
-## 1. Courier Registration & Verification
+Courier submits identity, license, vehicle, and required ownership/registration documents. Approval is required before portal access. A rider must be active, approved, and available to claim or receive work.
 
-1. **Required Input Fields:**
-   - **Personal:** Last Name*, First Name*, Middle Initial, Sex*, Email*, Contact No.*, Birthday*, Age (auto-generated)*.
-   - **Address:** Province (Dropdown API), Municipality/City (Dropdown API), Barangay (Dropdown API), Street & House No. (Manual Entry).
-   - **Vehicle Details:** Vehicle Type (Motorcycle, Van, Bicycle, Truck)*, Vehicle Plate Number*.
-   - **Verification Documents:** Upload Official Receipt / Certificate of Registration (OR/CR)*, Upload Driver's License / Valid Government ID*.
-2. **State Transition:**
-   - Account starts as `pending_approval` until Admin validates driver credentials.
+## 2. Pickup-Rider Phase
 
----
-
-## 2. First-Come, First-Served Dispatch Engine
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Seller as Merchant (Seller)
-    participant Core as Dispatch Core
-    actor Courier1 as Courier A (Rider)
-    actor Courier2 as Courier B (Rider)
-
-    Seller->>Core: Marks Order "Ready for Pickup"
-    Core->>Core: Broadcasts Unassigned Job to Available Jobs Board
-    Courier1->>Core: Clicks "Accept Delivery Request" (First)
-    Core->>Core: Locks Delivery to Courier A (Assigned)
-    Courier2->>Core: Clicks "Accept Delivery Request" (Late)
-    Core-->>Courier2: Alert: Job already claimed by another courier!
+```text
+Seller marks READY_FOR_PICKUP
+-> Eligible job appears on available board
+-> Rider claims atomically
+-> Travel to seller
+-> Verify parcel and scan waybill
+-> PICKED_UP and custody recorded
+-> Deliver only to assigned Origin Bayan Hub
+-> Hub scans inbound
+-> Pickup assignment complete
 ```
 
----
+The pickup rider cannot move the parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. The hub controls all facility custody after intake.
 
-## 3. Delivery Execution Workflow
+## 3. Delivery-Rider Phase
 
-1. **Step 1: Accept Request:**
-   - Courier reviews pickup distance, merchant address, destination address, and package details.
-2. **Step 2: Proceed to Store & Confirm Pickup:**
-   - Courier arrives at store address -> Verifies physical parcel matches Order Number -> Clicks `Confirm Item Pickup`.
-   - Status updates to `Picked Up` and order status updates to `Shipped`.
-3. **Step 3: En Route & Transit:**
-   - Status transitions to `In Transit` and `Out for Delivery`.
-4. **Step 4: Doorstep Delivery & Proof of Drop-off:**
-   - Courier delivers parcel to buyer -> Takes drop-off proof image / enters customer note -> Clicks `Complete Delivery`.
-   - Payment collected (if COD) and delivery settled.
+```text
+Destination Bayan Hub sorts parcel
+-> Hub assigns eligible barangay rider
+-> Assignment appears in rider queue
+-> Assigned rider scans parcel out
+-> OUT_FOR_DELIVERY
+-> Deliver and collect exact COD amount
+-> Record proof and result
+-> DELIVERED or DELIVERY_FAILED
+```
 
----
+Only the assigned final-mile rider can scan out or submit the result. Successful delivery records COD as held by that rider until remittance; it does not mean the money has reached the platform.
 
-## 4. Courier Earnings & Analytics
+## 4. Failed Attempt
 
-- **Profit / Earnings Page:**
-  - Real-time earnings summary (total payouts per completed delivery).
-  - Delivery trip history log with timestamps, tracking numbers, and addresses.
-  - Active duty toggle (`Available` vs `Off Duty`).
-- **In-App Messaging:**
-  - Direct calling/chatting with Seller (for pickup coordination) and Buyer (for destination directions).
+Rider selects a valid failure reason, adds notes, and returns the parcel to the destination Bayan Hub. Hub inbound scan ends rider custody. The hub decides retry scheduling and reassignment. A rider cannot repeatedly reschedule a parcel independently.
 
----
+After the third failed attempt, logistics starts return-to-sender through the Mother-Hub network.
 
-## 5. Sorting Center & Hub Operations (Partial Plan)
+## 5. COD Remittance and Earnings
 
-For detailed parcel sorting, geographic territory partitioning (e.g. Area A, Area B, Area C), and automated rider area assignments, refer to [`docs/SORTING_CENTER_LOGISTICS_FLOW.md`](file:///home/andy/Projects/bagoo/docs/SORTING_CENTER_LOGISTICS_FLOW.md).
+The rider's COD ledger distinguishes cash held, cash remitted, discrepancies, and reconciled transactions. Rider delivery earnings are separate from COD cash and from the seller's product share.
+
+## 6. Required Rider Notifications
+
+- Available pickup job board.
+- Successful pickup claim details.
+- Final-mile assignment queue.
+- Assignment cancellation or reassignment.
+- Failed-parcel return instruction.
+- COD remittance due and reconciliation result.
+
+## 7. Remaining Courier Work
+
+- Require proof fields appropriate to successful and failed delivery.
+- Build failed-parcel return-to-hub scan and retry assignment flow.
+- Add COD remittance records instead of a calculated on-hand total only.
+- Separate pickup tasks, final-mile tasks, and completed earnings clearly.
 
