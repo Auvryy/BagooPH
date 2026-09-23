@@ -29,12 +29,6 @@ import {
     User as UserIcon,
     ScanLine,
     Building2,
-    Boxes,
-    Wallet,
-    Compass,
-    RotateCcw,
-    Cpu,
-    Sparkles
 } from 'lucide-react';
 
 interface Props {
@@ -438,11 +432,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     {/* Logistics Multi-Tier Navigation Hierarchy */}
                     {role === 'logistics' && (
                         <div className="space-y-4">
-                            {/* Tier 1: Corporate & Fleet Management */}
+                            {/* Company management */}
                             <div className="space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
-                                    <span>Corporate & Fleet</span>
-                                    <span className="text-[9px] text-slate-400">Admin</span>
+                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
+                                    Company
                                 </p>
                                 <Link
                                     href={route('hub.dashboard')}
@@ -483,45 +476,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <span>Fleet Management</span>
                                     </div>
                                 </Link>
-                                <Link
-                                    href="/hub/roadmap?module=personnel"
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Roadmap' && url.includes('module=personnel')
-                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>Personnel & Riders</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
-                                        Planned
-                                    </span>
-                                </Link>
-                                <Link
-                                    href="/hub/roadmap?module=rates"
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Roadmap' && url.includes('module=rates')
-                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>Rates & Zones</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
-                                        Planned
-                                    </span>
-                                </Link>
                             </div>
 
-                            {/* Tier 2: Parcel Operations & Logistics */}
+                            {/* Parcel operations */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
-                                    <span>Parcel Operations</span>
-                                    <span className="text-[9px] text-slate-400">Logistics</span>
+                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
+                                    Operations
                                 </p>
                                 <Link
                                     href={route('hub.deliveries')}
@@ -536,83 +496,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <span>Parcels & Waybills</span>
                                     </div>
                                 </Link>
-                                <Link
-                                    href="/hub/roadmap?module=exceptions"
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Roadmap' && url.includes('module=exceptions')
-                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <RotateCcw className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>Exceptions & RTS</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
-                                        Planned
-                                    </span>
-                                </Link>
-                                <Link
-                                    href="/hub/roadmap?module=density"
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Roadmap' && url.includes('module=density')
-                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Cpu className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>Barangay AI Density</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
-                                        AI
-                                    </span>
-                                </Link>
                             </div>
 
-                            {/* Tier 3: Financials & Remittances */}
+                            {/* Facility tools */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
-                                    <span>Financials & COD</span>
-                                    <span className="text-[9px] text-slate-400">Ledger</span>
-                                </p>
-                                <Link
-                                    href="/hub/roadmap?module=cod"
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Roadmap' && url.includes('module=cod')
-                                            ? 'bg-slate-900 text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Wallet className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>COD Cash Ledger</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
-                                        Planned
-                                    </span>
-                                </Link>
-                                <Link
-                                    href="/hub/roadmap?module=cod"
-                                    className="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <TrendingUp className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                                        <span>Platform Payouts</span>
-                                    </div>
-                                    <span className="text-[9px] font-sans text-slate-400 font-semibold">
-                                        Planned
-                                    </span>
-                                </Link>
-                            </div>
-
-                            {/* Tier 4: Branch Switcher Context (Floor Operations UI) */}
-                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-sans flex items-center justify-between">
-                                    <span>Floor Operations</span>
-                                    <span className="text-[9px] font-sans px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                        {activeHub?.code || 'Station'}
-                                    </span>
+                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
+                                    Facility tools
                                 </p>
                                 <Link
                                     href={route('hub.scan.station')}
@@ -626,9 +515,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
                                         <span>Scan Station</span>
                                     </div>
-                                    <span className={`text-[9px] font-sans px-1.5 py-0.5 rounded ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                                        PWA
-                                    </span>
                                 </Link>
                                 <Link
                                     href={route('hub.counter')}
@@ -642,9 +528,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Store className={`w-4 h-4 shrink-0 ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
                                         <span>Counter Self-Pickup</span>
                                     </div>
-                                    <span className={`text-[9px] font-sans px-1.5 py-0.5 rounded ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-                                        Free
-                                    </span>
                                 </Link>
                             </div>
                         </div>
