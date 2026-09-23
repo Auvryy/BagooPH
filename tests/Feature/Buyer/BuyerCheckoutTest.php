@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -15,6 +16,12 @@ use Tests\TestCase;
 class BuyerCheckoutTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(DatabaseSeeder::class);
+    }
 
     private function createCartWithProduct(User $buyer, float $price = 500.00, int $quantity = 1): array
     {
@@ -26,6 +33,8 @@ class BuyerCheckoutTest extends TestCase
         $shop = Shop::factory()->create([
             'user_id' => $seller->id,
             'status' => 'active',
+            'address' => 'Lopez Avenue, Batong Malake',
+            'city' => 'Los Banos',
         ]);
 
         $product = Product::factory()->create([
@@ -78,14 +87,17 @@ class BuyerCheckoutTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->createCartWithProduct($buyer, 300.00, 2);
+        [, $cartItem] = $this->createCartWithProduct($buyer, 300.00, 2);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Jane Buyer',
             'recipient_phone' => '+63 912 341 2341',
             'shipping_address' => '456 Rizal St, Brgy San Jose',
-            'shipping_city' => 'Calamba',
+            'shipping_city' => 'Santa Cruz',
+            'shipping_province' => 'Laguna',
             'shipping_postal_code' => '4027',
+            'destination_barangay' => 'Poblacion III',
+            'item_ids' => [$cartItem->id],
             'payment_method' => 'card', // Even if card is submitted, backend locks to COD
         ]);
 
@@ -110,13 +122,17 @@ class BuyerCheckoutTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->createCartWithProduct($buyer, 2000.00, 1);
+        [, $cartItem] = $this->createCartWithProduct($buyer, 2000.00, 1);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'High Value Buyer',
             'recipient_phone' => '+63 917 888 9999',
             'shipping_address' => '789 High Street',
-            'shipping_city' => 'Makati',
+            'shipping_city' => 'Santa Cruz',
+            'shipping_province' => 'Laguna',
+            'shipping_postal_code' => '4009',
+            'destination_barangay' => 'Poblacion III',
+            'item_ids' => [$cartItem->id],
             'payment_method' => 'cod',
         ]);
 
