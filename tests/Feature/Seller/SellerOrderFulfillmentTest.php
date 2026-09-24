@@ -175,6 +175,37 @@ class SellerOrderFulfillmentTest extends TestCase
         $this->assertEquals('confirmed', $order->fresh()->status);
     }
 
+    public function test_seller_can_confirm_and_pack_a_new_order_from_the_review_action(): void
+    {
+        $order = $this->createOrderForShop('placed');
+
+        $response = $this->actingAs($this->seller)->post(route('seller.orders.acceptAndPack', $order));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $this->assertEquals('preparing', $order->fresh()->status);
+        $this->assertDatabaseHas('delivery_checkpoints', [
+            'delivery_id' => $order->delivery->id,
+            'checkpoint_type' => 'seller_pack',
+            'scanned_by_id' => $this->seller->id,
+        ]);
+    }
+
+    public function test_direct_pack_before_confirmation_is_rejected_without_changing_the_order(): void
+    {
+        $order = $this->createOrderForShop('placed');
+
+        $response = $this->actingAs($this->seller)->post(route('seller.orders.pack', $order));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'currently placed'));
+        $this->assertEquals('placed', $order->fresh()->status);
+        $this->assertDatabaseMissing('delivery_checkpoints', [
+            'delivery_id' => $order->delivery->id,
+            'checkpoint_type' => 'seller_pack',
+        ]);
+    }
+
     public function test_seller_can_pack_order(): void
     {
         $order = $this->createOrderForShop('confirmed');

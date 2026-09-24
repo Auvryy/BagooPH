@@ -32,7 +32,7 @@ class SellerDashboardController extends Controller
 
         // Order Pipeline metrics (Canonical 13-stage lifecycle support)
         $pendingPackCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing']))
+            ->whereHas('order', fn($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']))
             ->count();
 
         $readyPickupCount = OrderItem::where('shop_id', $shop->id)
