@@ -144,6 +144,7 @@ export default function ScanStation({
     const [lastResult, setLastResult] = useState<{
         prompt: DynamicPrompt;
         delivery: ScannedDeliveryResult;
+        confirmed: boolean;
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -294,9 +295,12 @@ export default function ScanStation({
             const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
             const response = await fetch(route('hub.scan'), {
                 method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken || '',
                 },
                 body: JSON.stringify({
@@ -313,6 +317,7 @@ export default function ScanStation({
                 setLastResult({
                     prompt: data.prompt,
                     delivery: data.delivery,
+                    confirmed: Boolean(data.confirmed),
                 });
                 setScanMessage(data.message);
                 setBarcodeInput('');
@@ -342,9 +347,12 @@ export default function ScanStation({
             const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
             const response = await fetch(route('hub.scan'), {
                 method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken || '',
                 },
                 body: JSON.stringify({
@@ -362,9 +370,15 @@ export default function ScanStation({
             }
 
             playSound('success');
-            setLastResult({ prompt: data.prompt, delivery: data.delivery });
+            setLastResult({
+                prompt: data.prompt,
+                delivery: data.delivery,
+                confirmed: Boolean(data.confirmed),
+            });
             setScanMessage(data.message);
-            router.reload({ only: ['recentScans', 'pendingOriginIntake', 'stats', 'counterPickups'] });
+            router.reload({
+                only: ['recentScans', 'pendingOriginIntake', 'stats', 'counterPickups'],
+            });
         } catch (err: any) {
             playSound('error');
             setScanError(err.message || 'Network error while confirming the custody action.');
@@ -401,9 +415,12 @@ export default function ScanStation({
             const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
             const response = await fetch(route('hub.release'), {
                 method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken || '',
                 },
                 body: JSON.stringify({
@@ -771,7 +788,48 @@ export default function ScanStation({
                                                 disabled={isSubmitting}
                                                 className="w-full rounded-xs bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#C20836] disabled:bg-slate-300"
                                             >
-                                                {isSubmitting ? 'Recording action...' : 'Confirm custody action'}
+                                                {isSubmitting
+                                                    ? 'Recording action...'
+                                                    : lastResult.confirmed
+                                                        ? 'Confirm next facility action'
+                                                        : 'Confirm custody action'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'AWAIT_BARANGAY_SORT' && (
+                                        <div className="rounded-xs border border-emerald-300 bg-emerald-50 p-3.5">
+                                            <p className="text-xs text-emerald-900 font-sans mb-3">
+                                                Destination intake is complete. Continue in the parcel registry to sort this parcel into its barangay bin.
+                                            </p>
+                                            <Link
+                                                href={route('hub.deliveries', {
+                                                    search: lastResult.delivery.tracking_number,
+                                                    status: 'arrived_at_destination_hub',
+                                                })}
+                                                className="flex w-full items-center justify-center rounded-xs bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
+                                            >
+                                                Open parcel sorting
+                                            </Link>
+                                        </div>
+                                    )}
+
+                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'INSPECT_WAYBILL' && lastResult.confirmed && (
+                                        <div className="rounded-xs border border-emerald-300 bg-emerald-50 p-3.5">
+                                            <p className="text-xs text-emerald-900 font-sans mb-3">
+                                                This facility has completed its current custody work for the parcel.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setLastResult(null);
+                                                    setScanMessage(null);
+                                                    setBarcodeInput('');
+                                                    setTimeout(() => barcodeInputRef.current?.focus(), 0);
+                                                }}
+                                                className="w-full rounded-xs border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-900 hover:bg-slate-50"
+                                            >
+                                                Ready for next parcel
                                             </button>
                                         </div>
                                     )}
@@ -827,7 +885,11 @@ export default function ScanStation({
 
                                     <div className="pt-1 flex items-center gap-1.5 text-slate-600 text-[11px] font-sans">
                                         <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
-                                        <span>Audit checkpoint recorded in database</span>
+                                        <span>
+                                            {lastResult.confirmed
+                                                ? 'Audit checkpoint recorded in database'
+                                                : 'Waybill verified; confirm the action to update custody'}
+                                        </span>
                                     </div>
                                 </div>
                             ) : (
