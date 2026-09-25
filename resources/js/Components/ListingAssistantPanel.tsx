@@ -65,7 +65,13 @@ export default function ListingAssistantPanel({
 
     const useDraft = () => {
         if (!draft?.description) return;
-        onUseDescription(draft.description);
+        const formattedDraft = [
+            draft.description.trim(),
+            draft.selling_points.length > 0
+                ? `Key points:\n${draft.selling_points.map(point => `• ${point}`).join('\n')}`
+                : '',
+        ].filter(Boolean).join('\n\n');
+        onUseDescription(formattedDraft);
         setUsed(true);
     };
 
@@ -129,7 +135,7 @@ export default function ListingAssistantPanel({
                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 text-slate-700 text-[11px] font-semibold rounded-xs hover:bg-slate-50"
                                 >
                                     {used ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : null}
-                                    {used ? 'Inserted' : 'Use description'}
+                                    {used ? 'Inserted' : 'Use full draft'}
                                 </button>
                             </div>
                         </div>
