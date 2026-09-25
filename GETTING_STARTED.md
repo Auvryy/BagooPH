@@ -70,6 +70,12 @@ Instead of typing long Docker commands, use the included `./bagoo.sh` shortcut s
 # Recompile frontend changes (React/Tailwind)
 ./bagoo.sh npm run build
 
+# Production-style deployment: build assets before warming Laravel caches
+./bagoo.sh deploy
+
+# Check that the compiled Vite manifest and migrations are present
+./bagoo.sh verify
+
 # Run any Laravel artisan command (e.g. create a controller)
 ./bagoo.sh artisan make:controller MyController
 
