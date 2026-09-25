@@ -286,6 +286,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
             ->middleware('throttle:20,1')
             ->name('support.assistant');
+        Route::get('/support/assistant/products', [CustomerServiceAssistantController::class, 'products'])
+            ->name('support.assistant.products');
     });
 });
 

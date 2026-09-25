@@ -3,6 +3,7 @@
 namespace Tests\Feature\AI;
 
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -93,5 +94,17 @@ class AssistantTest extends TestCase
         $this->actingAs($seller)
             ->postJson(route('buyer.support.assistant'), ['message' => 'Hello'])
             ->assertForbidden();
+    }
+
+    public function test_buyer_product_picker_returns_only_three_active_products(): void
+    {
+        $buyer = User::factory()->buyer()->create();
+        Product::factory()->count(5)->create(['status' => 'active']);
+        Product::factory()->create(['status' => 'draft']);
+
+        $this->actingAs($buyer)
+            ->getJson(route('buyer.support.assistant.products'))
+            ->assertOk()
+            ->assertJsonCount(3, 'products');
     }
 }

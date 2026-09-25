@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { HelpCircle, Loader2, MessageCircle, Send, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Loader2, MessageCircle, Send, UserRound, X } from 'lucide-react';
+import BagooLogo from '@/Components/BagooLogo';
 
 interface MessageItem {
     role: 'buyer' | 'assistant';
     text: string;
+}
+
+interface ProductOption {
+    id: number;
+    name: string;
+    price: string | number;
+}
+
+interface Props {
+    onContactHuman?: () => void;
 }
 
 const quickQuestions = [
@@ -12,13 +23,32 @@ const quickQuestions = [
     'How do I upload my verification document?',
 ];
 
-export default function CustomerServiceAssistant() {
+export default function CustomerServiceAssistant({ onContactHuman }: Props) {
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [orderNumber, setOrderNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [messages, setMessages] = useState<MessageItem[]>([]);
+    const [products, setProducts] = useState<ProductOption[]>([]);
+    const [productId, setProductId] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open || products.length > 0) return;
+
+        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+        fetch(route('buyer.support.assistant.products'), {
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        })
+            .then(response => response.ok ? response.json() : Promise.reject(new Error('Products are unavailable right now.')))
+            .then(payload => setProducts(payload.products || []))
+            .catch(() => setError('Products are unavailable right now.'));
+    }, [open, products.length]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, [messages, loading]);
 
     const ask = async (question = message) => {
         const trimmed = question.trim();
@@ -37,7 +67,11 @@ export default function CustomerServiceAssistant() {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ message: trimmed, order_number: orderNumber.trim() || null }),
+                body: JSON.stringify({
+                    message: trimmed,
+                    order_number: orderNumber.trim() || null,
+                    product_id: productId || null,
+                }),
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message || 'Support is unavailable right now.');
@@ -66,15 +100,23 @@ export default function CustomerServiceAssistant() {
                 <section className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] w-[calc(100vw-2rem)] max-w-sm bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden">
                     <header className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-900 text-white">
                         <div className="flex items-center gap-2">
-                            <HelpCircle className="w-4 h-4 text-[#E00D42]" />
+                            <BagooLogo className="w-8 h-8" rounded="rounded-xs" />
                             <div>
                                 <h2 className="text-sm font-bold">Bagoo Support</h2>
                                 <p className="text-[10px] text-slate-300">Shopping and order help</p>
                             </div>
                         </div>
-                        <button type="button" onClick={() => setOpen(false)} className="p-1 text-slate-300 hover:text-white" aria-label="Close support">
-                            <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            {onContactHuman && (
+                                <button type="button" onClick={onContactHuman} className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-semibold text-white border border-slate-600 rounded-xs hover:bg-slate-800" title="Talk to a person">
+                                    <UserRound className="w-3.5 h-3.5 text-[#E00D42]" />
+                                    <span className="hidden sm:inline">Talk to a person</span>
+                                </button>
+                            )}
+                            <button type="button" onClick={() => setOpen(false)} className="p-1 text-slate-300 hover:text-white" aria-label="Close support">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
                     </header>
 
                     <div className="max-h-72 overflow-y-auto p-3 space-y-2">
@@ -99,9 +141,22 @@ export default function CustomerServiceAssistant() {
                         ))}
                         {loading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
                         {error && <p className="text-[11px] text-rose-600">{error}</p>}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     <div className="px-3 pb-3 space-y-2">
+                        <select
+                            value={productId}
+                            onChange={event => setProductId(event.target.value)}
+                            className="w-full px-2.5 py-2 text-[11px] border border-slate-200 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] bg-white"
+                        >
+                            <option value="">Choose a product (optional)</option>
+                            {products.map(product => (
+                                <option key={product.id} value={product.id}>
+                                    {product.name} — PHP {Number(product.price).toFixed(2)}
+                                </option>
+                            ))}
+                        </select>
                         <input
                             value={orderNumber}
                             onChange={event => setOrderNumber(event.target.value)}
