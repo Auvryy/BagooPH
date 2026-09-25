@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
 import BuyerIdVerificationModal from '@/Components/BuyerIdVerificationModal';
+import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
 import { buyerShouldSeeIdReminder } from '@/utils/kyc';
 
@@ -506,7 +507,7 @@ export default function BuyerLayout({
                         className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xs shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-slate-700 cursor-pointer"
                     >
                         <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                        <span className="hidden xs:inline">Customer Care</span>
+                        <span className="hidden xs:inline">Message a person</span>
                     </button>
                 </div>
             )}
@@ -546,6 +547,10 @@ export default function BuyerLayout({
                 receiverName="Bagoo Customer Care"
                 shopName="Bagoo Official Support & Merchant Dispatch"
             />
+
+            {user && user.role === 'buyer' && !route().current('buyer.messages') && !route().current('messages') && (
+                <CustomerServiceAssistant />
+            )}
 
             {/* 4.5. BUYER IDENTITY VERIFICATION REMINDER MODAL */}
             {user && user.role === 'buyer' && (

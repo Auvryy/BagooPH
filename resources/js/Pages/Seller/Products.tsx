@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { 
     Package, 
@@ -2085,6 +2086,12 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                         placeholder="Provide detailed material specifications, size measurements, and warranty details..."
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                     />
+                                    <ListingAssistantPanel
+                                        productName={createForm.data.name}
+                                        category={categories.find(category => String(category.id) === String(createForm.data.category_id))?.name}
+                                        currentDetails={createForm.data.description}
+                                        onUseDescription={description => createForm.setData('description', description)}
+                                    />
                                 </div>
                             </div>
 
@@ -2298,6 +2305,12 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                         rows={3}
                                         required
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                    />
+                                    <ListingAssistantPanel
+                                        productName={editForm.data.name}
+                                        category={categories.find(category => String(category.id) === String(editForm.data.category_id))?.name}
+                                        currentDetails={editForm.data.description}
+                                        onUseDescription={description => editForm.setData('description', description)}
                                     />
                                 </div>
                             </div>
