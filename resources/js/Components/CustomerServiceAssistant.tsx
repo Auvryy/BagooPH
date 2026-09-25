@@ -55,7 +55,7 @@ export default function CustomerServiceAssistant() {
                 <button
                     type="button"
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-black text-white font-semibold rounded-xs shadow-xl border border-slate-700 text-xs"
+                    className="fixed bottom-16 right-4 sm:bottom-6 sm:right-40 z-50 inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-black text-white font-semibold rounded-xs shadow-xl border border-slate-700 text-xs"
                 >
                     <MessageCircle className="w-4 h-4 text-[#E00D42]" />
                     Support
