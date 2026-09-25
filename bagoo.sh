@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Bagoo Project CLI Helper
 
 cmd=$1
@@ -37,6 +39,24 @@ case "$cmd" in
   npm)
     docker compose exec app npm "$@"
     ;;
+  deploy)
+    docker compose build app
+    docker compose run --rm --no-deps app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+    docker compose run --rm --no-deps app npm ci
+    docker compose run --rm --no-deps app npm run build
+    docker compose up -d db
+    docker compose up -d app web
+    docker compose exec app php artisan migrate --force
+    docker compose exec app php artisan optimize:clear
+    docker compose exec app php artisan config:cache
+    docker compose exec app php artisan view:cache
+    echo "Deployment checks passed. Frontend assets and Laravel caches are ready."
+    ;;
+  verify)
+    docker compose exec app sh -lc 'test -f public/build/manifest.json || { echo "Missing public/build/manifest.json. Run ./bagoo.sh deploy." >&2; exit 1; }'
+    docker compose exec app php artisan migrate:status --no-ansi
+    echo "Deployment verification passed."
+    ;;
   composer)
     docker compose exec app composer "$@"
     ;;
@@ -60,6 +80,8 @@ case "$cmd" in
     echo "  seed         Run database seeders"
     echo "  fresh        Run fresh migrations and seed demo data"
     echo "  npm          Run npm commands inside app container"
+    echo "  deploy       Build assets, migrate, and warm production caches"
+    echo "  verify       Confirm compiled assets and migration status"
     echo "  composer     Run composer commands inside app container"
     echo "  bash         Open bash shell inside app container"
     echo "  test         Run tests inside app container"

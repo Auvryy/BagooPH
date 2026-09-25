@@ -29,11 +29,13 @@ interface DeliveryItem {
     delivery_type: string;
     destination_bin: string;
     current_hub: string;
+    awaiting_origin_intake: boolean;
     destination_hub: string;
     rider_name: string;
     total_amount: number;
     payment_method: string;
     item_count: number;
+    items: Array<{ name: string; quantity: number }>;
     created_at: string;
 }
 
@@ -114,6 +116,14 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
     };
 
     const getStatusPill = (status: string) => {
+        if (status === 'picked_up') {
+            return (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-amber-50 text-amber-700 border border-amber-300">
+                    Awaiting origin intake
+                </span>
+            );
+        }
+
         if (status === 'delivered' || status === 'customer_collected') {
             return (
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-emerald-50 text-emerald-700 border border-emerald-300">
@@ -347,6 +357,11 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                 <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
                                                     Order: {delivery.order_number}
                                                 </span>
+                                                {delivery.items?.length > 0 && (
+                                                    <span className="text-[10px] text-slate-500 font-sans block mt-0.5 truncate max-w-[180px]">
+                                                        {delivery.items[0].name}{delivery.items.length > 1 ? ` + ${delivery.items.length - 1} more` : ''}
+                                                    </span>
+                                                )}
                                             </td>
 
                                             <td className="py-3 px-3.5">
