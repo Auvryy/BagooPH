@@ -10,6 +10,7 @@ use App\Http\Controllers\Buyer\BuyerProfileController;
 use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
+use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
+use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\PublicTrackingController;
@@ -281,6 +283,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
         Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
         Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
+        Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
+            ->middleware('throttle:20,1')
+            ->name('support.assistant');
     });
 });
 
@@ -348,6 +353,9 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
     Route::post('/products', [SellerProductController::class, 'store'])->name('products.store');
+    Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
+        ->middleware('throttle:20,1')
+        ->name('products.assist-description');
     Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
