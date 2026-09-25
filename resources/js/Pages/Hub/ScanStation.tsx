@@ -64,10 +64,21 @@ interface CounterPickupParcel {
     item_count: number;
 }
 
+interface PendingOriginIntake {
+    id: number;
+    tracking_number: string;
+    order_number?: string;
+    buyer_name: string;
+    rider_name: string;
+    item_names: string[];
+    updated_at: string;
+}
+
 interface ScanStationProps {
     activeHub: LogisticsHub | null;
     hubs: LogisticsHub[];
     recentScans: RecentScan[];
+    pendingOriginIntake: PendingOriginIntake[];
     counterPickups: CounterPickupParcel[];
     stats: {
         parcels_in_hub: number;
@@ -120,6 +131,7 @@ export default function ScanStation({
     activeHub,
     hubs,
     recentScans,
+    pendingOriginIntake,
     counterPickups,
     stats,
 }: ScanStationProps) {
@@ -352,7 +364,7 @@ export default function ScanStation({
             playSound('success');
             setLastResult({ prompt: data.prompt, delivery: data.delivery });
             setScanMessage(data.message);
-            router.reload({ only: ['recentScans', 'stats', 'counterPickups'] });
+            router.reload({ only: ['recentScans', 'pendingOriginIntake', 'stats', 'counterPickups'] });
         } catch (err: any) {
             playSound('error');
             setScanError(err.message || 'Network error while confirming the custody action.');
@@ -409,7 +421,7 @@ export default function ScanStation({
                 setClaimRecipientName('');
                 setClaimNotes('');
                 setReleasingId(null);
-                router.reload({ only: ['counterPickups', 'recentScans', 'stats'] });
+                router.reload({ only: ['counterPickups', 'recentScans', 'pendingOriginIntake', 'stats'] });
             } else {
                 playSound('error');
                 setScanError(data.error || 'Release failed.');
@@ -484,6 +496,48 @@ export default function ScanStation({
                     </div>
                 </div>
             </div>
+
+            {pendingOriginIntake.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xs p-4 mb-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                        <div>
+                            <h3 className="text-sm font-bold text-amber-950 font-sans flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                Awaiting origin hub intake
+                            </h3>
+                            <p className="text-xs text-amber-900/80 mt-0.5">
+                                Pickup riders have collected these parcels. Scan each waybill when it physically reaches {activeHub?.name}.
+                            </p>
+                        </div>
+                        <span className="text-xs font-bold text-amber-950 whitespace-nowrap">
+                            {pendingOriginIntake.length} waiting
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {pendingOriginIntake.map((parcel) => (
+                            <button
+                                type="button"
+                                key={parcel.id}
+                                onClick={() => {
+                                    setBarcodeInput(parcel.tracking_number);
+                                    barcodeInputRef.current?.focus();
+                                }}
+                                className="w-full text-left bg-white border border-amber-200 rounded-xs px-3 py-2 hover:border-[#E00D42] transition"
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-900 font-sans">{parcel.tracking_number}</div>
+                                        <div className="text-[11px] text-slate-600 mt-0.5">
+                                            {parcel.item_names.join(', ') || 'Parcel contents not listed'} · Pickup rider: {parcel.rider_name}
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 whitespace-nowrap">{parcel.updated_at}</div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Navigation Tabs (Style Guide Standard 2px Rectangular) */}
             <div className="flex border-b border-slate-300 mb-5 gap-1 font-sans text-xs">
