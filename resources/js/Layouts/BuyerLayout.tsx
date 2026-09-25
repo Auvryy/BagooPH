@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
 import BuyerIdVerificationModal from '@/Components/BuyerIdVerificationModal';
+import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
 import { buyerShouldSeeIdReminder } from '@/utils/kyc';
 
@@ -498,19 +499,6 @@ export default function BuyerLayout({
                 {children}
             </main>
 
-            {/* 4. FLOATING LIVE CHAT TRIGGER & MODAL */}
-            {!hideCustomerCare && !route().current('buyer.messages') && !route().current('messages') && (
-                <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
-                    <button
-                        onClick={() => setChatOpen(true)}
-                        className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xs shadow-2xl transition duration-300 flex items-center gap-2 hover:scale-105 tracking-wide text-xs font-sans border border-slate-700 cursor-pointer"
-                    >
-                        <MessageSquare className="w-4 h-4 text-[#E00D42]" />
-                        <span className="hidden xs:inline">Customer Care</span>
-                    </button>
-                </div>
-            )}
-
             {/* 4. LOGOUT FEEDBACK NOTIFICATION CHIP */}
             {logoutFeedback && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in pointer-events-auto">
@@ -544,8 +532,12 @@ export default function BuyerLayout({
                 onClose={() => setChatOpen(false)}
                 receiverId={2}
                 receiverName="Bagoo Customer Care"
-                shopName="Bagoo Official Support & Merchant Dispatch"
+                shopName="Bagoo Customer Care"
             />
+
+            {user && user.role === 'buyer' && !hideCustomerCare && !route().current('buyer.messages') && !route().current('messages') && (
+                <CustomerServiceAssistant onContactHuman={() => setChatOpen(true)} />
+            )}
 
             {/* 4.5. BUYER IDENTITY VERIFICATION REMINDER MODAL */}
             {user && user.role === 'buyer' && (

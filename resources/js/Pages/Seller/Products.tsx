@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { 
     Package, 
@@ -17,7 +18,6 @@ import {
     Tag, 
     DollarSign, 
     Box, 
-    Sparkles, 
     Upload, 
     Link, 
     AlertCircle, 
@@ -78,6 +78,8 @@ export default function SellerProducts({ products, categories, shop }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
+    const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
     // Create Modal Gallery & Mode States
     const [createImageMode, setCreateImageMode] = useState<'file' | 'url'>('file');
@@ -143,6 +145,13 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
 
+    const resizeDescription = (textarea: HTMLTextAreaElement | null) => {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+        textarea.style.overflowY = textarea.scrollHeight > 240 ? 'auto' : 'hidden';
+    };
+
     const createForm = useForm<{
         name: string;
         category_id: string | number;
@@ -198,6 +207,14 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         status: 'active',
         _method: 'PUT',
     });
+
+    useEffect(() => {
+        resizeDescription(createDescriptionRef.current);
+    }, [createForm.data.description]);
+
+    useEffect(() => {
+        resizeDescription(editDescriptionRef.current);
+    }, [editForm.data.description]);
 
     // Real-time slashed price validation: compare_at_price must be strictly greater than price
     const isSlashedPriceInvalid = (priceVal: string | number, compareVal: string | number | undefined | null) => {
@@ -926,7 +943,6 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     onClick={() => applyCategoryPreset(preset.id, isCreate)}
                                     className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] hover:text-[#E00D42] text-slate-700 text-xs font-medium font-sans shadow-2xs transition flex items-center gap-1.5"
                                 >
-                                    <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                                     <span>{preset.name}</span>
                                 </button>
                             ))}
@@ -2078,12 +2094,20 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase mb-2">Product Description & Specs</label>
                                     <textarea
+                                        ref={createDescriptionRef}
                                         value={createForm.data.description}
                                         onChange={(e) => createForm.setData('description', e.target.value)}
+                                        onInput={(e) => resizeDescription(e.currentTarget)}
                                         rows={3}
                                         required
                                         placeholder="Provide detailed material specifications, size measurements, and warranty details..."
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                        className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                    />
+                                    <ListingAssistantPanel
+                                        productName={createForm.data.name}
+                                        category={categories.find(category => String(category.id) === String(createForm.data.category_id))?.name}
+                                        currentDetails={createForm.data.description}
+                                        onUseDescription={description => createForm.setData('description', description)}
                                     />
                                 </div>
                             </div>
@@ -2293,11 +2317,19 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase mb-2">Description</label>
                                     <textarea
+                                        ref={editDescriptionRef}
                                         value={editForm.data.description}
                                         onChange={(e) => editForm.setData('description', e.target.value)}
+                                        onInput={(e) => resizeDescription(e.currentTarget)}
                                         rows={3}
                                         required
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                        className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                    />
+                                    <ListingAssistantPanel
+                                        productName={editForm.data.name}
+                                        category={categories.find(category => String(category.id) === String(editForm.data.category_id))?.name}
+                                        currentDetails={editForm.data.description}
+                                        onUseDescription={description => editForm.setData('description', description)}
                                     />
                                 </div>
                             </div>
