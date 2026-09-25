@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,12 @@ use Tests\TestCase;
 class BuyerCheckoutKycGateTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(DatabaseSeeder::class);
+    }
 
     private function createCartWithProduct(User $buyer): array
     {
@@ -31,6 +38,8 @@ class BuyerCheckoutKycGateTest extends TestCase
             'name' => 'Kyc Test Shop',
             'slug' => 'kyc-test-shop',
             'status' => 'active',
+            'address' => 'Lopez Avenue, Batong Malake',
+            'city' => 'Los Banos',
         ]);
 
         $category = Category::create([
@@ -146,6 +155,49 @@ class BuyerCheckoutKycGateTest extends TestCase
         $this->assertEquals(0, Order::count());
     }
 
+    public function test_approved_status_is_authoritative_even_when_document_path_is_not_shared(): void
+    {
+        $buyer = User::factory()->create([
+            'role' => 'buyer',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+            'id_document_path' => null,
+        ]);
+
+        $this->createCartWithProduct($buyer);
+
+        $response = $this->actingAs($buyer)->get('/checkout');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Checkout/Index')
+            ->where('kycStatus', 'approved')
+        );
+    }
+
+    public function test_inactive_buyer_cannot_place_order_even_with_approved_kyc(): void
+    {
+        $buyer = User::factory()->create([
+            'role' => 'buyer',
+            'status' => 'suspended',
+            'kyc_status' => 'approved',
+        ]);
+
+        $this->createCartWithProduct($buyer);
+
+        $response = $this->actingAs($buyer)->post('/checkout', [
+            'recipient_name' => 'Suspended Buyer',
+            'recipient_phone' => '09171234567',
+            'shipping_address' => '123 Test St',
+            'shipping_city' => 'Manila',
+            'payment_method' => 'cod',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Your account is not active and cannot place an order.');
+        $this->assertEquals(0, Order::count());
+    }
+
     public function test_approved_buyer_can_successfully_place_order(): void
     {
         $buyer = User::factory()->create([
@@ -154,13 +206,17 @@ class BuyerCheckoutKycGateTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->createCartWithProduct($buyer);
+        [, , , $cart] = $this->createCartWithProduct($buyer);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Approved Buyer',
             'recipient_phone' => '09171234567',
-            'shipping_address' => '123 Test St',
-            'shipping_city' => 'Manila',
+            'shipping_address' => 'Pedro Guevara Avenue, Poblacion III',
+            'shipping_city' => 'Santa Cruz',
+            'shipping_province' => 'Laguna',
+            'shipping_postal_code' => '4009',
+            'destination_barangay' => 'Poblacion III',
+            'item_ids' => [$cart->items->first()->id],
             'payment_method' => 'cod',
         ]);
 

@@ -26,6 +26,24 @@ class CheckoutOrderService
      */
     public function place(User $buyer, Cart $cart, array $cartItemIds, array $data): Collection
     {
+        // Keep the invariant in the order service as well as the controller so
+        // no future checkout entry point can place an order around the UI gate.
+        if (! $buyer->canCompleteCheckout()) {
+            if ($buyer->status !== 'active') {
+                throw new RuntimeException('Your account is not active and cannot place an order.');
+            }
+
+            if ($buyer->isKycPending()) {
+                throw new RuntimeException('Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
+            }
+
+            if ($buyer->isKycRejected()) {
+                throw new RuntimeException('Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
+            }
+
+            throw new RuntimeException('Identity verification is required before placing an order. Please upload a valid ID to proceed.');
+        }
+
         return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data) {
             $selectedIds = array_values(array_unique(array_map('intval', $cartItemIds)));
             if ($selectedIds === [] || count($selectedIds) !== count($cartItemIds)) {
