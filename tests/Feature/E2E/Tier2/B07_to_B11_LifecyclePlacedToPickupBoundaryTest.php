@@ -4,6 +4,8 @@ namespace Tests\Feature\E2E\Tier2;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,9 +131,14 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
         $this->createE2EDelivery($order, 'unassigned');
 
-        $this->actingAs($seller)->post(route('seller.orders.pack', $order->id));
+        $this->actingAs($seller)->post(route('seller.orders.acceptAndPack', $order->id));
         $order->refresh();
-        $this->assertNotEquals('placed', $order->status);
+        $this->assertEquals('preparing', $order->status);
+        $this->assertDatabaseHas('delivery_checkpoints', [
+            'delivery_id' => $order->delivery->id,
+            'checkpoint_type' => 'seller_pack',
+            'scanned_by_id' => $seller->id,
+        ]);
     }
 
     // ==========================================
@@ -147,7 +154,9 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $this->createE2EDelivery($order, 'unassigned');
 
         $response = $this->actingAs($seller)->post(route('seller.orders.pack', $order->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response->assertRedirect();
+        $response->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'currently placed'));
+        $this->assertEquals('placed', $order->fresh()->status);
     }
 
     public function test_t2_b09_02_double_packing_invocation_idempotency(): void
@@ -212,7 +221,8 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $this->createE2EDelivery($order, 'unassigned');
 
         $response = $this->actingAs($seller)->post(route('seller.orders.ready', $order->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response->assertRedirect();
+        $this->assertEquals('preparing', $order->fresh()->status);
     }
 
     public function test_t2_b10_02_double_ready_submission_idempotency(): void
@@ -220,8 +230,67 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
-        $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
+        $company = LogisticsCompany::create([
+            'name' => 'Test Logistics',
+            'slug' => 'test-logistics-'.uniqid(),
+            'code' => 'TLX-'.random_int(100, 999),
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $originBayan = LogisticsHub::create([
+            'logistics_company_id' => $company->id,
+            'name' => 'Origin Bayan Hub',
+            'code' => 'BH-ORIGIN-'.random_int(100, 999),
+            'tier' => 'local_bayan_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Santa Cruz',
+            'address' => 'Origin Bayan Hub Road, Santa Cruz, Laguna',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+        $originMother = LogisticsHub::create([
+            'logistics_company_id' => $company->id,
+            'name' => 'Origin Mother Hub',
+            'code' => 'MH-ORIGIN-'.random_int(100, 999),
+            'tier' => 'regional_mother_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Calamba City',
+            'address' => 'Origin Mother Hub Road, Calamba City, Laguna',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+        $destinationMother = LogisticsHub::create([
+            'logistics_company_id' => $company->id,
+            'name' => 'Destination Mother Hub',
+            'code' => 'MH-DEST-'.random_int(100, 999),
+            'tier' => 'regional_mother_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Calamba City',
+            'address' => 'Destination Mother Hub Road, Calamba City, Laguna',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+        $destinationBayan = LogisticsHub::create([
+            'logistics_company_id' => $company->id,
+            'name' => 'Destination Bayan Hub',
+            'code' => 'BH-DEST-'.random_int(100, 999),
+            'tier' => 'local_bayan_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Santa Cruz',
+            'address' => 'Destination Bayan Hub Road, Santa Cruz, Laguna',
+            'capacity' => 1000,
+            'is_active' => true,
+        ]);
+        $this->createE2EDelivery($order, 'unassigned', null, [
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $originBayan->id,
+            'origin_mother_hub_id' => $originMother->id,
+            'destination_mother_hub_id' => $destinationMother->id,
+            'destination_bayan_hub_id' => $destinationBayan->id,
+        ]);
+
+        $this->actingAs($seller)->post(route('seller.orders.pack', $order->id));
 
         $this->actingAs($seller)->post(route('seller.orders.ready', $order->id));
         $this->actingAs($seller)->post(route('seller.orders.ready', $order->id));

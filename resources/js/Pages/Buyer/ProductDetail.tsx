@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { Product, Review } from '@/types';
+import { PageProps, Product, Review } from '@/types';
 import { 
     Star, 
     Truck, 
@@ -29,6 +29,7 @@ import {
 
 import { useAmbientColor } from '@/Hooks/useAmbientColor';
 import ChatModal from '@/Components/ChatModal';
+import { buyerKycBlockMessage, buyerNeedsKycForPurchase } from '@/utils/kyc';
 
 interface VariationColor {
     id: string;
@@ -89,6 +90,8 @@ export default function BuyerProductDetail({
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [purchaseGateMessage, setPurchaseGateMessage] = useState<string | null>(null);
+    const { auth } = usePage<PageProps>().props;
 
     const getShareUrl = () => {
         if (typeof window !== 'undefined') {
@@ -176,6 +179,11 @@ export default function BuyerProductDetail({
     };
 
     const handleAddToBag = (buyNow: boolean = false) => {
+        if (buyNow && buyerNeedsKycForPurchase(auth.user)) {
+            setPurchaseGateMessage(buyerKycBlockMessage(auth.user));
+            return;
+        }
+
         setIsAdding(true);
 
         router.post(route('cart.store'), {
@@ -536,6 +544,31 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* Action Buttons: Add to Bag & Buy Now */}
+                        {purchaseGateMessage && (
+                            <div role="alert" className="mt-4 p-3.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-3">
+                                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
+                                <div className="space-y-1.5 flex-1">
+                                    <p className="font-semibold">Purchasing is locked until your identity is verified.</p>
+                                    <p className="leading-relaxed">{purchaseGateMessage}</p>
+                                    {auth.user?.role === 'buyer' && (
+                                        <Link
+                                            href={route('buyer.profile', { tab: 'account' })}
+                                            className="inline-flex items-center text-[#E00D42] font-bold hover:underline"
+                                        >
+                                            Open identity verification
+                                        </Link>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setPurchaseGateMessage(null)}
+                                    className="text-amber-700 hover:text-amber-950"
+                                    aria-label="Dismiss verification message"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
                         <div className="pt-4 flex flex-col sm:flex-row gap-3">
                             <button
                                 type="button"

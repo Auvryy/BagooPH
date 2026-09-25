@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import { Star, Truck, ShoppingBag, Check } from 'lucide-react';
+import { Star, Truck, ShoppingBag, Check, MapPin } from 'lucide-react';
 import { Product } from '@/types';
 
 interface ProductCardProps {
@@ -48,7 +48,7 @@ export default function ProductCard({
 
     const ratingVal = Number(product.rating || 5.0).toFixed(1);
     const salesCountVal = product.sales_count ?? 0;
-    const storeLocation = product.shop?.city || 'Metro Manila';
+    const storeLocation = product.shop?.city?.trim() || 'Location unavailable';
 
     return (
         <Link
@@ -122,24 +122,27 @@ export default function ProductCard({
                 </div>
 
                 {/* Footer: Rating, Sold count & Store Location */}
-                <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                        <div className="flex items-center gap-0.5 text-amber-500 font-bold font-sans">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            <span>{ratingVal}</span>
+                <div className="pt-1.5 border-t border-slate-100 space-y-1 text-[10px]">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-0.5 text-amber-500 font-bold font-sans">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span>{ratingVal}</span>
+                            </div>
+                            <span className="text-slate-400 font-sans">
+                                {salesCountVal > 0 ? `${salesCountVal} sold` : '0 sold'}
+                            </span>
                         </div>
-                        <span className="text-slate-400 font-sans">
-                            {salesCountVal > 0 ? `${salesCountVal} sold` : '0 sold'}
-                        </span>
                     </div>
 
                     {/* Store Location */}
-                    <span
-                        className="text-slate-400 font-sans truncate max-w-[85px] sm:max-w-[105px] text-right"
+                    <div
+                        className="flex items-center gap-1 min-w-0 text-slate-400 font-sans"
                         title={storeLocation}
                     >
-                        {storeLocation}
-                    </span>
+                        <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                        <span className="truncate">{storeLocation}</span>
+                    </div>
                 </div>
             </div>
 

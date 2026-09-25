@@ -88,7 +88,19 @@ class User extends Authenticatable
 
     public function isKycApproved(): bool
     {
-        return $this->isAdmin() || $this->kyc_status === 'approved';
+        return $this->isAdmin() || in_array($this->kyc_status, ['approved', 'verified'], true);
+    }
+
+    /**
+     * Returns whether this account may submit a checkout order.
+     *
+     * KYC approval is intentionally evaluated from the reviewed status, not
+     * from the presence of a path in the profile payload. A document can be
+     * stored privately while the account remains approved.
+     */
+    public function canCompleteCheckout(): bool
+    {
+        return $this->isAdmin() || ($this->status === 'active' && $this->isKycApproved());
     }
 
     public function isKycPending(): bool

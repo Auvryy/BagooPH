@@ -17,6 +17,9 @@ class OrderLifecycleService
         'pending' => 'confirmed',
         'confirmed' => 'preparing',
         'preparing' => 'ready_for_pickup',
+        // Legacy records remain readable and can finish the canonical seller flow.
+        'processing' => 'ready_for_pickup',
+        'packaging' => 'ready_for_pickup',
     ];
 
     public function sellerTransition(Order $order, Shop $shop, User $seller, string $targetStatus): Order
@@ -28,61 +31,88 @@ class OrderLifecycleService
                 ->firstOrFail();
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
-            $expectedTarget = self::SELLER_TRANSITIONS[$lockedOrder->status] ?? null;
-            if ($expectedTarget !== $targetStatus) {
-                throw new RuntimeException(
-                    "Order is currently {$lockedOrder->status}; the requested {$targetStatus} transition is not allowed."
-                );
-            }
-
-            if (! $lockedOrder->delivery) {
-                throw new RuntimeException('This order has no waybill or logistics route and cannot advance.');
-            }
-
-            if ($targetStatus === 'ready_for_pickup' && ! $this->hasCompleteRoute($lockedOrder)) {
-                throw new RuntimeException('The parcel route is incomplete and cannot be released for pickup.');
-            }
-            if (
-                $targetStatus === 'ready_for_pickup'
-                && ! $lockedOrder->delivery->checkpoints()->where('checkpoint_type', 'seller_pack')->exists()
-            ) {
-                throw new RuntimeException('Pack the parcel and prepare its waybill before marking it ready for pickup.');
-            }
-
-            $lockedOrder->update(['status' => $targetStatus]);
-
-            if ($targetStatus === 'preparing') {
-                DeliveryCheckpoint::firstOrCreate(
-                    ['delivery_id' => $lockedOrder->delivery->id, 'checkpoint_type' => 'seller_pack'],
-                    [
-                        'location_name' => $shop->name,
-                        'barcode_scanned' => $lockedOrder->delivery->tracking_number,
-                        'notes' => 'Seller packed the parcel and prepared its waybill.',
-                        'scanned_by_id' => $seller->id,
-                    ]
-                );
-            }
-
-            if ($targetStatus === 'ready_for_pickup') {
-                $lockedOrder->delivery->update([
-                    'status' => 'unassigned',
-                    'pickup_store_name' => $shop->name,
-                    'pickup_address' => "{$shop->address}, {$shop->city}",
-                    'pickup_phone' => $shop->phone,
-                ]);
-                DeliveryCheckpoint::firstOrCreate(
-                    ['delivery_id' => $lockedOrder->delivery->id, 'checkpoint_type' => 'ready_for_pickup'],
-                    [
-                        'location_name' => $shop->name,
-                        'barcode_scanned' => $lockedOrder->delivery->tracking_number,
-                        'notes' => 'Seller attached the waybill and staged the parcel for rider pickup.',
-                        'scanned_by_id' => $seller->id,
-                    ]
-                );
-            }
+            $this->applySellerTransition($lockedOrder, $shop, $seller, $targetStatus);
 
             return $lockedOrder->fresh(['delivery', 'items']);
         });
+    }
+
+    public function sellerAcceptAndPack(Order $order, Shop $shop, User $seller): Order
+    {
+        return DB::transaction(function () use ($order, $shop, $seller) {
+            $lockedOrder = Order::with(['items.product', 'delivery'])
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
+            if (! in_array($lockedOrder->status, ['placed', 'pending'], true)) {
+                throw new RuntimeException(
+                    "Order is currently {$lockedOrder->status}; only a newly placed order can be confirmed and packed together."
+                );
+            }
+
+            $this->applySellerTransition($lockedOrder, $shop, $seller, 'confirmed');
+            $this->applySellerTransition($lockedOrder, $shop, $seller, 'preparing');
+
+            return $lockedOrder->fresh(['delivery', 'items']);
+        });
+    }
+
+    private function applySellerTransition(Order $order, Shop $shop, User $seller, string $targetStatus): void
+    {
+        $expectedTarget = self::SELLER_TRANSITIONS[$order->status] ?? null;
+        if ($expectedTarget !== $targetStatus) {
+            throw new RuntimeException(
+                "Order is currently {$order->status}; the requested {$targetStatus} transition is not allowed."
+            );
+        }
+
+        if (! $order->delivery) {
+            throw new RuntimeException('This order has no waybill or logistics route and cannot advance.');
+        }
+
+        if ($targetStatus === 'ready_for_pickup' && ! $this->hasCompleteRoute($order)) {
+            throw new RuntimeException('The parcel route is incomplete and cannot be released for pickup.');
+        }
+        if (
+            $targetStatus === 'ready_for_pickup'
+            && ! $order->delivery->checkpoints()->where('checkpoint_type', 'seller_pack')->exists()
+        ) {
+            throw new RuntimeException('Pack the parcel and prepare its waybill before marking it ready for pickup.');
+        }
+
+        $order->update(['status' => $targetStatus]);
+
+        if ($targetStatus === 'preparing') {
+            DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $order->delivery->id, 'checkpoint_type' => 'seller_pack'],
+                [
+                    'location_name' => $shop->name,
+                    'barcode_scanned' => $order->delivery->tracking_number,
+                    'notes' => 'Seller packed the parcel and prepared its waybill.',
+                    'scanned_by_id' => $seller->id,
+                ]
+            );
+        }
+
+        if ($targetStatus === 'ready_for_pickup') {
+            $order->delivery->update([
+                'status' => 'unassigned',
+                'pickup_store_name' => $shop->name,
+                'pickup_address' => "{$shop->address}, {$shop->city}",
+                'pickup_phone' => $shop->phone,
+            ]);
+            DeliveryCheckpoint::firstOrCreate(
+                ['delivery_id' => $order->delivery->id, 'checkpoint_type' => 'ready_for_pickup'],
+                [
+                    'location_name' => $shop->name,
+                    'barcode_scanned' => $order->delivery->tracking_number,
+                    'notes' => 'Seller attached the waybill and staged the parcel for rider pickup.',
+                    'scanned_by_id' => $seller->id,
+                ]
+            );
+        }
     }
 
     public function cancelBySeller(Order $order, Shop $shop, User $seller, string $reason): Order
@@ -94,7 +124,7 @@ class OrderLifecycleService
                 ->firstOrFail();
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
-            if (! in_array($lockedOrder->status, ['placed', 'pending', 'confirmed', 'preparing', 'ready_for_pickup'], true)) {
+            if (! in_array($lockedOrder->status, ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging', 'ready_for_pickup'], true)) {
                 throw new RuntimeException('This order can no longer be cancelled by the seller.');
             }
 

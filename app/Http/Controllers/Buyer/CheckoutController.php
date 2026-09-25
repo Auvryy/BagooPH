@@ -70,7 +70,9 @@ class CheckoutController extends Controller
             ->latest()
             ->get();
 
-        $kycStatus = $user->kyc_status ?? 'none';
+        // Approved/verified is the reviewed authorization state. Do not infer
+        // a pending review from a missing path in the shared user payload.
+        $kycStatus = $user->isKycApproved() ? 'approved' : ($user->kyc_status ?? 'none');
 
         // Fetch saved addresses, migrating user profile address if user has no saved addresses
         if ($user->addresses()->count() === 0 && $user->address && $user->city) {
@@ -133,19 +135,23 @@ class CheckoutController extends Controller
     {
         $user = $request->user();
 
-        // Enforce KYC verification gate before allowing order submission
-        if (! $user->isAdmin()) {
-            if ($user->kyc_status === 'pending_approval') {
+        // Enforce the purchase gate before any cart, stock, or order work.
+        // This remains server-side protection even if a client skips Buy Now
+        // or submits the checkout request directly.
+        if (! $user->canCompleteCheckout()) {
+            if ($user->status !== 'active') {
+                return redirect()->route('buyer.checkout')->with('error', 'Your account is not active and cannot place an order.');
+            }
+
+            if ($user->isKycPending()) {
                 return redirect()->route('buyer.checkout')->with('error', 'Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
             }
 
-            if ($user->kyc_status === 'rejected') {
+            if ($user->isKycRejected()) {
                 return redirect()->route('buyer.checkout')->with('error', 'Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
             }
 
-            if ($user->kyc_status !== 'approved') {
-                return redirect()->route('buyer.checkout')->with('error', 'Identity verification is required before placing an order. Please upload a valid ID to proceed.');
-            }
+            return redirect()->route('buyer.checkout')->with('error', 'Identity verification is required before placing an order. Please upload a valid ID to proceed.');
         }
 
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();

@@ -226,6 +226,14 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
         });
     };
 
+    const handleAcceptAndPack = (orderId: number) => {
+        setIsSubmitting(true);
+        router.post(route('seller.orders.acceptAndPack', orderId), {}, {
+            preserveScroll: true,
+            onFinish: () => setIsSubmitting(false),
+        });
+    };
+
     const handleSchedulePickup = (orderId: number) => {
         setIsSubmitting(true);
         router.post(route('seller.orders.ready', orderId), {}, {
@@ -311,12 +319,19 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                     </span>
                 );
             case 'confirmed':
-            case 'preparing':
-            case 'processing':
                 return (
                     <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
                         <Box className="w-3 h-3 text-amber-600" />
                         <span>To Pack</span>
+                    </span>
+                );
+            case 'preparing':
+            case 'processing':
+            case 'packaging':
+                return (
+                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
+                        <Truck className="w-3 h-3 text-blue-600" />
+                        <span>Packed — Ready for Pickup</span>
                     </span>
                 );
             case 'ready_for_pickup':
@@ -536,8 +551,12 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                         {filteredItems.map((item) => {
                             const orderStatus = item.order?.status || 'pending';
                             const isSelected = selectedOrderIds.includes(item.order_id);
-                            const canSelect = ['pending', 'confirmed', 'preparing', 'processing', 'placed'].includes(orderStatus);
-                            const isToPack = ['placed', 'pending', 'confirmed', 'preparing', 'processing'].includes(orderStatus);
+                            const needsAcceptance = ['placed', 'pending'].includes(orderStatus);
+                            const needsPacking = orderStatus === 'confirmed';
+                            const needsReadyForPickup = ['preparing', 'processing', 'packaging'].includes(orderStatus);
+                            const canBatchReady = needsReadyForPickup;
+                            const canCancel = ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging', 'ready_for_pickup'].includes(orderStatus);
+                            const needsSellerAction = needsAcceptance || needsPacking || needsReadyForPickup;
                             const grossPrice = Number(item.subtotal || (Number(item.unit_price) * item.quantity));
                             const platformFee = grossPrice * 0.10;
                             const netSettlement = grossPrice - platformFee;
@@ -546,7 +565,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 <div
                                     key={item.id}
                                     className={`rounded-2xl border p-4 sm:p-5 space-y-3 font-sans ${
-                                        isToPack
+                                        needsSellerAction
                                             ? 'bg-rose-50/15 border-rose-200/80 border-l-[3px] border-l-[#E00D42] shadow-2xs'
                                             : 'bg-white border-slate-200/90 shadow-2xs'
                                     }`}
@@ -554,7 +573,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                     {/* Order Top Bar */}
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2.5 border-b border-slate-100 text-xs">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            {canSelect && (
+                                            {canBatchReady && (
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
@@ -596,14 +615,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                         </div>
 
                                         <div className="flex items-center gap-2 shrink-0">
-                                            {isToPack ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-[#E00D42] border border-rose-300/80 text-[10px] font-sans font-bold uppercase tracking-wider shadow-2xs">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
-                                                    To Pack
-                                                </span>
-                                            ) : (
-                                                getStatusPill(orderStatus)
-                                            )}
+                                            {getStatusPill(orderStatus)}
                                         </div>
                                     </div>
 
@@ -658,7 +670,7 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             </button>
 
                                             {/* Cancel Icon Button (only if pre-shipped) */}
-                                            {canSelect && (
+                                            {canCancel && (
                                                 <button
                                                     type="button"
                                                     onClick={() => setOrderToCancel(item)}
@@ -670,16 +682,26 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                             )}
 
                                             {/* Single Primary Action Button */}
-                                            {isToPack && (
+                                            {needsAcceptance || needsPacking ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => setOrderToAcceptAndPack(item)}
                                                     className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
                                                 >
                                                     <Box className="w-3.5 h-3.5" />
-                                                    <span>Pack Order</span>
+                                                    <span>{needsAcceptance ? 'Review & Confirm' : 'Pack Order'}</span>
                                                 </button>
-                                            )}
+                                            ) : needsReadyForPickup ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSchedulePickup(item.order_id)}
+                                                    disabled={isSubmitting}
+                                                    className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
+                                                >
+                                                    <Truck className="w-3.5 h-3.5" />
+                                                    <span>Ready for Pickup</span>
+                                                </button>
+                                            ) : null}
 
                                             {orderStatus === 'ready_for_pickup' && (
                                                 <span className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold flex items-center gap-1.5 font-sans text-xs">
@@ -740,13 +762,13 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <div>
                                 <div className="flex items-center gap-2 text-xs font-bold text-[#E00D42] font-sans">
                                     <Box className="w-4 h-4" />
-                                    <span>Accept Order Step</span>
+                                    <span>{orderToAcceptAndPack.order?.status === 'confirmed' ? 'Packing Step' : 'Acceptance Step'}</span>
                                 </div>
                                 <h3 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
-                                    Review & Accept Order #{orderToAcceptAndPack.order?.order_number}
+                                    Review & {orderToAcceptAndPack.order?.status === 'confirmed' ? 'Pack' : 'Confirm'} Order #{orderToAcceptAndPack.order?.order_number}
                                 </h3>
                                 <p className="text-xs text-slate-500 font-sans">
-                                    Verify items and preview the generated waybill before packing.
+                                    Verify the items and waybill before {orderToAcceptAndPack.order?.status === 'confirmed' ? 'packing' : 'confirming and packing'}.
                                 </p>
                             </div>
                             <button
@@ -862,13 +884,18 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                             <button
                                 type="button"
                                 onClick={() => {
-                                    handlePackOrder(orderToAcceptAndPack.order_id);
+                                    if (orderToAcceptAndPack.order?.status === 'confirmed') {
+                                        handlePackOrder(orderToAcceptAndPack.order_id);
+                                    } else {
+                                        handleAcceptAndPack(orderToAcceptAndPack.order_id);
+                                    }
                                     setOrderToAcceptAndPack(null);
                                 }}
+                                disabled={isSubmitting}
                                 className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-sans uppercase"
                             >
                                 <Box className="w-4 h-4" />
-                                <span>Confirm & Pack Order</span>
+                                <span>{orderToAcceptAndPack.order?.status === 'confirmed' ? 'Confirm Pack' : 'Confirm & Pack Order'}</span>
                             </button>
                         </div>
                     </div>

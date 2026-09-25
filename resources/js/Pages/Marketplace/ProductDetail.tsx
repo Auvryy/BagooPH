@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
-import { Product } from '@/types';
+import { PageProps, Product } from '@/types';
 import { 
     Star, 
     ShoppingCart, 
@@ -13,8 +13,10 @@ import {
     Minus, 
     Check, 
     RotateCcw,
-    Sparkles
+    Sparkles,
+    X
 } from 'lucide-react';
+import { buyerKycBlockMessage, buyerNeedsKycForPurchase } from '@/utils/kyc';
 
 interface Props {
     product: Product;
@@ -24,6 +26,8 @@ interface Props {
 export default function ProductDetail({ product, relatedProducts }: Props) {
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
+    const [purchaseGateMessage, setPurchaseGateMessage] = useState<string | null>(null);
+    const { auth } = usePage<PageProps>().props;
 
     const handleAddToCart = () => {
         router.post(route('cart.store'), {
@@ -35,6 +39,11 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
     };
 
     const handleBuyNow = () => {
+        if (buyerNeedsKycForPurchase(auth.user)) {
+            setPurchaseGateMessage(buyerKycBlockMessage(auth.user));
+            return;
+        }
+
         router.post(route('cart.store'), {
             product_id: product.id,
             quantity: quantity,
@@ -192,6 +201,31 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3">
+                                {purchaseGateMessage && (
+                                    <div role="alert" className="sm:col-span-2 p-3.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-3">
+                                        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
+                                        <div className="space-y-1.5 flex-1">
+                                            <p className="font-semibold">Purchasing is locked until your identity is verified.</p>
+                                            <p className="leading-relaxed">{purchaseGateMessage}</p>
+                                            {auth.user?.role === 'buyer' && (
+                                                <Link
+                                                    href={route('buyer.profile', { tab: 'account' })}
+                                                    className="inline-flex text-[#E00D42] font-bold hover:underline"
+                                                >
+                                                    Open identity verification
+                                                </Link>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPurchaseGateMessage(null)}
+                                            className="text-amber-700 hover:text-amber-950"
+                                            aria-label="Dismiss verification message"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                                 <button
                                     onClick={handleAddToCart}
                                     disabled={product.stock <= 0}

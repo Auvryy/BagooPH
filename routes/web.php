@@ -67,6 +67,7 @@ $registerSellerRoutes = function () {
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
         Route::get('/orders', [SellerOrderController::class, 'index']);
         Route::post('/orders/{order}/accept', [SellerOrderController::class, 'accept']);
+        Route::post('/orders/{order}/accept-and-pack', [SellerOrderController::class, 'acceptAndPack']);
         Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack']);
         Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
         Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover']);
@@ -351,6 +352,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
     Route::post('/orders/{order}/accept', [SellerOrderController::class, 'accept'])->name('orders.accept');
+    Route::post('/orders/{order}/accept-and-pack', [SellerOrderController::class, 'acceptAndPack'])->name('orders.acceptAndPack');
     Route::post('/orders/{order}/pack', [SellerOrderController::class, 'pack'])->name('orders.pack');
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
     Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover'])->name('orders.handover');

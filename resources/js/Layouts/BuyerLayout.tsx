@@ -25,6 +25,7 @@ import {
 import ChatModal from '@/Components/ChatModal';
 import BuyerIdVerificationModal from '@/Components/BuyerIdVerificationModal';
 import { getDomainUrl } from '@/utils/domain';
+import { buyerShouldSeeIdReminder } from '@/utils/kyc';
 
 interface Props {
     children: React.ReactNode;
@@ -138,8 +139,10 @@ export default function BuyerLayout({
             return;
         }
 
-        // Prompt if buyer has no ID document uploaded or if previous KYC was rejected
-        const needsId = !user.id_document_path || user.kyc_status === 'none' || user.kyc_status === 'rejected';
+        // The reviewed KYC status is authoritative. An approved buyer should
+        // never see the upload reminder just because the document path is not
+        // included in the current shared profile payload.
+        const needsId = buyerShouldSeeIdReminder(user);
         if (!needsId) {
             setIdReminderOpen(false);
             return;
@@ -153,7 +156,7 @@ export default function BuyerLayout({
             }, 700);
             return () => clearTimeout(timer);
         }
-    }, [user?.id, user?.kyc_status, user?.id_document_path]);
+    }, [user?.id, user?.kyc_status]);
 
     const handleDismissIdReminder = () => {
         if (typeof window !== 'undefined') {

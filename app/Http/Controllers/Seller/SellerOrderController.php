@@ -30,7 +30,7 @@ class SellerOrderController extends Controller
 
         $counts = [
             'all' => $baseItemQuery()->count(),
-            'to_pack' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing']))->count(),
+            'to_pack' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']))->count(),
             'to_pickup' => $baseItemQuery()->whereHas('order', fn ($q) => $q->where('status', 'ready_for_pickup'))->count(),
             'in_transit' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped']))->count(),
             'delivered' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['delivered', 'completed']))->count(),
@@ -54,7 +54,7 @@ class SellerOrderController extends Controller
             ->latest();
 
         if ($status === 'to_pack') {
-            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing']));
+            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']));
         } elseif ($status === 'to_pickup') {
             $query->whereHas('order', fn ($q) => $q->where('status', 'ready_for_pickup'));
         } elseif ($status === 'in_transit') {
@@ -83,6 +83,21 @@ class SellerOrderController extends Controller
     public function pack(Request $request, Order $order): RedirectResponse
     {
         return $this->transition($request, $order, 'preparing', "Order #{$order->order_number} marked as packed. Attach the waybill before release.");
+    }
+
+    public function acceptAndPack(Request $request, Order $order): RedirectResponse
+    {
+        try {
+            app(OrderLifecycleService::class)->sellerAcceptAndPack(
+                $order,
+                $this->getShop($request),
+                $request->user(),
+            );
+        } catch (\RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', "Order #{$order->order_number} confirmed and packed. It can now be marked ready for pickup.");
     }
 
     public function readyForPickup(Request $request, Order $order): RedirectResponse
