@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { Cart, CartItem } from '@/types';
+import { Cart, CartItem, PageProps } from '@/types';
 import { 
     ShoppingBag, 
     Trash2, 
@@ -15,8 +15,11 @@ import {
     Sparkles,
     Filter,
     ArrowUpDown,
-    Search
+    Search,
+    ShieldAlert,
+    X
 } from 'lucide-react';
+import { buyerKycBlockMessage, buyerNeedsKycForPurchase } from '@/utils/kyc';
 
 interface Props {
     cart: Cart;
@@ -50,6 +53,8 @@ export default function CartIndex({ cart, items, total }: Props) {
     const [sortBy, setSortBy] = useState<SortOption>('recent');
     const [filterBy, setFilterBy] = useState<FilterOption>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [checkoutGateMessage, setCheckoutGateMessage] = useState<string | null>(null);
+    const { auth } = usePage<PageProps>().props;
 
     // Process displayed items according to search, filter and sort options
     const displayedItems = useMemo(() => {
@@ -419,6 +424,42 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     >
                                         Select Items to Checkout
                                     </button>
+                                ) : buyerNeedsKycForPurchase(auth.user) ? (
+                                    <>
+                                        {checkoutGateMessage && (
+                                            <div role="alert" className="mb-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-[11px] flex items-start gap-2">
+                                                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
+                                                <div className="flex-1 space-y-1">
+                                                    <p className="font-semibold">Checkout is locked until verification.</p>
+                                                    <p className="leading-relaxed">{checkoutGateMessage}</p>
+                                                    {auth.user?.role === 'buyer' && (
+                                                        <Link
+                                                            href={route('buyer.profile', { tab: 'account' })}
+                                                            className="inline-flex text-[#E00D42] font-bold hover:underline"
+                                                        >
+                                                            Open identity verification
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCheckoutGateMessage(null)}
+                                                    className="text-amber-700 hover:text-amber-950"
+                                                    aria-label="Dismiss verification message"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setCheckoutGateMessage(buyerKycBlockMessage(auth.user))}
+                                            className="w-full py-3 bg-slate-400 hover:bg-slate-500 text-white font-bold rounded-xl uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 text-xs"
+                                        >
+                                            <ShieldAlert className="w-4 h-4" />
+                                            <span>Verify ID to Continue ({selectedIds.length})</span>
+                                        </button>
+                                    </>
                                 ) : (
                                     <Link
                                         href={route('checkout.index', { items: selectedIds.join(',') })}
