@@ -820,6 +820,7 @@ class LogisticsHubWorkstationController extends Controller
             'destinationMotherHub',
             'assignedRider',
         ])
+            ->useWritePdo()
             ->where('tracking_number', $barcode)
             ->orWhereHas('order', fn ($q) => $q->where('order_number', $barcode))
             ->first();
@@ -855,7 +856,7 @@ class LogisticsHubWorkstationController extends Controller
         if (($validated['mode'] ?? 'inspect') !== 'confirm') {
             $requiresConfirmation = $prompt['action'] !== 'AWAIT_BARANGAY_SORT';
 
-            return response()->json($this->scanPayload(
+            return $this->scanResponse($this->scanPayload(
                 delivery: $delivery,
                 hub: $hub,
                 prompt: $prompt,
@@ -898,17 +899,34 @@ class LogisticsHubWorkstationController extends Controller
             return $this->operationError($request, $exception->getMessage(), 409);
         }
 
+        $updatedDelivery->load([
+            'order.items.product',
+            'order.buyer',
+            'originBayanHub',
+            'originMotherHub',
+            'destinationBayanHub',
+            'destinationMotherHub',
+            'currentHub',
+        ]);
+        $nextPrompt = $routingEngine->getDynamicScanPrompt($updatedDelivery, $hub);
+        $requiresNextConfirmation = ! in_array($nextPrompt['action'], [
+            'AWAIT_BARANGAY_SORT',
+            'INSPECT_WAYBILL',
+        ], true);
+
         $payload = $this->scanPayload(
             delivery: $updatedDelivery,
             hub: $hub,
-            prompt: $prompt,
-            message: "Custody action recorded for parcel #{$delivery->tracking_number}.",
-            requiresConfirmation: false,
+            prompt: $nextPrompt,
+            message: $requiresNextConfirmation
+                ? "Custody action recorded for parcel #{$delivery->tracking_number}. The next facility action is ready."
+                : "Custody action recorded for parcel #{$delivery->tracking_number}.",
+            requiresConfirmation: $requiresNextConfirmation,
             confirmed: true
         );
 
         if ($request->wantsJson()) {
-            return response()->json($payload);
+            return $this->scanResponse($payload);
         }
 
         return back()->with('scan_result', $payload);
@@ -965,6 +983,16 @@ class LogisticsHubWorkstationController extends Controller
                 ],
             ],
         ];
+    }
+
+    private function scanResponse(array $payload, int $status = 200): JsonResponse
+    {
+        return response()
+            ->json($payload, $status)
+            ->withHeaders([
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+            ]);
     }
 
     private function scanTargetForAction(string $action): ?string

@@ -83,6 +83,127 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         $this->assertSame($motherHub->id, $delivery->current_hub_id);
     }
 
+    public function test_confirmed_origin_scan_immediately_returns_the_next_action(): void
+    {
+        $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        $order = $this->createOrder('picked_up', 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id,
+            'courier_id' => $pickupRider->id,
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $originHub->id,
+            'origin_mother_hub_id' => $motherHub->id,
+            'destination_mother_hub_id' => $motherHub->id,
+            'destination_bayan_hub_id' => $destinationHub->id,
+            'current_hub_id' => null,
+            'status' => OrderStateMachineService::STATUS_PICKED_UP,
+        ]);
+
+        $response = $this->actingAs($originHandler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $originHub->id,
+            'mode' => 'confirm',
+            'action' => 'RECEIVE_FROM_PICKUP_RIDER',
+            'expected_status' => OrderStateMachineService::STATUS_PICKED_UP,
+        ]);
+
+        $response->assertOk()
+            ->assertHeader('Cache-Control')
+            ->assertJsonPath('confirmed', true)
+            ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
+            ->assertJsonPath('prompt.action', 'DISPATCH_TO_FEEDER')
+            ->assertJsonPath('prompt.expected_status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
+            ->assertJsonPath('prompt.requires_confirmation', true);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $this->actingAs($originHandler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $originHub->id,
+            'mode' => 'confirm',
+            'action' => 'DISPATCH_TO_FEEDER',
+            'expected_status' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
+        ])->assertOk()
+            ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB)
+            ->assertJsonPath('prompt.action', 'INSPECT_WAYBILL')
+            ->assertJsonPath('prompt.requires_confirmation', false);
+    }
+
+    public function test_origin_hub_can_scan_immediately_after_rider_pickup_without_navigation(): void
+    {
+        $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        $order = $this->createOrder(OrderStateMachineService::STATUS_READY_FOR_PICKUP, 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id,
+            'courier_id' => $pickupRider->id,
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $originHub->id,
+            'origin_mother_hub_id' => $motherHub->id,
+            'destination_mother_hub_id' => $motherHub->id,
+            'destination_bayan_hub_id' => $destinationHub->id,
+            'current_hub_id' => null,
+            'status' => 'assigned_pickup',
+        ]);
+
+        $this->actingAs($pickupRider)
+            ->patch(route('courier.updateStatus', $delivery), [
+                'status' => 'picked_up',
+            ])
+            ->assertSessionHas('success');
+
+        $this->actingAs($originHandler)
+            ->postJson(route('hub.scan'), [
+                'barcode' => $delivery->tracking_number,
+                'hub_id' => $originHub->id,
+                'mode' => 'inspect',
+            ])
+            ->assertOk()
+            ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_PICKED_UP)
+            ->assertJsonPath('prompt.action', 'RECEIVE_FROM_PICKUP_RIDER')
+            ->assertJsonPath('prompt.requires_confirmation', true);
+    }
+
+    public function test_destination_intake_immediately_returns_the_sorting_step(): void
+    {
+        $destinationHandler = User::where('email', 'logistics@bagoo.test')->firstOrFail();
+        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
+        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
+        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        $order = $this->createOrder('at_sorting_center', 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id,
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $originHub->id,
+            'origin_mother_hub_id' => $motherHub->id,
+            'destination_mother_hub_id' => $motherHub->id,
+            'destination_bayan_hub_id' => $destinationHub->id,
+            'current_hub_id' => null,
+            'status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+        ]);
+
+        $this->actingAs($destinationHandler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number,
+            'hub_id' => $destinationHub->id,
+            'mode' => 'confirm',
+            'action' => 'RECEIVE_AT_DESTINATION_HUB',
+            'expected_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+        ])->assertOk()
+            ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB)
+            ->assertJsonPath('prompt.action', 'AWAIT_BARANGAY_SORT')
+            ->assertJsonPath('prompt.expected_status', OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB)
+            ->assertJsonPath('prompt.requires_confirmation', false);
+    }
+
     public function test_hub_sorts_then_assigns_before_only_the_selected_rider_can_dispatch(): void
     {
         $logistics = User::where('email', 'logistics@bagoo.test')->firstOrFail();
