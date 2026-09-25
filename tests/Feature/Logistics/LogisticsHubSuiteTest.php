@@ -283,9 +283,10 @@ class LogisticsHubSuiteTest extends TestCase
             ->get(route('hub.dashboard'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('stats.parcels_in_custody', 1)
+                ->where('stats.parcels_in_custody', 0)
                 ->where('attentionQueue.3.count', 1)
-                ->where('facilities.0.parcels', 1)
+                ->where('facilities.0.parcels', 0)
+                ->where('facilities.0.awaiting_origin_intake', 1)
             );
 
         $this->actingAs($handler)
@@ -303,7 +304,7 @@ class LogisticsHubSuiteTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('pendingOriginIntake.0.id', $delivery->id)
-                ->where('stats.parcels_in_hub', 1)
+                ->where('stats.parcels_in_hub', 0)
             );
     }
 

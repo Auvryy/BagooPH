@@ -152,13 +152,16 @@ class LogisticsHubWorkstationController extends Controller
         ];
 
         $deliveryQuery = fn () => $this->scopeDeliveriesAtHubs(Delivery::query(), $scopeHubIds, $company?->id);
+        $custodyQuery = fn () => Delivery::query()
+            ->when($company?->id, fn ($query, $companyId) => $query->where('logistics_company_id', $companyId))
+            ->whereIn('current_hub_id', $scopeHubIds);
 
-        $parcelsInCustody = $deliveryQuery()->whereNotIn('status', $terminalStatuses)->count();
-        $readyForDispatch = $deliveryQuery()->whereIn('status', [
+        $parcelsInCustody = $custodyQuery()->whereNotIn('status', $terminalStatuses)->count();
+        $readyForDispatch = $custodyQuery()->whereIn('status', [
             OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
             OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
         ])->count();
-        $exceptions = $deliveryQuery()->whereIn('status', $exceptionStatuses)->count();
+        $exceptions = $custodyQuery()->whereIn('status', $exceptionStatuses)->count();
         $dispatchedToday = DeliveryCheckpoint::query()
             ->whereIn('hub_id', $scopeHubIds)
             ->whereIn('checkpoint_type', $outboundCheckpointTypes)
@@ -193,7 +196,7 @@ class LogisticsHubWorkstationController extends Controller
             ];
         });
 
-        $counterPickupCount = $deliveryQuery()
+        $counterPickupCount = $custodyQuery()
             ->where('delivery_type', 'hub_self_pickup')
             ->whereIn('status', [
                 OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
@@ -240,21 +243,21 @@ class LogisticsHubWorkstationController extends Controller
         ];
 
         $parcelFlow = [
-            'origin_hub' => $deliveryQuery()->where('status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->count(),
-            'mother_hub_transit' => $deliveryQuery()->whereIn('status', [
+            'origin_hub' => $custodyQuery()->where('status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->count(),
+            'mother_hub_transit' => $custodyQuery()->whereIn('status', [
                 OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
                 OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
                 OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
                 OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
             ])->count(),
-            'destination_hub' => $deliveryQuery()
+            'destination_hub' => $custodyQuery()
                 ->where('delivery_type', '!=', 'hub_self_pickup')
                 ->whereIn('status', [
                     OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                     OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
                     OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
                 ])->count(),
-            'final_mile' => $deliveryQuery()->where('status', OrderStateMachineService::STATUS_OUT_FOR_DELIVERY)->count(),
+            'final_mile' => $custodyQuery()->where('status', OrderStateMachineService::STATUS_OUT_FOR_DELIVERY)->count(),
             'counter_pickup' => $counterPickupCount,
         ];
 
@@ -277,12 +280,13 @@ class LogisticsHubWorkstationController extends Controller
                 'code' => $hub->code,
                 'tier' => $hub->tier,
                 'city_municipality' => $hub->city_municipality,
-                'parcels' => $hub->parcels_count + $hub->awaiting_origin_intake_count,
+                'parcels' => $hub->parcels_count,
+                'awaiting_origin_intake' => $hub->awaiting_origin_intake_count,
                 'exceptions' => $hub->exceptions_count,
                 'active_fleet' => $hub->active_fleet_count,
                 'capacity' => $hub->capacity,
                 'utilization_rate' => $hub->capacity > 0
-                    ? round((($hub->parcels_count + $hub->awaiting_origin_intake_count) / $hub->capacity) * 100, 1)
+                    ? round(($hub->parcels_count / $hub->capacity) * 100, 1)
                     : 0,
             ]);
 
@@ -362,7 +366,7 @@ class LogisticsHubWorkstationController extends Controller
             ->orderBy('name')
             ->get()
             ->map(function ($h) {
-                $parcelCount = $h->parcel_count + $h->awaiting_origin_intake_count;
+                $parcelCount = $h->parcel_count;
                 $utilization = $h->capacity > 0 ? round(($parcelCount / $h->capacity) * 100, 1) : 0;
 
                 return [
@@ -767,7 +771,7 @@ class LogisticsHubWorkstationController extends Controller
 
         // Quick stats for active hub
         $stats = [
-            'parcels_in_hub' => $activeHub ? $this->scopeDeliveriesAtHubs(Delivery::query(), [$activeHub->id], $activeHub->logistics_company_id)->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])->count() : 0,
+            'parcels_in_hub' => $activeHub ? Delivery::query()->where('logistics_company_id', $activeHub->logistics_company_id)->where('current_hub_id', $activeHub->id)->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])->count() : 0,
             'ready_pickup' => $activeHub ? Delivery::where('destination_bayan_hub_id', $activeHub->id)->where('delivery_type', 'hub_self_pickup')->where('status', OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP)->count() : 0,
             'dispatched_today' => $activeHub ? DeliveryCheckpoint::where('hub_id', $activeHub->id)
                 ->whereIn('checkpoint_type', [
