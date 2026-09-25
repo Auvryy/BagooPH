@@ -257,6 +257,56 @@ class LogisticsHubSuiteTest extends TestCase
         );
     }
 
+    public function test_origin_hub_sees_pickup_handoff_before_intake_scan(): void
+    {
+        $handler = User::factory()->create([
+            'role' => 'logistics',
+            'status' => 'active',
+            'kyc_status' => 'approved',
+        ]);
+        HubHandler::create([
+            'user_id' => $handler->id,
+            'hub_id' => $this->bayanHub->id,
+            'role_title' => 'Hub Handler',
+            'is_active' => true,
+        ]);
+
+        $delivery = Delivery::factory()->create([
+            'logistics_company_id' => $this->company->id,
+            'origin_bayan_hub_id' => $this->bayanHub->id,
+            'destination_bayan_hub_id' => $this->bayanHub->id,
+            'current_hub_id' => null,
+            'status' => OrderStateMachineService::STATUS_PICKED_UP,
+        ]);
+
+        $this->actingAs($handler)
+            ->get(route('hub.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.parcels_in_custody', 1)
+                ->where('attentionQueue.3.count', 1)
+                ->where('facilities.0.parcels', 1)
+            );
+
+        $this->actingAs($handler)
+            ->get(route('hub.deliveries'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('counts.all', 1)
+                ->where('deliveries.data.0.id', $delivery->id)
+                ->where('deliveries.data.0.awaiting_origin_intake', true)
+                ->where('deliveries.data.0.current_hub', 'Awaiting origin hub intake')
+            );
+
+        $this->actingAs($handler)
+            ->get(route('hub.scan.station'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('pendingOriginIntake.0.id', $delivery->id)
+                ->where('stats.parcels_in_hub', 1)
+            );
+    }
+
     public function test_hub_index_renders_seller_styled_dashboard(): void
     {
         $response = $this->actingAs($this->logisticsUser)
