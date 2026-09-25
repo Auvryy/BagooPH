@@ -40,10 +40,12 @@ case "$cmd" in
     docker compose exec app npm "$@"
     ;;
   deploy)
-    docker compose up -d --build
-    docker compose exec app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-    docker compose exec app npm ci
-    docker compose exec app npm run build
+    docker compose build app
+    docker compose run --rm --no-deps app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+    docker compose run --rm --no-deps app npm ci
+    docker compose run --rm --no-deps app npm run build
+    docker compose up -d db
+    docker compose up -d app web
     docker compose exec app php artisan migrate --force
     docker compose exec app php artisan optimize:clear
     docker compose exec app php artisan config:cache
