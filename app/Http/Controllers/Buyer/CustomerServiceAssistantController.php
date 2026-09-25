@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\Product;
 use App\Services\AI\AiTextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,20 +11,6 @@ use RuntimeException;
 
 class CustomerServiceAssistantController extends Controller
 {
-    public function products(Request $request): JsonResponse
-    {
-        abort_unless($request->user()?->isBuyer(), 403);
-
-        return response()->json([
-            'products' => Product::query()
-                ->where('status', 'active')
-                ->select(['id', 'name', 'price', 'featured_image'])
-                ->latest()
-                ->limit(3)
-                ->get(),
-        ]);
-    }
-
     public function respond(Request $request, AiTextService $assistant): JsonResponse
     {
         abort_unless($request->user()?->isBuyer(), 403);
@@ -33,20 +18,7 @@ class CustomerServiceAssistantController extends Controller
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:1000'],
             'order_number' => ['nullable', 'string', 'max:50'],
-            'product_id' => ['nullable', 'integer'],
         ]);
-
-        $selectedProduct = null;
-        if (! empty($validated['product_id'])) {
-            $selectedProduct = Product::query()
-                ->where('status', 'active')
-                ->with('category:id,name')
-                ->find($validated['product_id']);
-
-            if (! $selectedProduct) {
-                return response()->json(['message' => 'That product is no longer available. Please choose another product.'], 422);
-            }
-        }
 
         $orders = Order::query()
             ->where('buyer_id', $request->user()->id)
@@ -77,12 +49,6 @@ PROMPT;
             'buyer_message' => $validated['message'],
             'requested_order_number' => $validated['order_number'] ?? null,
             'account_orders' => $orders,
-            'selected_product' => $selectedProduct ? [
-                'name' => $selectedProduct->name,
-                'category' => $selectedProduct->category?->name,
-                'description' => str($selectedProduct->description ?? '')->limit(600)->toString(),
-                'price' => (float) $selectedProduct->price,
-            ] : null,
         ], JSON_UNESCAPED_SLASHES);
 
         try {

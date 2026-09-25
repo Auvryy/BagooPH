@@ -7,12 +7,6 @@ interface MessageItem {
     text: string;
 }
 
-interface ProductOption {
-    id: number;
-    name: string;
-    price: string | number;
-}
-
 interface Props {
     onContactHuman?: () => void;
 }
@@ -30,21 +24,7 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [messages, setMessages] = useState<MessageItem[]>([]);
-    const [products, setProducts] = useState<ProductOption[]>([]);
-    const [productId, setProductId] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!open || products.length > 0) return;
-
-        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
-        fetch(route('buyer.support.assistant.products'), {
-            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        })
-            .then(response => response.ok ? response.json() : Promise.reject(new Error('Products are unavailable right now.')))
-            .then(payload => setProducts(payload.products || []))
-            .catch(() => setError('Products are unavailable right now.'));
-    }, [open, products.length]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -70,7 +50,6 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
                 body: JSON.stringify({
                     message: trimmed,
                     order_number: orderNumber.trim() || null,
-                    product_id: productId || null,
                 }),
             });
             const payload = await response.json();
@@ -89,7 +68,7 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
                 <button
                     type="button"
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-16 right-4 sm:bottom-6 sm:right-40 z-50 inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-black text-white font-semibold rounded-xs shadow-xl border border-slate-700 text-xs"
+                    className="fixed bottom-16 right-4 sm:bottom-6 sm:right-6 z-50 inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-black text-white font-semibold rounded-xs shadow-xl border border-slate-700 text-xs"
                 >
                     <MessageCircle className="w-4 h-4 text-[#E00D42]" />
                     Support
@@ -99,16 +78,16 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
             {open && (
                 <section className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] w-[calc(100vw-2rem)] max-w-sm bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden">
                     <header className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-900 text-white">
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                             <BagooLogo className="w-8 h-8" rounded="rounded-xs" />
-                            <div>
-                                <h2 className="text-sm font-bold">Bagoo Support</h2>
+                            <div className="min-w-0">
+                                <h2 className="block text-sm font-bold leading-5 text-white">Bagoo Support</h2>
                                 <p className="text-[10px] text-slate-300">Shopping and order help</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
                             {onContactHuman && (
-                                <button type="button" onClick={onContactHuman} className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-semibold text-white border border-slate-600 rounded-xs hover:bg-slate-800" title="Talk to a person">
+                                <button type="button" onClick={() => { setOpen(false); onContactHuman(); }} className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-semibold text-white border border-slate-600 rounded-xs hover:bg-slate-800" title="Talk to a person">
                                     <UserRound className="w-3.5 h-3.5 text-[#E00D42]" />
                                     <span className="hidden sm:inline">Talk to a person</span>
                                 </button>
@@ -145,18 +124,6 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
                     </div>
 
                     <div className="px-3 pb-3 space-y-2">
-                        <select
-                            value={productId}
-                            onChange={event => setProductId(event.target.value)}
-                            className="w-full px-2.5 py-2 text-[11px] border border-slate-200 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] bg-white"
-                        >
-                            <option value="">Choose a product (optional)</option>
-                            {products.map(product => (
-                                <option key={product.id} value={product.id}>
-                                    {product.name} — PHP {Number(product.price).toFixed(2)}
-                                </option>
-                            ))}
-                        </select>
                         <input
                             value={orderNumber}
                             onChange={event => setOrderNumber(event.target.value)}
