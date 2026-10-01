@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -24,14 +25,14 @@ class BuyerProductController extends Controller
             $search = trim($request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('description', 'ilike', "%{$search}%")
-                  ->orWhere('sku', 'ilike', "%{$search}%")
-                  ->orWhereHas('category', function ($catQ) use ($search) {
-                      $catQ->where('name', 'ilike', "%{$search}%");
-                  })
-                  ->orWhereHas('shop', function ($shopQ) use ($search) {
-                      $shopQ->where('name', 'ilike', "%{$search}%");
-                  });
+                    ->orWhere('description', 'ilike', "%{$search}%")
+                    ->orWhere('sku', 'ilike', "%{$search}%")
+                    ->orWhereHas('category', function ($catQ) use ($search) {
+                        $catQ->where('name', 'ilike', "%{$search}%");
+                    })
+                    ->orWhereHas('shop', function ($shopQ) use ($search) {
+                        $shopQ->where('name', 'ilike', "%{$search}%");
+                    });
             });
         }
 
@@ -44,10 +45,10 @@ class BuyerProductController extends Controller
 
         // Price Filters
         if ($request->filled('min_price') && is_numeric($request->input('min_price'))) {
-            $query->where('price', '>=', (float)$request->input('min_price'));
+            $query->where('price', '>=', (float) $request->input('min_price'));
         }
         if ($request->filled('max_price') && is_numeric($request->input('max_price'))) {
-            $query->where('price', '<=', (float)$request->input('max_price'));
+            $query->where('price', '<=', (float) $request->input('max_price'));
         }
 
         // In Stock Filter
@@ -57,7 +58,7 @@ class BuyerProductController extends Controller
 
         // Rating Filter (e.g. 4 stars and above)
         if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->where('rating', '>=', (float)$request->input('rating'));
+            $query->where('rating', '>=', (float) $request->input('rating'));
         }
 
         // Sorting
@@ -121,14 +122,15 @@ class BuyerProductController extends Controller
             ],
         ]);
     }
-    public function show(string $slug): Response
+
+    public function show(Request $request, string $slug): Response
     {
         $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])
             ->where('status', 'active')
             ->where(function ($q) use ($slug) {
                 $q->where('slug', $slug);
                 if (is_numeric($slug)) {
-                    $q->orWhere('id', (int)$slug);
+                    $q->orWhere('id', (int) $slug);
                 }
             })
             ->first();
@@ -137,7 +139,7 @@ class BuyerProductController extends Controller
         if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
             $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])
                 ->where('status', 'active')
-                ->where('id', (int)$matches[1])
+                ->where('id', (int) $matches[1])
                 ->first();
         }
 
@@ -168,11 +170,26 @@ class BuyerProductController extends Controller
             'is_mall' => true,
         ];
 
+        $cart = Cart::query()
+            ->when(
+                $request->user(),
+                fn ($query, $user) => $query->where('user_id', $user->id),
+                fn ($query) => $query->where('session_id', $request->session()->getId())->whereNull('user_id')
+            )
+            ->with(['items' => fn ($query) => $query->where('product_id', $product->id)])
+            ->first();
+        $cartQuantities = $cart?->items->map(fn ($item) => [
+            'color' => $item->color,
+            'size' => $item->size,
+            'quantity' => $item->quantity,
+        ])->values() ?? collect();
+
         return Inertia::render('Buyer/ProductDetail', [
             'product' => $product,
             'variations' => $variations,
             'relatedProducts' => $relatedProducts,
             'shopStats' => $shopStats,
+            'cartQuantities' => $cartQuantities,
         ]);
     }
 }

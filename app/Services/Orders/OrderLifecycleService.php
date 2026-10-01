@@ -4,14 +4,18 @@ namespace App\Services\Orders;
 
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Commerce\InventoryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class OrderLifecycleService
 {
+    public function __construct(private readonly InventoryService $inventory) {}
+
     private const SELLER_TRANSITIONS = [
         'placed' => 'confirmed',
         'pending' => 'confirmed',
@@ -137,9 +141,9 @@ class OrderLifecycleService
             }
 
             foreach ($lockedOrder->items as $item) {
-                if ($item->product) {
-                    $item->product->increment('stock', $item->quantity);
-                    $item->product->decrement('sales_count', min($item->quantity, $item->product->sales_count));
+                $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
+                if ($product) {
+                    $this->inventory->restore($product, $item->quantity, $item->size);
                 }
             }
 
