@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { PageProps, Product, Review } from '@/types';
@@ -69,6 +69,11 @@ interface Props {
     variations: Variations;
     relatedProducts: Product[];
     shopStats: ShopStats;
+    cartQuantities?: Array<{
+        color?: string | null;
+        size?: string | null;
+        quantity: number;
+    }>;
 }
 
 export default function BuyerProductDetail({
@@ -76,12 +81,15 @@ export default function BuyerProductDetail({
     variations,
     relatedProducts,
     shopStats,
+    cartQuantities = [],
 }: Props) {
     const colorsList = variations?.colors || [];
     const sizesList = variations?.sizes || [];
-    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(colorsList[0] || null);
+    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(
+        colorsList.find((color) => color.in_stock) || colorsList[0] || null
+    );
     const [selectedSize, setSelectedSize] = useState<VariationSize | null>(sizesList[0] || null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantityInput, setQuantityInput] = useState('1');
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
     const [isAdding, setIsAdding] = useState(false);
     const [addedSuccess, setAddedSuccess] = useState(false);
@@ -91,6 +99,7 @@ export default function BuyerProductDetail({
     const [copiedShareLink, setCopiedShareLink] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [purchaseGateMessage, setPurchaseGateMessage] = useState<string | null>(null);
+    const [cartFeedback, setCartFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const { auth } = usePage<PageProps>().props;
 
     const getShareUrl = () => {
@@ -166,17 +175,63 @@ export default function BuyerProductDetail({
     const currentComparePrice = baseCompare + extraPrice;
     const discountPct = Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100);
 
-    const maxAvailableStock = selectedSize ? selectedSize.stock : product.stock;
+    const selectionStock = Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const selectedSizeInCart = selectedSize
+        ? cartQuantities
+            .filter((item) => item.size === selectedSize.name)
+            .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+        : totalProductInCart;
+    const selectedLineInCart = cartQuantities.find((item) =>
+        (item.color ?? null) === (selectedColor?.name ?? null)
+        && (item.size ?? null) === (selectedSize?.name ?? null)
+    )?.quantity ?? 0;
+    const maxAddableQuantity = selectedColor?.in_stock === false
+        ? 0
+        : Math.max(0, Math.min(
+            99 - selectedLineInCart,
+            product.stock - totalProductInCart,
+            selectionStock - selectedSizeInCart
+        ));
+    const quantity = Math.max(1, Number(quantityInput) || 1);
 
     // Collect all review customer photos for photo gallery
     const allCustomerPhotos = (product.reviews || []).flatMap(r => r.images || []).filter(Boolean);
 
     const handleQuantityChange = (delta: number) => {
-        setQuantity(prev => {
-            const next = prev + delta;
-            return Math.max(1, Math.min(next, maxAvailableStock));
-        });
+        const next = Math.max(1, Math.min(quantity + delta, maxAddableQuantity));
+        setQuantityInput(String(next));
+        setCartFeedback(null);
     };
+
+    const handleQuantityInput = (value: string) => {
+        if (value === '') {
+            setQuantityInput('');
+            return;
+        }
+        if (!/^\d+$/.test(value)) return;
+
+        const parsed = Number(value);
+        if (parsed > maxAddableQuantity) {
+            setQuantityInput(String(Math.max(1, maxAddableQuantity)));
+            setCartFeedback({
+                type: 'error',
+                message: maxAddableQuantity > 0
+                    ? `You can add only ${maxAddableQuantity} more of this selection.`
+                    : 'All currently available units are already in your Shopping Bag.',
+            });
+            return;
+        }
+
+        setQuantityInput(String(Math.max(1, parsed)));
+        setCartFeedback(null);
+    };
+
+    useEffect(() => {
+        if (maxAddableQuantity > 0 && quantity > maxAddableQuantity) {
+            setQuantityInput(String(maxAddableQuantity));
+        }
+    }, [maxAddableQuantity, quantity]);
 
     const handleAddToBag = (buyNow: boolean = false) => {
         if (buyNow && buyerNeedsKycForPurchase(auth.user)) {
@@ -184,7 +239,17 @@ export default function BuyerProductDetail({
             return;
         }
 
+        if (maxAddableQuantity < 1) {
+            setCartFeedback({
+                type: 'error',
+                message: 'All currently available units are already in your Shopping Bag.',
+            });
+            return;
+        }
+
         setIsAdding(true);
+        setAddedSuccess(false);
+        setCartFeedback(null);
 
         router.post(route('cart.store'), {
             product_id: product.id,
@@ -196,14 +261,20 @@ export default function BuyerProductDetail({
             onSuccess: () => {
                 setIsAdding(false);
                 setAddedSuccess(true);
+                setCartFeedback({ type: 'success', message: `${quantity} added to your Shopping Bag.` });
                 setTimeout(() => setAddedSuccess(false), 2500);
 
                 if (buyNow) {
                     router.get(route('checkout.index'));
                 }
             },
-            onError: () => {
+            onError: (errors) => {
                 setIsAdding(false);
+                setAddedSuccess(false);
+                setCartFeedback({
+                    type: 'error',
+                    message: String(errors.quantity || errors.product_id || 'The item could not be added. Please review the quantity and try again.'),
+                });
             },
         });
     };
@@ -522,26 +593,55 @@ export default function BuyerProductDetail({
                                     <button
                                         type="button"
                                         onClick={() => handleQuantityChange(-1)}
-                                        disabled={quantity <= 1}
+                                        disabled={quantity <= 1 || maxAddableQuantity < 1}
                                         className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 cursor-pointer"
+                                        aria-label="Decrease quantity"
                                     >
                                         <Minus className="w-3.5 h-3.5" />
                                     </button>
-                                    <span className="px-4 py-2 font-bold text-slate-900">{quantity}</span>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        value={quantityInput}
+                                        onChange={(event) => handleQuantityInput(event.target.value)}
+                                        onBlur={() => setQuantityInput(String(Math.min(Math.max(1, quantity), Math.max(1, maxAddableQuantity))))}
+                                        disabled={maxAddableQuantity < 1}
+                                        aria-label="Product quantity"
+                                        className="w-14 border-x border-y-0 border-slate-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-400"
+                                    />
                                     <button
                                         type="button"
                                         onClick={() => handleQuantityChange(1)}
-                                        disabled={quantity >= maxAvailableStock}
+                                        disabled={quantity >= maxAddableQuantity || maxAddableQuantity < 1}
                                         className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40 cursor-pointer"
+                                        aria-label="Increase quantity"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
                                 <span className="text-slate-500 text-[11px]">
-                                    {maxAvailableStock} items available in dispatch hub
+                                    {selectedColor?.in_stock === false
+                                        ? 'The selected option is currently unavailable'
+                                        : maxAddableQuantity > 0
+                                        ? `${maxAddableQuantity} more available to add${totalProductInCart > 0 ? ` · ${totalProductInCart} already in your bag` : ''}`
+                                        : 'Maximum available quantity is already in your bag'}
                                 </span>
                             </div>
                         </div>
+
+                        {cartFeedback && (
+                            <div
+                                role="status"
+                                className={`mt-3 rounded-sm border px-3.5 py-3 text-xs font-semibold ${
+                                    cartFeedback.type === 'success'
+                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                        : 'border-rose-300 bg-rose-50 text-rose-800'
+                                }`}
+                            >
+                                {cartFeedback.message}
+                            </div>
+                        )}
 
                         {/* Action Buttons: Add to Bag & Buy Now */}
                         {purchaseGateMessage && (
@@ -573,7 +673,7 @@ export default function BuyerProductDetail({
                             <button
                                 type="button"
                                 onClick={() => handleAddToBag(false)}
-                                disabled={isAdding || maxAvailableStock <= 0}
+                                disabled={isAdding || maxAddableQuantity <= 0 || selectedColor?.in_stock === false}
                                 className={`flex-1 py-3.5 px-6 rounded-xl font-bold uppercase text-xs tracking-wider transition flex items-center justify-center gap-2 border-2 ${
                                     addedSuccess
                                         ? 'bg-emerald-600 border-emerald-600 text-white'
@@ -596,7 +696,7 @@ export default function BuyerProductDetail({
                             <button
                                 type="button"
                                 onClick={() => handleAddToBag(true)}
-                                disabled={isAdding || maxAvailableStock <= 0}
+                                disabled={isAdding || maxAddableQuantity <= 0 || selectedColor?.in_stock === false}
                                 className="flex-1 py-3.5 px-6 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold uppercase text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2"
                             >
                                 <span>Buy Now</span>
