@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
-use App\Models\Shop;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,18 +18,33 @@ class SellerProductController extends Controller
 
     public function index(Request $request): Response
     {
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+        ]);
         $shop = $this->getActiveShop($request);
-        $products = Product::where('shop_id', $shop->id)
+        $search = trim((string) ($validated['search'] ?? ''));
+        $products = Product::query()
+            ->where('shop_id', $shop->id)
+            ->when($search !== '', function ($query) use ($search) {
+                $pattern = "%{$search}%";
+                $query->where(function ($productQuery) use ($pattern) {
+                    $productQuery
+                        ->whereLike('name', $pattern, caseSensitive: false)
+                        ->orWhereLike('sku', $pattern, caseSensitive: false);
+                });
+            })
             ->with(['category', 'images'])
-            ->latest()
-            ->paginate(10);
+            ->latest('updated_at')
+            ->latest('id')
+            ->paginate(10)
+            ->withQueryString();
 
         // Enforce root category enclosure on product listing filter / category choices
         $categoriesQuery = Category::where('is_active', true);
         if ($shop->root_category_id) {
             $categoriesQuery->where(function ($q) use ($shop) {
                 $q->where('id', $shop->root_category_id)
-                  ->orWhere('parent_id', $shop->root_category_id);
+                    ->orWhere('parent_id', $shop->root_category_id);
             });
         }
         $categories = $categoriesQuery->get();
@@ -40,6 +54,9 @@ class SellerProductController extends Controller
             'categories' => $categories,
             'shop' => $shop,
             'availableShops' => $this->getAvailableShops($request),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -75,7 +92,7 @@ class SellerProductController extends Controller
                 ->all();
 
             $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
-            if (!in_array((int)$chosenCategoryId, $allowedCategoryIds)) {
+            if (! in_array((int) $chosenCategoryId, $allowedCategoryIds)) {
                 return back()->withErrors([
                     'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
                 ]);
@@ -88,11 +105,11 @@ class SellerProductController extends Controller
 
         // Auto-generate SKU if left blank by the seller
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
-        $validated['sku'] = !empty($validated['sku'])
+        $validated['sku'] = ! empty($validated['sku'])
             ? trim($validated['sku'])
-            : 'BGO-' . $cleanPrefix . '-' . strtoupper(Str::random(5));
+            : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5));
 
-        $validated['variants'] = $this->sanitizeVariants($request, (int)$validated['stock']);
+        $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
@@ -145,7 +162,7 @@ class SellerProductController extends Controller
                 ->all();
 
             $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
-            if (!in_array((int)$chosenCategoryId, $allowedCategoryIds)) {
+            if (! in_array((int) $chosenCategoryId, $allowedCategoryIds)) {
                 return back()->withErrors([
                     'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
                 ]);
@@ -155,12 +172,12 @@ class SellerProductController extends Controller
 
         // Auto-generate SKU if left blank or reset
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
-        $validated['sku'] = !empty($validated['sku'])
+        $validated['sku'] = ! empty($validated['sku'])
             ? trim($validated['sku'])
-            : ($product->sku ?: 'BGO-' . $cleanPrefix . '-' . strtoupper(Str::random(5)));
+            : ($product->sku ?: 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5)));
 
         if ($request->has('variants')) {
-            $validated['variants'] = $this->sanitizeVariants($request, (int)$validated['stock']);
+            $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
         }
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
@@ -177,7 +194,7 @@ class SellerProductController extends Controller
      */
     private function sanitizeVariants(Request $request, int $fallbackStock): ?array
     {
-        if (!$request->has('variants')) {
+        if (! $request->has('variants')) {
             return null;
         }
 
@@ -186,39 +203,39 @@ class SellerProductController extends Controller
             $variantsRaw = json_decode($variantsRaw, true);
         }
 
-        if (!is_array($variantsRaw)) {
+        if (! is_array($variantsRaw)) {
             return null;
         }
 
         $colors = [];
-        if (!empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
+        if (! empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
             foreach ($variantsRaw['colors'] as $idx => $color) {
-                if (is_array($color) && !empty($color['name'])) {
-                    $imgUrl = !empty($color['image_url']) ? trim($color['image_url']) : null;
+                if (is_array($color) && ! empty($color['name'])) {
+                    $imgUrl = ! empty($color['image_url']) ? trim($color['image_url']) : null;
                     if ($imgUrl && str_starts_with($imgUrl, 'blob:')) {
                         $imgUrl = null;
                     }
                     $colors[] = [
-                        'id' => (string)($color['id'] ?? ('c_' . ($idx + 1))),
+                        'id' => (string) ($color['id'] ?? ('c_'.($idx + 1))),
                         'name' => trim($color['name']),
-                        'hex' => !empty($color['hex']) ? trim($color['hex']) : '#111111',
+                        'hex' => ! empty($color['hex']) ? trim($color['hex']) : '#111111',
                         'image_url' => $imgUrl,
-                        'gallery_index' => isset($color['gallery_index']) && is_numeric($color['gallery_index']) ? (int)$color['gallery_index'] : null,
-                        'in_stock' => isset($color['in_stock']) ? (bool)$color['in_stock'] : true,
+                        'gallery_index' => isset($color['gallery_index']) && is_numeric($color['gallery_index']) ? (int) $color['gallery_index'] : null,
+                        'in_stock' => isset($color['in_stock']) ? (bool) $color['in_stock'] : true,
                     ];
                 }
             }
         }
 
         $sizes = [];
-        if (!empty($variantsRaw['sizes']) && is_array($variantsRaw['sizes'])) {
+        if (! empty($variantsRaw['sizes']) && is_array($variantsRaw['sizes'])) {
             foreach ($variantsRaw['sizes'] as $idx => $size) {
-                if (is_array($size) && !empty($size['name'])) {
+                if (is_array($size) && ! empty($size['name'])) {
                     $sizes[] = [
-                        'id' => (string)($size['id'] ?? ('s_' . ($idx + 1))),
+                        'id' => (string) ($size['id'] ?? ('s_'.($idx + 1))),
                         'name' => trim($size['name']),
-                        'extra_price' => isset($size['extra_price']) ? max(0, (float)$size['extra_price']) : 0,
-                        'stock' => isset($size['stock']) ? max(0, (int)$size['stock']) : $fallbackStock,
+                        'extra_price' => isset($size['extra_price']) ? max(0, (float) $size['extra_price']) : 0,
+                        'stock' => isset($size['stock']) ? max(0, (int) $size['stock']) : $fallbackStock,
                     ];
                 }
             }
@@ -228,8 +245,8 @@ class SellerProductController extends Controller
             return null;
         }
 
-        $option1Name = !empty($variantsRaw['option1_name']) ? trim((string)$variantsRaw['option1_name']) : (!empty($colors) ? 'Color / Edition' : null);
-        $option2Name = !empty($variantsRaw['option2_name']) ? trim((string)$variantsRaw['option2_name']) : (!empty($sizes) ? 'Specification / Size' : null);
+        $option1Name = ! empty($variantsRaw['option1_name']) ? trim((string) $variantsRaw['option1_name']) : (! empty($colors) ? 'Color / Edition' : null);
+        $option2Name = ! empty($variantsRaw['option2_name']) ? trim((string) $variantsRaw['option2_name']) : (! empty($sizes) ? 'Specification / Size' : null);
 
         return [
             'option1_name' => $option1Name,
@@ -258,7 +275,7 @@ class SellerProductController extends Controller
                     if ($type === 'file' && isset($item['file_index']) && isset($uploadedFiles[$item['file_index']])) {
                         $file = $uploadedFiles[$item['file_index']];
                         $path = $file->store('products', 'public');
-                        $orderedUrls[] = '/storage/' . $path;
+                        $orderedUrls[] = '/storage/'.$path;
                     } elseif (($type === 'existing' || $type === 'url') && ! empty($item['url'])) {
                         $orderedUrls[] = $item['url'];
                     }
@@ -270,7 +287,7 @@ class SellerProductController extends Controller
         if (empty($orderedUrls)) {
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('products', 'public');
-                $orderedUrls[] = '/storage/' . $path;
+                $orderedUrls[] = '/storage/'.$path;
             } elseif ($request->filled('featured_image')) {
                 $orderedUrls[] = $request->input('featured_image');
             } elseif ($fallbackUrl) {
@@ -336,6 +353,7 @@ class SellerProductController extends Controller
         }
 
         $product->delete();
+
         return back()->with('success', 'Product deleted.');
     }
 }

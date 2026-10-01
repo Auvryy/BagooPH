@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
@@ -19,7 +19,7 @@ import {
     DollarSign, 
     Box, 
     Upload, 
-    Link, 
+    Link as LinkIcon,
     AlertCircle, 
     GripVertical, 
     Sliders,
@@ -72,12 +72,15 @@ interface Props {
     products: PaginatedData<Product>;
     categories: Category[];
     shop: Shop;
+    filters?: {
+        search?: string;
+    };
 }
 
-export default function SellerProducts({ products, categories, shop }: Props) {
+export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -144,6 +147,10 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         const num = Number(val || 0);
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
+
+    useEffect(() => {
+        setSearchQuery(filters.search || '');
+    }, [filters.search]);
 
     const resizeDescription = (textarea: HTMLTextAreaElement | null) => {
         if (!textarea) return;
@@ -1422,7 +1429,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     placeholder="Paste direct image URL (https://...)"
                                     className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 />
-                                <Link className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                                <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                             </div>
                             <button
                                 type="button"
@@ -1798,11 +1805,22 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         }
     };
 
-    const filteredProducts = products.data.filter(p => 
-        !searchQuery.trim() || 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const submitProductSearch = (event: React.FormEvent) => {
+        event.preventDefault();
+        const search = searchQuery.trim();
+        router.get(route('seller.products.index'), search ? { search } : {}, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const clearProductSearch = () => {
+        setSearchQuery('');
+        router.get(route('seller.products.index'), {}, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
 
     return (
         <DashboardLayout
@@ -1826,19 +1844,40 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2 font-sans text-xs text-slate-600">
                         <Package className="w-4 h-4 text-[#E00D42]" />
-                        <span>Showing <strong>{filteredProducts.length}</strong> of <strong>{products.total ?? products.data.length}</strong> catalog listings</span>
+                        <span>
+                            Showing <strong>{products.data.length}</strong> of <strong>{products.total ?? products.data.length}</strong> catalog listings
+                        </span>
                     </div>
 
-                    <div className="w-full sm:w-80 relative font-sans text-xs">
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by title or SKU..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
-                        />
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    </div>
+                    <form onSubmit={submitProductSearch} className="flex w-full sm:w-auto items-center gap-2">
+                        <div className="w-full sm:w-80 relative font-sans text-xs">
+                            <input
+                                type="search"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                maxLength={100}
+                                placeholder="Search all products by title or SKU..."
+                                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
+                            />
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={clearProductSearch}
+                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700"
+                                    aria-label="Clear product search"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            className="rounded-sm bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-[#E00D42]"
+                        >
+                            Search
+                        </button>
+                    </form>
                 </div>
 
                 {/* Products Table Box */}
@@ -1857,14 +1896,16 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredProducts.length === 0 ? (
+                                {products.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="py-12 text-center text-slate-400">
-                                            No products match your search query.
+                                            {filters.search
+                                                ? `No products match “${filters.search}”.`
+                                                : 'No products have been listed yet.'}
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredProducts.map((product) => (
+                                    products.data.map((product) => (
                                         <tr key={product.id} className="hover:bg-slate-50 transition">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3 min-w-0">
@@ -1932,6 +1973,42 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             </tbody>
                         </table>
                     </div>
+                    {products.last_page > 1 && (
+                        <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs text-slate-500">
+                                Page <strong>{products.current_page}</strong> of <strong>{products.last_page}</strong>
+                            </p>
+                            <nav className="flex flex-wrap items-center gap-1.5" aria-label="Product catalog pagination">
+                                {products.links?.map((link, index) => {
+                                    const isPrevious = index === 0;
+                                    const isNext = index === (products.links?.length ?? 0) - 1;
+                                    const label = isPrevious ? 'Previous' : isNext ? 'Next' : link.label;
+
+                                    return link.url ? (
+                                        <Link
+                                            key={`${label}-${index}`}
+                                            href={link.url}
+                                            preserveScroll
+                                            className={`min-w-8 rounded-sm border px-3 py-1.5 text-center text-xs font-bold transition ${
+                                                link.active
+                                                    ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            {label}
+                                        </Link>
+                                    ) : (
+                                        <span
+                                            key={`${label}-${index}`}
+                                            className="min-w-8 cursor-not-allowed rounded-sm border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-bold text-slate-400"
+                                        >
+                                            {label}
+                                        </span>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    )}
                 </div>
             </div>
 
