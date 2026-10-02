@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
     Bike,
     Building2,
@@ -7,18 +7,20 @@ import {
     CheckCircle2,
     Compass,
     Copy,
-    FileCheck2,
-    IdCard,
-    Info,
+    Eye,
+    EyeOff,
+    LockKeyhole,
     Mail,
     MapPin,
-    PackageCheck,
+    Pencil,
     Phone,
     Power,
     QrCode,
+    Save,
     ShieldCheck,
     Truck,
 } from 'lucide-react';
+import { useCourierDutyControl } from '@/Components/CourierDutyControl';
 import CourierLayout from '@/Layouts/CourierLayout';
 
 interface Props {
@@ -44,21 +46,30 @@ interface Props {
         registration_status: string | null;
     };
     isOnline: boolean;
-    completedDeliveries: number;
 }
 
-type ProfileTab = 'assignment' | 'vehicle' | 'protocols';
+type ProfileTab = 'assignment' | 'vehicle' | 'protocols' | 'account';
 
 export default function CourierProfile({
     rider,
     assignment,
     vehicle,
     isOnline,
-    completedDeliveries,
 }: Props) {
     const [activeTab, setActiveTab] = useState<ProfileTab>('assignment');
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
-    const [dutyLoading, setDutyLoading] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
+    const contactForm = useForm({
+        name: rider.name,
+        phone: rider.phone ?? '',
+    });
+    const passwordForm = useForm({
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+    });
 
     const copyToClipboard = (text: string, key: string) => {
         if (!navigator.clipboard) return;
@@ -67,16 +78,19 @@ export default function CourierProfile({
         setTimeout(() => setCopiedKey(null), 2000);
     };
 
-    const toggleDuty = () => {
-        setDutyLoading(true);
-        router.post(
-            route('courier.toggleDuty'),
-            { is_available: !isOnline },
-            {
-                preserveScroll: true,
-                onFinish: () => setDutyLoading(false),
-            },
-        );
+    const saveContactDetails = (event: React.FormEvent) => {
+        event.preventDefault();
+        contactForm.patch(route('courier.profile.update'), {
+            preserveScroll: true,
+        });
+    };
+
+    const changePassword = (event: React.FormEvent) => {
+        event.preventDefault();
+        passwordForm.put(route('courier.profile.password.update'), {
+            preserveScroll: true,
+            onSuccess: () => passwordForm.reset(),
+        });
     };
 
     return (
@@ -91,16 +105,13 @@ export default function CourierProfile({
                 {/* 1. HERO IDENTITY CARD (LIGHT, CLEAN, NO COLOR-MIXING BUG) */}
                 <div className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden">
                     {/* Subtle Light Cover Banner */}
-                    <div className="h-28 sm:h-32 bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 border-b border-slate-200/70 px-5 sm:px-8 py-4 flex items-start justify-between relative">
+                    <div className="h-28 sm:h-32 bg-slate-50 border-b border-slate-200/70 px-5 sm:px-8 py-4 flex items-start relative">
                         <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white text-slate-800 border border-slate-200/80 shadow-2xs">
                                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>Verified Partner</span>
                             </span>
                         </div>
-                        <span className="font-mono text-xs font-bold bg-white text-slate-700 px-3 py-1 rounded-full border border-slate-200/80 shadow-2xs">
-                            {assignment.hub_code || 'HUB'}
-                        </span>
                     </div>
 
                     {/* Profile Details Container (Separated cleanly below banner) */}
@@ -113,7 +124,7 @@ export default function CourierProfile({
                                     {rider.name.charAt(0).toUpperCase()}
                                     <div
                                         className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${
-                                            isOnline ? 'bg-emerald-500' : 'bg-slate-400'
+                                            isOnline ? 'bg-emerald-500' : 'bg-[#E00D42]'
                                         }`}
                                         title={isOnline ? 'On Duty' : 'Off Duty'}
                                     >
@@ -157,10 +168,14 @@ export default function CourierProfile({
                                             {rider.account_status.replaceAll('_', ' ')}
                                         </span>
 
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold uppercase border ${
+                                            isOnline
+                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                                        }`}>
                                             <span
                                                 className={`w-1.5 h-1.5 rounded-full ${
-                                                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-[#E00D42]'
                                                 }`}
                                             />
                                             {isOnline ? 'On Duty' : 'Off Duty'}
@@ -169,27 +184,18 @@ export default function CourierProfile({
                                 </div>
                             </div>
 
-                            {/* Top Right Quick Stat & Duty Button */}
-                            <div className="flex items-center gap-3 pt-3 sm:pt-0 self-start sm:self-end">
-                                <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-right">
-                                    <p className="text-[10px] font-medium text-slate-500">Delivered Final-Mile</p>
-                                    <p className="text-base font-black text-slate-900">
-                                        {completedDeliveries}{' '}
-                                        <span className="text-xs font-normal text-slate-500">parcels</span>
-                                    </p>
-                                </div>
-
+                            <div className="flex items-center pt-3 sm:pt-0 self-start sm:self-end">
                                 <button
                                     type="button"
-                                    onClick={toggleDuty}
+                                    onClick={requestDutyChange}
                                     disabled={dutyLoading}
-                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-60 ${
+                                    className={`px-4 py-2.5 rounded-md text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-60 ${
                                         isOnline
-                                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                                            : 'bg-[#E00D42] text-white hover:bg-[#C20836]'
+                                            ? 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-300'
+                                            : 'bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-700'
                                     }`}
                                 >
-                                    <Power className="w-3.5 h-3.5" />
+                                    <Power className={`w-3.5 h-3.5 ${isOnline ? 'text-[#E00D42]' : 'text-white'}`} />
                                     <span>{dutyLoading ? 'Updating...' : isOnline ? 'Go Off Duty' : 'Go On Duty'}</span>
                                 </button>
                             </div>
@@ -365,6 +371,19 @@ export default function CourierProfile({
                                 <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                                 <span>Custody & Protocols</span>
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('account')}
+                                className={`flex-1 min-w-[140px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shrink-0 ${
+                                    activeTab === 'account'
+                                        ? 'bg-white text-slate-900 shadow-xs'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                <LockKeyhole className="w-3.5 h-3.5 shrink-0" />
+                                <span>Account & Security</span>
+                            </button>
                         </div>
 
                         {/* TAB 1: WORK ASSIGNMENT */}
@@ -372,7 +391,7 @@ export default function CourierProfile({
                             <div className="space-y-4">
                                 {/* Station Card */}
                                 <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-                                    <div className="flex items-start justify-between gap-3">
+                                    <div>
                                         <div>
                                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                                 Assigned Working Station
@@ -384,9 +403,6 @@ export default function CourierProfile({
                                                 Primary logistics facility for intake and dispatch.
                                             </p>
                                         </div>
-                                        <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2.5 py-1 rounded border border-slate-200 shrink-0">
-                                            {assignment.hub_code || 'HUB'}
-                                        </span>
                                     </div>
 
                                     {/* 3 Metrics */}
@@ -596,6 +612,132 @@ export default function CourierProfile({
                             </div>
                         )}
 
+                        {activeTab === 'account' && (
+                            <div className="space-y-4">
+                                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-2xs">
+                                    <div className="flex items-start gap-3 border-b border-slate-200 pb-4">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-700">
+                                            <Pencil className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-bold text-slate-950">Account contact details</h2>
+                                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                Update the name shown in courier communications and your mobile number. Your working station,
+                                                vehicle, licence, and clearance are managed by logistics.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={saveContactDetails} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label htmlFor="courier-name" className="text-xs font-bold text-slate-800">
+                                                Display name
+                                            </label>
+                                            <input
+                                                id="courier-name"
+                                                value={contactForm.data.name}
+                                                onChange={(event) => contactForm.setData('name', event.target.value)}
+                                                autoComplete="name"
+                                                className="mt-1.5 w-full rounded-sm border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                            />
+                                            {contactForm.errors.name && (
+                                                <p className="mt-1.5 text-xs font-medium text-[#E00D42]">{contactForm.errors.name}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label htmlFor="courier-phone" className="text-xs font-bold text-slate-800">
+                                                Mobile number
+                                            </label>
+                                            <input
+                                                id="courier-phone"
+                                                value={contactForm.data.phone}
+                                                onChange={(event) => contactForm.setData('phone', event.target.value)}
+                                                autoComplete="tel"
+                                                inputMode="tel"
+                                                placeholder="0917 123 4567"
+                                                className="mt-1.5 w-full rounded-sm border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                            />
+                                            {contactForm.errors.phone && (
+                                                <p className="mt-1.5 text-xs font-medium text-[#E00D42]">{contactForm.errors.phone}</p>
+                                            )}
+                                        </div>
+                                        <div className="sm:col-span-2 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <p className="text-xs text-slate-500">
+                                                Verified email: <span className="font-semibold text-slate-700">{rider.email}</span>
+                                            </p>
+                                            <button
+                                                type="submit"
+                                                disabled={contactForm.processing}
+                                                className="inline-flex items-center justify-center gap-1.5 rounded-sm bg-[#E00D42] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#C20836] disabled:opacity-50"
+                                            >
+                                                <Save className="h-3.5 w-3.5" />
+                                                {contactForm.processing ? 'Saving...' : 'Save details'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </section>
+
+                                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-2xs">
+                                    <div className="flex items-start gap-3 border-b border-slate-200 pb-4">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-700">
+                                            <LockKeyhole className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-bold text-slate-950">Change password</h2>
+                                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                Confirm your current password, then choose a strong new password.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={changePassword} className="mt-5 space-y-4">
+                                        <PasswordField
+                                            id="courier-current-password"
+                                            label="Current password"
+                                            value={passwordForm.data.current_password}
+                                            error={passwordForm.errors.current_password}
+                                            visible={showCurrentPassword}
+                                            onToggle={() => setShowCurrentPassword(!showCurrentPassword)}
+                                            onChange={(value) => passwordForm.setData('current_password', value)}
+                                            autoComplete="current-password"
+                                        />
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <PasswordField
+                                                id="courier-new-password"
+                                                label="New password"
+                                                value={passwordForm.data.password}
+                                                error={passwordForm.errors.password}
+                                                visible={showNewPassword}
+                                                onToggle={() => setShowNewPassword(!showNewPassword)}
+                                                onChange={(value) => passwordForm.setData('password', value)}
+                                                autoComplete="new-password"
+                                            />
+                                            <PasswordField
+                                                id="courier-confirm-password"
+                                                label="Confirm new password"
+                                                value={passwordForm.data.password_confirmation}
+                                                error={passwordForm.errors.password_confirmation}
+                                                visible={showNewPassword}
+                                                onToggle={() => setShowNewPassword(!showNewPassword)}
+                                                onChange={(value) => passwordForm.setData('password_confirmation', value)}
+                                                autoComplete="new-password"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end border-t border-slate-100 pt-4">
+                                            <button
+                                                type="submit"
+                                                disabled={passwordForm.processing}
+                                                className="inline-flex items-center justify-center gap-1.5 rounded-sm bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-slate-700 disabled:opacity-50"
+                                            >
+                                                <LockKeyhole className="h-3.5 w-3.5" />
+                                                {passwordForm.processing ? 'Updating...' : 'Update password'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </section>
+                            </div>
+                        )}
+
                         {/* Concise 1-Line Advisory Footer */}
                         <p className="text-center text-xs text-slate-400 py-1">
                             Need to update your station or vehicle? Coordinate with your Bayan Hub supervisor.
@@ -603,9 +745,54 @@ export default function CourierProfile({
                     </div>
                 </div>
             </div>
+            {confirmationDialog}
         </CourierLayout>
     );
 }
 
-
-
+function PasswordField({
+    id,
+    label,
+    value,
+    error,
+    visible,
+    onToggle,
+    onChange,
+    autoComplete,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    error?: string;
+    visible: boolean;
+    onToggle: () => void;
+    onChange: (value: string) => void;
+    autoComplete: string;
+}) {
+    return (
+        <div>
+            <label htmlFor={id} className="text-xs font-bold text-slate-800">
+                {label}
+            </label>
+            <div className="relative mt-1.5">
+                <input
+                    id={id}
+                    type={visible ? 'text' : 'password'}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    autoComplete={autoComplete}
+                    className="w-full rounded-sm border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                />
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 transition hover:text-slate-700"
+                    aria-label={visible ? 'Hide password' : 'Show password'}
+                >
+                    {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+            </div>
+            {error && <p className="mt-1.5 text-xs font-medium text-[#E00D42]">{error}</p>}
+        </div>
+    );
+}

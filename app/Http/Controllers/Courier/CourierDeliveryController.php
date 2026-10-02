@@ -312,16 +312,6 @@ class CourierDeliveryController extends Controller
             'courierProfile.vehicle',
         ]);
         $profile = $user->courierProfile;
-        $completedCount = 0;
-
-        if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
-            $completedCount = Delivery::query()
-                ->where('assigned_rider_id', $user->id)
-                ->where('logistics_company_id', $profile->logistics_company_id)
-                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
-                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
-                ->count();
-        }
 
         return Inertia::render('Courier/Profile', [
             'rider' => [
@@ -346,7 +336,6 @@ class CourierDeliveryController extends Controller
                 'registration_status' => $profile?->or_cr_status,
             ],
             'isOnline' => (bool) $profile?->is_available,
-            'completedDeliveries' => $completedCount,
         ]);
     }
 

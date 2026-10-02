@@ -472,7 +472,7 @@ class CourierOperationsHardeningTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('vehicle.plate_number', 'REAL-2026')
                 ->where('assignment.hub', $this->destinationHub->name)
-                ->where('completedDeliveries', 1)
+                ->missing('completedDeliveries')
                 ->missing('fleetData.rating')
             );
 
