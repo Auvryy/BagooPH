@@ -668,7 +668,7 @@ function QueueSection({
     );
 
     return (
-        <section className="rounded-lg border border-slate-300 bg-white">
+        <section className="rounded-lg border border-slate-300 bg-transparent">
             <div className="border-b border-slate-200 p-4 sm:p-5">
                 <h2 className="text-base font-bold text-slate-950">{title}</h2>
                 <p className="mt-1 text-sm text-slate-500">{description}</p>
