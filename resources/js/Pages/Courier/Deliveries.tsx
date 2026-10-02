@@ -98,7 +98,7 @@ interface Props {
 }
 
 type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
-type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald';
+type DispatchTone = 'crimson' | 'neutral';
 type ActionTarget = {
     deliveryId: number;
     trackingNumber: string;
@@ -125,7 +125,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
         icon: React.ElementType;
         tone: DispatchTone;
     }> = [
-        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'indigo' },
+        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'neutral' },
         {
             id: 'available',
             label: 'Available pickups',
@@ -138,14 +138,14 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
             label: 'Final-mile tasks',
             count: stats.finalMileTasks,
             icon: Truck,
-            tone: 'amber',
+            tone: 'neutral',
         },
         {
             id: 'activity',
             label: 'Recent activity',
             count: queues.recentActivity.length,
             icon: History,
-            tone: 'emerald',
+            tone: 'neutral',
         },
     ];
 
@@ -256,7 +256,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                 <section className="overflow-hidden rounded-lg border border-slate-300 bg-white">
                     <div className="flex flex-col gap-3 border-b border-slate-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                         <div className="flex min-w-0 items-start gap-3">
-                            <span className="rounded-md border border-[#E00D42] bg-[#FDF2F4] p-2.5 text-[#C20836]">
+                            <span className="rounded-md border border-slate-300 bg-slate-50 p-2.5 text-slate-600">
                                 <ClipboardCheck className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
@@ -277,16 +277,10 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </span>
                             <span
                                 className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1.5 text-xs font-semibold ${
-                                    isOnline
-                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                                        : 'border-slate-300 bg-slate-50 text-slate-700'
+                                    'border-slate-300 bg-slate-50 text-slate-700'
                                 }`}
                             >
-                                <span
-                                    className={`h-1.5 w-1.5 rounded-full ${
-                                        isOnline ? 'bg-emerald-600' : 'bg-slate-400'
-                                    }`}
-                                />
+                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                                 {isOnline ? 'On duty' : 'Off duty'}
                             </span>
                         </div>
@@ -302,19 +296,19 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             label="My pickup tasks"
                             value={stats.activePickups}
                             icon={Store}
-                            tone="indigo"
+                            tone="neutral"
                         />
                         <DispatchMetric
                             label="Final-mile tasks"
                             value={stats.finalMileTasks}
                             icon={Truck}
-                            tone="amber"
+                            tone="neutral"
                         />
                         <DispatchMetric
                             label="Delivered today"
                             value={stats.completedToday}
                             icon={CheckCircle2}
-                            tone="emerald"
+                            tone="neutral"
                         />
                     </div>
                 </section>
@@ -621,23 +615,11 @@ function tabTone(tone: DispatchTone) {
             metricValue: 'text-[#C20836]',
             metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
         },
-        indigo: {
-            activeTab: 'border-indigo-600 text-indigo-800',
-            activeCount: 'bg-indigo-600 text-white',
-            metricValue: 'text-indigo-700',
-            metricIcon: 'border-indigo-300 bg-indigo-50 text-indigo-700',
-        },
-        amber: {
-            activeTab: 'border-amber-500 text-amber-800',
-            activeCount: 'bg-amber-500 text-slate-950',
-            metricValue: 'text-amber-700',
-            metricIcon: 'border-amber-300 bg-amber-50 text-amber-800',
-        },
-        emerald: {
-            activeTab: 'border-emerald-600 text-emerald-800',
-            activeCount: 'bg-emerald-600 text-white',
-            metricValue: 'text-emerald-700',
-            metricIcon: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        neutral: {
+            activeTab: 'border-slate-900 text-slate-900',
+            activeCount: 'bg-slate-900 text-white',
+            metricValue: 'text-slate-950',
+            metricIcon: 'border-slate-300 bg-slate-50 text-slate-500',
         },
     }[tone];
 }
@@ -693,7 +675,7 @@ function AvailablePickupCard({
     onClaim: () => void;
 }) {
     return (
-        <article className="rounded-lg border border-slate-300 p-4">
+        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
             <TaskHeader task={task} badge="READY" />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <DetailBlock icon={Store} label="Merchant" title={task.merchant.name ?? 'Merchant store'}>
@@ -734,7 +716,7 @@ function PickupCard({
     const awaitingHub = task.nextAction === 'await_origin_hub_scan';
 
     return (
-        <article className="rounded-lg border border-slate-300 p-4">
+        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
             <TaskHeader task={task} badge={awaitingHub ? 'IN CUSTODY' : 'ASSIGNED'} />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <DetailBlock icon={Store} label="Collect from" title={task.merchant.name ?? 'Merchant store'}>
@@ -763,7 +745,7 @@ function PickupCard({
                     Message merchant
                 </Link>
                 {awaitingHub ? (
-                    <div className="flex items-center gap-2 rounded-sm border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-900">
+                    <div className="flex items-center gap-2 rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
                         <Clock3 className="h-4 w-4" />
                         Awaiting Origin Hub intake scan
                     </div>
@@ -798,7 +780,7 @@ function FinalMileCard({
     const outForDelivery = task.nextAction === 'complete_delivery';
 
     return (
-        <article className="rounded-lg border border-slate-300 p-4">
+        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
             <TaskHeader task={task} badge={outForDelivery ? 'OUT FOR DELIVERY' : 'ASSIGNED'} />
             <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 <DetailBlock icon={MapPin} label="Buyer delivery" title={task.recipient.name}>
@@ -859,7 +841,7 @@ function TaskHeader({
                 <p className="text-sm font-bold text-slate-950">{task.trackingNumber}</p>
                 <p className="mt-1 text-xs text-slate-500">Order {task.orderNumber}</p>
             </div>
-            <span className="w-fit rounded-sm border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-700">
+        <span className="w-fit rounded-sm border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-700">
                 {badge}
             </span>
         </div>
@@ -878,7 +860,7 @@ function DetailBlock({
     children: React.ReactNode;
 }) {
     return (
-        <div className="rounded-md border border-slate-300 bg-slate-50 p-3">
+        <div className="border-l-2 border-slate-300 pl-3">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <Icon className="h-4 w-4" />
                 {label}
