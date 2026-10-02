@@ -403,7 +403,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         </div>
                         <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
                             <span className="text-slate-500 truncate">Verified</span>
-                            <span className="font-bold text-emerald-600 shrink-0 ml-1">100% OK</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-1">100% OK</span>
                         </div>
                     </div>
                 </div>

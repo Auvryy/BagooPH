@@ -108,8 +108,8 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         <div>
                             <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs">
                                 <span className="font-semibold truncate">All Completed</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
-                                    <PackageCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42]" />
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                    <PackageCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
                                 </div>
                             </div>
                             <div className="mt-1 sm:mt-2">
@@ -121,7 +121,7 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         </div>
                         <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px]">
                             <span className="text-slate-500 truncate">Lifetime Volume</span>
-                            <span className="font-bold text-[#E00D42] shrink-0 ml-1">Verified</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-1">Verified</span>
                         </div>
                     </div>
 
@@ -130,8 +130,8 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         <div>
                             <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs">
                                 <span className="font-semibold truncate">Delivered Today</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
                                 </div>
                             </div>
                             <div className="mt-1 sm:mt-2">
@@ -143,7 +143,7 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         </div>
                         <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px]">
                             <span className="text-slate-500 truncate">Current Shift</span>
-                            <span className="font-bold text-emerald-600 shrink-0 ml-1">100% Drop Rate</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-1">100% Drop Rate</span>
                         </div>
                     </div>
 
@@ -152,8 +152,8 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         <div>
                             <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs">
                                 <span className="font-semibold truncate">Working Facility</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                    <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                    <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
                                 </div>
                             </div>
                             <div className="mt-1 sm:mt-2">
@@ -167,7 +167,7 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         </div>
                         <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px]">
                             <span className="text-slate-500 truncate">Dispatch Hub</span>
-                            <span className="font-mono font-bold text-slate-800 shrink-0 ml-1">
+                            <span className="font-mono font-semibold text-slate-700 shrink-0 ml-1">
                                 {scope.hubCode || 'BH'}
                             </span>
                         </div>
@@ -193,7 +193,7 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
                         </div>
                         <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px]">
                             <span className="text-slate-500 truncate">Status</span>
-                            <span className="font-bold text-emerald-600 shrink-0 ml-1">Operational</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-1">Operational</span>
                         </div>
                     </div>
                 </div>
