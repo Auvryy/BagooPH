@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@bagoo.test'],
             [
                 'name' => 'Bagoo Admin',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'admin',
                 'phone' => '+63 917 000 0001',
@@ -36,6 +37,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'buyer@bagoo.test'],
             [
                 'name' => 'Santa Cruz Buyer',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'buyer',
                 'phone' => '+63 917 000 0002',
@@ -53,6 +55,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'seller@bagoo.test'],
             [
                 'name' => 'Los Banos Seller',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'seller',
                 'phone' => '+63 917 000 0003',
@@ -70,6 +73,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'rider@bagoo.test'],
             [
                 'name' => 'Santa Cruz Delivery Rider',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'courier',
                 'phone' => '+63 917 000 0004',
@@ -98,6 +102,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'logistics@bagoo.test'],
             [
                 'name' => 'Test Logistics',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'logistics',
                 'phone' => '+63 917 000 0005',

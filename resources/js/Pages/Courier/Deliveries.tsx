@@ -1,29 +1,35 @@
 import React, { useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    ArrowRight,
     Building2,
     Camera,
     CheckCircle2,
-    ClipboardCheck,
+    ChevronRight,
     Clock3,
     History,
     MapPin,
     MessageSquare,
     Package,
+    PackageCheck,
     Phone,
+    Power,
+    ShieldAlert,
     Store,
     Truck,
     X,
 } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
+import { useCourierDutyControl } from '@/Components/CourierDutyControl';
 
 interface Scope {
-    company: string | null;
-    hub: string | null;
-    hubCode: string | null;
-    barangay: string | null;
-    isAssigned: boolean;
-    isOperational: boolean;
+    company?: string | null;
+    hub?: string | null;
+    hubCode?: string | null;
+    hub_code?: string | null;
+    barangay?: string | null;
+    isAssigned?: boolean;
+    isOperational?: boolean;
 }
 
 interface PickupTask {
@@ -81,74 +87,60 @@ interface Activity {
 }
 
 interface Props {
-    scope: Scope;
-    isOnline: boolean;
-    stats: {
-        availablePickups: number;
-        activePickups: number;
-        activePickupLimit: number;
-        finalMileTasks: number;
-        completedToday: number;
+    scope?: Scope;
+    isOnline?: boolean;
+    stats?: {
+        availablePickups?: number;
+        activePickups?: number;
+        activePickupLimit?: number;
+        finalMileTasks?: number;
+        completedToday?: number;
     };
-    queues: {
-        availablePickups: PickupTask[];
-        pickupTasks: PickupTask[];
-        finalMileTasks: FinalMileTask[];
-        recentActivity: Activity[];
+    queues?: {
+        availablePickups?: PickupTask[];
+        pickupTasks?: PickupTask[];
+        finalMileTasks?: FinalMileTask[];
+        recentActivity?: Activity[];
     };
 }
 
 type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
-type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald' | 'neutral';
 type ActionTarget = {
     deliveryId: number;
     trackingNumber: string;
     status: 'picked_up' | 'out_for_delivery' | 'delivered';
 } | null;
 
-export default function CourierDeliveries({ scope, isOnline, stats, queues }: Props) {
+export default function CourierDeliveries({ scope, isOnline = false, stats, queues }: Props) {
+    const availableJobs = queues?.availablePickups ?? [];
+    const pickupTasks = queues?.pickupTasks ?? [];
+    const finalMileTasks = queues?.finalMileTasks ?? [];
+    const recentActivity = queues?.recentActivity ?? [];
+
+    const availableCount = stats?.availablePickups ?? 0;
+    const activePickupCount = stats?.activePickups ?? 0;
+    const activePickupLimit = stats?.activePickupLimit ?? 5;
+    const finalMileCount = stats?.finalMileTasks ?? 0;
+    const completedTodayCount = stats?.completedToday ?? 0;
+
+    const hubName = scope?.hub ?? 'Bayan Hub';
+    const companyName = scope?.company ?? 'Logistics';
+    const isAssigned = scope?.isAssigned ?? false;
+    const isOperational = scope?.isOperational ?? true;
+
     const initialTab = useMemo<Tab>(() => {
-        if (queues.finalMileTasks.length > 0) return 'final_mile';
-        if (queues.pickupTasks.length > 0) return 'pickup';
+        if (finalMileTasks.length > 0) return 'final_mile';
+        if (pickupTasks.length > 0) return 'pickup';
         return 'available';
-    }, [queues.finalMileTasks.length, queues.pickupTasks.length]);
+    }, [finalMileTasks.length, pickupTasks.length]);
+
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [actionTarget, setActionTarget] = useState<ActionTarget>(null);
     const [notes, setNotes] = useState('');
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [loadingId, setLoadingId] = useState<number | null>(null);
-
-    const tabs: Array<{
-        id: Tab;
-        label: string;
-        count: number;
-        icon: React.ElementType;
-        tone: DispatchTone;
-    }> = [
-        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'indigo' },
-        {
-            id: 'available',
-            label: 'Available pickups',
-            count: stats.availablePickups,
-            icon: Package,
-            tone: 'crimson',
-        },
-        {
-            id: 'final_mile',
-            label: 'Final-mile tasks',
-            count: stats.finalMileTasks,
-            icon: Truck,
-            tone: 'amber',
-        },
-        {
-            id: 'activity',
-            label: 'Recent activity',
-            count: queues.recentActivity.length,
-            icon: History,
-            tone: 'emerald',
-        },
-    ];
+    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
 
     const formatCurrency = (amount: number | null) =>
         amount === null
@@ -230,277 +222,726 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
 
     return (
         <CourierLayout
-            title="Rider operations"
+            title="Dispatch Dashboard"
             subtitle={
-                scope.isAssigned
-                    ? `${scope.hub} · ${scope.company}`
+                isAssigned
+                    ? `${hubName} · ${companyName}`
                     : 'Waiting for a logistics company and hub assignment'
             }
             isOnline={isOnline}
+            scope={scope}
         >
-            <Head title="Rider operations — BagooPH" />
+            <Head title="Dispatch Dashboard — BagooPH" />
 
-            <div className="space-y-4 sm:space-y-5">
-                {!scope.isAssigned && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-                        Your approved rider account does not have a working hub yet. A logistics administrator
-                        must assign your company and facility before pickup jobs can appear.
+            <div className="space-y-4 sm:space-y-6 font-sans">
+                {/* Status Advisories */}
+                {!isAssigned && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 sm:p-4 text-xs font-medium text-amber-950 flex items-start gap-3 shadow-2xs">
+                        <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold text-amber-900">Working Hub Not Assigned</p>
+                            <p className="mt-0.5 text-amber-800">
+                                Your courier account is approved, but has not yet been linked to an active logistics facility.
+                                A logistics administrator must assign your station before available pickup orders appear.
+                            </p>
+                        </div>
                     </div>
                 )}
-                {scope.isAssigned && !scope.isOperational && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-                        Your assigned logistics company or working hub is inactive. New jobs are paused, but
-                        any existing custody tasks remain visible and must be resolved with your administrator.
+                {isAssigned && !isOperational && (
+                    <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-3.5 sm:p-4 text-xs font-medium text-rose-950 flex items-start gap-3 shadow-2xs">
+                        <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold text-rose-900">Facility Operations Paused</p>
+                            <p className="mt-0.5 text-rose-800">
+                                Your assigned logistics company or working hub is currently marked inactive. New pickup dispatches
+                                are suspended, but any parcels already in your custody remain active and must be processed.
+                            </p>
+                        </div>
                     </div>
                 )}
 
-                <section className="overflow-hidden rounded-lg border border-slate-300 bg-white">
-                    <div className="flex flex-col gap-3 border-b border-slate-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                        <div className="flex min-w-0 items-start gap-3">
-                            <span className="rounded-md border border-slate-300 bg-slate-50 p-2.5 text-slate-600">
-                                <ClipboardCheck className="h-5 w-5" />
-                            </span>
+                {/* Mobile Quick On-Duty Alert (if currently off-duty) */}
+                {!isOnline && (
+                    <div className="lg:hidden rounded-xl border border-amber-300 bg-amber-50/95 p-3.5 shadow-2xs flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
                             <div className="min-w-0">
-                                <h2 className="text-base font-extrabold tracking-tight text-slate-950">
-                                    Today’s dispatch
-                                </h2>
-                                <p className="mt-1 text-sm leading-6 text-slate-500">
-                                    {scope.isAssigned
-                                        ? `${scope.hub ?? 'Working hub'} · ${scope.company ?? 'Logistics company'}`
-                                        : 'Waiting for a logistics company and working hub assignment'}
+                                <p className="text-xs font-bold text-amber-950 truncate">You are Off Duty</p>
+                                <p className="text-[10px] text-amber-800 truncate">Go on duty to receive & claim pickups</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={requestDutyChange}
+                            disabled={dutyLoading}
+                            className="px-3 py-1.5 rounded-lg bg-[#E00D42] text-white text-xs font-bold shadow-xs hover:bg-[#C20836] transition shrink-0 cursor-pointer disabled:opacity-60"
+                        >
+                            {dutyLoading ? 'Updating...' : 'Go On Duty'}
+                        </button>
+                    </div>
+                )}
+
+                {/* 1. TOP BENTO KPI TILES (COMPACT 2x2 ON MOBILE, 4-COL ON DESKTOP) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                    {/* 1: Available Pickups */}
+                    <div
+                        onClick={() => setActiveTab('available')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'available' ? 'border-[#E00D42] ring-1 ring-[#E00D42]/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Available pickups</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                    <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42]" />
+                                </div>
+                            </div>
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {availableCount}{' '}
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">jobs</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                                <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                                {scope.hubCode ?? 'Hub not assigned'}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                                {isOnline ? 'On duty' : 'Off duty'}
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Ready at assigned hub</span>
+                        </div>
+                    </div>
+
+                    {/* 2: My Pickup Tasks */}
+                    <div
+                        onClick={() => setActiveTab('pickup')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'pickup' ? 'border-indigo-600 ring-1 ring-indigo-600/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">My pickups</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                                </div>
+                            </div>
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {activePickupCount}{' '}
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">parcels</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Batch Limit</span>
+                            <span className="font-bold text-slate-800 shrink-0 ml-1">
+                                {activePickupCount}/{activePickupLimit}
                             </span>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-px bg-slate-300 lg:grid-cols-4">
-                        <DispatchMetric
-                            label="Available pickups"
-                            value={stats.availablePickups}
-                            icon={Package}
-                            tone="crimson"
-                        />
-                        <DispatchMetric
-                            label="My pickup tasks"
-                            value={stats.activePickups}
-                            icon={Store}
-                            tone="neutral"
-                        />
-                        <DispatchMetric
-                            label="Final-mile tasks"
-                            value={stats.finalMileTasks}
-                            icon={Truck}
-                            tone="neutral"
-                        />
-                        <DispatchMetric
-                            label="Delivered today"
-                            value={stats.completedToday}
-                            icon={CheckCircle2}
-                            tone="neutral"
-                        />
-                    </div>
-                </section>
 
-                <nav aria-label="Dispatch queues" className="border-b border-slate-300">
-                    <div className="flex gap-1 overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <button
-                                type="button"
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex min-w-36 shrink-0 items-center justify-between gap-2 border-b-2 px-3 py-3 text-left text-sm font-semibold transition ${
-                                    activeTab === tab.id
-                                        ? tabTone(tab.tone).activeTab
-                                        : tabTone(tab.tone).inactiveTab
-                                }`}
-                            >
-                                <span className="flex min-w-0 items-center gap-2">
-                                    <tab.icon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">{tab.label}</span>
-                                </span>
-                                <span
-                                    className={`rounded-sm px-1.5 py-0.5 text-xs ${
-                                        activeTab === tab.id
-                                            ? tabTone(tab.tone).activeCount
-                                            : tabTone(tab.tone).inactiveCount
+                    {/* 3: Final-Mile Tasks */}
+                    <div
+                        onClick={() => setActiveTab('final_mile')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'final_mile' ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Final-mile</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                                    <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
+                                </div>
+                            </div>
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {finalMileCount}{' '}
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">deliveries</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Destination</span>
+                            <span className="font-bold text-slate-800 shrink-0 ml-1">Direct Buyer</span>
+                        </div>
+                    </div>
+
+                    {/* 4: Delivered Today */}
+                    <div
+                        onClick={() => setActiveTab('activity')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'activity' ? 'border-emerald-600 ring-1 ring-emerald-600/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Delivered today</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {completedTodayCount}{' '}
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">trips</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Verified</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-1">100% OK</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. MIDDLE BENTO ROW: 8-COL EXECUTION QUEUE + 4-COL CUSTODY PIPELINE */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+                    {/* LEFT (8 COLS): ACTIVE ROUTE & EXECUTION QUEUE */}
+                    <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4">
+                        {/* Section Header: Title Top, Segmented Tabs Full-Width Below */}
+                        <div className="pb-3.5 border-b border-slate-100 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 font-sans tracking-tight truncate">
+                                        Route & Execution Queue
+                                    </h3>
+                                    <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
+                                        {hubName}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Queue Segmented Switcher (Horizontally Scrollable on Mobile) */}
+                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('pickup')}
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                        activeTab === 'pickup'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    {tab.count}
+                                    <Store className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pickup' ? 'text-white' : 'text-slate-400'}`} />
+                                    <span>My Pickups</span>
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                            activeTab === 'pickup'
+                                                ? 'bg-white/20 text-white border border-white/30'
+                                                : 'bg-slate-200/80 text-slate-600'
+                                        }`}
+                                    >
+                                        {activePickupCount}
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('final_mile')}
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                        activeTab === 'final_mile'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <Truck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'final_mile' ? 'text-white' : 'text-slate-400'}`} />
+                                    <span>Final-Mile</span>
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                            activeTab === 'final_mile'
+                                                ? 'bg-white/20 text-white border border-white/30'
+                                                : 'bg-slate-200/80 text-slate-600'
+                                        }`}
+                                    >
+                                        {finalMileCount}
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('available')}
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                        activeTab === 'available'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <Package className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'available' ? 'text-white' : 'text-slate-400'}`} />
+                                    <span>Available</span>
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                            activeTab === 'available'
+                                                ? 'bg-white/20 text-white border border-white/30'
+                                                : 'bg-slate-200/80 text-slate-600'
+                                        }`}
+                                    >
+                                        {availableCount}
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('activity')}
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                        activeTab === 'activity'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'activity' ? 'text-white' : 'text-slate-400'}`} />
+                                    <span>Trips</span>
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                            activeTab === 'activity'
+                                                ? 'bg-white/20 text-white border border-white/30'
+                                                : 'bg-slate-200/80 text-slate-600'
+                                        }`}
+                                    >
+                                        {recentActivity.length}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Area for Active Tab */}
+                        <div className="space-y-3 min-h-[300px]">
+                            {/* TAB 1: MY PICKUPS */}
+                            {activeTab === 'pickup' && (
+                                <>
+                                    {pickupTasks.length === 0 ? (
+                                        <EmptyState
+                                            icon={Store}
+                                            title="No Active Pickups In Progress"
+                                            description="You have no claimed merchant pickups right now. Browse available jobs to start your batch route."
+                                            action={
+                                                availableCount > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveTab('available')}
+                                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-[#E00D42] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#C20836] transition cursor-pointer"
+                                                    >
+                                                        <span>View Available Jobs ({availableCount})</span>
+                                                        <ArrowRight className="w-3.5 h-3.5" />
+                                                    </button>
+                                                ) : undefined
+                                            }
+                                        />
+                                    ) : (
+                                        pickupTasks.map((task) => (
+                                            <PickupRouteCard
+                                                key={task.id}
+                                                task={task}
+                                                loading={loadingId === task.id}
+                                                onConfirm={() =>
+                                                    openAction(task.id, task.trackingNumber, 'picked_up')
+                                                }
+                                            />
+                                        ))
+                                    )}
+                                </>
+                            )}
+
+                            {/* TAB 2: FINAL-MILE TASKS */}
+                            {activeTab === 'final_mile' && (
+                                <>
+                                    {finalMileTasks.length === 0 ? (
+                                        <EmptyState
+                                            icon={Truck}
+                                            title="No Final-Mile Dispatches"
+                                            description="No buyer deliveries are assigned to you at this moment. Assignments are issued by your destination hub dispatcher."
+                                        />
+                                    ) : (
+                                        finalMileTasks.map((task) => (
+                                            <FinalMileRouteCard
+                                                key={task.id}
+                                                task={task}
+                                                codLabel={formatCurrency(task.payment?.codAmount ?? null)}
+                                                loading={loadingId === task.id}
+                                                onStart={() =>
+                                                    openAction(task.id, task.trackingNumber, 'out_for_delivery')
+                                                }
+                                                onComplete={() =>
+                                                    openAction(task.id, task.trackingNumber, 'delivered')
+                                                }
+                                            />
+                                        ))
+                                    )}
+                                </>
+                            )}
+
+                            {/* TAB 3: AVAILABLE PICKUPS */}
+                            {activeTab === 'available' && (
+                                <>
+                                    {availableJobs.length === 0 ? (
+                                        <EmptyState
+                                            icon={PackageCheck}
+                                            title="No Available Pickup Jobs"
+                                            description="All ready orders at your assigned Bayan Hub are currently claimed or awaiting merchant packing."
+                                        />
+                                    ) : (
+                                        availableJobs.map((task) => (
+                                            <AvailablePickupRouteCard
+                                                key={task.id}
+                                                task={task}
+                                                disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
+                                                loading={loadingId === task.id}
+                                                onClaim={() => claimPickup(task.id)}
+                                            />
+                                        ))
+                                    )}
+                                </>
+                            )}
+
+                            {/* TAB 4: RECENT ACTIVITY */}
+                            {activeTab === 'activity' && (
+                                <>
+                                    {recentActivity.length === 0 ? (
+                                        <EmptyState
+                                            icon={History}
+                                            title="No Delivery Trips Recorded"
+                                            description="Your completed buyer handoffs for today will appear here once verified."
+                                        />
+                                    ) : (
+                                        <div className="grid gap-2.5">
+                                            {recentActivity.map((activity) => (
+                                                <div
+                                                    key={activity.id}
+                                                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-xs text-slate-900 font-mono">
+                                                                {activity.trackingNumber}
+                                                            </span>
+                                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
+                                                                Delivered
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                                            Recipient: <span className="font-semibold text-slate-800">{activity.recipientName}</span> • {activity.deliveryAddress}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="sm:text-right shrink-0 text-xs">
+                                                        <p className="font-bold text-slate-800">
+                                                            {formatDate(activity.deliveredAt)}
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                                            Payment: {activity.paymentMethod}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* RIGHT (4 COLS): CUSTODY & DISPATCH PIPELINE (MATCHING SELLER'S FULFILLMENT ACTIONS) */}
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4 self-start">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Truck className="w-4 h-4 text-[#E00D42]" />
+                                <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
+                                    Custody Pipeline
+                                </h3>
+                            </div>
+                        </div>
+
+                        {/* Interactive Pipeline Action Cards */}
+                        <div className="space-y-2.5 font-sans">
+                            {/* 1. TO PICK UP */}
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('pickup')}
+                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
+                                    activePickupCount > 0
+                                        ? 'bg-amber-50/80 border border-amber-300 shadow-2xs hover:bg-amber-100/70'
+                                        : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                            activePickupCount > 0
+                                                ? 'bg-amber-500 text-white shadow-xs'
+                                                : 'bg-amber-100 text-amber-700'
+                                        }`}
+                                    >
+                                        <Store className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-amber-900 block leading-tight">
+                                            To Pick Up
+                                        </span>
+                                    </div>
+                                </div>
+                                <span
+                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
+                                        activePickupCount > 0
+                                            ? 'bg-amber-500 text-white shadow-xs'
+                                            : 'bg-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    {activePickupCount}
                                 </span>
                             </button>
-                        ))}
-                    </div>
-                </nav>
 
-                {activeTab === 'pickup' && (
-                    <QueueSection
-                        title="My pickup tasks"
-                        description={`Collect each parcel from its merchant, then hand it only to the listed Origin Bayan Hub. Your active pickup batch is limited to ${stats.activePickupLimit} parcels.`}
-                        emptyTitle="No active pickup assignments"
-                        emptyText="Eligible jobs assigned to you will appear here."
-                    >
-                        {queues.pickupTasks.map((task) => (
-                            <PickupCard
-                                key={task.id}
-                                task={task}
-                                loading={loadingId === task.id}
-                                onConfirm={() =>
-                                    openAction(task.id, task.trackingNumber, 'picked_up')
-                                }
-                            />
-                        ))}
-                    </QueueSection>
-                )}
+                            {/* 2. FINAL-MILE DELIVERY */}
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('final_mile')}
+                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
+                                    finalMileCount > 0
+                                        ? 'bg-emerald-50/80 border border-emerald-300 shadow-2xs hover:bg-emerald-100/70'
+                                        : 'bg-slate-50 border border-slate-200/90 hover:border-emerald-400'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                            finalMileCount > 0
+                                                ? 'bg-emerald-600 text-white shadow-xs'
+                                                : 'bg-emerald-100 text-emerald-800'
+                                        }`}
+                                    >
+                                        <Truck className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-emerald-900 block leading-tight">
+                                            Final-Mile
+                                        </span>
+                                    </div>
+                                </div>
+                                <span
+                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
+                                        finalMileCount > 0
+                                            ? 'bg-emerald-600 text-white shadow-xs'
+                                            : 'bg-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    {finalMileCount}
+                                </span>
+                            </button>
 
-                {activeTab === 'available' && (
-                    <QueueSection
-                        title="Available pickup jobs"
-                        description={`Only ready parcels from your assigned company and Origin Bayan Hub are listed. Claim the jobs you can complete in one route batch, up to ${stats.activePickupLimit} active pickups.`}
-                        emptyTitle="No eligible pickup jobs"
-                        emptyText="There are no ready parcels at your working hub right now."
-                    >
-                        {!isOnline && queues.availablePickups.length > 0 && (
-                            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                                Go on duty before claiming a pickup. Existing assignments remain visible while
-                                you are off duty.
+                            {/* 3. AVAILABLE PICKUPS POOL */}
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('available')}
+                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
+                                    availableCount > 0
+                                        ? 'bg-rose-50/80 border border-rose-300 shadow-2xs hover:bg-rose-100/70'
+                                        : 'bg-slate-50 border border-slate-200/90 hover:border-rose-400'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                            availableCount > 0
+                                                ? 'bg-[#E00D42] text-white shadow-xs'
+                                                : 'bg-rose-100 text-rose-700'
+                                        }`}
+                                    >
+                                        <Package className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight">
+                                            Available Jobs
+                                        </span>
+                                    </div>
+                                </div>
+                                <span
+                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
+                                        availableCount > 0
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'bg-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    {availableCount}
+                                </span>
+                            </button>
+
+                            {/* LOGISTICS PIPELINE SUMMARY BOX */}
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-sans shrink-0">
+                                <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
+                                    <span>Route Custody</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1 divide-x divide-slate-200/80 text-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('available')}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
+                                        title="Available pickup jobs"
+                                    >
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            Available
+                                        </span>
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
+                                            {availableCount}
+                                        </span>
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
+                                            ready
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('pickup')}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
+                                        title="Active route tasks in custody"
+                                    >
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            In Custody
+                                        </span>
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
+                                            {activePickupCount + finalMileCount}
+                                        </span>
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
+                                            on route
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('activity')}
+                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
+                                        title="Delivered parcels today"
+                                    >
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
+                                            Delivered
+                                        </span>
+                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
+                                            {completedTodayCount}
+                                        </span>
+                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
+                                            verified
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
-                        )}
-                        {queues.availablePickups.map((task) => (
-                            <AvailablePickupCard
-                                key={task.id}
-                                task={task}
-                                disabled={!isOnline || loadingId !== null}
-                                loading={loadingId === task.id}
-                                onClaim={() => claimPickup(task.id)}
-                            />
-                        ))}
-                    </QueueSection>
-                )}
+                        </div>
 
-                {activeTab === 'final_mile' && (
-                    <QueueSection
-                        title="Final-mile assignments"
-                        description="These buyer details are visible because the Destination Bayan Hub assigned the parcel to you."
-                        emptyTitle="No final-mile assignment"
-                        emptyText="Destination-hub dispatches assigned to you will appear here."
-                    >
-                        {queues.finalMileTasks.map((task) => (
-                            <FinalMileCard
-                                key={task.id}
-                                task={task}
-                                codLabel={formatCurrency(task.payment.codAmount)}
-                                loading={loadingId === task.id}
-                                onStart={() =>
-                                    openAction(task.id, task.trackingNumber, 'out_for_delivery')
-                                }
-                                onComplete={() =>
-                                    openAction(task.id, task.trackingNumber, 'delivered')
-                                }
-                            />
-                        ))}
-                    </QueueSection>
-                )}
+                    </div>
+                </div>
 
-                {activeTab === 'activity' && (
-                    <QueueSection
-                        title="Recent completed deliveries"
-                        description="Recorded final-mile deliveries only. Financial reconciliation is handled separately."
-                        emptyTitle="No completed deliveries"
-                        emptyText="Your completed final-mile trips will appear here."
-                    >
-                        <div className="grid gap-3">
-                            {queues.recentActivity.map((activity) => (
+                {/* 3. BOTTOM ROW: AVAILABLE PICKUP OPPORTUNITIES (FAST DISPATCH QUEUE) */}
+                {activeTab !== 'available' && availableJobs.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs font-sans">
+                        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <Package className="w-4 h-4 text-[#E00D42]" />
+                                    <h3 className="font-bold text-sm text-slate-900">
+                                        Available Pickup Opportunities ({availableJobs.length})
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    Ready parcels at {hubName} eligible for batch claim
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('available')}
+                                className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase cursor-pointer"
+                            >
+                                <span>Manage All</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {availableJobs.slice(0, 3).map((task) => (
                                 <div
-                                    key={activity.id}
-                                    className="grid gap-3 rounded-lg border border-slate-300 p-4 sm:grid-cols-[1.1fr_1fr_auto] sm:items-center"
+                                    key={task.id}
+                                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col justify-between"
                                 >
                                     <div>
-                                        <p className="text-sm font-bold text-slate-950">
-                                            {activity.trackingNumber}
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-xs text-slate-900 font-mono">
+                                                {task.trackingNumber}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-[#C20836] border border-rose-200 uppercase">
+                                                Ready
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-800 mt-1.5">
+                                            {task.merchant?.name ?? 'Merchant Store'}
                                         </p>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            Order {activity.orderNumber} · {activity.paymentMethod}
+                                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                                            {task.merchant?.address}
                                         </p>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-800">
-                                            {activity.recipientName}
-                                        </p>
-                                        <p className="mt-1 line-clamp-1 text-xs text-slate-500">
-                                            {activity.deliveryAddress}
-                                        </p>
-                                    </div>
-                                    <div className="text-left sm:text-right">
-                                        <p className="text-xs font-medium text-slate-700">
-                                            {formatDate(activity.deliveredAt)}
-                                        </p>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            {activity.destinationHub ?? 'Destination hub unavailable'}
-                                        </p>
+
+                                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                                        <span className="text-[11px] text-slate-500 font-semibold">
+                                            {task.itemCount} item(s)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => claimPickup(task.id)}
+                                            disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
+                                            className="px-3 py-1.5 bg-[#E00D42] text-white hover:bg-[#C20836] text-[11px] font-bold rounded-lg shadow-2xs transition disabled:opacity-50 cursor-pointer min-h-[32px]"
+                                        >
+                                            {loadingId === task.id ? 'Claiming...' : 'Claim Job'}
+                                        </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </QueueSection>
+                    </div>
                 )}
             </div>
 
+            {/* ACTION MODAL (FOR PICKUP CONFIRMATION, FINAL-MILE START, AND DELIVERY PHOTO PROOF) */}
             {actionTarget && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4">
-                    <div className="w-full max-w-lg rounded-lg border border-slate-300 bg-white shadow-2xl">
-                        <div className="flex items-start justify-between border-b border-slate-200 p-5">
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 font-sans">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-300 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="flex items-start justify-between border-b border-slate-100 p-5 bg-slate-50/50">
                             <div>
-                                <h2 className="text-base font-bold text-slate-950">
-                                    {actionTarget.status === 'picked_up' && 'Confirm merchant pickup'}
-                                    {actionTarget.status === 'out_for_delivery' && 'Start final-mile delivery'}
-                                    {actionTarget.status === 'delivered' && 'Record successful delivery'}
+                                <h2 className="text-base font-black text-slate-900 tracking-tight">
+                                    {actionTarget.status === 'picked_up' && 'Confirm Merchant Pickup'}
+                                    {actionTarget.status === 'out_for_delivery' && 'Start Final-Mile Delivery'}
+                                    {actionTarget.status === 'delivered' && 'Record Successful Delivery'}
                                 </h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Tracking {actionTarget.trackingNumber}
+                                <p className="mt-0.5 text-xs text-slate-500 font-mono">
+                                    Waybill tracking: <span className="font-bold text-slate-800">{actionTarget.trackingNumber}</span>
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 aria-label="Close"
                                 onClick={closeAction}
-                                className="rounded-sm border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100"
+                                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                             >
-                                <X className="h-4 w-4" />
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         <form onSubmit={submitAction} className="space-y-4 p-5">
                             {actionTarget.status === 'picked_up' && (
-                                <InstructionBox text="Confirm only after matching the parcel waybill at the merchant. Your custody continues until the assigned Origin Bayan Hub scans it inbound." />
+                                <InstructionBox text="Match the waybill barcode at the merchant premises before confirming pickup. Custody remains yours until the Origin Bayan Hub scans the parcel." />
                             )}
                             {actionTarget.status === 'out_for_delivery' && (
-                                <InstructionBox text="Confirm that you received this parcel from the Destination Bayan Hub before leaving for the buyer address." />
+                                <InstructionBox text="Confirm you have received physical possession of this parcel from the Destination Bayan Hub staging area before departing for the buyer address." />
                             )}
                             {actionTarget.status === 'delivered' && (
                                 <>
-                                    <InstructionBox text="Successful delivery requires a real handoff photo. Buyer confirmation and financial reconciliation remain separate." />
+                                    <InstructionBox text="Successful handoff requires clear photographic proof of delivery at the recipient location." />
                                     <div>
                                         <label
                                             htmlFor="proof-image"
-                                            className="mb-1.5 block text-sm font-semibold text-slate-800"
+                                            className="mb-1.5 block text-xs font-bold text-slate-800 uppercase tracking-wider"
                                         >
-                                            Handoff proof photo
+                                            Handoff Proof Photo <span className="text-[#E00D42]">*</span>
                                         </label>
                                         <label
                                             htmlFor="proof-image"
-                                            className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-slate-400 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                                            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 text-xs font-bold text-slate-700 hover:bg-slate-100 transition hover:border-slate-400 min-h-[48px]"
                                         >
-                                            <Camera className="h-5 w-5" />
-                                            {proofFile ? proofFile.name : 'Choose or capture a photo'}
+                                            <Camera className="w-5 h-5 text-[#E00D42]" />
+                                            <span>{proofFile ? proofFile.name : 'Choose or capture handoff photo'}</span>
                                         </label>
                                         <input
                                             id="proof-image"
@@ -517,7 +958,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             }}
                                         />
                                         {proofPreview && (
-                                            <div className="mt-3 aspect-video overflow-hidden rounded-md border border-slate-300 bg-slate-100">
+                                            <div className="mt-3 aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs">
                                                 <img
                                                     src={proofPreview}
                                                     alt="Selected handoff proof"
@@ -532,18 +973,13 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             <div>
                                 <label
                                     htmlFor="courier-notes"
-                                    className="mb-1.5 block text-sm font-semibold text-slate-800"
+                                    className="mb-1.5 block text-xs font-bold text-slate-800 uppercase tracking-wider"
                                 >
                                     {actionTarget.status === 'picked_up'
-                                        ? 'Pickup note for seller'
-                                        : 'Operational notes'}{' '}
-                                    <span className="font-normal text-slate-500">(optional)</span>
+                                        ? 'Pickup Note for Merchant'
+                                        : 'Operational Delivery Notes'}{' '}
+                                    <span className="font-normal text-slate-400 lowercase">(optional)</span>
                                 </label>
-                                {actionTarget.status === 'picked_up' && (
-                                    <p className="mb-1.5 text-xs leading-5 text-slate-500">
-                                        This is sent to the seller’s delivery-linked Messages thread after pickup is confirmed.
-                                    </p>
-                                )}
                                 <textarea
                                     id="courier-notes"
                                     rows={3}
@@ -552,18 +988,18 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                     onChange={(event) => setNotes(event.target.value)}
                                     placeholder={
                                         actionTarget.status === 'picked_up'
-                                            ? 'Add a useful note about the parcel handoff.'
-                                            : 'Add useful handoff or delivery details.'
+                                            ? 'e.g. Received from merchant counter, packages verified.'
+                                            : 'e.g. Received by buyer at gate, verified signature.'
                                     }
-                                    className="w-full rounded-sm border border-slate-300 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E00D42] focus:ring-[#E00D42] shadow-2xs font-sans"
                                 />
                             </div>
 
-                            <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+                            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={closeAction}
-                                    className="rounded-sm border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer uppercase tracking-wider"
                                 >
                                     Cancel
                                 </button>
@@ -573,175 +1009,46 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                         loadingId !== null ||
                                         (actionTarget.status === 'delivered' && !proofFile)
                                     }
-                                    className="rounded-sm bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C50B39] disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-white bg-[#E00D42] hover:bg-[#C20836] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider cursor-pointer"
                                 >
-                                    {loadingId !== null ? 'Saving...' : 'Confirm action'}
+                                    {loadingId !== null ? 'Saving...' : 'Confirm Action'}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+            {confirmationDialog}
         </CourierLayout>
     );
 }
 
-function DispatchMetric({
-    label,
-    value,
-    icon: Icon,
-    tone,
-}: {
-    label: string;
-    value: number;
-    icon: React.ElementType;
-    tone: DispatchTone;
-}) {
-    const styles = tabTone(tone);
+{/* SUBCOMPONENTS */}
 
+function EmptyState({
+    icon: Icon,
+    title,
+    description,
+    action,
+}: {
+    icon: React.ElementType;
+    title: string;
+    description: string;
+    action?: React.ReactNode;
+}) {
     return (
-        <div className="bg-white p-3.5 sm:p-4">
-            <div className="flex items-start gap-2.5">
-                <span className={`mt-0.5 shrink-0 rounded-md border p-2 ${styles.metricIcon}`}>
-                    <Icon className="h-4 w-4" />
-                </span>
-                <div>
-                    <p className="text-sm font-medium text-slate-500">{label}</p>
-                    <p className={`mt-1.5 text-2xl font-extrabold tracking-tight ${styles.metricValue}`}>
-                        {value}
-                    </p>
-                </div>
+        <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 text-center font-sans">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
+                <Icon className="w-6 h-6" />
             </div>
+            <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+            <p className="mt-1 text-xs text-slate-500 max-w-md">{description}</p>
+            {action}
         </div>
     );
 }
 
-function tabTone(tone: DispatchTone) {
-    return {
-        crimson: {
-            activeTab: 'border-[#E00D42] text-[#A1052B]',
-            activeCount: 'bg-[#E00D42] text-white',
-            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            inactiveCount: 'bg-slate-100 text-slate-600',
-            metricValue: 'text-[#C20836]',
-            metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
-        },
-        indigo: {
-            activeTab: 'border-indigo-600 text-indigo-800',
-            activeCount: 'bg-indigo-600 text-white',
-            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            inactiveCount: 'bg-slate-100 text-slate-600',
-            metricValue: 'text-indigo-700',
-            metricIcon: 'border-indigo-300 bg-indigo-50 text-indigo-700',
-        },
-        amber: {
-            activeTab: 'border-amber-500 text-amber-800',
-            activeCount: 'bg-amber-500 text-slate-950',
-            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            inactiveCount: 'bg-slate-100 text-slate-600',
-            metricValue: 'text-amber-700',
-            metricIcon: 'border-amber-300 bg-amber-50 text-amber-800',
-        },
-        emerald: {
-            activeTab: 'border-emerald-600 text-emerald-800',
-            activeCount: 'bg-emerald-600 text-white',
-            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            inactiveCount: 'bg-slate-100 text-slate-600',
-            metricValue: 'text-emerald-700',
-            metricIcon: 'border-emerald-300 bg-emerald-50 text-emerald-700',
-        },
-        neutral: {
-            activeTab: 'border-slate-900 text-slate-900',
-            activeCount: 'bg-slate-900 text-white',
-            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            inactiveCount: 'bg-slate-100 text-slate-600',
-            metricValue: 'text-slate-950',
-            metricIcon: 'border-slate-300 bg-slate-50 text-slate-500',
-        },
-    }[tone];
-}
-
-function QueueSection({
-    title,
-    description,
-    emptyTitle,
-    emptyText,
-    children,
-}: {
-    title: string;
-    description: string;
-    emptyTitle: string;
-    emptyText: string;
-    children: React.ReactNode;
-}) {
-    const childrenArray = React.Children.toArray(children);
-    const hasContent = childrenArray.some(
-        (child) => React.isValidElement(child) || (typeof child === 'string' && child.trim() !== ''),
-    );
-
-    return (
-        <section className="rounded-lg border border-slate-300 bg-transparent">
-            <div className="border-b border-slate-200 p-4 sm:p-5">
-                <h2 className="text-base font-bold text-slate-950">{title}</h2>
-                <p className="mt-1 text-sm text-slate-500">{description}</p>
-            </div>
-            <div className="space-y-3 p-4 sm:p-5">
-                {hasContent ? (
-                    children
-                ) : (
-                    <div className="py-10 text-center">
-                        <Package className="mx-auto h-9 w-9 text-slate-300" />
-                        <p className="mt-3 text-sm font-semibold text-slate-800">{emptyTitle}</p>
-                        <p className="mt-1 text-sm text-slate-500">{emptyText}</p>
-                    </div>
-                )}
-            </div>
-        </section>
-    );
-}
-
-function AvailablePickupCard({
-    task,
-    disabled,
-    loading,
-    onClaim,
-}: {
-    task: PickupTask;
-    disabled: boolean;
-    loading: boolean;
-    onClaim: () => void;
-}) {
-    return (
-        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
-            <TaskHeader task={task} badge="READY" />
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <DetailBlock icon={Store} label="Merchant" title={task.merchant.name ?? 'Merchant store'}>
-                    {task.merchant.address}
-                </DetailBlock>
-                <DetailBlock
-                    icon={Building2}
-                    label="Required handoff"
-                    title={task.originHub.name ?? 'Origin Bayan Hub'}
-                >
-                    {task.originHub.code ?? 'Facility code unavailable'}
-                </DetailBlock>
-            </div>
-            <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-slate-500">{task.itemCount} parcel item(s)</p>
-                <button
-                    type="button"
-                    onClick={onClaim}
-                    disabled={disabled}
-                    className="rounded-sm bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C50B39] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {loading ? 'Claiming...' : 'Claim pickup'}
-                </button>
-            </div>
-        </article>
-    );
-}
-
-function PickupCard({
+function PickupRouteCard({
     task,
     loading,
     onConfirm,
@@ -751,49 +1058,111 @@ function PickupCard({
     onConfirm: () => void;
 }) {
     const awaitingHub = task.nextAction === 'await_origin_hub_scan';
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
 
     return (
-        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
-            <TaskHeader task={task} badge={awaitingHub ? 'IN CUSTODY' : 'ASSIGNED'} />
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <DetailBlock icon={Store} label="Collect from" title={task.merchant.name ?? 'Merchant store'}>
-                    <span className="block">{task.merchant.address}</span>
-                    {task.merchant.phone && (
-                        <span className="mt-1 flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5" />
-                            {task.merchant.phone}
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
+                        {task.trackingNumber}
+                    </span>
+                    {task.orderNumber && (
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
                         </span>
                     )}
-                </DetailBlock>
-                <DetailBlock
-                    icon={Building2}
-                    label="Hand off to"
-                    title={task.originHub.name ?? 'Origin Bayan Hub'}
+                </div>
+                <span
+                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                        awaitingHub
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    }`}
                 >
-                    {task.originHub.code ?? 'Facility code unavailable'}
-                </DetailBlock>
+                    {awaitingHub ? 'In Custody' : 'Assigned Pickup'}
+                </span>
             </div>
-            <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* Grid Route Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Merchant Location</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">
+                        {task.merchant?.name ?? 'Merchant Store'}
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        {task.merchant?.address}
+                    </p>
+                    {/* Action Links on Mobile/Desktop */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {task.merchant?.address && (
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        )}
+                        {task.merchant?.phone && (
+                            <a
+                                href={`tel:${task.merchant.phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <Phone className="w-3 h-3 text-slate-500" />
+                                <span>{task.merchant.phone}</span>
+                            </a>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Origin Bayan Hub Target</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">
+                        {task.originHub?.name ?? 'Origin Bayan Hub'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                        Facility Code: <span className="font-semibold text-slate-700 font-mono">{task.originHub?.code ?? 'BH-01'}</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
+                    </p>
+                </div>
+            </div>
+
+            {/* Action Bar (Stack on Mobile, Row on Desktop) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <Link
                     href={route('courier.messages', { delivery: task.id })}
-                    className="inline-flex items-center justify-center gap-2 rounded-sm border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
                 >
-                    <MessageSquare className="h-4 w-4" />
-                    Message merchant
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Message Merchant</span>
                 </Link>
+
                 {awaitingHub ? (
-                    <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-                        <Clock3 className="h-4 w-4" />
-                        Awaiting Origin Hub intake scan
+                    <div className="w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                        <Clock3 className="w-3.5 h-3.5" />
+                        <span>Awaiting Origin Hub Intake Scan</span>
                     </div>
                 ) : (
                     <button
                         type="button"
                         onClick={onConfirm}
                         disabled={loading}
-                        className="rounded-sm bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C50B39] disabled:opacity-50"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
                     >
-                        {loading ? 'Saving...' : 'Confirm merchant pickup'}
+                        {loading ? 'Saving...' : 'Confirm Merchant Pickup'}
                     </button>
                 )}
             </div>
@@ -801,7 +1170,7 @@ function PickupCard({
     );
 }
 
-function FinalMileCard({
+function FinalMileRouteCard({
     task,
     codLabel,
     loading,
@@ -815,102 +1184,229 @@ function FinalMileCard({
     onComplete: () => void;
 }) {
     const outForDelivery = task.nextAction === 'complete_delivery';
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.recipient?.address || '')}`;
 
     return (
-        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
-            <TaskHeader task={task} badge={outForDelivery ? 'OUT FOR DELIVERY' : 'ASSIGNED'} />
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                <DetailBlock icon={MapPin} label="Buyer delivery" title={task.recipient.name}>
-                    <span className="block">{task.recipient.address}</span>
-                    <span className="mt-1 flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5" />
-                        {task.recipient.phone}
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
+                        {task.trackingNumber}
                     </span>
-                </DetailBlock>
-                <DetailBlock
-                    icon={Building2}
-                    label="Dispatch facility"
-                    title={task.destinationHub.name ?? 'Destination Bayan Hub'}
-                >
-                    {task.destinationHub.code ?? 'Facility code unavailable'}
-                </DetailBlock>
-                <DetailBlock icon={ClipboardCheck} label="Payment" title={task.payment.method}>
-                    {task.payment.method === 'COD'
-                        ? `Exact amount due: ${codLabel}`
-                        : 'No cash collection required'}
-                </DetailBlock>
+                    {task.orderNumber && (
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            task.payment?.method === 'COD'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        {task.payment?.method ?? 'ONLINE'}
+                    </span>
+                    <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            outForDelivery
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}
+                    >
+                        {outForDelivery ? 'Out for Delivery' : 'Assigned'}
+                    </span>
+                </div>
             </div>
-            <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* Grid Route Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Buyer Recipient</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">{task.recipient?.name}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        {task.recipient?.address}
+                    </p>
+                    {/* Action Links */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {task.recipient?.address && (
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        )}
+                        {task.recipient?.phone && (
+                            <a
+                                href={`tel:${task.recipient.phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <Phone className="w-3 h-3 text-slate-500" />
+                                <span>{task.recipient.phone}</span>
+                            </a>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Destination Hub</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">
+                        {task.destinationHub?.name ?? 'Destination Bayan Hub'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono">
+                        Code: {task.destinationHub?.code ?? 'BH-02'}
+                    </p>
+                    {task.payment?.method === 'COD' && (
+                        <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <span className="text-[10px] font-bold text-amber-800 uppercase block">
+                                Collect Exact COD
+                            </span>
+                            <span className="text-xs font-black text-amber-900 block font-mono">
+                                {codLabel}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <Link
                     href={route('courier.messages', { delivery: task.id })}
-                    className="inline-flex items-center justify-center gap-2 rounded-sm border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
                 >
-                    <MessageSquare className="h-4 w-4" />
-                    Message buyer
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Message Buyer</span>
                 </Link>
+
                 <button
                     type="button"
                     onClick={outForDelivery ? onComplete : onStart}
                     disabled={loading}
-                    className="rounded-sm bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C50B39] disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
                 >
                     {loading
                         ? 'Saving...'
                         : outForDelivery
-                          ? 'Record successful delivery'
-                          : 'Start final-mile delivery'}
+                          ? 'Record Successful Delivery'
+                          : 'Start Final-Mile Delivery'}
                 </button>
             </div>
         </article>
     );
 }
 
-function TaskHeader({
+function AvailablePickupRouteCard({
     task,
-    badge,
+    disabled,
+    loading,
+    onClaim,
 }: {
-    task: Pick<PickupTask, 'trackingNumber' | 'orderNumber'>;
-    badge: string;
+    task: PickupTask;
+    disabled: boolean;
+    loading: boolean;
+    onClaim: () => void;
 }) {
-    return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-                <p className="text-sm font-bold text-slate-950">{task.trackingNumber}</p>
-                <p className="mt-1 text-xs text-slate-500">Order {task.orderNumber}</p>
-            </div>
-        <span className="w-fit rounded-sm border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-700">
-                {badge}
-            </span>
-        </div>
-    );
-}
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
 
-function DetailBlock({
-    icon: Icon,
-    label,
-    title,
-    children,
-}: {
-    icon: React.ElementType;
-    label: string;
-    title: string;
-    children: React.ReactNode;
-}) {
     return (
-        <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <Icon className="h-4 w-4" />
-                {label}
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
+                        {task.trackingNumber}
+                    </span>
+                    {task.orderNumber && (
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
+                        </span>
+                    )}
+                </div>
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-[#C20836] border border-rose-200 uppercase tracking-wider">
+                    Ready for Pickup
+                </span>
             </div>
-            <p className="mt-2 text-sm font-semibold text-slate-900">{title}</p>
-            <div className="mt-1 text-xs leading-5 text-slate-600">{children}</div>
-        </div>
+
+            {/* Grid Route Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Merchant Location</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">
+                        {task.merchant?.name ?? 'Merchant Store'}
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        {task.merchant?.address}
+                    </p>
+                    {task.merchant?.address && (
+                        <div className="pt-1">
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Origin Bayan Hub Target</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900">
+                        {task.originHub?.name ?? 'Origin Bayan Hub'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono">
+                        Facility Code: {task.originHub?.code ?? 'BH-01'}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
+                    </p>
+                </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
+                <span className="text-xs text-slate-500 font-medium">
+                    Batch claim limit applies (up to 5)
+                </span>
+                <button
+                    type="button"
+                    onClick={onClaim}
+                    disabled={disabled}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                    {loading ? 'Claiming...' : 'Claim Pickup'}
+                </button>
+            </div>
+        </article>
     );
 }
 
 function InstructionBox({ text }: { text: string }) {
     return (
-        <div className="rounded-md border border-blue-300 bg-blue-50 p-3 text-sm leading-6 text-blue-950">
+        <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs leading-relaxed text-blue-950 font-sans">
             {text}
         </div>
     );

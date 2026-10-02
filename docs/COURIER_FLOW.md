@@ -6,6 +6,8 @@ Pickup and delivery riders are phases of the same approved `courier` account. A 
 
 Courier submits identity, license, vehicle, and required ownership/registration documents. Approval is required before portal access. A rider must be active, approved, and available to claim or receive work. A rider may hold several pickup assignments in one route batch, subject to the configured active-pickup capacity; each parcel still has exactly one pickup custodian.
 
+Going off duty removes the rider from new pickup and final-mile assignment choices at the assigned hub. It does not abandon any parcel already claimed or assigned: the rider must still complete the relevant pickup, hub handoff, delivery, or approved exception process.
+
 ## 2. Pickup-Rider Phase
 
 ```text

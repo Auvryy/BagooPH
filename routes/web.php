@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
@@ -130,6 +131,8 @@ $registerCourierRoutes = function () {
         Route::get('/messages', [CourierDeliveryController::class, 'messages']);
         Route::post('/messages/send', [CourierDeliveryController::class, 'sendMessage']);
         Route::get('/profile', [CourierDeliveryController::class, 'profile']);
+        Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('courier.profile.update');
+        Route::put('/profile/password', [PasswordController::class, 'update'])->name('courier.profile.password.update');
         Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
         Route::get('/dashboard', fn () => redirect('/deliveries'));
         Route::get('/courier/deliveries', fn () => redirect('/deliveries'));

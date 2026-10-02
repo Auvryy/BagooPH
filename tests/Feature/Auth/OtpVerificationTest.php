@@ -5,10 +5,11 @@ namespace Tests\Feature\Auth;
 use App\Mail\OtpVerificationMail;
 use App\Models\EmailOtp;
 use App\Models\User;
-use App\Services\OtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Tests\TestCase;
 
 class OtpVerificationTest extends TestCase
@@ -41,6 +42,32 @@ class OtpVerificationTest extends TestCase
             'email' => 'newbuyer@example.com',
             'purpose' => 'registration',
             'attempts' => 0,
+        ]);
+    }
+
+    public function test_mail_delivery_failure_is_reported_without_retaining_an_otp(): void
+    {
+        Mail::shouldReceive('to')
+            ->once()
+            ->with('offline@example.com')
+            ->andThrow(new RuntimeException('SMTP unavailable'));
+        Log::shouldReceive('warning')
+            ->once()
+            ->with('Failed to dispatch an OTP verification email.', [
+                'email' => 'offline@example.com',
+                'exception' => RuntimeException::class,
+            ]);
+
+        $response = $this->postJson('/api/otp/send', [
+            'email' => 'offline@example.com',
+            'purpose' => 'registration',
+        ]);
+
+        $response->assertStatus(503)->assertJson([
+            'success' => false,
+        ]);
+        $this->assertDatabaseMissing('email_otps', [
+            'email' => 'offline@example.com',
         ]);
     }
 

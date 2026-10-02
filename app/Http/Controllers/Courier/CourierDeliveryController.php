@@ -48,7 +48,7 @@ class CourierDeliveryController extends Controller
         );
 
         if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
-            if ($canReceiveNewWork) {
+            if ($canReceiveNewWork && $profile->is_available) {
                 $availableJobs = Delivery::query()
                     ->whereNull('courier_id')
                     ->whereRaw('deliveries.status = ?', ['unassigned'])
@@ -312,21 +312,12 @@ class CourierDeliveryController extends Controller
             'courierProfile.vehicle',
         ]);
         $profile = $user->courierProfile;
-        $completedCount = 0;
-
-        if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
-            $completedCount = Delivery::query()
-                ->where('assigned_rider_id', $user->id)
-                ->where('logistics_company_id', $profile->logistics_company_id)
-                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
-                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
-                ->count();
-        }
 
         return Inertia::render('Courier/Profile', [
             'rider' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 'phone' => $user->phone,
                 'account_status' => $user->status,
                 'kyc_status' => $user->kyc_status,
@@ -346,8 +337,42 @@ class CourierDeliveryController extends Controller
                 'registration_status' => $profile?->or_cr_status,
             ],
             'isOnline' => (bool) $profile?->is_available,
-            'completedDeliveries' => $completedCount,
         ]);
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'min:2',
+                'max:100',
+                'regex:/^[\\pL][\\pL .\'-]*$/u',
+            ],
+            'phone' => [
+                'nullable',
+                'string',
+                'max:30',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || trim((string) $value) === '') {
+                        return;
+                    }
+
+                    $digits = preg_replace('/[^0-9]/', '', (string) $value);
+                    if (! preg_match('/^(?:0?9|639)\\d{9}$/', $digits)) {
+                        $fail('Enter a valid Philippine mobile number.');
+                    }
+                },
+            ],
+        ]);
+
+        $request->user()->update([
+            'name' => trim($validated['name']),
+            'phone' => $this->normalizePhilippineMobile($validated['phone'] ?? null),
+        ]);
+
+        return back()->with('success', 'Account contact details updated.');
     }
 
     public function toggleDuty(Request $request): RedirectResponse
@@ -387,6 +412,25 @@ class CourierDeliveryController extends Controller
                 && $profile?->hub?->is_active
             ),
         ];
+    }
+
+    private function normalizePhilippineMobile(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+
+        if (str_starts_with($digits, '09')) {
+            return '+63'.substr($digits, 1);
+        }
+
+        if (str_starts_with($digits, '639')) {
+            return '+'.$digits;
+        }
+
+        return '+63'.$digits;
     }
 
     private function pickupPayload(Delivery $delivery, bool $isAvailable): array

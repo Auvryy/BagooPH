@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Mail\OtpVerificationMail;
 use App\Models\EmailOtp;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -25,6 +25,7 @@ class OtpService
 
         if ($recentOtp && $recentOtp->created_at->diffInSeconds(now()) < 60) {
             $remaining = 60 - $recentOtp->created_at->diffInSeconds(now());
+
             return [
                 'success' => false,
                 'message' => "Please wait {$remaining} seconds before requesting a new code.",
@@ -55,7 +56,7 @@ class OtpService
         $code = sprintf('%06d', random_int(100000, 999999));
 
         // 5. Store OTP record with 10-minute expiry
-        EmailOtp::create([
+        $otp = EmailOtp::create([
             'email' => $normalizedEmail,
             'code_hash' => Hash::make($code),
             'purpose' => $purpose,
@@ -67,7 +68,18 @@ class OtpService
         try {
             Mail::to($normalizedEmail)->send(new OtpVerificationMail($code, $purpose));
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Failed to dispatch OTP verification email to {$normalizedEmail}: " . $e->getMessage() . " [Code: {$code}]");
+            $otp->delete();
+
+            Log::warning('Failed to dispatch an OTP verification email.', [
+                'email' => $normalizedEmail,
+                'exception' => $e::class,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'We could not send the verification code. Please try again shortly.',
+                'status' => 503,
+            ];
         }
 
         return [
@@ -112,10 +124,11 @@ class OtpService
         // Compare constant-time hash
         if (! Hash::check($cleanCode, $otp->code_hash)) {
             $remaining = max(0, 5 - $otp->attempts);
+
             return [
                 'success' => false,
-                'message' => $remaining > 0 
-                    ? "Invalid verification code. {$remaining} attempt(s) remaining." 
+                'message' => $remaining > 0
+                    ? "Invalid verification code. {$remaining} attempt(s) remaining."
                     : 'Maximum verification attempts reached. Please request a new code.',
             ];
         }

@@ -50,7 +50,7 @@ export interface User {
     kyc_feedback?: string | null;
     kyc_submitted_at?: string | null;
     kyc_reviewed_at?: string | null;
-    email_verified_at?: string;
+    email_verified_at?: string | null;
     shop?: Shop | null;
     courier_profile?: CourierProfile | null;
     addresses?: Address[];

@@ -3,6 +3,7 @@ import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { User, Order, Address, PageProps } from '@/types';
 import { 
     User as UserIcon, 
@@ -1131,7 +1132,7 @@ export default function BuyerProfile({
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Account Password & Security</h3>
-                                        <p className="text-xs text-slate-500 font-sans">Ensure your account password is at least 8 characters long</p>
+                                        <p className="text-xs text-slate-500 font-sans">Use a unique password between 12 and 128 characters</p>
                                     </div>
 
                                     {user.google_id && (
@@ -1167,6 +1168,12 @@ export default function BuyerProfile({
                                         </div>
                                     )}
 
+                                    <EmailVerificationStatus
+                                        email={user.email}
+                                        verifiedAt={user.email_verified_at}
+                                    />
+
+                                    {user.email_verified_at && (
                                     <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs font-sans">
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div>
@@ -1178,6 +1185,11 @@ export default function BuyerProfile({
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs"
                                                     required
                                                 />
+                                                {passwordForm.errors.current_password && (
+                                                    <p className="mt-1 text-xs font-semibold text-[#E00D42]">
+                                                        {passwordForm.errors.current_password}
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div>
@@ -1189,6 +1201,11 @@ export default function BuyerProfile({
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs"
                                                     required
                                                 />
+                                                {passwordForm.errors.password && (
+                                                    <p className="mt-1 text-xs font-semibold text-[#E00D42]">
+                                                        {passwordForm.errors.password}
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div>
@@ -1200,6 +1217,11 @@ export default function BuyerProfile({
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs"
                                                     required
                                                 />
+                                                {passwordForm.errors.password_confirmation && (
+                                                    <p className="mt-1 text-xs font-semibold text-[#E00D42]">
+                                                        {passwordForm.errors.password_confirmation}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1213,6 +1235,7 @@ export default function BuyerProfile({
                                             </button>
                                         </div>
                                     </form>
+                                    )}
                                 </div>
 
                             </div>
