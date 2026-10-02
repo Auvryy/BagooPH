@@ -12,6 +12,20 @@ class Delivery extends Model
 {
     use HasFactory;
 
+    /**
+     * Statuses where a rider still owns an assignment or physical custody.
+     * Keep this list canonical and use a raw status comparison so the legacy
+     * DeliveryBuilder aliases cannot accidentally broaden the busy check.
+     */
+    public const RIDER_ACTIVE_STATUSES = [
+        'assigned',
+        'assigned_pickup',
+        'picked_up',
+        'assigned_to_rider',
+        'out_for_delivery',
+        'delivery_failed',
+    ];
+
     protected $fillable = [
         'order_id',
         'courier_id',
@@ -86,6 +100,20 @@ class Delivery extends Model
     public function canReattempt(): bool
     {
         return $this->failure_attempts < 2; // Up to 2 re-attempts (3 attempts total)
+    }
+
+    public static function riderHasActiveWork(int $riderId, ?int $exceptDeliveryId = null): bool
+    {
+        $placeholders = implode(',', array_fill(0, count(self::RIDER_ACTIVE_STATUSES), '?'));
+
+        return self::query()
+            ->where(function ($query) use ($riderId) {
+                $query->where('courier_id', $riderId)
+                    ->orWhere('assigned_rider_id', $riderId);
+            })
+            ->when($exceptDeliveryId, fn ($query) => $query->whereKeyNot($exceptDeliveryId))
+            ->whereRaw("deliveries.status in ({$placeholders})", self::RIDER_ACTIVE_STATUSES)
+            ->exists();
     }
 
     public function order(): BelongsTo

@@ -5,177 +5,162 @@ namespace App\Http\Controllers\Courier;
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
-use App\Models\Message;
-use App\Models\User;
+use App\Services\Courier\CourierMessagingService;
+use App\Services\Courier\CourierOperationsService;
 use App\Services\Logistics\OrderStateMachineService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class CourierDeliveryController extends Controller
 {
+    public function __construct(
+        private readonly CourierOperationsService $operations,
+        private readonly CourierMessagingService $messaging,
+    ) {}
+
     public function index(Request $request): Response
     {
-        $user = $request->user();
+        $user = $request->user()->load([
+            'courierProfile.company',
+            'courierProfile.hub',
+            'courierProfile.vehicle',
+        ]);
         $profile = $user->courierProfile;
-        $isOnline = session('courier_duty_status', true);
 
-        // My active and recent deliveries
-        $myDeliveries = Delivery::where(function ($query) use ($user) {
-            $query->where('courier_id', $user->id)
-                ->orWhere('assigned_rider_id', $user->id);
-        })
-            ->with(['order.items.product', 'order.buyer'])
-            ->latest()
-            ->get();
+        $availableJobs = collect();
+        $pickupTasks = collect();
+        $finalMileTasks = collect();
+        $recentActivity = collect();
+        $completedToday = 0;
+        $canReceiveNewWork = (bool) (
+            $profile?->logistics_company_id
+            && $profile?->assigned_hub_id
+            && $profile?->company?->is_active
+            && $profile?->company?->status === 'active'
+            && $profile?->hub?->is_active
+        );
 
-        // Unassigned deliveries available for broadcast (FCFS)
-        $availableJobs = Delivery::whereNull('courier_id')
-            ->where('status', 'unassigned')
-            ->when($profile, fn ($query) => $query
+        if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
+            if ($canReceiveNewWork) {
+                $availableJobs = Delivery::query()
+                    ->whereNull('courier_id')
+                    ->whereRaw('deliveries.status = ?', ['unassigned'])
+                    ->where('logistics_company_id', $profile->logistics_company_id)
+                    ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
+                    ->whereHas('order', fn ($query) => $query->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
+                    ->with(['order.items', 'originBayanHub'])
+                    ->oldest()
+                    ->get();
+            }
+
+            $pickupTasks = Delivery::query()
+                ->where('courier_id', $user->id)
                 ->where('logistics_company_id', $profile->logistics_company_id)
-                ->where('origin_bayan_hub_id', $profile->assigned_hub_id))
-            ->when(! $profile, fn ($query) => $query->whereRaw('1 = 0'))
-            ->whereHas('order', fn ($query) => $query->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
-            ->with(['order.items.product', 'order.buyer'])
-            ->latest()
-            ->get();
+                ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw("deliveries.status in ('assigned', 'assigned_pickup', 'picked_up')")
+                ->with(['order.items', 'originBayanHub'])
+                ->oldest('assigned_at')
+                ->get();
 
-        $completedDeliveries = Delivery::where('assigned_rider_id', $user->id)
-            ->where('status', 'delivered')
-            ->get();
+            $finalMileTasks = Delivery::query()
+                ->where('assigned_rider_id', $user->id)
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw("deliveries.status in ('assigned_to_rider', 'out_for_delivery')")
+                ->with(['order', 'destinationBayanHub'])
+                ->oldest('assigned_at')
+                ->get();
 
-        $activeDeliveries = Delivery::where(function ($query) use ($user) {
-            $query->where('courier_id', $user->id)
-                ->orWhere('assigned_rider_id', $user->id);
-        })
-            ->whereIn('status', ['assigned', 'assigned_pickup', 'picked_up', 'assigned_to_rider', 'out_for_delivery'])
-            ->get();
+            $recentActivity = Delivery::query()
+                ->where('assigned_rider_id', $user->id)
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
+                ->with(['order', 'destinationBayanHub'])
+                ->latest('delivered_at')
+                ->limit(10)
+                ->get();
 
-        // Total COD cash collected on-hand
-        $codCollected = $completedDeliveries->where('order.payment_method', 'cod')->sum(function ($d) {
-            return $d->order ? (float) $d->order->total_amount : 0;
-        });
-
-        // Rider delivery payouts earned (₱60 avg per parcel)
-        $totalEarned = $completedDeliveries->count() * 60;
+            $completedToday = Delivery::query()
+                ->where('assigned_rider_id', $user->id)
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
+                ->whereDate('delivered_at', today())
+                ->count();
+        }
 
         return Inertia::render('Courier/Deliveries', [
-            'myDeliveries' => $myDeliveries,
-            'availableJobs' => $availableJobs,
-            'isOnline' => $isOnline,
+            'scope' => $this->scopePayload($profile),
+            'isOnline' => (bool) $profile?->is_available,
             'stats' => [
-                'active' => $activeDeliveries->count(),
-                'completed' => $completedDeliveries->count(),
-                'available' => $availableJobs->count(),
-                'todayEarnings' => $totalEarned,
-                'codOnHand' => $codCollected,
+                'availablePickups' => $availableJobs->count(),
+                'activePickups' => $pickupTasks->count(),
+                'finalMileTasks' => $finalMileTasks->count(),
+                'completedToday' => $completedToday,
+            ],
+            'queues' => [
+                'availablePickups' => $availableJobs->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, true))->values(),
+                'pickupTasks' => $pickupTasks->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, false))->values(),
+                'finalMileTasks' => $finalMileTasks->map(fn (Delivery $delivery) => $this->finalMilePayload($delivery))->values(),
+                'recentActivity' => $recentActivity->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
             ],
         ]);
     }
 
     public function claim(Request $request, Delivery $delivery): RedirectResponse
     {
-        $rider = $request->user()->load('courierProfile');
-        if ($rider->status !== 'active' || $rider->kyc_status !== 'approved' || ! $rider->courierProfile?->is_available) {
-            return back()->with('error', 'Only active, approved, and available riders may claim pickup jobs.');
-        }
-
-        $claimed = DB::transaction(function () use ($delivery, $rider) {
-            $lockedDelivery = Delivery::with('order')->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
-
-            if ($lockedDelivery->courier_id !== null || $lockedDelivery->status !== 'unassigned') {
-                return false;
-            }
-
-            if ($lockedDelivery->order?->status !== OrderStateMachineService::STATUS_READY_FOR_PICKUP) {
-                return false;
-            }
-
-            $profile = $rider->courierProfile;
-            if (
-                ! $profile
-                || $profile->logistics_company_id !== $lockedDelivery->logistics_company_id
-                || $profile->assigned_hub_id !== $lockedDelivery->origin_bayan_hub_id
-            ) {
-                return false;
-            }
-
-            $lockedDelivery->update([
-                'courier_id' => $rider->id,
-                'status' => 'assigned_pickup',
-                'assigned_at' => now(),
-            ]);
-
-            DeliveryCheckpoint::record(
-                delivery: $lockedDelivery,
-                type: 'assigned_pickup',
-                location: $lockedDelivery->pickup_store_name ?? 'Merchant Store',
-                notes: "Pickup job claimed by {$rider->name}",
-                actor: $rider
+        try {
+            $claimed = $this->operations->claimPickup(
+                $request->user()->load('courierProfile'),
+                $delivery
             );
-
-            return true;
-        });
-
-        if (! $claimed) {
-            return back()->with('error', 'This pickup job is unavailable or has already been claimed.');
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', "Delivery task #{$delivery->tracking_number} claimed! Proceed to store for pickup.");
+        return back()->with('success', "Pickup {$claimed->tracking_number} claimed. Proceed to the merchant store.");
     }
 
     public function updateStatus(Request $request, Delivery $delivery): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:picked_up,in_transit,out_for_delivery,delivered,failed',
-            'courier_notes' => 'nullable|string|max:500',
-            'proof_image_file' => 'nullable|image|max:5120',
+            'status' => ['required', Rule::in([
+                OrderStateMachineService::STATUS_PICKED_UP,
+                OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+                OrderStateMachineService::STATUS_DELIVERED,
+            ])],
+            'courier_notes' => ['nullable', 'string', 'max:500'],
+            'proof_image_file' => [
+                Rule::requiredIf(
+                    $request->input('status') === OrderStateMachineService::STATUS_DELIVERED
+                    && $delivery->status !== OrderStateMachineService::STATUS_DELIVERED
+                ),
+                'nullable',
+                'image',
+                'max:5120',
+            ],
         ]);
-        $rider = $request->user();
-        $delivery->load('order.items.product.shop');
-        $requestedStatus = $validated['status'];
 
-        if ($requestedStatus === 'in_transit') {
-            return back()->with('error', 'Hub arrival must be recorded by an authorized hub waybill scan.');
-        }
+        $rider = $request->user()->load('courierProfile');
+        $targetStatus = $validated['status'];
+        $proofPath = null;
 
-        if ($requestedStatus === 'picked_up') {
-            if ($delivery->courier_id !== $rider->id || ! in_array($delivery->status, ['assigned', 'assigned_pickup'], true)) {
-                return back()->with('error', 'Only the assigned pickup rider may collect this ready parcel.');
-            }
-            $targetStatus = OrderStateMachineService::STATUS_PICKED_UP;
-        } elseif ($requestedStatus === 'out_for_delivery') {
-            if ($delivery->assigned_rider_id !== $rider->id || $delivery->status !== OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER) {
-                return back()->with('error', 'Only the assigned final-mile rider may dispatch this parcel from the hub.');
-            }
-            $targetStatus = OrderStateMachineService::STATUS_OUT_FOR_DELIVERY;
-        } elseif (in_array($requestedStatus, ['delivered', 'failed'], true)) {
-            if ($delivery->assigned_rider_id !== $rider->id || $delivery->status !== OrderStateMachineService::STATUS_OUT_FOR_DELIVERY) {
-                return back()->with('error', 'Only the assigned final-mile rider may submit the delivery outcome.');
-            }
-            $targetStatus = $requestedStatus === 'delivered'
-                ? OrderStateMachineService::STATUS_DELIVERED
-                : OrderStateMachineService::STATUS_DELIVERY_FAILED;
+        $isIdempotentRetry = $delivery->status === $targetStatus
+            && DeliveryCheckpoint::query()
+                ->where('delivery_id', $delivery->id)
+                ->where('checkpoint_type', $targetStatus)
+                ->exists();
 
-            if (
-                $targetStatus === OrderStateMachineService::STATUS_DELIVERED
-                && ! $request->hasFile('proof_image_file')
-            ) {
-                return back()->with('error', 'Proof of delivery is required before completing the handover.');
-            }
-            if ($targetStatus === OrderStateMachineService::STATUS_DELIVERY_FAILED && empty($validated['courier_notes'])) {
-                return back()->with('error', 'A delivery failure reason is required.');
-            }
-        } else {
-            return back()->with('error', 'Unsupported delivery transition.');
-        }
-
-        $proofImage = null;
-        if ($request->hasFile('proof_image_file')) {
-            $proofImage = '/storage/'.$request->file('proof_image_file')->store('delivery-proofs', 'public');
+        if (! $isIdempotentRetry && $request->hasFile('proof_image_file')) {
+            $storedPath = $request->file('proof_image_file')->store('delivery-proofs', 'public');
+            $proofPath = '/storage/'.$storedPath;
         }
 
         try {
@@ -186,17 +171,24 @@ class CourierDeliveryController extends Controller
                 scanMetadata: [
                     'rider_id' => $rider->id,
                     'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
-                        ? ($delivery->pickup_store_name ?? 'Merchant Store')
-                        : ($delivery->delivery_address ?? 'Buyer Destination'),
+                        ? ($delivery->pickup_store_name ?? 'Merchant store')
+                        : ($delivery->delivery_address ?? 'Buyer destination'),
                     'notes' => $validated['courier_notes'] ?? null,
-                    'reason' => $targetStatus === OrderStateMachineService::STATUS_DELIVERY_FAILED
-                        ? $validated['courier_notes']
-                        : null,
-                    'proof_image' => $proofImage,
+                    'proof_image' => $proofPath,
                 ]
             );
-        } catch (\DomainException $exception) {
+        } catch (DomainException $exception) {
+            if ($proofPath) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
+            }
+
             return back()->with('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            if ($proofPath) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
+            }
+
+            throw $exception;
         }
 
         $updatedDelivery->update([
@@ -207,124 +199,242 @@ class CourierDeliveryController extends Controller
             DeliveryCheckpoint::firstOrCreate(
                 ['delivery_id' => $delivery->id, 'checkpoint_type' => 'courier_pickup'],
                 [
-                    'location_name' => $delivery->pickup_store_name ?? 'Merchant Store',
+                    'location_name' => $delivery->pickup_store_name ?? 'Merchant store',
                     'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Pickup rider scanned and collected the seller parcel',
+                    'notes' => $validated['courier_notes'] ?? 'Pickup rider matched the waybill and collected the seller parcel.',
                     'scanned_by_id' => $rider->id,
                 ]
             );
         }
 
-        return back()->with('success', "Delivery status updated to {$targetStatus}.");
+        $message = match ($targetStatus) {
+            OrderStateMachineService::STATUS_PICKED_UP => 'Pickup recorded. Deliver the parcel to the assigned Origin Bayan Hub.',
+            OrderStateMachineService::STATUS_OUT_FOR_DELIVERY => 'Final-mile delivery started.',
+            OrderStateMachineService::STATUS_DELIVERED => 'Delivery and proof recorded. Buyer confirmation is still required.',
+        };
+
+        return back()->with('success', $message);
     }
 
     public function earnings(Request $request): Response
     {
-        $user = $request->user();
+        $user = $request->user()->load([
+            'courierProfile.company',
+            'courierProfile.hub',
+        ]);
+        $profile = $user->courierProfile;
+        $completed = collect();
 
-        $completed = Delivery::where('assigned_rider_id', $user->id)
-            ->where('status', 'delivered')
-            ->with(['order.items.product', 'order.buyer'])
-            ->latest('delivered_at')
-            ->get();
-
-        $totalCompleted = $completed->count();
-        $totalEarnings = $totalCompleted * 60; // ₱60 per delivered parcel
-        $codCollected = $completed->sum(function ($d) {
-            return ($d->order && $d->order->payment_method === 'cod') ? (float) $d->order->total_amount : 0;
-        });
-
-        $trips = $completed->map(function ($d) {
-            return [
-                'id' => $d->id,
-                'tracking_number' => $d->tracking_number,
-                'order_number' => $d->order ? $d->order->order_number : 'N/A',
-                'store_name' => $d->pickup_store_name ?? 'Bagoo Merchant Hub',
-                'delivery_address' => $d->delivery_address,
-                'recipient_name' => $d->delivery_recipient_name,
-                'delivered_at' => $d->delivered_at ? $d->delivered_at->format('M d, Y h:i A') : 'Completed',
-                'payment_method' => $d->order ? strtoupper($d->order->payment_method) : 'COD',
-                'cod_amount' => $d->order ? (float) $d->order->total_amount : 0,
-                'payout' => 60.00,
-            ];
-        });
+        if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
+            $completed = Delivery::query()
+                ->where('assigned_rider_id', $user->id)
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
+                ->with(['order', 'destinationBayanHub'])
+                ->latest('delivered_at')
+                ->get();
+        }
 
         return Inertia::render('Courier/Earnings', [
-            'stats' => [
-                'totalCompleted' => $totalCompleted,
-                'totalEarnings' => $totalEarnings,
-                'codCollected' => $codCollected,
-                'remittanceStatus' => 'Good Standing',
-                'payoutRate' => '₱60.00 / trip',
+            'scope' => $this->scopePayload($profile),
+            'isOnline' => (bool) $profile?->is_available,
+            'summary' => [
+                'completedDeliveries' => $completed->count(),
+                'completedToday' => $completed->filter(fn (Delivery $delivery) => $delivery->delivered_at?->isToday())->count(),
             ],
-            'trips' => $trips,
+            'trips' => $completed->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
         ]);
     }
 
     public function messages(Request $request): Response
     {
-        $user = $request->user();
-
-        $messages = Message::where('sender_id', $user->id)
-            ->orWhere('receiver_id', $user->id)
-            ->with(['sender.shop', 'receiver.shop', 'product'])
-            ->latest()
-            ->get();
-
-        $grouped = $messages->groupBy(function ($msg) use ($user) {
-            return $msg->sender_id === $user->id ? $msg->receiver_id : $msg->sender_id;
-        });
-
-        $conversations = [];
-        foreach ($grouped as $otherUserId => $msgs) {
-            $otherUser = User::with('shop')->find($otherUserId);
-            if ($otherUser) {
-                $lastMsg = $msgs->first();
-                $conversations[] = [
-                    'user' => $otherUser,
-                    'last_message' => $lastMsg->message,
-                    'last_time' => $lastMsg->created_at->diffForHumans(),
-                    'unread_count' => $msgs->where('receiver_id', $user->id)->where('is_read', false)->count(),
-                    'messages' => $msgs->sortBy('created_at')->values(),
-                ];
-            }
-        }
+        $user = $request->user()->load('courierProfile');
+        $selectedDeliveryId = $request->integer('delivery') ?: null;
 
         return Inertia::render('Courier/Messages', [
-            'conversations' => $conversations,
+            'conversations' => $this->messaging->conversations($user),
+            'currentUserId' => $user->id,
+            'selectedDeliveryId' => $selectedDeliveryId,
+            'isOnline' => (bool) $user->courierProfile?->is_available,
         ]);
+    }
+
+    public function sendMessage(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'delivery_id' => ['required', 'integer', 'exists:deliveries,id'],
+            'message' => ['required', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->messaging->send(
+                $request->user()->load('courierProfile'),
+                Delivery::findOrFail($validated['delivery_id']),
+                $validated['message']
+            );
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Message sent.');
     }
 
     public function profile(Request $request): Response
     {
-        $user = $request->user();
-        $isOnline = session('courier_duty_status', true);
+        $user = $request->user()->load([
+            'courierProfile.company',
+            'courierProfile.hub',
+            'courierProfile.vehicle',
+        ]);
+        $profile = $user->courierProfile;
+        $completedCount = 0;
 
-        $completedCount = Delivery::where('courier_id', $user->id)->where('status', 'delivered')->count();
+        if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
+            $completedCount = Delivery::query()
+                ->where('assigned_rider_id', $user->id)
+                ->where('logistics_company_id', $profile->logistics_company_id)
+                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
+                ->count();
+        }
 
         return Inertia::render('Courier/Profile', [
-            'user' => $user,
-            'isOnline' => $isOnline,
-            'fleetData' => [
-                'vehicle_type' => 'Motorcycle (Express Dispatch)',
-                'plate_number' => 'NCS-8892',
-                'license_number' => 'N02-18-092831',
-                'license_status' => 'Verified (Class A/A1/B)',
-                'or_cr_status' => 'Valid & Registered',
-                'zone' => 'Metro Manila & Rizal Corridor',
-                'completed_deliveries' => $completedCount,
-                'rating' => 4.95,
+            'rider' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'account_status' => $user->status,
+                'kyc_status' => $user->kyc_status,
             ],
+            'assignment' => [
+                'company' => $profile?->company?->name,
+                'hub' => $profile?->hub?->name,
+                'hub_code' => $profile?->hub?->code,
+                'barangay' => $profile?->assigned_barangay,
+            ],
+            'vehicle' => [
+                'type' => $profile?->vehicle?->vehicle_type ?? $profile?->vehicle_type,
+                'model' => $profile?->vehicle?->model,
+                'plate_number' => $profile?->vehicle?->plate_number ?? $profile?->plate_number,
+                'fleet_status' => $profile?->vehicle?->status,
+                'license_number' => $profile?->license_number,
+                'registration_status' => $profile?->or_cr_status,
+            ],
+            'isOnline' => (bool) $profile?->is_available,
+            'completedDeliveries' => $completedCount,
         ]);
     }
 
     public function toggleDuty(Request $request): RedirectResponse
     {
-        $current = session('courier_duty_status', true);
-        session(['courier_duty_status' => ! $current]);
+        $validated = $request->validate([
+            'is_available' => ['required', 'boolean'],
+        ]);
 
-        $statusText = ! $current ? 'ONLINE & READY FOR JOBS' : 'OFF-DUTY';
+        try {
+            $profile = $this->operations->setAvailability(
+                $request->user()->load('courierProfile'),
+                (bool) $validated['is_available']
+            );
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
-        return back()->with('success', "Courier duty status changed to: {$statusText}");
+        return back()->with(
+            'success',
+            $profile->is_available
+                ? 'You are on duty and may receive eligible work.'
+                : 'You are off duty. Existing assignments remain your responsibility.'
+        );
+    }
+
+    private function scopePayload($profile): array
+    {
+        return [
+            'company' => $profile?->company?->name,
+            'hub' => $profile?->hub?->name,
+            'hubCode' => $profile?->hub?->code,
+            'barangay' => $profile?->assigned_barangay,
+            'isAssigned' => (bool) ($profile?->logistics_company_id && $profile?->assigned_hub_id),
+            'isOperational' => (bool) (
+                $profile?->company?->is_active
+                && $profile?->company?->status === 'active'
+                && $profile?->hub?->is_active
+            ),
+        ];
+    }
+
+    private function pickupPayload(Delivery $delivery, bool $isAvailable): array
+    {
+        return [
+            'id' => $delivery->id,
+            'trackingNumber' => $delivery->tracking_number,
+            'orderNumber' => $delivery->order?->order_number,
+            'status' => $delivery->status,
+            'itemCount' => $delivery->order?->items?->sum('quantity') ?? 0,
+            'merchant' => [
+                'name' => $delivery->pickup_store_name,
+                'address' => $delivery->pickup_address,
+                'phone' => $delivery->pickup_phone,
+            ],
+            'originHub' => [
+                'name' => $delivery->originBayanHub?->name,
+                'code' => $delivery->originBayanHub?->code,
+            ],
+            'assignedAt' => $delivery->assigned_at?->toIso8601String(),
+            'nextAction' => $isAvailable
+                ? 'claim_pickup'
+                : match ($delivery->status) {
+                    'assigned', 'assigned_pickup' => 'confirm_pickup',
+                    'picked_up' => 'await_origin_hub_scan',
+                    default => null,
+                },
+            'canMessage' => ! $isAvailable && in_array($delivery->status, ['assigned', 'assigned_pickup', 'picked_up'], true),
+        ];
+    }
+
+    private function finalMilePayload(Delivery $delivery): array
+    {
+        return [
+            'id' => $delivery->id,
+            'trackingNumber' => $delivery->tracking_number,
+            'orderNumber' => $delivery->order?->order_number,
+            'status' => $delivery->status,
+            'recipient' => [
+                'name' => $delivery->delivery_recipient_name,
+                'address' => $delivery->delivery_address,
+                'phone' => $delivery->delivery_phone,
+            ],
+            'payment' => [
+                'method' => strtoupper((string) $delivery->order?->payment_method),
+                'codAmount' => $delivery->order?->payment_method === 'cod'
+                    ? (float) $delivery->order->total_amount
+                    : null,
+            ],
+            'destinationHub' => [
+                'name' => $delivery->destinationBayanHub?->name,
+                'code' => $delivery->destinationBayanHub?->code,
+            ],
+            'assignedAt' => $delivery->assigned_at?->toIso8601String(),
+            'nextAction' => $delivery->status === OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER
+                ? 'start_delivery'
+                : 'complete_delivery',
+            'canMessage' => true,
+        ];
+    }
+
+    private function activityPayload(Delivery $delivery): array
+    {
+        return [
+            'id' => $delivery->id,
+            'trackingNumber' => $delivery->tracking_number,
+            'orderNumber' => $delivery->order?->order_number,
+            'recipientName' => $delivery->delivery_recipient_name,
+            'deliveryAddress' => $delivery->delivery_address,
+            'paymentMethod' => strtoupper((string) $delivery->order?->payment_method),
+            'destinationHub' => $delivery->destinationBayanHub?->name,
+            'deliveredAt' => $delivery->delivered_at?->toIso8601String(),
+        ];
     }
 }
