@@ -38,6 +38,7 @@ class SellerProductController extends Controller
                         ->orWhereLike('sku', $pattern, caseSensitive: false);
                 });
             })
+            ->withCount('orderItems')
             ->with(['category', 'images'])
             ->latest('updated_at')
             ->latest('id')
@@ -394,6 +395,12 @@ class SellerProductController extends Controller
         $shop = $this->getActiveShop($request);
         if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
             abort(403, 'Unauthorized product deletion.');
+        }
+
+        if ($product->orderItems()->exists()) {
+            $product->update(['status' => 'archived']);
+
+            return back()->with('success', 'Product archived to preserve its order history.');
         }
 
         $product->delete();

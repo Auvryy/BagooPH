@@ -15,6 +15,7 @@ class ProductShareAndSlugTest extends TestCase
     use RefreshDatabase;
 
     private Shop $shop;
+
     private Category $category;
 
     protected function setUp(): void

@@ -120,6 +120,7 @@ export interface Product {
     sales_count: number;
     completed_units?: string | number | null;
     open_order_units?: string | number | null;
+    order_items_count?: number;
     shop?: Shop;
     category?: Category;
     images?: ProductImage[];

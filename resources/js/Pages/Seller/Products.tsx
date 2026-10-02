@@ -81,6 +81,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [stockProduct, setStockProduct] = useState<Product | null>(null);
+    const [productPendingRemoval, setProductPendingRemoval] = useState<Product | null>(null);
+    const [isRemovingProduct, setIsRemovingProduct] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
@@ -1585,6 +1587,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const colorId = activePhotoPicker.colorId;
         const gallery = isCreate ? createGallery : editGallery;
         const setGallery = isCreate ? setCreateGallery : setEditGallery;
+        const fileError = isCreate ? createFileError : editFileError;
+        const setFileError = isCreate ? setCreateFileError : setEditFileError;
 
         let targetName = 'New Color';
         let targetHex = '#111111';
@@ -1750,13 +1754,16 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         const file = e.target.files?.[0];
                                         if (!file) return;
                                         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-                                            alert('Invalid format. Please upload JPG, PNG, WEBP, or GIF.');
+                                            setFileError('Invalid format. Please upload JPG, PNG, WEBP, or GIF.');
+                                            e.target.value = '';
                                             return;
                                         }
                                         if (file.size > MAX_FILE_SIZE_BYTES) {
-                                            alert('Image file exceeds the 5MB size limit.');
+                                            setFileError('Image file exceeds the 5MB size limit.');
+                                            e.target.value = '';
                                             return;
                                         }
+                                        setFileError(null);
                                         const newItem: GalleryItem = {
                                             id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                                             type: 'file',
@@ -1772,6 +1779,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     }}
                                 />
                             </label>
+                            {fileError && (
+                                <div className="flex items-start gap-2 rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800" role="alert">
+                                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>{fileError}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* SECTION 3: External Image URL */}
@@ -1840,10 +1853,19 @@ export default function SellerProducts({ products, categories, shop, filters = {
         );
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to remove this product from your storefront?')) {
-            router.delete(route('seller.products.destroy', id));
-        }
+    const handleDelete = (product: Product) => {
+        setProductPendingRemoval(product);
+    };
+
+    const confirmProductRemoval = () => {
+        if (!productPendingRemoval) return;
+
+        router.delete(route('seller.products.destroy', productPendingRemoval.id), {
+            preserveScroll: true,
+            onStart: () => setIsRemovingProduct(true),
+            onSuccess: () => setProductPendingRemoval(null),
+            onFinish: () => setIsRemovingProduct(false),
+        });
     };
 
     const submitProductSearch = (event: React.FormEvent) => {
@@ -2012,7 +2034,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(product.id)}
+                                                    onClick={() => handleDelete(product)}
                                                     className="p-2 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
                                                     title="Remove Product"
                                                 >
@@ -2159,6 +2181,78 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {typeof document !== 'undefined' && productPendingRemoval && createPortal(
+                <div
+                    className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4 font-sans"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="remove-product-title"
+                    onClick={() => !isRemovingProduct && setProductPendingRemoval(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg border border-slate-300 bg-white shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3 border-b border-slate-200 px-5 py-4">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 bg-rose-50 text-rose-700">
+                                <Trash2 className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h2 id="remove-product-title" className="text-base font-bold text-slate-950">
+                                    {Number(productPendingRemoval.order_items_count || 0) > 0 ? 'Archive product?' : 'Delete product?'}
+                                </h2>
+                                <p className="mt-1 truncate text-xs text-slate-500">{productPendingRemoval.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setProductPendingRemoval(null)}
+                                disabled={isRemovingProduct}
+                                className="rounded-sm p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                                aria-label="Close product removal dialog"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 px-5 py-4">
+                            {Number(productPendingRemoval.order_items_count || 0) > 0 ? (
+                                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+                                    This listing has order history. It will be archived and hidden from buyers while existing order records remain intact.
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-xs leading-relaxed text-rose-900">
+                                    This listing has no order history and will be permanently deleted. This action cannot be undone.
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setProductPendingRemoval(null)}
+                                    disabled={isRemovingProduct}
+                                    className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmProductRemoval}
+                                    disabled={isRemovingProduct}
+                                    className="rounded-sm bg-rose-700 px-4 py-2 text-xs font-bold text-white hover:bg-rose-800 disabled:opacity-50"
+                                >
+                                    {isRemovingProduct
+                                        ? 'Working...'
+                                        : Number(productPendingRemoval.order_items_count || 0) > 0
+                                            ? 'Archive product'
+                                            : 'Delete product'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>,
                 document.body

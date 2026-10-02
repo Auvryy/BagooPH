@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Seller;
 
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -141,5 +143,46 @@ class SellerProductCatalogTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(10, $foreignProduct->fresh()->stock);
+    }
+
+    public function test_product_removal_deletes_unused_listings_but_archives_order_history(): void
+    {
+        $seller = User::factory()->seller()->create();
+        $shop = Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $unusedProduct = Product::factory()->create(['shop_id' => $shop->id]);
+        $orderedProduct = Product::factory()->create([
+            'shop_id' => $shop->id,
+            'status' => 'active',
+        ]);
+        $order = Order::factory()->create();
+        $orderItem = OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $orderedProduct->id,
+            'shop_id' => $shop->id,
+        ]);
+
+        $this->actingAs($seller)
+            ->delete(route('seller.products.destroy', $unusedProduct))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('products', ['id' => $unusedProduct->id]);
+
+        $this->actingAs($seller)
+            ->delete(route('seller.products.destroy', $orderedProduct))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('products', [
+            'id' => $orderedProduct->id,
+            'status' => 'archived',
+        ]);
+        $this->assertDatabaseHas('order_items', ['id' => $orderItem->id]);
+
+        $this->actingAs($seller)
+            ->get(route('seller.products.index', ['search' => $orderedProduct->sku]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('products.data.0.id', $orderedProduct->id)
+                ->where('products.data.0.order_items_count', 1)
+            );
     }
 }
