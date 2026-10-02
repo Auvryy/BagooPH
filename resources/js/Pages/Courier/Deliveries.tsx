@@ -534,15 +534,27 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                     htmlFor="courier-notes"
                                     className="mb-1.5 block text-sm font-semibold text-slate-800"
                                 >
-                                    Operational notes <span className="font-normal text-slate-500">(optional)</span>
+                                    {actionTarget.status === 'picked_up'
+                                        ? 'Pickup note for seller'
+                                        : 'Operational notes'}{' '}
+                                    <span className="font-normal text-slate-500">(optional)</span>
                                 </label>
+                                {actionTarget.status === 'picked_up' && (
+                                    <p className="mb-1.5 text-xs leading-5 text-slate-500">
+                                        This is sent to the seller’s delivery-linked Messages thread after pickup is confirmed.
+                                    </p>
+                                )}
                                 <textarea
                                     id="courier-notes"
                                     rows={3}
                                     maxLength={500}
                                     value={notes}
                                     onChange={(event) => setNotes(event.target.value)}
-                                    placeholder="Add useful handoff or delivery details."
+                                    placeholder={
+                                        actionTarget.status === 'picked_up'
+                                            ? 'Add a useful note about the parcel handoff.'
+                                            : 'Add useful handoff or delivery details.'
+                                    }
                                     className="w-full rounded-sm border border-slate-300 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]"
                                 />
                             </div>

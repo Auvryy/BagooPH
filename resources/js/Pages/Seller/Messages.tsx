@@ -139,7 +139,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search customer name..."
+                                placeholder="Search messages..."
                                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                             />
                             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
@@ -165,7 +165,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="font-bold text-xs text-slate-900 truncate">{c.user?.name || 'Customer'}</h4>
+                                                <h4 className="font-bold text-xs text-slate-900 truncate">{c.user?.name || 'Contact'}</h4>
                                                 <span className="text-[10px] font-sans text-slate-400">{c.last_time}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 truncate mt-0.5">{c.last_message}</p>
@@ -189,7 +189,9 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-sm text-slate-900">{activeUser.name}</h3>
-                                    <p className="text-[10px] font-sans text-slate-400">Customer • {activeUser.city || 'Metro Manila'}</p>
+                                    <p className="text-[10px] font-sans text-slate-400">
+                                        {activeUser.role === 'courier' ? 'Pickup rider' : 'Customer'} • {activeUser.city || 'Metro Manila'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
