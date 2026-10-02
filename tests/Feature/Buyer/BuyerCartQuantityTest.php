@@ -54,6 +54,24 @@ class BuyerCartQuantityTest extends TestCase
         $this->assertSame(20, $product->fresh()->stock);
     }
 
+    public function test_add_rejects_a_zero_stock_product_with_a_clear_error(): void
+    {
+        [$buyer, $product, $cart] = $this->buyerProductAndCart(stock: 0);
+
+        $this->actingAs($buyer)
+            ->post(route('cart.store'), [
+                'product_id' => $product->id,
+                'quantity' => 1,
+            ])
+            ->assertSessionHasErrors([
+                'quantity' => 'This product is currently out of stock.',
+            ])
+            ->assertSessionMissing('success');
+
+        $this->assertSame(0, $cart->items()->count());
+        $this->assertSame(0, $product->fresh()->stock);
+    }
+
     public function test_cart_limit_counts_every_variant_line_for_the_same_product(): void
     {
         [$buyer, $product, $cart] = $this->buyerProductAndCart(stock: 20, variants: [

@@ -84,6 +84,12 @@ class CartController extends Controller
                 ]);
             }
 
+            if ($product->stock <= 0) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'This product is currently out of stock.',
+                ]);
+            }
+
             $productItems = CartItem::query()
                 ->where('cart_id', $cart->id)
                 ->where('product_id', $product->id)

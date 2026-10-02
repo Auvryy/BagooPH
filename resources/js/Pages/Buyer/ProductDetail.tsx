@@ -176,6 +176,8 @@ export default function BuyerProductDetail({
     const discountPct = Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100);
 
     const selectionStock = Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const isProductOutOfStock = Number(product.stock) <= 0;
+    const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const selectedSizeInCart = selectedSize
         ? cartQuantities
@@ -218,7 +220,9 @@ export default function BuyerProductDetail({
                 type: 'error',
                 message: maxAddableQuantity > 0
                     ? `You can add only ${maxAddableQuantity} more of this selection.`
-                    : 'All currently available units are already in your Shopping Bag.',
+                    : isSelectionOutOfStock
+                        ? 'This product selection is currently out of stock.'
+                        : 'All currently available units are already in your Shopping Bag.',
             });
             return;
         }
@@ -242,7 +246,9 @@ export default function BuyerProductDetail({
         if (maxAddableQuantity < 1) {
             setCartFeedback({
                 type: 'error',
-                message: 'All currently available units are already in your Shopping Bag.',
+                message: isSelectionOutOfStock
+                    ? 'This product selection is currently out of stock.'
+                    : 'All currently available units are already in your Shopping Bag.',
             });
             return;
         }
@@ -623,6 +629,8 @@ export default function BuyerProductDetail({
                                 <span className="text-slate-500 text-[11px]">
                                     {selectedColor?.in_stock === false
                                         ? 'The selected option is currently unavailable'
+                                        : selectionStock <= 0
+                                        ? 'This product selection is out of stock'
                                         : maxAddableQuantity > 0
                                         ? `${maxAddableQuantity} more available to add${totalProductInCart > 0 ? ` · ${totalProductInCart} already in your bag` : ''}`
                                         : 'Maximum available quantity is already in your bag'}
@@ -673,7 +681,7 @@ export default function BuyerProductDetail({
                             <button
                                 type="button"
                                 onClick={() => handleAddToBag(false)}
-                                disabled={isAdding || maxAddableQuantity <= 0 || selectedColor?.in_stock === false}
+                                disabled={isAdding || maxAddableQuantity <= 0 || isSelectionOutOfStock}
                                 className={`flex-1 py-3.5 px-6 rounded-xl font-bold uppercase text-xs tracking-wider transition flex items-center justify-center gap-2 border-2 ${
                                     addedSuccess
                                         ? 'bg-emerald-600 border-emerald-600 text-white'
@@ -688,7 +696,7 @@ export default function BuyerProductDetail({
                                 ) : (
                                     <>
                                         <ShoppingBag className="w-4 h-4" />
-                                        <span>Add to Bag</span>
+                                        <span>{isSelectionOutOfStock ? 'Out of stock' : 'Add to Bag'}</span>
                                     </>
                                 )}
                             </button>
@@ -696,10 +704,10 @@ export default function BuyerProductDetail({
                             <button
                                 type="button"
                                 onClick={() => handleAddToBag(true)}
-                                disabled={isAdding || maxAddableQuantity <= 0 || selectedColor?.in_stock === false}
+                                disabled={isAdding || maxAddableQuantity <= 0 || isSelectionOutOfStock}
                                 className="flex-1 py-3.5 px-6 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold uppercase text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2"
                             >
-                                <span>Buy Now</span>
+                                <span>{isSelectionOutOfStock ? 'Unavailable' : 'Buy Now'}</span>
                             </button>
                         </div>
                     </div>
@@ -770,7 +778,9 @@ export default function BuyerProductDetail({
                             </div>
                             <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
                                 <span className="text-slate-400 w-32 font-bold">Warehouse Stock:</span>
-                                <span className="text-slate-800 font-bold">{product.stock} units available</span>
+                                <span className={`font-bold ${isProductOutOfStock ? 'text-rose-700' : 'text-slate-800'}`}>
+                                    {isProductOutOfStock ? 'Out of stock' : `${product.stock} units available`}
+                                </span>
                             </div>
                             <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
                                 <span className="text-slate-400 w-32 font-bold">Authenticity:</span>

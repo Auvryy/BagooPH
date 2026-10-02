@@ -49,6 +49,7 @@ export default function ProductCard({
     const ratingVal = Number(product.rating || 5.0).toFixed(1);
     const salesCountVal = product.sales_count ?? 0;
     const storeLocation = product.shop?.city?.trim() || 'Location unavailable';
+    const isOutOfStock = Number(product.stock) <= 0;
 
     return (
         <Link
@@ -62,13 +63,19 @@ export default function ProductCard({
                         src={product.featured_image}
                         alt={product.name}
                         loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${isOutOfStock ? 'opacity-70 grayscale-[35%]' : ''}`}
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
                         <ShoppingBag className="w-8 h-8 stroke-[1.25]" />
                         <span className="text-[9px] font-sans text-slate-400 mt-1 uppercase">No Preview</span>
                     </div>
+                )}
+
+                {isOutOfStock && (
+                    <span className="absolute right-2 top-2 z-10 rounded-sm border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
+                        Out of stock
+                    </span>
                 )}
 
                 {/* Interlocking Puzzle Ribbon Badges flush to bottom-left of the image */}
@@ -156,11 +163,11 @@ export default function ProductCard({
                             e.stopPropagation();
                             onQuickAdd(product);
                         }}
-                        disabled={isAdding || product.stock === 0}
+                        disabled={isAdding || isOutOfStock}
                         className={`w-full py-1.5 px-2 rounded-xs font-sans text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
                             isSuccess
                                 ? 'bg-emerald-600 text-white'
-                                : product.stock === 0
+                                : isOutOfStock
                                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                     : 'bg-slate-900 hover:bg-[#E00D42] text-white active:scale-[0.98]'
                         }`}
@@ -172,7 +179,7 @@ export default function ProductCard({
                             </>
                         ) : isAdding ? (
                             <span>Adding...</span>
-                        ) : product.stock === 0 ? (
+                        ) : isOutOfStock ? (
                             <span>Out of Stock</span>
                         ) : (
                             <>

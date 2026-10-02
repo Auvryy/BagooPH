@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProductShareAndSlugTest extends TestCase
@@ -159,5 +160,41 @@ class ProductShareAndSlugTest extends TestCase
 
         $response = $this->get("/product/{$draftProduct->slug}");
         $response->assertStatus(404);
+    }
+
+    public function test_active_zero_stock_product_remains_visible_until_the_seller_archives_it(): void
+    {
+        $product = Product::create([
+            'shop_id' => $this->shop->id,
+            'category_id' => $this->category->id,
+            'name' => 'Temporarily Sold Out Pack',
+            'price' => 1299.00,
+            'stock' => 0,
+            'status' => 'active',
+            'description' => 'A sold-out listing that remains discoverable for restocking.',
+        ]);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/Search')
+                ->where('products.data.0.id', $product->id)
+                ->where('products.data.0.stock', 0)
+            );
+
+        $this->get(route('products.index', ['in_stock' => 1]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/Search')
+                ->has('products.data', 0)
+            );
+
+        $this->get(route('products.show', $product->slug))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/ProductDetail')
+                ->where('product.id', $product->id)
+                ->where('product.stock', 0)
+            );
     }
 }
