@@ -1051,9 +1051,14 @@ export default function SellerOrders({ orderItems, shop, currentStatus = 'all', 
                                 <span className="text-rose-600">-{formatPrice(Number(selectedOrderForDetails.subtotal || (Number(selectedOrderForDetails.unit_price) * selectedOrderForDetails.quantity)) * 0.10)}</span>
                             </div>
                             <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-900 text-sm">
-                                <span>Net Seller Settlement (90%):</span>
+                                <span>Estimated Seller Share (90%):</span>
                                 <span className="text-emerald-600">{formatPrice(Number(selectedOrderForDetails.subtotal || (Number(selectedOrderForDetails.unit_price) * selectedOrderForDetails.quantity)) * 0.90)}</span>
                             </div>
+                            <p className="border-t border-slate-200 pt-2 text-[10px] text-slate-500">
+                                {selectedOrderForDetails.order?.payment_status === 'paid' && selectedOrderForDetails.order?.commission_ledger?.status === 'settled'
+                                    ? 'Platform COD reconciliation is recorded as settled.'
+                                    : 'This is an estimate. Payout requires buyer completion and recorded COD reconciliation.'}
+                            </p>
                         </div>
 
                         {/* Logistics Checkpoints Timeline if any */}

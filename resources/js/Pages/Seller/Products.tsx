@@ -1889,9 +1889,9 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <th className="py-4 px-6">Product Details</th>
                                     <th className="py-4 px-4">Master Department</th>
                                     <th className="py-4 px-4">Listing Price</th>
-                                    <th className="py-4 px-4">Stock Level</th>
+                                    <th className="py-4 px-4">Available Stock</th>
                                     <th className="py-4 px-4">Status</th>
-                                    <th className="py-4 px-4">Units Sold</th>
+                                    <th className="py-4 px-4">Completed Units</th>
                                     <th className="py-4 px-6 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -1937,11 +1937,16 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 {formatPrice(product.price)}
                                             </td>
                                             <td className="py-4 px-4">
-                                                <span className={`font-bold px-2.5 py-1 rounded-lg text-[11px] ${
-                                                    product.stock > 10 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (product.stock > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200')
-                                                }`}>
-                                                    {product.stock} units
-                                                </span>
+                                                <div className="space-y-1">
+                                                    <span className={`inline-flex rounded-sm border px-2.5 py-1 text-[11px] font-bold ${
+                                                        product.stock > 10 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : (product.stock > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-rose-200 bg-rose-50 text-rose-700')
+                                                    }`}>
+                                                        {product.stock} available
+                                                    </span>
+                                                    <p className="text-[10px] text-slate-500">
+                                                        {Number(product.open_order_units || 0)} reserved in open orders
+                                                    </p>
+                                                </div>
                                             </td>
                                             <td className="py-4 px-4">
                                                 <span className="capitalize text-[11px] font-bold text-slate-700">
@@ -1949,7 +1954,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 text-slate-500 font-medium">
-                                                {product.sales_count ?? 0} sold
+                                                {Number(product.completed_units || 0)} completed
                                             </td>
                                             <td className="py-4 px-6 text-right space-x-1">
                                                 <button

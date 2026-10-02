@@ -118,6 +118,8 @@ export interface Product {
     status: 'active' | 'draft' | 'archived';
     rating: string | number;
     sales_count: number;
+    completed_units?: string | number | null;
+    open_order_units?: string | number | null;
     shop?: Shop;
     category?: Category;
     images?: ProductImage[];
@@ -205,7 +207,14 @@ export interface Order {
     buyer?: User;
     items?: OrderItem[];
     delivery?: Delivery | null;
+    commission_ledger?: {
+        id: number;
+        status: 'pending' | 'settled' | 'refunded' | string;
+        seller_amount: string | number;
+        platform_commission: string | number;
+    } | null;
     created_at: string;
+    completed_at?: string | null;
 }
 
 export interface Review {
