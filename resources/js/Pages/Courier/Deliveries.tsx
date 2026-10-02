@@ -140,6 +140,19 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [loadingId, setLoadingId] = useState<number | null>(null);
+    const [dutyLoading, setDutyLoading] = useState(false);
+
+    const toggleDuty = () => {
+        setDutyLoading(true);
+        router.post(
+            route('courier.toggleDuty'),
+            { is_available: !isOnline },
+            {
+                preserveScroll: true,
+                onFinish: () => setDutyLoading(false),
+            },
+        );
+    };
 
     const formatCurrency = (amount: number | null) =>
         amount === null
@@ -232,10 +245,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         >
             <Head title="Dispatch Dashboard — BagooPH" />
 
-            <div className="space-y-6 font-sans">
+            <div className="space-y-4 sm:space-y-6 font-sans">
                 {/* Status Advisories */}
                 {!isAssigned && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-xs font-medium text-amber-950 flex items-start gap-3 shadow-2xs">
+                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 sm:p-4 text-xs font-medium text-amber-950 flex items-start gap-3 shadow-2xs">
                         <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
                             <p className="font-bold text-amber-900">Working Hub Not Assigned</p>
@@ -247,7 +260,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </div>
                 )}
                 {isAssigned && !isOperational && (
-                    <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-4 text-xs font-medium text-rose-950 flex items-start gap-3 shadow-2xs">
+                    <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-3.5 sm:p-4 text-xs font-medium text-rose-950 flex items-start gap-3 shadow-2xs">
                         <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                         <div>
                             <p className="font-bold text-rose-900">Facility Operations Paused</p>
@@ -259,123 +272,177 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </div>
                 )}
 
-                {/* 1. TOP BENTO KPI CARDS (MATCHING SELLER CENTRE BENTO) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* 1: Available Pickups */}
-                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between hover:border-slate-400 transition">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-semibold">Available pickups</span>
-                                <Package className="w-4 h-4 text-[#E00D42]" />
+                {/* Mobile Quick On-Duty Alert (if currently off-duty) */}
+                {!isOnline && (
+                    <div className="lg:hidden rounded-xl border border-amber-300 bg-amber-50/95 p-3.5 shadow-2xs flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold text-amber-950 truncate">You are Off Duty</p>
+                                <p className="text-[10px] text-amber-800 truncate">Go on duty to receive & claim pickups</p>
                             </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                        </div>
+                        <button
+                            type="button"
+                            onClick={toggleDuty}
+                            disabled={dutyLoading}
+                            className="px-3 py-1.5 rounded-lg bg-[#E00D42] text-white text-xs font-bold shadow-xs hover:bg-[#C20836] transition shrink-0 cursor-pointer disabled:opacity-60"
+                        >
+                            {dutyLoading ? 'Updating...' : 'Go On Duty'}
+                        </button>
+                    </div>
+                )}
+
+                {/* 1. TOP BENTO KPI TILES (COMPACT 2x2 ON MOBILE, 4-COL ON DESKTOP) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                    {/* 1: Available Pickups */}
+                    <div
+                        onClick={() => setActiveTab('available')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'available' ? 'border-[#E00D42] ring-1 ring-[#E00D42]/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Available pickups</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                    <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42]" />
+                                </div>
+                            </div>
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {availableCount}{' '}
-                                    <span className="text-sm font-bold text-slate-500">jobs</span>
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">jobs</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Ready at Bayan Hub</span>
-                            <span className="font-bold text-slate-900">
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Ready at Hub</span>
+                            <span className="font-bold text-slate-800 shrink-0 ml-1">
                                 {hubCode}
                             </span>
                         </div>
                     </div>
 
                     {/* 2: My Pickup Tasks */}
-                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between hover:border-slate-400 transition">
+                    <div
+                        onClick={() => setActiveTab('pickup')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'pickup' ? 'border-indigo-600 ring-1 ring-indigo-600/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-semibold">My pickup tasks</span>
-                                <Store className="w-4 h-4 text-indigo-600" />
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">My pickups</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                                </div>
                             </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {activePickupCount}{' '}
-                                    <span className="text-sm font-bold text-slate-500">parcels</span>
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Batch capacity</span>
-                            <span className="font-bold text-slate-900">
-                                {activePickupCount} of {activePickupLimit} limit
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Batch Limit</span>
+                            <span className="font-bold text-slate-800 shrink-0 ml-1">
+                                {activePickupCount}/{activePickupLimit}
                             </span>
                         </div>
                     </div>
 
                     {/* 3: Final-Mile Tasks */}
-                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between hover:border-slate-400 transition">
+                    <div
+                        onClick={() => setActiveTab('final_mile')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'final_mile' ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-semibold">Final-mile tasks</span>
-                                <Truck className="w-4 h-4 text-amber-600" />
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Final-mile</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                                    <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
+                                </div>
                             </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {finalMileCount}{' '}
-                                    <span className="text-sm font-bold text-slate-500">deliveries</span>
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">deliveries</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Buyer destination</span>
-                            <span className="font-bold text-slate-900">Direct delivery</span>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Destination</span>
+                            <span className="font-bold text-slate-800 shrink-0 ml-1">Direct Buyer</span>
                         </div>
                     </div>
 
                     {/* 4: Delivered Today */}
-                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between hover:border-slate-400 transition">
+                    <div
+                        onClick={() => setActiveTab('activity')}
+                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
+                            activeTab === 'activity' ? 'border-emerald-600 ring-1 ring-emerald-600/30' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
                         <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-semibold">Delivered today</span>
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
+                                <span className="font-semibold truncate">Delivered today</span>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                                </div>
                             </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                            <div className="mt-1 sm:mt-2">
+                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {completedTodayCount}{' '}
-                                    <span className="text-sm font-bold text-slate-500">handoffs</span>
+                                    <span className="text-xs sm:text-sm font-bold text-slate-500">trips</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Verified trips</span>
-                            <span className="font-bold text-emerald-600">100% completed</span>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Verified</span>
+                            <span className="font-bold text-emerald-600 shrink-0 ml-1">100% OK</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. MIDDLE BENTO ROW: 8-COL EXECUTION QUEUE + 4-COL CUSTODY PIPELINE */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
                     {/* LEFT (8 COLS): ACTIVE ROUTE & EXECUTION QUEUE */}
-                    <div className="lg:col-span-8 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
-                        {/* Section Header with Segmented Tabs */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]" />
-                                    <h3 className="text-sm font-bold text-slate-900 font-sans">
-                                        Route & Execution Queue
-                                    </h3>
+                    <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
+                        {/* Section Header: Title Top, Segmented Tabs Full-Width Below */}
+                        <div className="pb-3.5 border-b border-slate-100 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-1.5 h-4 sm:h-5 rounded-full bg-[#E00D42] shrink-0" />
+                                    <div className="min-w-0">
+                                        <h3 className="text-sm sm:text-base font-black text-slate-900 font-sans tracking-tight truncate">
+                                            Route & Execution Queue
+                                        </h3>
+                                        <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
+                                            {hubName} • Real-time merchant pickups and final-mile deliveries
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    {hubName} · Real-time pickup collection and final-mile buyer delivery tasks
-                                </p>
+                                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase shrink-0 font-mono">
+                                    {hubCode}
+                                </span>
                             </div>
 
-                            {/* Queue Segmented Switcher */}
-                            <div className="flex flex-wrap gap-1 bg-slate-100/90 p-1 rounded-lg border border-slate-200/80 shrink-0">
+                            {/* Queue Segmented Switcher (Horizontally Scrollable on Mobile) */}
+                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80">
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('pickup')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'pickup'
-                                            ? 'bg-white text-slate-900 shadow-2xs'
+                                            ? 'bg-white text-slate-900 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Store className="w-3.5 h-3.5 text-indigo-600" />
+                                    <Store className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                                     <span>My Pickups</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
@@ -391,13 +458,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('final_mile')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'final_mile'
-                                            ? 'bg-white text-slate-900 shadow-2xs'
+                                            ? 'bg-white text-slate-900 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Truck className="w-3.5 h-3.5 text-amber-600" />
+                                    <Truck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                     <span>Final-Mile</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
@@ -413,13 +480,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('available')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'available'
-                                            ? 'bg-white text-slate-900 shadow-2xs'
+                                            ? 'bg-white text-slate-900 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Package className="w-3.5 h-3.5 text-[#E00D42]" />
+                                    <Package className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
                                     <span>Available</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
@@ -435,13 +502,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('activity')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                    className={`flex-1 min-w-[90px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'activity'
-                                            ? 'bg-white text-slate-900 shadow-2xs'
+                                            ? 'bg-white text-slate-900 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <History className="w-3.5 h-3.5 text-emerald-600" />
+                                    <History className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                     <span>Trips</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
@@ -455,21 +522,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 </button>
                             </div>
                         </div>
-
-                        {/* Duty Guidance Banner */}
-                        {!isOnline && activeTab === 'available' && availableJobs.length > 0 && (
-                            <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 text-xs text-amber-950 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <Power className="w-4 h-4 text-amber-600 shrink-0" />
-                                    <span className="truncate">
-                                        You are currently <strong>Off Duty</strong>. Go on duty to claim new pickup jobs.
-                                    </span>
-                                </div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 shrink-0">
-                                    Toggle in Topbar
-                                </span>
-                            </div>
-                        )}
 
                         {/* Content Area for Active Tab */}
                         <div className="space-y-3 min-h-[300px]">
@@ -486,7 +538,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                                     <button
                                                         type="button"
                                                         onClick={() => setActiveTab('available')}
-                                                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E00D42] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#C20836] transition cursor-pointer"
+                                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-[#E00D42] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#C20836] transition cursor-pointer"
                                                     >
                                                         <span>View Available Jobs ({availableCount})</span>
                                                         <ArrowRight className="w-3.5 h-3.5" />
@@ -578,7 +630,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                                 >
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-xs text-slate-900">
+                                                            <span className="font-bold text-xs text-slate-900 font-mono">
                                                                 {activity.trackingNumber}
                                                             </span>
                                                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
@@ -608,7 +660,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </div>
 
                     {/* RIGHT (4 COLS): CUSTODY & DISPATCH PIPELINE (MATCHING SELLER'S FULFILLMENT ACTIONS) */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
                         {/* Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
@@ -630,7 +682,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 onClick={() => setActiveTab('pickup')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
                                     activePickupCount > 0
-                                        ? 'bg-amber-50/70 border border-amber-300 shadow-2xs hover:bg-amber-100/60'
+                                        ? 'bg-amber-50/80 border border-amber-300 shadow-2xs hover:bg-amber-100/70'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
                             >
@@ -670,7 +722,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 onClick={() => setActiveTab('final_mile')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
                                     finalMileCount > 0
-                                        ? 'bg-emerald-50/70 border border-emerald-300 shadow-2xs hover:bg-emerald-100/60'
+                                        ? 'bg-emerald-50/80 border border-emerald-300 shadow-2xs hover:bg-emerald-100/70'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-emerald-400'
                                 }`}
                             >
@@ -710,7 +762,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 onClick={() => setActiveTab('available')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
                                     availableCount > 0
-                                        ? 'bg-rose-50/70 border border-rose-300 shadow-2xs hover:bg-rose-100/60'
+                                        ? 'bg-rose-50/80 border border-rose-300 shadow-2xs hover:bg-rose-100/70'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-rose-400'
                                 }`}
                             >
@@ -821,7 +873,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
 
                 {/* 3. BOTTOM ROW: AVAILABLE PICKUP OPPORTUNITIES (FAST DISPATCH QUEUE) */}
                 {activeTab !== 'available' && availableJobs.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs font-sans">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs font-sans">
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -852,7 +904,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 >
                                     <div>
                                         <div className="flex items-center justify-between">
-                                            <span className="font-bold text-xs text-slate-900">
+                                            <span className="font-bold text-xs text-slate-900 font-mono">
                                                 {task.trackingNumber}
                                             </span>
                                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-[#C20836] border border-rose-200 uppercase">
@@ -875,7 +927,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                             type="button"
                                             onClick={() => claimPickup(task.id)}
                                             disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
-                                            className="px-3 py-1 bg-[#E00D42] text-white hover:bg-[#C20836] text-[11px] font-bold rounded-md shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                                            className="px-3 py-1.5 bg-[#E00D42] text-white hover:bg-[#C20836] text-[11px] font-bold rounded-lg shadow-2xs transition disabled:opacity-50 cursor-pointer min-h-[32px]"
                                         >
                                             {loadingId === task.id ? 'Claiming...' : 'Claim Job'}
                                         </button>
@@ -898,7 +950,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     {actionTarget.status === 'out_for_delivery' && 'Start Final-Mile Delivery'}
                                     {actionTarget.status === 'delivered' && 'Record Successful Delivery'}
                                 </h2>
-                                <p className="mt-0.5 text-xs text-slate-500">
+                                <p className="mt-0.5 text-xs text-slate-500 font-mono">
                                     Waybill tracking: <span className="font-bold text-slate-800">{actionTarget.trackingNumber}</span>
                                 </p>
                             </div>
@@ -931,9 +983,9 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         </label>
                                         <label
                                             htmlFor="proof-image"
-                                            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 text-xs font-bold text-slate-700 hover:bg-slate-100 transition hover:border-slate-400"
+                                            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 text-xs font-bold text-slate-700 hover:bg-slate-100 transition hover:border-slate-400 min-h-[48px]"
                                         >
-                                            <Camera className="w-4 h-4 text-[#E00D42]" />
+                                            <Camera className="w-5 h-5 text-[#E00D42]" />
                                             <span>{proofFile ? proofFile.name : 'Choose or capture handoff photo'}</span>
                                         </label>
                                         <input
@@ -981,7 +1033,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     onChange={(event) => setNotes(event.target.value)}
                                     placeholder={
                                         actionTarget.status === 'picked_up'
-                                            ? 'e.g. Received 2 bags from merchant counter, in good condition.'
+                                            ? 'e.g. Received from merchant counter, packages verified.'
                                             : 'e.g. Received by buyer at gate, verified signature.'
                                     }
                                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E00D42] focus:ring-[#E00D42] shadow-2xs font-sans"
@@ -992,7 +1044,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={closeAction}
-                                    className="px-4 py-2 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer uppercase tracking-wider"
+                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer uppercase tracking-wider"
                                 >
                                     Cancel
                                 </button>
@@ -1002,7 +1054,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         loadingId !== null ||
                                         (actionTarget.status === 'delivered' && !proofFile)
                                     }
-                                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-[#E00D42] hover:bg-[#C20836] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider cursor-pointer"
+                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-white bg-[#E00D42] hover:bg-[#C20836] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider cursor-pointer"
                                 >
                                     {loadingId !== null ? 'Saving...' : 'Confirm Action'}
                                 </button>
@@ -1029,7 +1081,7 @@ function EmptyState({
     action?: React.ReactNode;
 }) {
     return (
-        <div className="flex flex-col items-center justify-center p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 text-center font-sans">
+        <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 text-center font-sans">
             <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
                 <Icon className="w-6 h-6" />
             </div>
@@ -1050,23 +1102,24 @@ function PickupRouteCard({
     onConfirm: () => void;
 }) {
     const awaitingHub = task.nextAction === 'await_origin_hub_scan';
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
 
     return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-4 font-sans">
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-slate-900 tracking-tight">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
                         {task.trackingNumber}
                     </span>
                     {task.orderNumber && (
-                        <span className="text-xs text-slate-500 font-medium">
-                            · Order {task.orderNumber}
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
                         </span>
                     )}
                 </div>
                 <span
-                    className={`w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                         awaitingHub
                             ? 'bg-amber-50 text-amber-800 border border-amber-200'
                             : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
@@ -1077,11 +1130,11 @@ function PickupRouteCard({
             </div>
 
             {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Merchant Store</span>
+                        <Store className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span>Merchant Location</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
                         {task.merchant?.name ?? 'Merchant Store'}
@@ -1089,46 +1142,60 @@ function PickupRouteCard({
                     <p className="text-xs text-slate-600 leading-relaxed">
                         {task.merchant?.address}
                     </p>
-                    {task.merchant?.phone && (
-                        <a
-                            href={`tel:${task.merchant.phone}`}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline mt-0.5"
-                        >
-                            <Phone className="w-3 h-3" />
-                            <span>{task.merchant.phone}</span>
-                        </a>
-                    )}
+                    {/* Action Links on Mobile/Desktop */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {task.merchant?.address && (
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        )}
+                        {task.merchant?.phone && (
+                            <a
+                                href={`tel:${task.merchant.phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition"
+                            >
+                                <Phone className="w-3 h-3" />
+                                <span>{task.merchant.phone}</span>
+                            </a>
+                        )}
+                    </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Origin Bayan Hub Handoff</span>
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Origin Bayan Hub Target</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
                         {task.originHub?.name ?? 'Origin Bayan Hub'}
                     </p>
                     <p className="text-xs text-slate-500">
-                        Facility Station: <span className="font-semibold text-slate-700">{task.originHub?.code ?? 'BH-01'}</span>
+                        Facility Code: <span className="font-semibold text-slate-700 font-mono">{task.originHub?.code ?? 'BH-01'}</span>
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                        Parcel items: {task.itemCount} unit(s)
+                    <p className="text-[11px] text-slate-400">
+                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
                     </p>
                 </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            {/* Action Bar (Stack on Mobile, Row on Desktop) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <Link
                     href={route('courier.messages', { delivery: task.id })}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
                 >
                     <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
                     <span>Message Merchant</span>
                 </Link>
 
                 {awaitingHub ? (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                    <div className="w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
                         <Clock3 className="w-3.5 h-3.5" />
                         <span>Awaiting Origin Hub Intake Scan</span>
                     </div>
@@ -1137,7 +1204,7 @@ function PickupRouteCard({
                         type="button"
                         onClick={onConfirm}
                         disabled={loading}
-                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
                     >
                         {loading ? 'Saving...' : 'Confirm Merchant Pickup'}
                     </button>
@@ -1161,22 +1228,23 @@ function FinalMileRouteCard({
     onComplete: () => void;
 }) {
     const outForDelivery = task.nextAction === 'complete_delivery';
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.recipient?.address || '')}`;
 
     return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-4 font-sans">
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-slate-900 tracking-tight">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
                         {task.trackingNumber}
                     </span>
                     {task.orderNumber && (
-                        <span className="text-xs text-slate-500 font-medium">
-                            · Order {task.orderNumber}
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                     <span
                         className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                             task.payment?.method === 'COD'
@@ -1187,48 +1255,62 @@ function FinalMileRouteCard({
                         {task.payment?.method ?? 'ONLINE'}
                     </span>
                     <span
-                        className={`w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                             outForDelivery
                                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                                 : 'bg-blue-50 text-blue-700 border border-blue-200'
                         }`}
                     >
-                        {outForDelivery ? 'Out for Delivery' : 'Assigned to Rider'}
+                        {outForDelivery ? 'Out for Delivery' : 'Assigned'}
                     </span>
                 </div>
             </div>
 
             {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1 sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         <span>Buyer Recipient</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">{task.recipient?.name}</p>
                     <p className="text-xs text-slate-600 leading-relaxed">
                         {task.recipient?.address}
                     </p>
-                    {task.recipient?.phone && (
-                        <a
-                            href={`tel:${task.recipient.phone}`}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline mt-0.5"
-                        >
-                            <Phone className="w-3 h-3" />
-                            <span>{task.recipient.phone}</span>
-                        </a>
-                    )}
+                    {/* Action Links */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {task.recipient?.address && (
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        )}
+                        {task.recipient?.phone && (
+                            <a
+                                href={`tel:${task.recipient.phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition"
+                            >
+                                <Phone className="w-3 h-3" />
+                                <span>{task.recipient.phone}</span>
+                            </a>
+                        )}
+                    </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>Destination Hub</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
                         {task.destinationHub?.name ?? 'Destination Bayan Hub'}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 font-mono">
                         Code: {task.destinationHub?.code ?? 'BH-02'}
                     </p>
                     {task.payment?.method === 'COD' && (
@@ -1236,7 +1318,7 @@ function FinalMileRouteCard({
                             <span className="text-[10px] font-bold text-amber-800 uppercase block">
                                 Collect Exact COD
                             </span>
-                            <span className="text-xs font-black text-amber-900 block">
+                            <span className="text-xs font-black text-amber-900 block font-mono">
                                 {codLabel}
                             </span>
                         </div>
@@ -1245,10 +1327,10 @@ function FinalMileRouteCard({
             </div>
 
             {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <Link
                     href={route('courier.messages', { delivery: task.id })}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
                 >
                     <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
                     <span>Message Buyer</span>
@@ -1258,7 +1340,7 @@ function FinalMileRouteCard({
                     type="button"
                     onClick={outForDelivery ? onComplete : onStart}
                     disabled={loading}
-                    className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
                 >
                     {loading
                         ? 'Saving...'
@@ -1282,30 +1364,32 @@ function AvailablePickupRouteCard({
     loading: boolean;
     onClaim: () => void;
 }) {
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
+
     return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-4 font-sans">
+        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-slate-900 tracking-tight">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="min-w-0">
+                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
                         {task.trackingNumber}
                     </span>
                     {task.orderNumber && (
-                        <span className="text-xs text-slate-500 font-medium">
-                            · Order {task.orderNumber}
+                        <span className="text-[11px] text-slate-500 font-medium font-mono">
+                            Order {task.orderNumber}
                         </span>
                     )}
                 </div>
-                <span className="w-fit px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-[#C20836] border border-rose-200 uppercase tracking-wider">
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-[#C20836] border border-rose-200 uppercase tracking-wider">
                     Ready for Pickup
                 </span>
             </div>
 
             {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-[#E00D42]" />
+                        <Store className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
                         <span>Merchant Location</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
@@ -1314,27 +1398,40 @@ function AvailablePickupRouteCard({
                     <p className="text-xs text-slate-600 leading-relaxed">
                         {task.merchant?.address}
                     </p>
+                    {task.merchant?.address && (
+                        <div className="pt-1">
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                            >
+                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                <span>Open Maps</span>
+                            </a>
+                        </div>
+                    )}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>Origin Bayan Hub Target</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
                         {task.originHub?.name ?? 'Origin Bayan Hub'}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 font-mono">
                         Facility Code: {task.originHub?.code ?? 'BH-01'}
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                        Total items: {task.itemCount} unit(s)
+                    <p className="text-[11px] text-slate-400">
+                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
                     </p>
                 </div>
             </div>
 
             {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <span className="text-xs text-slate-500 font-medium">
                     Batch claim limit applies (up to 5)
                 </span>
@@ -1342,7 +1439,7 @@ function AvailablePickupRouteCard({
                     type="button"
                     onClick={onClaim}
                     disabled={disabled}
-                    className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                     {loading ? 'Claiming...' : 'Claim Pickup'}
                 </button>
