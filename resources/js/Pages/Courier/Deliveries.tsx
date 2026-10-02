@@ -3,7 +3,6 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     Building2,
     Camera,
-    CheckCircle2,
     ClipboardCheck,
     Clock3,
     History,
@@ -98,7 +97,7 @@ interface Props {
 }
 
 type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
-type DispatchTone = 'crimson' | 'neutral';
+type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald';
 type ActionTarget = {
     deliveryId: number;
     trackingNumber: string;
@@ -125,7 +124,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
         icon: React.ElementType;
         tone: DispatchTone;
     }> = [
-        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'neutral' },
+        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'indigo' },
         {
             id: 'available',
             label: 'Available pickups',
@@ -138,14 +137,14 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
             label: 'Final-mile tasks',
             count: stats.finalMileTasks,
             icon: Truck,
-            tone: 'neutral',
+            tone: 'amber',
         },
         {
             id: 'activity',
             label: 'Recent activity',
             count: queues.recentActivity.length,
             icon: History,
-            tone: 'neutral',
+            tone: 'emerald',
         },
     ];
 
@@ -252,66 +251,6 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                         any existing custody tasks remain visible and must be resolved with your administrator.
                     </div>
                 )}
-
-                <section className="overflow-hidden rounded-lg border border-slate-300 bg-white">
-                    <div className="flex flex-col gap-3 border-b border-slate-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                        <div className="flex min-w-0 items-start gap-3">
-                            <span className="rounded-md border border-slate-300 bg-slate-50 p-2.5 text-slate-600">
-                                <ClipboardCheck className="h-5 w-5" />
-                            </span>
-                            <div className="min-w-0">
-                                <h2 className="text-base font-extrabold tracking-tight text-slate-950">
-                                    Today’s dispatch
-                                </h2>
-                                <p className="mt-1 text-sm leading-6 text-slate-500">
-                                    {scope.isAssigned
-                                        ? `${scope.hub ?? 'Working hub'} · ${scope.company ?? 'Logistics company'}`
-                                        : 'Waiting for a logistics company and working hub assignment'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                                <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                                {scope.hubCode ?? 'Hub not assigned'}
-                            </span>
-                            <span
-                                className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1.5 text-xs font-semibold ${
-                                    'border-slate-300 bg-slate-50 text-slate-700'
-                                }`}
-                            >
-                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                                {isOnline ? 'On duty' : 'Off duty'}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-px bg-slate-300 lg:grid-cols-4">
-                        <DispatchMetric
-                            label="Available pickups"
-                            value={stats.availablePickups}
-                            icon={Package}
-                            tone="crimson"
-                        />
-                        <DispatchMetric
-                            label="My pickup tasks"
-                            value={stats.activePickups}
-                            icon={Store}
-                            tone="neutral"
-                        />
-                        <DispatchMetric
-                            label="Final-mile tasks"
-                            value={stats.finalMileTasks}
-                            icon={Truck}
-                            tone="neutral"
-                        />
-                        <DispatchMetric
-                            label="Delivered today"
-                            value={stats.completedToday}
-                            icon={CheckCircle2}
-                            tone="neutral"
-                        />
-                    </div>
-                </section>
 
                 <nav aria-label="Dispatch queues" className="border-b border-slate-300">
                     <div className="flex gap-1 overflow-x-auto">
@@ -577,49 +516,23 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
     );
 }
 
-function DispatchMetric({
-    label,
-    value,
-    icon: Icon,
-    tone,
-}: {
-    label: string;
-    value: number;
-    icon: React.ElementType;
-    tone: DispatchTone;
-}) {
-    const styles = tabTone(tone);
-
-    return (
-        <div className="bg-white p-3.5 sm:p-4">
-            <div className="flex items-start justify-between">
-                <div>
-                    <p className="text-sm font-medium text-slate-500">{label}</p>
-                    <p className={`mt-1.5 text-2xl font-extrabold tracking-tight ${styles.metricValue}`}>
-                        {value}
-                    </p>
-                </div>
-                <span className={`rounded-md border p-2 ${styles.metricIcon}`}>
-                    <Icon className="h-4 w-4" />
-                </span>
-            </div>
-        </div>
-    );
-}
-
 function tabTone(tone: DispatchTone) {
     return {
         crimson: {
             activeTab: 'border-[#E00D42] text-[#A1052B]',
             activeCount: 'bg-[#E00D42] text-white',
-            metricValue: 'text-[#C20836]',
-            metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
         },
-        neutral: {
-            activeTab: 'border-slate-900 text-slate-900',
-            activeCount: 'bg-slate-900 text-white',
-            metricValue: 'text-slate-950',
-            metricIcon: 'border-slate-300 bg-slate-50 text-slate-500',
+        indigo: {
+            activeTab: 'border-indigo-600 text-indigo-800',
+            activeCount: 'bg-indigo-600 text-white',
+        },
+        amber: {
+            activeTab: 'border-amber-500 text-amber-800',
+            activeCount: 'bg-amber-500 text-slate-950',
+        },
+        emerald: {
+            activeTab: 'border-emerald-600 text-emerald-800',
+            activeCount: 'bg-emerald-600 text-white',
         },
     }[tone];
 }
