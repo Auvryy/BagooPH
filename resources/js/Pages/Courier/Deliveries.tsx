@@ -700,7 +700,7 @@ function AvailablePickupCard({
     onClaim: () => void;
 }) {
     return (
-        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
+        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
             <TaskHeader task={task} badge="READY" />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <DetailBlock icon={Store} label="Merchant" title={task.merchant.name ?? 'Merchant store'}>
@@ -741,7 +741,7 @@ function PickupCard({
     const awaitingHub = task.nextAction === 'await_origin_hub_scan';
 
     return (
-        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
+        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
             <TaskHeader task={task} badge={awaitingHub ? 'IN CUSTODY' : 'ASSIGNED'} />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <DetailBlock icon={Store} label="Collect from" title={task.merchant.name ?? 'Merchant store'}>
@@ -770,7 +770,7 @@ function PickupCard({
                     Message merchant
                 </Link>
                 {awaitingHub ? (
-                    <div className="flex items-center gap-2 rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+                    <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
                         <Clock3 className="h-4 w-4" />
                         Awaiting Origin Hub intake scan
                     </div>
@@ -805,7 +805,7 @@ function FinalMileCard({
     const outForDelivery = task.nextAction === 'complete_delivery';
 
     return (
-        <article className="border-b border-slate-200 p-4 last:border-b-0 sm:p-5">
+        <article className="rounded-md border border-slate-300 bg-white p-4 sm:p-5">
             <TaskHeader task={task} badge={outForDelivery ? 'OUT FOR DELIVERY' : 'ASSIGNED'} />
             <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 <DetailBlock icon={MapPin} label="Buyer delivery" title={task.recipient.name}>
