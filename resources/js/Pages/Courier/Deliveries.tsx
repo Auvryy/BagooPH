@@ -124,7 +124,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const completedTodayCount = stats?.completedToday ?? 0;
 
     const hubName = scope?.hub ?? 'Bayan Hub';
-    const hubCode = scope?.hubCode ?? scope?.hub_code ?? 'BH-LBN';
     const companyName = scope?.company ?? 'Logistics';
     const isAssigned = scope?.isAssigned ?? false;
     const isOperational = scope?.isOperational ?? true;
@@ -305,11 +304,8 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
-                            <span className="text-slate-500 truncate">Ready at Hub</span>
-                            <span className="font-bold text-slate-800 shrink-0 ml-1">
-                                {hubCode}
-                            </span>
+                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 text-[10px] sm:text-[11px] font-sans">
+                            <span className="text-slate-500 truncate">Ready at assigned hub</span>
                         </div>
                     </div>
 
@@ -409,12 +405,9 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         Route & Execution Queue
                                     </h3>
                                     <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
-                                        {hubName} • Real-time merchant pickups and final-mile deliveries
+                                        {hubName}
                                     </p>
                                 </div>
-                                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase shrink-0 font-mono">
-                                    {hubCode}
-                                </span>
                             </div>
 
                             {/* Queue Segmented Switcher (Horizontally Scrollable on Mobile) */}
@@ -424,16 +417,16 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     onClick={() => setActiveTab('pickup')}
                                     className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'pickup'
-                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Store className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pickup' ? 'text-slate-900' : 'text-slate-400'}`} />
+                                    <Store className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pickup' ? 'text-white' : 'text-slate-400'}`} />
                                     <span>My Pickups</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'pickup'
-                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                ? 'bg-white/20 text-white border border-white/30'
                                                 : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
@@ -446,16 +439,16 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     onClick={() => setActiveTab('final_mile')}
                                     className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'final_mile'
-                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Truck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'final_mile' ? 'text-slate-900' : 'text-slate-400'}`} />
+                                    <Truck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'final_mile' ? 'text-white' : 'text-slate-400'}`} />
                                     <span>Final-Mile</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'final_mile'
-                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                ? 'bg-white/20 text-white border border-white/30'
                                                 : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
@@ -468,16 +461,16 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     onClick={() => setActiveTab('available')}
                                     className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'available'
-                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Package className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'available' ? 'text-slate-900' : 'text-slate-400'}`} />
+                                    <Package className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'available' ? 'text-white' : 'text-slate-400'}`} />
                                     <span>Available</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'available'
-                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                ? 'bg-white/20 text-white border border-white/30'
                                                 : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
@@ -490,16 +483,16 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     onClick={() => setActiveTab('activity')}
                                     className={`flex-1 min-w-[90px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'activity'
-                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'activity' ? 'text-slate-900' : 'text-slate-400'}`} />
+                                    <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'activity' ? 'text-white' : 'text-slate-400'}`} />
                                     <span>Trips</span>
                                     <span
                                         className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'activity'
-                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                ? 'bg-white/20 text-white border border-white/30'
                                                 : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
@@ -655,9 +648,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                     Custody Pipeline
                                 </h3>
                             </div>
-                            <span className="text-[11px] font-bold font-sans text-slate-500 uppercase">
-                                Live Status
-                            </span>
                         </div>
 
                         {/* Interactive Pipeline Action Cards */}
@@ -686,9 +676,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-amber-900 block leading-tight">
                                             To Pick Up
                                         </span>
-                                        <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                            Merchant store collection
-                                        </p>
                                     </div>
                                 </div>
                                 <span
@@ -726,9 +713,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-emerald-900 block leading-tight">
                                             Final-Mile
                                         </span>
-                                        <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                            Buyer destination handoff
-                                        </p>
                                     </div>
                                 </div>
                                 <span
@@ -766,9 +750,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                         <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight">
                                             Available Jobs
                                         </span>
-                                        <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                            Ready at {hubCode}
-                                        </p>
                                     </div>
                                 </div>
                                 <span
@@ -786,7 +767,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                             <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-sans shrink-0">
                                 <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
                                     <span>Route Custody</span>
-                                    <span className="text-slate-500">Live Telemetry</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1 divide-x divide-slate-200/80 text-center">
                                     <button
@@ -843,17 +823,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                             </div>
                         </div>
 
-                        {/* Operational Rules Card */}
-                        <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 space-y-1.5 font-sans">
-                            <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                                <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                                <span>Custody Protocol</span>
-                            </div>
-                            <p className="leading-relaxed">
-                                Pickups must be handed off only to the assigned <strong>{hubCode}</strong>.
-                                Custody transfers when facility operators scan the parcel inbound.
-                            </p>
-                        </div>
                     </div>
                 </div>
 
