@@ -409,22 +409,19 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 </div>
 
                 {/* 2. MIDDLE BENTO ROW: 8-COL EXECUTION QUEUE + 4-COL CUSTODY PIPELINE */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
                     {/* LEFT (8 COLS): ACTIVE ROUTE & EXECUTION QUEUE */}
-                    <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
+                    <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4">
                         {/* Section Header: Title Top, Segmented Tabs Full-Width Below */}
                         <div className="pb-3.5 border-b border-slate-100 space-y-3">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="w-1.5 h-4 sm:h-5 rounded-full bg-[#E00D42] shrink-0" />
-                                    <div className="min-w-0">
-                                        <h3 className="text-sm sm:text-base font-black text-slate-900 font-sans tracking-tight truncate">
-                                            Route & Execution Queue
-                                        </h3>
-                                        <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
-                                            {hubName} • Real-time merchant pickups and final-mile deliveries
-                                        </p>
-                                    </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 font-sans tracking-tight truncate">
+                                        Route & Execution Queue
+                                    </h3>
+                                    <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
+                                        {hubName} • Real-time merchant pickups and final-mile deliveries
+                                    </p>
                                 </div>
                                 <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase shrink-0 font-mono">
                                     {hubCode}
@@ -442,13 +439,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Store className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                    <Store className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pickup' ? 'text-slate-900' : 'text-slate-400'}`} />
                                     <span>My Pickups</span>
                                     <span
-                                        className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'pickup'
-                                                ? 'bg-indigo-50 text-indigo-700'
-                                                : 'bg-slate-200 text-slate-700'
+                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
                                         {activePickupCount}
@@ -464,13 +461,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Truck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <Truck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'final_mile' ? 'text-slate-900' : 'text-slate-400'}`} />
                                     <span>Final-Mile</span>
                                     <span
-                                        className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'final_mile'
-                                                ? 'bg-amber-50 text-amber-800'
-                                                : 'bg-slate-200 text-slate-700'
+                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
                                         {finalMileCount}
@@ -486,13 +483,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Package className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                                    <Package className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'available' ? 'text-slate-900' : 'text-slate-400'}`} />
                                     <span>Available</span>
                                     <span
-                                        className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'available'
-                                                ? 'bg-rose-50 text-[#C20836]'
-                                                : 'bg-slate-200 text-slate-700'
+                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
                                         {availableCount}
@@ -508,13 +505,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <History className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'activity' ? 'text-slate-900' : 'text-slate-400'}`} />
                                     <span>Trips</span>
                                     <span
-                                        className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                             activeTab === 'activity'
-                                                ? 'bg-emerald-50 text-emerald-800'
-                                                : 'bg-slate-200 text-slate-700'
+                                                ? 'bg-slate-100 text-slate-900 border border-slate-200/60'
+                                                : 'bg-slate-200/80 text-slate-600'
                                         }`}
                                     >
                                         {recentActivity.length}
@@ -660,7 +657,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </div>
 
                     {/* RIGHT (4 COLS): CUSTODY & DISPATCH PIPELINE (MATCHING SELLER'S FULFILLMENT ACTIONS) */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4">
+                    <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4 self-start">
                         {/* Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-2">
@@ -1133,7 +1130,7 @@ function PickupRouteCard({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>Merchant Location</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
@@ -1158,9 +1155,9 @@ function PickupRouteCard({
                         {task.merchant?.phone && (
                             <a
                                 href={`tel:${task.merchant.phone}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
                             >
-                                <Phone className="w-3 h-3" />
+                                <Phone className="w-3 h-3 text-slate-500" />
                                 <span>{task.merchant.phone}</span>
                             </a>
                         )}
@@ -1270,7 +1267,7 @@ function FinalMileRouteCard({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>Buyer Recipient</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">{task.recipient?.name}</p>
@@ -1293,9 +1290,9 @@ function FinalMileRouteCard({
                         {task.recipient?.phone && (
                             <a
                                 href={`tel:${task.recipient.phone}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
                             >
-                                <Phone className="w-3 h-3" />
+                                <Phone className="w-3 h-3 text-slate-500" />
                                 <span>{task.recipient.phone}</span>
                             </a>
                         )}
@@ -1389,7 +1386,7 @@ function AvailablePickupRouteCard({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>Merchant Location</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
