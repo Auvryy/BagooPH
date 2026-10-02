@@ -86,55 +86,55 @@ export default function CourierLayout({
     };
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
+        <div className="flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
             {sidebarOpen && (
                 <button
                     type="button"
                     aria-label="Close navigation"
-                    className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"
+                    className="fixed inset-0 z-40 bg-slate-950/35 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             <aside
-                className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-950 text-white transition-transform duration-200 lg:static lg:z-30 lg:shrink-0 lg:translate-x-0 ${
-                    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed inset-y-2 left-2 z-50 flex w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-900 shadow-2xl transition-transform duration-200 lg:static lg:inset-auto lg:z-30 lg:w-72 lg:shrink-0 lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:shadow-none ${
+                    sidebarOpen ? 'translate-x-0' : 'max-lg:-translate-x-[calc(100%+1rem)]'
                 }`}
             >
-                <div className="border-b border-slate-800 p-4">
+                <div className="border-b border-slate-300 p-4 sm:p-5">
                     <div className="flex items-center justify-between">
                         <Link href={route('courier.deliveries')} className="flex items-center gap-2.5">
                             <BagooLogo className="h-8 w-8" rounded="rounded-sm" />
                             <div>
-                                <p className="text-sm font-bold">
+                                <p className="text-sm font-extrabold text-slate-950">
                                     Bagoo<span className="text-[#E00D42]">PH</span>
                                 </p>
-                                <p className="text-xs text-slate-400">Courier operations</p>
+                                <p className="text-xs text-slate-500">Courier operations</p>
                             </div>
                         </Link>
                         <button
                             type="button"
                             aria-label="Close navigation"
                             onClick={() => setSidebarOpen(false)}
-                            className="rounded-sm p-1.5 text-slate-400 hover:bg-slate-900 hover:text-white lg:hidden"
+                            className="rounded-sm border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-950 lg:hidden"
                         >
                             <X className="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900 p-3">
+                    <div className="mt-5 rounded-lg border border-slate-300 bg-slate-50 p-3.5">
                         <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold">{user?.name}</p>
-                                <p className="mt-0.5 text-xs text-slate-400">
+                                <p className="truncate text-sm font-bold text-slate-900">{user?.name}</p>
+                                <p className="mt-0.5 text-xs leading-5 text-slate-500">
                                     {isOnline ? 'Available for eligible work' : 'Not accepting new work'}
                                 </p>
                             </div>
                             <span
                                 className={`rounded-sm border px-2 py-1 text-[11px] font-bold ${
                                     isOnline
-                                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
-                                        : 'border-slate-600 bg-slate-800 text-slate-300'
+                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                        : 'border-slate-300 bg-white text-slate-600'
                                 }`}
                             >
                                 {isOnline ? 'ON DUTY' : 'OFF DUTY'}
@@ -144,7 +144,11 @@ export default function CourierLayout({
                             type="button"
                             onClick={toggleDuty}
                             disabled={dutyLoading}
-                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-sm border border-slate-600 px-3 py-2 text-xs font-semibold text-white transition hover:border-slate-400 hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
+                            className={`mt-3 flex w-full items-center justify-center gap-2 rounded-sm border px-3 py-2.5 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                                isOnline
+                                    ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                                    : 'border-[#E00D42] bg-[#E00D42] text-white hover:bg-[#C20836]'
+                            }`}
                         >
                             <Power className="h-4 w-4" />
                             {dutyLoading
@@ -156,17 +160,17 @@ export default function CourierLayout({
                     </div>
                 </div>
 
-                <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-                    <p className="px-3 pb-2 text-xs font-semibold text-slate-500">Rider workspace</p>
+                <nav className="flex-1 space-y-1 overflow-y-auto p-3 sm:p-4">
+                    <p className="px-3 pb-2 text-xs font-bold text-slate-500">Rider workspace</p>
                     {navItems.map((item) => (
                         <Link
                             key={item.name}
                             href={item.href}
                             onClick={() => setSidebarOpen(false)}
-                            className={`flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium transition ${
+                            className={`flex items-center gap-3 rounded-sm border px-3 py-2.5 text-sm font-semibold transition ${
                                 item.current
-                                    ? 'bg-[#E00D42] text-white'
-                                    : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                                    ? 'border-[#E00D42] bg-[#FDF2F4] text-[#C20836]'
+                                    : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                             }`}
                         >
                             <item.icon className="h-4 w-4 shrink-0" />
@@ -175,12 +179,12 @@ export default function CourierLayout({
                     ))}
                 </nav>
 
-                <div className="border-t border-slate-800 p-3">
+                <div className="border-t border-slate-300 p-3 sm:p-4">
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="flex w-full items-center justify-center gap-2 rounded-sm border border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-900 hover:text-white"
+                        className="flex w-full items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
                         <LogOut className="h-4 w-4" />
                         Sign out
@@ -189,7 +193,7 @@ export default function CourierLayout({
             </aside>
 
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-4 py-3 sm:px-6">
+                <header className="flex min-h-[4.5rem] shrink-0 items-center justify-between border-b border-slate-300 bg-white px-3 py-3 sm:px-6">
                     <div className="flex min-w-0 items-center gap-3">
                         <button
                             type="button"
@@ -200,18 +204,32 @@ export default function CourierLayout({
                             <Menu className="h-5 w-5" />
                         </button>
                         <div className="min-w-0">
-                            <h1 className="truncate text-lg font-bold text-slate-950">{title}</h1>
+                            <h1 className="truncate text-base font-extrabold tracking-tight text-slate-950 sm:text-lg">{title}</h1>
                             {subtitle && (
                                 <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{subtitle}</p>
                             )}
                         </div>
                     </div>
 
-                    <div
-                        className="relative ml-3"
-                        onMouseEnter={openUserMenu}
-                        onMouseLeave={closeUserMenu}
-                    >
+                    <div className="ml-3 flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={toggleDuty}
+                            disabled={dutyLoading}
+                            className={`inline-flex items-center gap-1.5 rounded-sm border px-2 py-2 text-xs font-bold sm:hidden ${
+                                isOnline
+                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                    : 'border-slate-300 bg-white text-slate-700'
+                            }`}
+                        >
+                            <Power className="h-3.5 w-3.5" />
+                            {isOnline ? 'On duty' : 'Off duty'}
+                        </button>
+                        <div
+                            className="relative"
+                            onMouseEnter={openUserMenu}
+                            onMouseLeave={closeUserMenu}
+                        >
                         <button
                             type="button"
                             onClick={() => setUserMenuOpen((open) => !open)}
@@ -257,6 +275,7 @@ export default function CourierLayout({
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </header>
 
@@ -272,7 +291,7 @@ export default function CourierLayout({
                     </div>
                 )}
 
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6">
                     <div className="mx-auto max-w-7xl">{children}</div>
                 </main>
             </div>
