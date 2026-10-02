@@ -46,36 +46,62 @@ export default function CourierLayout({
     scope,
 }: Props) {
     const { auth, flash } = usePage<PageProps>().props;
+    const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [dutyLoading, setDutyLoading] = useState(false);
     const userMenuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const user = auth?.user;
 
+    const isDeliveriesActive =
+        component === 'Courier/Deliveries' ||
+        url === '/deliveries' ||
+        url.startsWith('/deliveries') ||
+        url.includes('/courier/deliveries') ||
+        url === '/courier';
+
+    const isEarningsActive =
+        component === 'Courier/Earnings' ||
+        url === '/earnings' ||
+        url.startsWith('/earnings') ||
+        url.includes('/courier/earnings');
+
+    const isMessagesActive =
+        component === 'Courier/Messages' ||
+        url === '/messages' ||
+        url.startsWith('/messages') ||
+        url.includes('/courier/messages');
+
+    const isProfileActive =
+        component === 'Courier/Profile' ||
+        url === '/profile' ||
+        url.startsWith('/profile') ||
+        url.includes('/courier/profile');
+
     const navItems = [
         {
             name: 'Dispatch board',
             href: route('courier.deliveries'),
             icon: ClipboardList,
-            current: route().current('courier.deliveries'),
+            current: isDeliveriesActive,
         },
         {
             name: 'Completed trips',
             href: route('courier.earnings'),
             icon: History,
-            current: route().current('courier.earnings'),
+            current: isEarningsActive,
         },
         {
             name: 'Messages',
             href: route('courier.messages'),
             icon: MessageSquare,
-            current: route().current('courier.messages'),
+            current: isMessagesActive,
         },
         {
             name: 'Rider profile',
             href: route('courier.profile'),
             icon: UserRound,
-            current: route().current('courier.profile'),
+            current: isProfileActive,
         },
     ];
 
@@ -110,12 +136,12 @@ export default function CourierLayout({
             {/* Backdrop for mobile drawer */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 lg:hidden"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 lg:hidden transition-opacity"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Sidebar (Permanently Fixed on Desktop) */}
+            {/* Sidebar (Permanently Fixed on Desktop, Drawer on Mobile) */}
             <aside
                 className={`
                     fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 
@@ -141,7 +167,7 @@ export default function CourierLayout({
                         <button
                             type="button"
                             onClick={() => setSidebarOpen(false)}
-                            className="lg:hidden p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -177,13 +203,13 @@ export default function CourierLayout({
                             type="button"
                             onClick={toggleDuty}
                             disabled={dutyLoading}
-                            className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
+                            className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
                                 isOnline
                                     ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                                     : 'bg-[#E00D42] text-white hover:bg-[#C20836]'
                             }`}
                         >
-                            <Power className={`w-3 h-3 ${isOnline ? 'text-emerald-600' : 'text-white'}`} />
+                            <Power className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-600' : 'text-white'}`} />
                             <span>
                                 {dutyLoading
                                     ? 'Updating...'
@@ -197,7 +223,7 @@ export default function CourierLayout({
 
                 {/* Navigation Menu */}
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                         <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
                             Menu
                         </p>
@@ -206,7 +232,7 @@ export default function CourierLayout({
                                 key={item.name}
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
+                                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition group cursor-pointer ${
                                     item.current
                                         ? 'bg-[#E00D42] text-white shadow-xs font-bold'
                                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
@@ -228,7 +254,7 @@ export default function CourierLayout({
                     </div>
 
                     {/* Quick Links */}
-                    <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                    <div className="pt-2 border-t border-slate-100 space-y-1">
                         <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
                             Quick Links
                         </p>
@@ -279,6 +305,7 @@ export default function CourierLayout({
                             type="button"
                             onClick={() => setSidebarOpen(true)}
                             className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0"
+                            aria-label="Open sidebar"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
@@ -295,7 +322,7 @@ export default function CourierLayout({
                     </div>
 
                     {/* Topbar Actions & User Avatar */}
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
                         {actions}
 
                         {/* On-Duty Switch Button */}
@@ -303,18 +330,19 @@ export default function CourierLayout({
                             type="button"
                             onClick={toggleDuty}
                             disabled={dutyLoading}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
+                            className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
                                 isOnline
-                                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-800 hover:bg-emerald-100/70'
+                                    ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/80'
                                     : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
                             }`}
                         >
                             <span
-                                className={`w-2 h-2 rounded-full ${
+                                className={`w-2 h-2 rounded-full shrink-0 ${
                                     isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
                                 }`}
                             />
-                            <span>{isOnline ? 'On Duty' : 'Off Duty'}</span>
+                            <span className="hidden xs:inline">{isOnline ? 'On Duty' : 'Off Duty'}</span>
+                            <span className="xs:hidden">{isOnline ? 'ON' : 'OFF'}</span>
                         </button>
 
                         {/* Rider User Avatar Interactive Dropdown */}
@@ -323,9 +351,10 @@ export default function CourierLayout({
                             onMouseEnter={openUserMenu}
                             onMouseLeave={closeUserMenu}
                         >
-                            <Link
-                                href={route('courier.profile')}
-                                className="flex items-center gap-2.5 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300"
+                            <button
+                                type="button"
+                                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                className="flex items-center gap-2 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300 cursor-pointer"
                             >
                                 {user?.avatar ? (
                                     <img
@@ -349,11 +378,11 @@ export default function CourierLayout({
                                         Courier Account
                                     </span>
                                 </div>
-                            </Link>
+                            </button>
 
                             {userMenuOpen && (
                                 <div
-                                    className="absolute right-0 top-full pt-1.5 w-56 z-50"
+                                    className="absolute right-0 top-full pt-1.5 w-56 z-50 animate-in fade-in zoom-in-95 duration-75"
                                     onMouseEnter={openUserMenu}
                                     onMouseLeave={closeUserMenu}
                                 >
@@ -422,10 +451,81 @@ export default function CourierLayout({
                     </div>
                 )}
 
-                {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                {/* Main Content Area (padding-bottom pb-24 on mobile so content is clear of bottom nav) */}
+                <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-24 lg:pb-8">
                     <div className="mx-auto max-w-7xl">{children}</div>
                 </main>
+
+                {/* Mobile Bottom Navigation Bar (Tailored for Riders on Mobile) */}
+                <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-lg">
+                    <Link
+                        href={route('courier.deliveries')}
+                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+                            isDeliveriesActive
+                                ? 'text-[#E00D42] font-black'
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <div className="relative">
+                            <ClipboardList className={`w-5 h-5 ${isDeliveriesActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
+                            {isDeliveriesActive && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
+                            )}
+                        </div>
+                        <span className="mt-1">Dispatch</span>
+                    </Link>
+
+                    <Link
+                        href={route('courier.earnings')}
+                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+                            isEarningsActive
+                                ? 'text-[#E00D42] font-black'
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <div className="relative">
+                            <History className={`w-5 h-5 ${isEarningsActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
+                            {isEarningsActive && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
+                            )}
+                        </div>
+                        <span className="mt-1">Trips</span>
+                    </Link>
+
+                    <Link
+                        href={route('courier.messages')}
+                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+                            isMessagesActive
+                                ? 'text-[#E00D42] font-black'
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <div className="relative">
+                            <MessageSquare className={`w-5 h-5 ${isMessagesActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
+                            {isMessagesActive && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
+                            )}
+                        </div>
+                        <span className="mt-1">Messages</span>
+                    </Link>
+
+                    <Link
+                        href={route('courier.profile')}
+                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+                            isProfileActive
+                                ? 'text-[#E00D42] font-black'
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <div className="relative">
+                            <UserRound className={`w-5 h-5 ${isProfileActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
+                            {isProfileActive && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
+                            )}
+                        </div>
+                        <span className="mt-1">Profile</span>
+                    </Link>
+                </nav>
             </div>
         </div>
     );
