@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,10 @@ use RuntimeException;
 
 class CheckoutOrderService
 {
-    public function __construct(private readonly LogisticsRoutingEngine $routingEngine) {}
+    public function __construct(
+        private readonly LogisticsRoutingEngine $routingEngine,
+        private readonly InventoryService $inventory
+    ) {}
 
     /**
      * @param  list<int>  $cartItemIds
@@ -74,11 +78,10 @@ class CheckoutOrderService
                 if (! $product || $product->status !== 'active' || ! $product->shop || $product->shop->status !== 'active') {
                     throw new RuntimeException('One or more selected products or shops are unavailable.');
                 }
-                if ($item->quantity < 1 || $product->stock < $item->quantity) {
-                    throw new RuntimeException("'{$product->name}' does not have enough stock.");
-                }
                 $item->setRelation('product', $product);
             }
+
+            $this->inventory->assertCheckoutAvailability($items, $products);
 
             $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id);
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
@@ -141,8 +144,12 @@ class CheckoutOrderService
                         'sku_snapshot' => $item->sku_snapshot,
                     ]);
 
-                    $product->decrement('stock', $item->quantity);
-                    $product->increment('sales_count', $item->quantity);
+                    $this->inventory->decrement(
+                        $product,
+                        $item->quantity,
+                        $item->color,
+                        $item->size
+                    );
                 }
 
                 $delivery = Delivery::create([

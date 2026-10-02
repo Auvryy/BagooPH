@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Services\Commerce\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,6 +45,7 @@ class CartController extends Controller
             if ($timeDiff !== 0) {
                 return $timeDiff;
             }
+
             return $b->id <=> $a->id;
         })->values();
 
@@ -52,59 +56,99 @@ class CartController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, InventoryService $inventory): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'nullable|integer|min:1|max:99',
             'color' => 'nullable|string|max:50',
             'size' => 'nullable|string|max:50',
         ]);
 
-        $product = Product::where('status', 'active')->findOrFail($request->input('product_id'));
-        $quantity = (int) $request->input('quantity', 1);
-
-        if ($product->stock < $quantity) {
-            return back()->with('error', "Sorry, only {$product->stock} units are currently available.");
-        }
-
-        $color = $request->input('color');
-        $size = $request->input('size');
-
         $cart = $this->getCart($request);
-        $item = $cart->items()
-            ->where('product_id', $product->id)
-            ->where('color', $color)
-            ->where('size', $size)
-            ->first();
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $color = $this->normalizeOption($validated['color'] ?? null);
+        $size = $this->normalizeOption($validated['size'] ?? null);
 
-        if ($item) {
-            $newQuantity = $item->quantity + $quantity;
-            if ($product->stock < $newQuantity) {
-                return back()->with('error', "Cannot add more. Stock limit of {$product->stock} reached.");
+        $product = DB::transaction(function () use ($cart, $validated, $quantity, $color, $size, $inventory) {
+            Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            $product = Product::query()
+                ->whereKey($validated['product_id'])
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $product || ! $product->shop || $product->shop->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'product_id' => 'This product or its shop is no longer available.',
+                ]);
             }
-            $item->quantity = $newQuantity;
-            $item->unit_price = $product->price; // Always sync with real database price
-            $item->save();
-        } else {
-            $skuSnapshot = $product->sku . ($color ? "-{$color}" : '') . ($size ? "-{$size}" : '');
-            $cart->items()->create([
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'unit_price' => $product->price,
-                'color' => $color,
-                'size' => $size,
-                'sku_snapshot' => $skuSnapshot,
-            ]);
-        }
+
+            if ($product->stock <= 0) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'This product is currently out of stock.',
+                ]);
+            }
+
+            $productItems = CartItem::query()
+                ->where('cart_id', $cart->id)
+                ->where('product_id', $product->id)
+                ->lockForUpdate()
+                ->get();
+            $item = $productItems->first(
+                fn (CartItem $cartItem) => $cartItem->color === $color && $cartItem->size === $size
+            );
+            $newQuantity = ($item?->quantity ?? 0) + $quantity;
+
+            try {
+                $maximum = $inventory->maximumCartLineQuantity(
+                    $product,
+                    $productItems,
+                    $color,
+                    $size,
+                    $item?->id
+                );
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
+            }
+
+            if ($newQuantity > $maximum) {
+                $existing = $item?->quantity ?? 0;
+                $remaining = max(0, $maximum - $existing);
+                $message = $remaining > 0
+                    ? "You already have {$existing} in your Shopping Bag. You can add only {$remaining} more."
+                    : "Your Shopping Bag already contains the maximum available quantity of {$maximum}.";
+
+                throw ValidationException::withMessages(['quantity' => $message]);
+            }
+
+            if ($item) {
+                $item->update([
+                    'quantity' => $newQuantity,
+                    'unit_price' => $product->price,
+                ]);
+            } else {
+                $skuSnapshot = $product->sku.($color ? "-{$color}" : '').($size ? "-{$size}" : '');
+                $cart->items()->create([
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'unit_price' => $product->price,
+                    'color' => $color,
+                    'size' => $size,
+                    'sku_snapshot' => $skuSnapshot,
+                ]);
+            }
+
+            return $product;
+        });
 
         return back()->with('success', "'{$product->name}' added to your shopping bag!");
     }
 
-    public function update(Request $request, CartItem $cartItem): RedirectResponse
+    public function update(Request $request, CartItem $cartItem, InventoryService $inventory): RedirectResponse
     {
         $cart = $this->getCart($request);
-        
+
         // Authorization / IDOR Protection
         if ($cartItem->cart_id !== $cart->id) {
             abort(403, 'Unauthorized cart modification.');
@@ -115,13 +159,49 @@ class CartController extends Controller
         ]);
 
         $quantity = (int) $request->input('quantity');
-        if ($cartItem->product && $cartItem->product->stock < $quantity) {
-            return back()->with('error', "Stock limit reached. Only {$cartItem->product->stock} available.");
-        }
 
-        $cartItem->update([
-            'quantity' => $quantity,
-        ]);
+        DB::transaction(function () use ($cart, $cartItem, $quantity, $inventory) {
+            Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            $lockedItem = CartItem::query()
+                ->whereKey($cartItem->id)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $product = Product::whereKey($lockedItem->product_id)->lockForUpdate()->firstOrFail();
+            if ($product->status !== 'active' || ! $product->shop || $product->shop->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'quantity' => 'This product or its shop is no longer available.',
+                ]);
+            }
+            $productItems = CartItem::query()
+                ->where('cart_id', $cart->id)
+                ->where('product_id', $product->id)
+                ->lockForUpdate()
+                ->get();
+
+            try {
+                $maximum = $inventory->maximumCartLineQuantity(
+                    $product,
+                    $productItems,
+                    $lockedItem->color,
+                    $lockedItem->size,
+                    $lockedItem->id
+                );
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
+            }
+
+            if ($quantity > $maximum) {
+                throw ValidationException::withMessages([
+                    'quantity' => "Only {$maximum} units are available for this Shopping Bag selection.",
+                ]);
+            }
+
+            $lockedItem->update([
+                'quantity' => $quantity,
+                'unit_price' => $product->price,
+            ]);
+        });
 
         return back()->with('success', 'Shopping bag updated.');
     }
@@ -136,6 +216,14 @@ class CartController extends Controller
         }
 
         $cartItem->delete();
+
         return back()->with('success', 'Item removed from shopping bag.');
+    }
+
+    private function normalizeOption(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

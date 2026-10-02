@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import { Cart, CartItem, PageProps } from '@/types';
@@ -54,7 +54,18 @@ export default function CartIndex({ cart, items, total }: Props) {
     const [filterBy, setFilterBy] = useState<FilterOption>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [checkoutGateMessage, setCheckoutGateMessage] = useState<string | null>(null);
+    const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>(() =>
+        Object.fromEntries(items.map((item) => [item.id, String(item.quantity)]))
+    );
+    const [quantityErrors, setQuantityErrors] = useState<Record<number, string>>({});
     const { auth } = usePage<PageProps>().props;
+
+    useEffect(() => {
+        setQuantityDrafts((current) => ({
+            ...current,
+            ...Object.fromEntries(items.map((item) => [item.id, String(item.quantity)])),
+        }));
+    }, [items]);
 
     // Process displayed items according to search, filter and sort options
     const displayedItems = useMemo(() => {
@@ -116,9 +127,87 @@ export default function CartIndex({ cart, items, total }: Props) {
         }
     };
 
+    const maximumQuantityForItem = (item: CartItem) => {
+        const productStock = Math.max(0, Number(item.product?.stock ?? 0));
+        const otherProductQuantity = items
+            .filter((candidate) => candidate.id !== item.id && candidate.product_id === item.product_id)
+            .reduce((sum, candidate) => sum + candidate.quantity, 0);
+        let maximum = productStock - otherProductQuantity;
+        const selectedColor = item.product?.variants?.colors?.find((color) => color.name === item.color);
+        if (selectedColor && selectedColor.in_stock === false) {
+            return 0;
+        }
+        const selectedSize = item.product?.variants?.sizes?.find((size) => size.name === item.size);
+
+        if (selectedSize) {
+            const otherSizeQuantity = items
+                .filter((candidate) =>
+                    candidate.id !== item.id
+                    && candidate.product_id === item.product_id
+                    && candidate.size === item.size
+                )
+                .reduce((sum, candidate) => sum + candidate.quantity, 0);
+            maximum = Math.min(maximum, Number(selectedSize.stock) - otherSizeQuantity);
+        }
+
+        return Math.max(0, Math.min(99, maximum));
+    };
+
     const updateQuantity = (item: CartItem, newQty: number) => {
-        if (newQty < 1) return;
-        router.patch(route('cart.update', item.id), { quantity: newQty }, { preserveScroll: true });
+        const maximum = maximumQuantityForItem(item);
+        if (newQty < 1 || maximum < 1) return;
+        if (newQty > maximum) {
+            setQuantityDrafts((current) => ({ ...current, [item.id]: String(maximum) }));
+            setQuantityErrors((current) => ({
+                ...current,
+                [item.id]: `Only ${maximum} units are available for this selection.`,
+            }));
+            return;
+        }
+
+        setQuantityDrafts((current) => ({ ...current, [item.id]: String(newQty) }));
+        setQuantityErrors((current) => ({ ...current, [item.id]: '' }));
+        if (newQty === item.quantity) return;
+
+        router.patch(route('cart.update', item.id), { quantity: newQty }, {
+            preserveScroll: true,
+            onError: (errors) => {
+                setQuantityDrafts((current) => ({ ...current, [item.id]: String(item.quantity) }));
+                setQuantityErrors((current) => ({
+                    ...current,
+                    [item.id]: String(errors.quantity || 'The quantity could not be updated.'),
+                }));
+            },
+        });
+    };
+
+    const handleQuantityInput = (item: CartItem, value: string) => {
+        if (value === '') {
+            setQuantityDrafts((current) => ({ ...current, [item.id]: '' }));
+            return;
+        }
+        if (!/^\d+$/.test(value)) return;
+
+        const maximum = maximumQuantityForItem(item);
+        const parsed = Number(value);
+        if (parsed > maximum) {
+            setQuantityDrafts((current) => ({ ...current, [item.id]: String(Math.max(1, maximum)) }));
+            setQuantityErrors((current) => ({
+                ...current,
+                [item.id]: maximum > 0
+                    ? `Only ${maximum} units are available for this selection.`
+                    : 'This product is currently out of stock.',
+            }));
+            return;
+        }
+
+        setQuantityDrafts((current) => ({ ...current, [item.id]: String(Math.max(1, parsed)) }));
+        setQuantityErrors((current) => ({ ...current, [item.id]: '' }));
+    };
+
+    const commitQuantityInput = (item: CartItem) => {
+        const parsed = Number(quantityDrafts[item.id]);
+        updateQuantity(item, Number.isInteger(parsed) && parsed >= 1 ? parsed : item.quantity);
     };
 
     const removeItem = (item: CartItem) => {
@@ -343,29 +432,59 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                                 {formatPrice(item.unit_price)}
                                                             </span>
                                                             <span className="text-slate-400">•</span>
-                                                            <span className="text-slate-500 text-[11px]">In Stock ({item.product?.stock ?? 45})</span>
+                                                            <span className="text-slate-500 text-[11px]">
+                                                                {Number(item.product?.stock ?? 0) > 0
+                                                                    ? `In Stock (${item.product.stock})`
+                                                                    : 'Out of stock'}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Quantity & Delete Controls */}
                                                 <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-sans text-xs">
-                                                    <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateQuantity(item, item.quantity - 1)}
-                                                            className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
-                                                        >
-                                                            <Minus className="w-3 h-3" />
-                                                        </button>
-                                                        <span className="px-3 py-1 font-bold text-slate-900">{item.quantity}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateQuantity(item, item.quantity + 1)}
-                                                            className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
-                                                        >
-                                                            <Plus className="w-3 h-3" />
-                                                        </button>
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center border border-slate-300 rounded-sm overflow-hidden">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateQuantity(item, item.quantity - 1)}
+                                                                disabled={item.quantity <= 1 || maximumQuantityForItem(item) < 1}
+                                                                className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                                                aria-label={`Decrease ${item.product?.name || 'product'} quantity`}
+                                                            >
+                                                                <Minus className="w-3 h-3" />
+                                                            </button>
+                                                            <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
+                                                                value={quantityDrafts[item.id] ?? String(item.quantity)}
+                                                                onChange={(event) => handleQuantityInput(item, event.target.value)}
+                                                                onBlur={() => commitQuantityInput(item)}
+                                                                onKeyDown={(event) => {
+                                                                    if (event.key === 'Enter') {
+                                                                        event.currentTarget.blur();
+                                                                    }
+                                                                }}
+                                                                disabled={maximumQuantityForItem(item) < 1}
+                                                                aria-label={`${item.product?.name || 'Product'} quantity`}
+                                                                className="w-14 border-x border-y-0 border-slate-300 bg-white px-2 py-1.5 text-center text-xs font-bold text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-400"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateQuantity(item, item.quantity + 1)}
+                                                                disabled={item.quantity >= maximumQuantityForItem(item) || maximumQuantityForItem(item) < 1}
+                                                                className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
+                                                                aria-label={`Increase ${item.product?.name || 'product'} quantity`}
+                                                            >
+                                                                <Plus className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                        {quantityErrors[item.id] && (
+                                                            <p className="max-w-48 text-[10px] leading-snug text-rose-700" role="alert">
+                                                                {quantityErrors[item.id]}
+                                                            </p>
+                                                        )}
                                                     </div>
 
                                                     <span className="font-bold text-slate-900 min-w-[80px] text-right">

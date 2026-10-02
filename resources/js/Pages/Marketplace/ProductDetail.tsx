@@ -232,7 +232,7 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                                     className="flex-1 py-3.5 px-6 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm border border-indigo-200 transition flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                 >
                                     <ShoppingCart className="w-4 h-4" />
-                                    <span>Add to Cart</span>
+                                    <span>{product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}</span>
                                 </button>
                                 <button
                                     onClick={handleBuyNow}
@@ -240,7 +240,7 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                                     className="flex-1 py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                                 >
                                     <Sparkles className="w-4 h-4" />
-                                    <span>Buy Now</span>
+                                    <span>{product.stock <= 0 ? 'Unavailable' : 'Buy Now'}</span>
                                 </button>
                             </div>
                         </div>

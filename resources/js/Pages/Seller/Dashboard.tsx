@@ -3,13 +3,10 @@ import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { OrderItem, Product, Shop } from '@/types';
 import { 
-    DollarSign, 
     Package, 
     ShoppingCart, 
     ArrowRight, 
     Plus, 
-    TrendingUp,
-    Star,
     CheckCircle2,
     Truck,
     Clock,
@@ -26,8 +23,14 @@ interface Props {
     stats: {
         totalProducts: number;
         lowStockCount: number;
-        totalSales: number;
-        totalRevenue: number;
+        completedGrossSales: number;
+        completedUnits: number;
+        completedOrderCount: number;
+        averageCompletedOrderValue: number;
+        estimatedSellerShare: number;
+        openOrderValue: number;
+        openUnits: number;
+        openOrderCount: number;
         pendingPackCount: number;
         readyPickupCount: number;
         shippedCount: number;
@@ -44,7 +47,6 @@ interface Props {
 }
 
 export default function SellerDashboard({ shop, stats, dailySales, recentOrders, topProducts }: Props) {
-    const [timeframe, setTimeframe] = useState<'7d' | '30d' | 'all'>('7d');
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
     const [isHoveringChart, setIsHoveringChart] = useState(false);
     const chartClipId = useId();
@@ -57,19 +59,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
     // Total pending action items requiring merchant intervention
     const pendingActions = stats.pendingPackCount + stats.readyPickupCount;
 
-    // Curated chart data series with fallback for realistic aesthetic display
-    const chartSeries = useMemo(() => {
-        const fallbackRevenues = [1450, 2200, 1850, 2900, 3100, 4850, 2450];
-        return dailySales.map((d, i) => {
-            const revenue = d.revenue > 0 ? d.revenue : (stats.totalRevenue > 0 ? fallbackRevenues[i % fallbackRevenues.length] : 1000 + i * 400);
-            const units = d.units > 0 ? d.units : Math.max(1, Math.round(revenue / 2800));
-            return {
-                date: d.date,
-                revenue,
-                units,
-            };
-        });
-    }, [dailySales, stats.totalRevenue]);
+    const chartSeries = dailySales;
+    const hasCompletedSales = chartSeries.some((day) => day.revenue > 0 || day.units > 0);
 
     // SVG Line Graph Geometry Constants
     const svgWidth = 680;
@@ -78,7 +69,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
     const plotWidth = svgWidth - padding.left - padding.right;
     const plotHeight = svgHeight - padding.top - padding.bottom;
 
-    const maxRevenue = Math.max(...chartSeries.map(d => d.revenue), 2000);
+    const maxRevenue = Math.max(...chartSeries.map(d => d.revenue), 1);
 
     // Calculate (x, y) plot coordinates
     const points = useMemo(() => {
@@ -167,50 +158,66 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                 
                 {/* 1. TOP BUSINESS KPI TILES (CLEAN MINIMALIST CARDS) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase">Gross Sales</span>
-                                <span className="inline-flex items-center gap-0.5 text-slate-700 text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                    <TrendingUp className="w-3 h-3" /> +16.4%
-                                </span>
+                                <span className="font-semibold">Completed sales</span>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {formatPrice(stats.totalRevenue)}
+                                    {formatPrice(stats.completedGrossSales)}
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-400">Net Take-Home (90%):</span>
-                            <span className="font-bold text-slate-900">{formatPrice(stats.totalRevenue * 0.9)}</span>
+                            <span className="text-slate-500">Estimated seller share</span>
+                            <span className="font-bold text-slate-900">{formatPrice(stats.estimatedSellerShare)}</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase">Items Sold</span>
+                                <span className="font-semibold">Completed items</span>
                                 <Package className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.totalSales} <span className="text-sm font-bold text-slate-500">items</span>
+                                    {stats.completedUnits} <span className="text-sm font-bold text-slate-500">items</span>
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-400">Average Basket:</span>
+                            <span className="text-slate-500">Average completed order</span>
                             <span className="font-bold text-slate-800">
-                                {formatPrice(stats.totalSales > 0 ? stats.totalRevenue / stats.totalSales : 0)}
+                                {formatPrice(stats.averageCompletedOrderValue)}
                             </span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase">Catalog</span>
+                                <span className="font-semibold">Open order value</span>
+                                <ShoppingCart className="w-4 h-4 text-[#E00D42]" />
+                            </div>
+                            <div className="mt-2">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {formatPrice(stats.openOrderValue)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
+                            <span className="text-slate-500">Stock reserved at checkout</span>
+                            <span className="font-bold text-slate-900">{stats.openOrderCount} orders · {stats.openUnits} units</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-5 border border-slate-300 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
+                                <span className="font-semibold">Catalog</span>
                                 <Box className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="mt-2">
@@ -220,31 +227,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-400">Inventory Status:</span>
+                            <span className="text-slate-500">Available stock status</span>
                             <span className={`font-bold ${stats.lowStockCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                {stats.lowStockCount > 0 ? `${stats.lowStockCount} low stock` : 'In stock'}
+                                {stats.lowStockCount > 0 ? `${stats.lowStockCount} low stock` : 'Stock healthy'}
                             </span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase">Store Rating</span>
-                                <div className="flex items-center gap-1 text-amber-500">
-                                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                    <span className="font-bold text-slate-900 font-sans">{Number(shop.rating || 4.95).toFixed(2)}</span>
-                                </div>
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    98.4%
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-400">Dispatch Rating:</span>
-                            <span className="font-bold text-slate-700">Top Rated Seller</span>
                         </div>
                     </div>
                 </div>
@@ -255,57 +241,30 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                     {/* LEFT (8 COLS): INTERACTIVE SPLINE LINE GRAPH */}
                     <div className="lg:col-span-8 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                         
-                        {/* Chart Header & Controls */}
+                        {/* Chart Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
-                                    <h3 className="text-sm font-black text-slate-900 font-sans uppercase tracking-wider">
-                                        Sales Velocity
+                                    <h3 className="text-sm font-bold text-slate-900 font-sans">
+                                        Completed sales
                                     </h3>
                                 </div>
+                                <p className="mt-1 text-xs text-slate-500">Buyer-confirmed product sales for the last seven days</p>
                             </div>
-
-                            {/* Timeframe Filter Buttons */}
-                            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg font-sans text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => setTimeframe('7d')}
-                                    className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                        timeframe === '7d' 
-                                            ? 'bg-white text-slate-900 shadow-2xs' 
-                                            : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    7D
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setTimeframe('30d')}
-                                    className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                        timeframe === '30d' 
-                                            ? 'bg-white text-slate-900 shadow-2xs' 
-                                            : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    30D
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setTimeframe('all')}
-                                    className={`px-3 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                        timeframe === 'all' 
-                                            ? 'bg-white text-slate-900 shadow-2xs' 
-                                            : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    All
-                                </button>
-                            </div>
+                            <span className="text-xs font-semibold text-slate-500">Last 7 days</span>
                         </div>
 
                         {/* Interactive Line Chart Canvas - Sleek, Lower Height */}
                         <div className="relative pt-3 pb-1">
+                            {!hasCompletedSales ? (
+                                <div className="flex h-32 flex-col items-center justify-center px-6 text-center">
+                                    <CheckCircle2 className="mb-2 h-5 w-5 text-slate-400" />
+                                    <p className="text-sm font-semibold text-slate-700">No completed sales in this period</p>
+                                    <p className="mt-1 text-xs text-slate-500">Open orders remain in the fulfillment queue until the buyer confirms receipt.</p>
+                                </div>
+                            ) : (
+                                <>
                             
                             {/* Live Hover Tooltip */}
                             {isHoveringChart && activePoint && (
@@ -319,14 +278,14 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 >
                                     <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-slate-800 text-[10px] text-slate-400">
                                         <span>{activePoint.date}</span>
-                                        <span className="text-slate-300 font-bold">{activePoint.units} sold</span>
+                                        <span className="text-slate-300 font-bold">{activePoint.units} completed</span>
                                     </div>
                                     <div className="mt-1.5 space-y-0.5">
                                         <p className="text-base font-black text-white font-sans">
                                             {formatPrice(activePoint.revenue)}
                                         </p>
                                         <p className="text-[10px] text-slate-300">
-                                            Net (90%): {formatPrice(activePoint.revenue * 0.9)}
+                                            Estimated seller share: {formatPrice(activePoint.revenue * 0.9)}
                                         </p>
                                     </div>
                                     <div className="w-2 h-2 bg-slate-950 rotate-45 border-r border-b border-slate-800 absolute -bottom-1 left-1/2 -translate-x-1/2"></div>
@@ -468,23 +427,25 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     );
                                 })}
                             </svg>
+                                </>
+                            )}
                         </div>
 
                         {/* Bottom Telemetry Strip: Clean Single-Row Bar (Minimalist, Zero Bulk) */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
+                        {hasCompletedSales && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 uppercase tracking-tight">Selected Date Revenue:</span>
+                                <span className="text-[10px] text-slate-500">Selected date completed sales</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice(activePoint?.revenue || 0)}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 uppercase tracking-tight">Estimated Net (90%):</span>
+                                <span className="text-[10px] text-slate-500">Estimated seller share</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice((activePoint?.revenue || 0) * 0.9)}
                                 </span>
                             </div>
-                        </div>
+                        </div>}
                     </div>
 
                     {/* RIGHT (4 COLS): VERTICAL FULFILLMENT CARDS WITH 2 PRIMARY ACTIONS + PIPELINE SUMMARY */}
@@ -678,7 +639,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             <div className="text-right space-y-0.5">
                                                 <span className="font-black text-slate-900 font-sans text-sm block">{formatPrice(item.subtotal)}</span>
                                                 <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] uppercase font-bold">
-                                                    {item.order?.status || 'Processing'}
+                                                    {item.order?.status || 'Unknown'}
                                                 </span>
                                             </div>
                                             <Link
@@ -695,12 +656,12 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         )}
                     </div>
 
-                    {/* Right (5 Cols): Top Velocity Products */}
+                    {/* Right (5 Cols): Top completed products */}
                     <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-6 space-y-4 shadow-2xs">
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
-                                <h3 className="font-bold text-sm text-slate-900">Inventory Velocity Leaders</h3>
-                                <p className="text-xs text-slate-400 font-sans">High conversion SKU listings</p>
+                                <h3 className="font-bold text-sm text-slate-900">Top completed products</h3>
+                                <p className="text-xs text-slate-400 font-sans">Ranked by buyer-confirmed units</p>
                             </div>
                             <Link href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Catalog</span>
@@ -723,7 +684,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             <div className="truncate space-y-0.5">
                                                 <p className="font-bold text-slate-900 truncate font-sans text-xs">{prod.name}</p>
                                                 <p className="text-slate-400 text-[10px]">
-                                                    Stock: {prod.stock} units • {prod.sales_count ?? 0} Sold
+                                                    {prod.stock} available · {Number(prod.open_order_units || 0)} reserved · {Number(prod.completed_units || 0)} completed
                                                 </p>
                                             </div>
                                         </div>

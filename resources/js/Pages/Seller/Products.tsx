@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
@@ -19,7 +19,7 @@ import {
     DollarSign, 
     Box, 
     Upload, 
-    Link, 
+    Link as LinkIcon,
     AlertCircle, 
     GripVertical, 
     Sliders,
@@ -72,12 +72,18 @@ interface Props {
     products: PaginatedData<Product>;
     categories: Category[];
     shop: Shop;
+    filters?: {
+        search?: string;
+    };
 }
 
-export default function SellerProducts({ products, categories, shop }: Props) {
+export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [stockProduct, setStockProduct] = useState<Product | null>(null);
+    const [productPendingRemoval, setProductPendingRemoval] = useState<Product | null>(null);
+    const [isRemovingProduct, setIsRemovingProduct] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -145,6 +151,10 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
 
+    useEffect(() => {
+        setSearchQuery(filters.search || '');
+    }, [filters.search]);
+
     const resizeDescription = (textarea: HTMLTextAreaElement | null) => {
         if (!textarea) return;
         textarea.style.height = 'auto';
@@ -206,6 +216,14 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         description: '',
         status: 'active',
         _method: 'PUT',
+    });
+
+    const stockForm = useForm<{
+        mode: 'set' | 'add';
+        quantity: string;
+    }>({
+        mode: 'set',
+        quantity: '0',
     });
 
     useEffect(() => {
@@ -598,6 +616,38 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 if (editFileInputRef.current) {
                     editFileInputRef.current.value = '';
                 }
+            },
+        });
+    };
+
+    const openStockEditor = (product: Product) => {
+        stockForm.clearErrors();
+        stockForm.setData({
+            mode: 'set',
+            quantity: String(product.stock),
+        });
+        setStockProduct(product);
+    };
+
+    const changeStockMode = (mode: 'set' | 'add') => {
+        if (!stockProduct) return;
+
+        stockForm.clearErrors();
+        stockForm.setData({
+            mode,
+            quantity: mode === 'set' ? String(stockProduct.stock) : '1',
+        });
+    };
+
+    const handleStockUpdate = (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!stockProduct) return;
+
+        stockForm.patch(route('seller.products.stock.update', stockProduct.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setStockProduct(null);
+                stockForm.reset();
             },
         });
     };
@@ -1422,7 +1472,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     placeholder="Paste direct image URL (https://...)"
                                     className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 />
-                                <Link className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                                <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                             </div>
                             <button
                                 type="button"
@@ -1537,6 +1587,8 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         const colorId = activePhotoPicker.colorId;
         const gallery = isCreate ? createGallery : editGallery;
         const setGallery = isCreate ? setCreateGallery : setEditGallery;
+        const fileError = isCreate ? createFileError : editFileError;
+        const setFileError = isCreate ? setCreateFileError : setEditFileError;
 
         let targetName = 'New Color';
         let targetHex = '#111111';
@@ -1702,13 +1754,16 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                         const file = e.target.files?.[0];
                                         if (!file) return;
                                         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-                                            alert('Invalid format. Please upload JPG, PNG, WEBP, or GIF.');
+                                            setFileError('Invalid format. Please upload JPG, PNG, WEBP, or GIF.');
+                                            e.target.value = '';
                                             return;
                                         }
                                         if (file.size > MAX_FILE_SIZE_BYTES) {
-                                            alert('Image file exceeds the 5MB size limit.');
+                                            setFileError('Image file exceeds the 5MB size limit.');
+                                            e.target.value = '';
                                             return;
                                         }
+                                        setFileError(null);
                                         const newItem: GalleryItem = {
                                             id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                                             type: 'file',
@@ -1724,6 +1779,12 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     }}
                                 />
                             </label>
+                            {fileError && (
+                                <div className="flex items-start gap-2 rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800" role="alert">
+                                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>{fileError}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* SECTION 3: External Image URL */}
@@ -1792,17 +1853,37 @@ export default function SellerProducts({ products, categories, shop }: Props) {
         );
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to remove this product from your storefront?')) {
-            router.delete(route('seller.products.destroy', id));
-        }
+    const handleDelete = (product: Product) => {
+        setProductPendingRemoval(product);
     };
 
-    const filteredProducts = products.data.filter(p => 
-        !searchQuery.trim() || 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const confirmProductRemoval = () => {
+        if (!productPendingRemoval) return;
+
+        router.delete(route('seller.products.destroy', productPendingRemoval.id), {
+            preserveScroll: true,
+            onStart: () => setIsRemovingProduct(true),
+            onSuccess: () => setProductPendingRemoval(null),
+            onFinish: () => setIsRemovingProduct(false),
+        });
+    };
+
+    const submitProductSearch = (event: React.FormEvent) => {
+        event.preventDefault();
+        const search = searchQuery.trim();
+        router.get(route('seller.products.index'), search ? { search } : {}, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const clearProductSearch = () => {
+        setSearchQuery('');
+        router.get(route('seller.products.index'), {}, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
 
     return (
         <DashboardLayout
@@ -1826,19 +1907,40 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                 <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2 font-sans text-xs text-slate-600">
                         <Package className="w-4 h-4 text-[#E00D42]" />
-                        <span>Showing <strong>{filteredProducts.length}</strong> of <strong>{products.total ?? products.data.length}</strong> catalog listings</span>
+                        <span>
+                            Showing <strong>{products.data.length}</strong> of <strong>{products.total ?? products.data.length}</strong> catalog listings
+                        </span>
                     </div>
 
-                    <div className="w-full sm:w-80 relative font-sans text-xs">
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by title or SKU..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
-                        />
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    </div>
+                    <form onSubmit={submitProductSearch} className="flex w-full sm:w-auto items-center gap-2">
+                        <div className="w-full sm:w-80 relative font-sans text-xs">
+                            <input
+                                type="search"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                maxLength={100}
+                                placeholder="Search all products by title or SKU..."
+                                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
+                            />
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={clearProductSearch}
+                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700"
+                                    aria-label="Clear product search"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            className="rounded-sm bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-[#E00D42]"
+                        >
+                            Search
+                        </button>
+                    </form>
                 </div>
 
                 {/* Products Table Box */}
@@ -1850,21 +1952,23 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                     <th className="py-4 px-6">Product Details</th>
                                     <th className="py-4 px-4">Master Department</th>
                                     <th className="py-4 px-4">Listing Price</th>
-                                    <th className="py-4 px-4">Stock Level</th>
+                                    <th className="py-4 px-4">Available Stock</th>
                                     <th className="py-4 px-4">Status</th>
-                                    <th className="py-4 px-4">Units Sold</th>
+                                    <th className="py-4 px-4">Completed Units</th>
                                     <th className="py-4 px-6 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredProducts.length === 0 ? (
+                                {products.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="py-12 text-center text-slate-400">
-                                            No products match your search query.
+                                            {filters.search
+                                                ? `No products match “${filters.search}”.`
+                                                : 'No products have been listed yet.'}
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredProducts.map((product) => (
+                                    products.data.map((product) => (
                                         <tr key={product.id} className="hover:bg-slate-50 transition">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3 min-w-0">
@@ -1896,11 +2000,22 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                                 {formatPrice(product.price)}
                                             </td>
                                             <td className="py-4 px-4">
-                                                <span className={`font-bold px-2.5 py-1 rounded-lg text-[11px] ${
-                                                    product.stock > 10 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (product.stock > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200')
-                                                }`}>
-                                                    {product.stock} units
-                                                </span>
+                                                <div className="space-y-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openStockEditor(product)}
+                                                        aria-label={`Update available stock for ${product.name}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
+                                                            product.stock > 10 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
+                                                        }`}
+                                                    >
+                                                        <Box className="h-3 w-3" />
+                                                        {product.stock} available
+                                                    </button>
+                                                    <p className="text-[10px] text-slate-500">
+                                                        {Number(product.open_order_units || 0)} reserved in open orders · Click to update
+                                                    </p>
+                                                </div>
                                             </td>
                                             <td className="py-4 px-4">
                                                 <span className="capitalize text-[11px] font-bold text-slate-700">
@@ -1908,7 +2023,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 text-slate-500 font-medium">
-                                                {product.sales_count ?? 0} sold
+                                                {Number(product.completed_units || 0)} completed
                                             </td>
                                             <td className="py-4 px-6 text-right space-x-1">
                                                 <button
@@ -1919,7 +2034,7 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(product.id)}
+                                                    onClick={() => handleDelete(product)}
                                                     className="p-2 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
                                                     title="Remove Product"
                                                 >
@@ -1932,8 +2047,216 @@ export default function SellerProducts({ products, categories, shop }: Props) {
                             </tbody>
                         </table>
                     </div>
+                    {products.last_page > 1 && (
+                        <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs text-slate-500">
+                                Page <strong>{products.current_page}</strong> of <strong>{products.last_page}</strong>
+                            </p>
+                            <nav className="flex flex-wrap items-center gap-1.5" aria-label="Product catalog pagination">
+                                {products.links?.map((link, index) => {
+                                    const isPrevious = index === 0;
+                                    const isNext = index === (products.links?.length ?? 0) - 1;
+                                    const label = isPrevious ? 'Previous' : isNext ? 'Next' : link.label;
+
+                                    return link.url ? (
+                                        <Link
+                                            key={`${label}-${index}`}
+                                            href={link.url}
+                                            preserveScroll
+                                            className={`min-w-8 rounded-sm border px-3 py-1.5 text-center text-xs font-bold transition ${
+                                                link.active
+                                                    ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            {label}
+                                        </Link>
+                                    ) : (
+                                        <span
+                                            key={`${label}-${index}`}
+                                            className="min-w-8 cursor-not-allowed rounded-sm border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-bold text-slate-400"
+                                        >
+                                            {label}
+                                        </span>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {typeof document !== 'undefined' && stockProduct && createPortal(
+                <div
+                    className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4 font-sans"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="stock-modal-title"
+                    onClick={() => !stockForm.processing && setStockProduct(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg border border-slate-300 bg-white shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+                            <div className="min-w-0 pr-4">
+                                <h2 id="stock-modal-title" className="text-base font-bold text-slate-950">Update available stock</h2>
+                                <p className="mt-1 truncate text-xs text-slate-500">{stockProduct.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setStockProduct(null)}
+                                disabled={stockForm.processing}
+                                className="rounded-sm p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                                aria-label="Close stock editor"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleStockUpdate} className="space-y-5 p-5">
+                            <div className="rounded-md border border-slate-300 bg-slate-50 px-4 py-3">
+                                <p className="text-[11px] font-semibold text-slate-500">Current available stock</p>
+                                <p className="mt-0.5 text-2xl font-bold text-slate-950">{stockProduct.stock}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2" aria-label="Stock update method">
+                                <button
+                                    type="button"
+                                    onClick={() => changeStockMode('set')}
+                                    className={`rounded-sm border px-3 py-2.5 text-xs font-bold transition ${stockForm.data.mode === 'set' ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'}`}
+                                >
+                                    Set exact stock
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => changeStockMode('add')}
+                                    className={`rounded-sm border px-3 py-2.5 text-xs font-bold transition ${stockForm.data.mode === 'add' ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'}`}
+                                >
+                                    Add stock
+                                </button>
+                            </div>
+
+                            <div>
+                                <label htmlFor="stock-quantity" className="mb-1.5 block text-xs font-bold text-slate-700">
+                                    {stockForm.data.mode === 'set' ? 'New available stock' : 'Units to add'}
+                                </label>
+                                <input
+                                    id="stock-quantity"
+                                    type="number"
+                                    min={stockForm.data.mode === 'add' ? 1 : 0}
+                                    max={1000000}
+                                    step={1}
+                                    required
+                                    autoFocus
+                                    value={stockForm.data.quantity}
+                                    onChange={(event) => stockForm.setData('quantity', event.target.value)}
+                                    className="w-full rounded-sm border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-950 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                />
+                                {stockForm.errors.quantity && (
+                                    <p className="mt-1.5 text-xs font-semibold text-rose-700">{stockForm.errors.quantity}</p>
+                                )}
+                                {stockProduct.variants?.sizes?.length ? (
+                                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                                        This updates overall inventory. Size-specific limits remain unchanged and can be managed in Edit Product.
+                                    </p>
+                                ) : null}
+                            </div>
+
+                            <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setStockProduct(null)}
+                                    disabled={stockForm.processing}
+                                    className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={stockForm.processing}
+                                    className="rounded-sm bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#C20836] disabled:opacity-50"
+                                >
+                                    {stockForm.processing ? 'Updating...' : 'Update stock'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {typeof document !== 'undefined' && productPendingRemoval && createPortal(
+                <div
+                    className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4 font-sans"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="remove-product-title"
+                    onClick={() => !isRemovingProduct && setProductPendingRemoval(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg border border-slate-300 bg-white shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3 border-b border-slate-200 px-5 py-4">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 bg-rose-50 text-rose-700">
+                                <Trash2 className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h2 id="remove-product-title" className="text-base font-bold text-slate-950">
+                                    {Number(productPendingRemoval.order_items_count || 0) > 0 ? 'Archive product?' : 'Delete product?'}
+                                </h2>
+                                <p className="mt-1 truncate text-xs text-slate-500">{productPendingRemoval.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setProductPendingRemoval(null)}
+                                disabled={isRemovingProduct}
+                                className="rounded-sm p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                                aria-label="Close product removal dialog"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 px-5 py-4">
+                            {Number(productPendingRemoval.order_items_count || 0) > 0 ? (
+                                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+                                    This listing has order history. It will be archived and hidden from buyers while existing order records remain intact.
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-xs leading-relaxed text-rose-900">
+                                    This listing has no order history and will be permanently deleted. This action cannot be undone.
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setProductPendingRemoval(null)}
+                                    disabled={isRemovingProduct}
+                                    className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmProductRemoval}
+                                    disabled={isRemovingProduct}
+                                    className="rounded-sm bg-rose-700 px-4 py-2 text-xs font-bold text-white hover:bg-rose-800 disabled:opacity-50"
+                                >
+                                    {isRemovingProduct
+                                        ? 'Working...'
+                                        : Number(productPendingRemoval.order_items_count || 0) > 0
+                                            ? 'Archive product'
+                                            : 'Delete product'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Create Product Slide-Over Sidebar Drawer */}
             {typeof document !== 'undefined' && isCreateOpen && createPortal(

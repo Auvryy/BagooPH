@@ -48,6 +48,7 @@ class SellerOrderController extends Controller
                     ]);
                 },
                 'order.delivery.checkpoints',
+                'order.commissionLedger',
                 'order.items.product',
                 'product.category',
             ])
