@@ -18,6 +18,19 @@ class LogisticsSeedBaselineTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_existing_reserved_demo_accounts_are_marked_verified_by_the_data_migration(): void
+    {
+        $rider = User::factory()->unverified()->create([
+            'email' => 'rider@bagoo.test',
+            'role' => 'courier',
+        ]);
+
+        $migration = require database_path('migrations/2026_10_02_120000_mark_seeded_demo_accounts_as_verified.php');
+        $migration->up();
+
+        $this->assertNotNull($rider->fresh()->email_verified_at);
+    }
+
     public function test_database_seeder_creates_an_active_logistics_operator_and_network(): void
     {
         $this->seed(DatabaseSeeder::class);
