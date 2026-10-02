@@ -287,6 +287,51 @@ class CourierOperationsHardeningTest extends TestCase
         $this->assertSame('assigned_pickup', $delivery->fresh()->status);
     }
 
+    public function test_pickup_note_is_sent_to_the_seller_message_inbox_once(): void
+    {
+        $delivery = $this->createDelivery('assigned_pickup', $this->rider);
+        $note = 'Waybill matched and the sealed parcel was collected at the dispatch counter.';
+
+        $this->actingAs($this->rider)
+            ->patch(route('courier.updateStatus', $delivery), [
+                'status' => 'picked_up',
+                'courier_notes' => $note,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame($note, $delivery->fresh()->courier_notes);
+        $this->assertDatabaseHas('messages', [
+            'sender_id' => $this->rider->id,
+            'receiver_id' => $this->seller->id,
+            'shop_id' => $this->shop->id,
+            'order_id' => $delivery->order_id,
+            'message' => $note,
+            'is_read' => false,
+        ]);
+
+        $this->actingAs($this->seller)
+            ->get(route('seller.messages.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Seller/Messages')
+                ->has('conversations', 1)
+                ->where('conversations.0.user.id', $this->rider->id)
+                ->where('conversations.0.order_id', $delivery->order_id)
+                ->where('conversations.0.last_message', $note)
+                ->where('conversations.0.unread_count', 1)
+                ->has('conversations.0.messages', 1)
+                ->where('conversations.0.messages.0.message', $note)
+            );
+
+        $this->actingAs($this->rider)
+            ->patch(route('courier.updateStatus', $delivery), [
+                'status' => 'picked_up',
+                'courier_notes' => $note,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('messages', 1);
+    }
+
     public function test_delivery_requires_proof_and_invalid_attempt_leaves_no_file(): void
     {
         Storage::fake('public');

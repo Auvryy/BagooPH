@@ -132,6 +132,37 @@ class CourierMessagingService
         });
     }
 
+    public function recordPickupNote(User $rider, Delivery $delivery, string $body): Message
+    {
+        return DB::transaction(function () use ($rider, $delivery, $body) {
+            $lockedDelivery = Delivery::with([
+                'order.buyer',
+                'order.items.product.shop.user',
+            ])->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+
+            $messageBody = trim($body);
+            if ($messageBody === '') {
+                throw new DomainException('Enter a pickup note before sending it to the seller.');
+            }
+
+            $participant = $this->activeParticipantForDelivery($lockedDelivery, $rider);
+            if ($participant['phase'] !== 'pickup') {
+                throw new DomainException('Pickup notes may be sent only to the seller for an active pickup assignment.');
+            }
+
+            return Message::firstOrCreate(
+                [
+                    'sender_id' => $rider->id,
+                    'receiver_id' => $participant['user']->id,
+                    'shop_id' => $participant['shop_id'],
+                    'order_id' => $lockedDelivery->order_id,
+                    'message' => $messageBody,
+                ],
+                ['is_read' => false],
+            );
+        });
+    }
+
     private function accessibleDeliveries(User $rider): Collection
     {
         $profile = $rider->courierProfile;

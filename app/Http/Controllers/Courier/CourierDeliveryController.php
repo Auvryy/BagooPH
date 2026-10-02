@@ -11,6 +11,7 @@ use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -151,6 +152,7 @@ class CourierDeliveryController extends Controller
 
         $rider = $request->user()->load('courierProfile');
         $targetStatus = $validated['status'];
+        $courierNote = trim((string) ($validated['courier_notes'] ?? ''));
         $proofPath = null;
 
         $isIdempotentRetry = $delivery->status === $targetStatus
@@ -165,19 +167,42 @@ class CourierDeliveryController extends Controller
         }
 
         try {
-            $updatedDelivery = app(OrderStateMachineService::class)->transition(
-                delivery: $delivery,
-                targetStatus: $targetStatus,
-                actor: $rider,
-                scanMetadata: [
-                    'rider_id' => $rider->id,
-                    'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
-                        ? ($delivery->pickup_store_name ?? 'Merchant store')
-                        : ($delivery->delivery_address ?? 'Buyer destination'),
-                    'notes' => $validated['courier_notes'] ?? null,
-                    'proof_image' => $proofPath,
-                ]
-            );
+            $updatedDelivery = DB::transaction(function () use (
+                $delivery,
+                $targetStatus,
+                $rider,
+                $courierNote,
+                $proofPath,
+                $isIdempotentRetry,
+            ) {
+                $updatedDelivery = app(OrderStateMachineService::class)->transition(
+                    delivery: $delivery,
+                    targetStatus: $targetStatus,
+                    actor: $rider,
+                    scanMetadata: [
+                        'rider_id' => $rider->id,
+                        'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
+                            ? ($delivery->pickup_store_name ?? 'Merchant store')
+                            : ($delivery->delivery_address ?? 'Buyer destination'),
+                        'notes' => $courierNote !== '' ? $courierNote : null,
+                        'proof_image' => $proofPath,
+                    ]
+                );
+
+                $updatedDelivery->update([
+                    'courier_notes' => $courierNote !== '' ? $courierNote : $updatedDelivery->courier_notes,
+                ]);
+
+                if (
+                    $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
+                    && $courierNote !== ''
+                    && ! $isIdempotentRetry
+                ) {
+                    $this->messaging->recordPickupNote($rider, $updatedDelivery, $courierNote);
+                }
+
+                return $updatedDelivery;
+            });
         } catch (DomainException $exception) {
             if ($proofPath) {
                 Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
@@ -192,17 +217,15 @@ class CourierDeliveryController extends Controller
             throw $exception;
         }
 
-        $updatedDelivery->update([
-            'courier_notes' => $validated['courier_notes'] ?? $updatedDelivery->courier_notes,
-        ]);
-
         if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
             DeliveryCheckpoint::firstOrCreate(
                 ['delivery_id' => $delivery->id, 'checkpoint_type' => 'courier_pickup'],
                 [
                     'location_name' => $delivery->pickup_store_name ?? 'Merchant store',
                     'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $validated['courier_notes'] ?? 'Pickup rider matched the waybill and collected the seller parcel.',
+                    'notes' => $courierNote !== ''
+                        ? $courierNote
+                        : 'Pickup rider matched the waybill and collected the seller parcel.',
                     'scanned_by_id' => $rider->id,
                 ]
             );
