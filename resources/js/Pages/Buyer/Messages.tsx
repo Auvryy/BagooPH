@@ -42,6 +42,7 @@ interface Conversation {
             logo_url?: string;
         };
     };
+    order_id?: number | null;
     last_message: string;
     last_time: string;
     unread_count: number;
@@ -61,40 +62,7 @@ export default function BuyerMessages({ conversations }: Props) {
     const [mobileChatOpen, setMobileChatOpen] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Fallback sample conversation if buyer has no messages yet
-    const displayConversations = conversations.length > 0 ? conversations : [
-        {
-            user: {
-                id: 2,
-                name: 'Acro Tactical Merchant Support',
-                role: 'seller',
-                shop: {
-                    id: 1,
-                    name: 'Acro Tactical Gear Official',
-                },
-            },
-            last_message: 'Mabuhay! Your order has been packed and handed over to Bagoo Express rider.',
-            last_time: '10m ago',
-            unread_count: 0,
-            messages: [
-                { id: 1, sender_id: 1, message: 'Hello! When will order #ORD-8891 be shipped?', created_at: '2026-09-14T01:10:00.000000Z' },
-                { id: 2, sender_id: 2, message: 'Mabuhay! Your order has been packed and handed over to Bagoo Express rider.', created_at: '2026-09-14T01:15:00.000000Z' },
-            ],
-        },
-        {
-            user: {
-                id: 3,
-                name: 'Kuya Ronald (Barangay Rider)',
-                role: 'courier',
-            },
-            last_message: 'Good day maam/sir, out for delivery na po ang parcel ninyo.',
-            last_time: '1h ago',
-            unread_count: 1,
-            messages: [
-                { id: 3, sender_id: 3, message: 'Good day maam/sir, out for delivery na po ang parcel ninyo.', created_at: '2026-09-14T01:00:00.000000Z' },
-            ],
-        },
-    ];
+    const displayConversations = conversations;
 
     const filteredConversations = displayConversations.filter(c => {
         const q = searchQuery.toLowerCase().trim();
@@ -166,6 +134,7 @@ export default function BuyerMessages({ conversations }: Props) {
                 body: JSON.stringify({
                     receiver_id: currentConv.user.id,
                     shop_id: currentConv.user.shop?.id || null,
+                    order_id: currentConv.order_id ?? null,
                     message: text,
                 }),
             });
@@ -200,12 +169,8 @@ export default function BuyerMessages({ conversations }: Props) {
                         </div>
                         <div>
                             <h1 className="font-black text-sm text-slate-900 leading-none">In-App Chat & Inquiries</h1>
-                            <p className="text-[10px] text-slate-400 font-sans mt-0.5 hidden sm:block">Direct channel with verified merchants & logistics fleet</p>
+                            <p className="text-[10px] text-slate-400 font-sans mt-0.5 hidden sm:block">Messages linked to your marketplace activity</p>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span className="text-slate-500 text-[11px] font-sans">Live Support Active</span>
                     </div>
                 </div>
 
@@ -287,9 +252,8 @@ export default function BuyerMessages({ conversations }: Props) {
                                     <h3 className="font-bold text-slate-900 text-sm font-sans truncate">
                                         {currentConv?.user?.shop ? currentConv.user.shop.name : currentConv?.user?.name}
                                     </h3>
-                                    <span className="text-[10px] text-emerald-600 font-bold uppercase flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        <span>Online • Fast Response</span>
+                                    <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                        <span>Marketplace conversation</span>
                                     </span>
                                 </div>
                             </div>
@@ -373,7 +337,7 @@ export default function BuyerMessages({ conversations }: Props) {
                             />
                             <button
                                 type="submit"
-                                disabled={sending || !replyText.trim()}
+                                disabled={sending || !replyText.trim() || !currentConv}
                                 className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl font-sans text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                             >
                                 <Send className="w-3.5 h-3.5" />

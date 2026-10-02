@@ -30,6 +30,7 @@ interface MessageItem {
 
 interface Conversation {
     user: User;
+    order_id?: number | null;
     last_message: string;
     last_time: string;
     unread_count: number;
@@ -51,6 +52,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
     const [sending, setSending] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const activeConversation = conversations.find((conversation) => conversation.user.id === activeUser?.id);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,6 +95,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                 body: JSON.stringify({
                     receiver_id: activeUser.id,
                     shop_id: shop.id,
+                    order_id: activeConversation?.order_id ?? null,
                     message: text,
                 }),
             });

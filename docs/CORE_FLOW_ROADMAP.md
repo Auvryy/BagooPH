@@ -48,7 +48,7 @@ Audit date: September 24, 2026.
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
 | Buyer-only completion | Implemented | Only the owning buyer can advance a delivered order to `COMPLETED`; normal-flow coverage verifies delivery remains financially pending before reconciliation. |
 | Admin governance and audit | Partial | Platform logistics views and overrides exist; corrections are not consistently routed through lifecycle rules with immutable audit records. |
-| Cross-role presentation | Partial | Final-mile earnings use the assigned delivery rider and fake delivery proof is removed, but portals still need a complete canonical-status and unfinished-feature cleanup. |
+| Cross-role presentation | Partial | Courier work is separated into company/hub-scoped pickup and final-mile queues with persistent duty state, delivery-linked messages, real profile data, real proof, and truthful trip history. Other portals still need canonical-status and unfinished-feature cleanup. |
 | Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
 ## Quality Baseline and Target
@@ -144,7 +144,7 @@ Acceptance: delivery never marks COD reconciled or seller proceeds settled early
 
 ### Phase 6: Cross-Role Cleanup
 
-**State: Partial.** Final-mile rider ownership, earnings, real proof upload, and normal-path cross-role validation are complete; broader portal cleanup and deferred-path coverage remain.
+**State: Partial.** Rider ownership, persistent availability, phase-limited task data, delivery-linked messaging, real proof upload, truthful profile/trip history, and normal-path cross-role validation are complete. Failed-delivery recovery, COD reconciliation, and broader portal cleanup remain.
 
 - Use the assigned final-mile rider for delivery earnings.
 - Present canonical statuses and Mother-Hub checkpoints consistently in every portal.
