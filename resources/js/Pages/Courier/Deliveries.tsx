@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     Building2,
     Camera,
+    CheckCircle2,
     ClipboardCheck,
     Clock3,
     History,
@@ -97,7 +98,7 @@ interface Props {
 }
 
 type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
-type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald';
+type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald' | 'neutral';
 type ActionTarget = {
     deliveryId: number;
     trackingNumber: string;
@@ -252,6 +253,62 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                     </div>
                 )}
 
+                <section className="overflow-hidden rounded-lg border border-slate-300 bg-white">
+                    <div className="flex flex-col gap-3 border-b border-slate-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <span className="rounded-md border border-slate-300 bg-slate-50 p-2.5 text-slate-600">
+                                <ClipboardCheck className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-extrabold tracking-tight text-slate-950">
+                                    Today’s dispatch
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                    {scope.isAssigned
+                                        ? `${scope.hub ?? 'Working hub'} · ${scope.company ?? 'Logistics company'}`
+                                        : 'Waiting for a logistics company and working hub assignment'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                                <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                                {scope.hubCode ?? 'Hub not assigned'}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                                {isOnline ? 'On duty' : 'Off duty'}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-px bg-slate-300 lg:grid-cols-4">
+                        <DispatchMetric
+                            label="Available pickups"
+                            value={stats.availablePickups}
+                            icon={Package}
+                            tone="crimson"
+                        />
+                        <DispatchMetric
+                            label="My pickup tasks"
+                            value={stats.activePickups}
+                            icon={Store}
+                            tone="neutral"
+                        />
+                        <DispatchMetric
+                            label="Final-mile tasks"
+                            value={stats.finalMileTasks}
+                            icon={Truck}
+                            tone="neutral"
+                        />
+                        <DispatchMetric
+                            label="Delivered today"
+                            value={stats.completedToday}
+                            icon={CheckCircle2}
+                            tone="neutral"
+                        />
+                    </div>
+                </section>
+
                 <nav aria-label="Dispatch queues" className="border-b border-slate-300">
                     <div className="flex gap-1 overflow-x-auto">
                         {tabs.map((tab) => (
@@ -262,7 +319,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 className={`flex min-w-36 shrink-0 items-center justify-between gap-2 border-b-2 px-3 py-3 text-left text-sm font-semibold transition ${
                                     activeTab === tab.id
                                         ? tabTone(tab.tone).activeTab
-                                        : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                                        : tabTone(tab.tone).inactiveTab
                                 }`}
                             >
                                 <span className="flex min-w-0 items-center gap-2">
@@ -273,7 +330,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                     className={`rounded-sm px-1.5 py-0.5 text-xs ${
                                         activeTab === tab.id
                                             ? tabTone(tab.tone).activeCount
-                                            : 'bg-slate-100 text-slate-600'
+                                            : tabTone(tab.tone).inactiveCount
                                     }`}
                                 >
                                     {tab.count}
@@ -516,23 +573,77 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
     );
 }
 
+function DispatchMetric({
+    label,
+    value,
+    icon: Icon,
+    tone,
+}: {
+    label: string;
+    value: number;
+    icon: React.ElementType;
+    tone: DispatchTone;
+}) {
+    const styles = tabTone(tone);
+
+    return (
+        <div className="bg-white p-3.5 sm:p-4">
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-sm font-medium text-slate-500">{label}</p>
+                    <p className={`mt-1.5 text-2xl font-extrabold tracking-tight ${styles.metricValue}`}>
+                        {value}
+                    </p>
+                </div>
+                <span className={`rounded-md border p-2 ${styles.metricIcon}`}>
+                    <Icon className="h-4 w-4" />
+                </span>
+            </div>
+        </div>
+    );
+}
+
 function tabTone(tone: DispatchTone) {
     return {
         crimson: {
             activeTab: 'border-[#E00D42] text-[#A1052B]',
             activeCount: 'bg-[#E00D42] text-white',
+            inactiveTab: 'border-transparent text-[#C20836] hover:border-rose-200 hover:text-[#A1052B]',
+            inactiveCount: 'bg-rose-50 text-[#A1052B]',
+            metricValue: 'text-[#C20836]',
+            metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
         },
         indigo: {
             activeTab: 'border-indigo-600 text-indigo-800',
             activeCount: 'bg-indigo-600 text-white',
+            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+            inactiveCount: 'bg-slate-100 text-slate-600',
+            metricValue: 'text-indigo-700',
+            metricIcon: 'border-indigo-300 bg-indigo-50 text-indigo-700',
         },
         amber: {
             activeTab: 'border-amber-500 text-amber-800',
             activeCount: 'bg-amber-500 text-slate-950',
+            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+            inactiveCount: 'bg-slate-100 text-slate-600',
+            metricValue: 'text-amber-700',
+            metricIcon: 'border-amber-300 bg-amber-50 text-amber-800',
         },
         emerald: {
             activeTab: 'border-emerald-600 text-emerald-800',
             activeCount: 'bg-emerald-600 text-white',
+            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+            inactiveCount: 'bg-slate-100 text-slate-600',
+            metricValue: 'text-emerald-700',
+            metricIcon: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        },
+        neutral: {
+            activeTab: 'border-slate-900 text-slate-900',
+            activeCount: 'bg-slate-900 text-white',
+            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+            inactiveCount: 'bg-slate-100 text-slate-600',
+            metricValue: 'text-slate-950',
+            metricIcon: 'border-slate-300 bg-slate-50 text-slate-500',
         },
     }[tone];
 }
