@@ -98,6 +98,7 @@ interface Props {
 }
 
 type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
+type DispatchTone = 'crimson' | 'indigo' | 'amber' | 'emerald';
 type ActionTarget = {
     deliveryId: number;
     trackingNumber: string;
@@ -117,11 +118,35 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
     const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [loadingId, setLoadingId] = useState<number | null>(null);
 
-    const tabs: Array<{ id: Tab; label: string; count: number; icon: React.ElementType }> = [
-        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store },
-        { id: 'available', label: 'Available pickups', count: stats.availablePickups, icon: Package },
-        { id: 'final_mile', label: 'Final-mile tasks', count: stats.finalMileTasks, icon: Truck },
-        { id: 'activity', label: 'Recent activity', count: queues.recentActivity.length, icon: History },
+    const tabs: Array<{
+        id: Tab;
+        label: string;
+        count: number;
+        icon: React.ElementType;
+        tone: DispatchTone;
+    }> = [
+        { id: 'pickup', label: 'My pickups', count: stats.activePickups, icon: Store, tone: 'indigo' },
+        {
+            id: 'available',
+            label: 'Available pickups',
+            count: stats.availablePickups,
+            icon: Package,
+            tone: 'crimson',
+        },
+        {
+            id: 'final_mile',
+            label: 'Final-mile tasks',
+            count: stats.finalMileTasks,
+            icon: Truck,
+            tone: 'amber',
+        },
+        {
+            id: 'activity',
+            label: 'Recent activity',
+            count: queues.recentActivity.length,
+            icon: History,
+            tone: 'emerald',
+        },
     ];
 
     const formatCurrency = (amount: number | null) =>
@@ -229,80 +254,82 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                 )}
 
                 <section className="overflow-hidden rounded-lg border border-slate-300 bg-white">
-                    <div className="grid lg:grid-cols-[minmax(0,1fr)_19rem]">
-                        <div className="p-4 sm:p-5">
-                            <div className="flex items-start gap-3">
-                                <span className="rounded-md border border-[#E00D42] bg-[#FDF2F4] p-2.5 text-[#C20836]">
-                                    <ClipboardCheck className="h-5 w-5" />
-                                </span>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-950">Today’s dispatch</p>
-                                    <p className="mt-1 text-sm leading-6 text-slate-500">
-                                        {scope.isAssigned
-                                            ? `${scope.hub ?? 'Working hub'} coordinates your eligible pickup and final-mile work.`
-                                            : 'Your dispatch queue becomes available after a logistics company and working hub are assigned.'}
-                                    </p>
-                                </div>
+                    <div className="flex flex-col gap-3 border-b border-slate-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <span className="rounded-md border border-[#E00D42] bg-[#FDF2F4] p-2.5 text-[#C20836]">
+                                <ClipboardCheck className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-extrabold tracking-tight text-slate-950">
+                                    Today’s dispatch
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                    {scope.isAssigned
+                                        ? `${scope.hub ?? 'Working hub'} · ${scope.company ?? 'Logistics company'}`
+                                        : 'Waiting for a logistics company and working hub assignment'}
+                                </p>
                             </div>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                                    {scope.hubCode ?? 'Hub not assigned'}
-                                </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                                <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                                {scope.hubCode ?? 'Hub not assigned'}
+                            </span>
+                            <span
+                                className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1.5 text-xs font-semibold ${
+                                    isOnline
+                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                        : 'border-slate-300 bg-slate-50 text-slate-700'
+                                }`}
+                            >
                                 <span
-                                    className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1.5 text-xs font-semibold ${
-                                        isOnline
-                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                                            : 'border-slate-300 bg-slate-50 text-slate-700'
+                                    className={`h-1.5 w-1.5 rounded-full ${
+                                        isOnline ? 'bg-emerald-600' : 'bg-slate-400'
                                     }`}
-                                >
-                                    <span
-                                        className={`h-1.5 w-1.5 rounded-full ${
-                                            isOnline ? 'bg-emerald-600' : 'bg-slate-400'
-                                        }`}
-                                    />
-                                    {isOnline ? 'On duty' : 'Off duty'}
-                                </span>
-                            </div>
+                                />
+                                {isOnline ? 'On duty' : 'Off duty'}
+                            </span>
                         </div>
-                        <div className="border-t border-slate-300 bg-[#FDF2F4] p-4 sm:p-5 lg:border-l lg:border-t-0">
-                            <p className="text-xs font-bold text-[#A1052B]">NEXT WORK</p>
-                            <p className="mt-2 text-sm font-bold text-slate-950">
-                                {stats.finalMileTasks > 0
-                                    ? `${stats.finalMileTasks} final-mile task${stats.finalMileTasks === 1 ? '' : 's'} assigned`
-                                    : stats.activePickups > 0
-                                      ? `${stats.activePickups} pickup task${stats.activePickups === 1 ? '' : 's'} in custody`
-                                      : stats.availablePickups > 0
-                                        ? `${stats.availablePickups} pickup job${stats.availablePickups === 1 ? '' : 's'} ready to claim`
-                                        : 'No task needs action right now'}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-600">
-                                {isOnline
-                                    ? 'Open the matching queue below to continue the next recorded handoff.'
-                                    : 'Go on duty when you are ready to claim a new pickup.'}
-                            </p>
-                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-px bg-slate-300 lg:grid-cols-4">
+                        <DispatchMetric
+                            label="Available pickups"
+                            value={stats.availablePickups}
+                            icon={Package}
+                            tone="crimson"
+                        />
+                        <DispatchMetric
+                            label="My pickup tasks"
+                            value={stats.activePickups}
+                            icon={Store}
+                            tone="indigo"
+                        />
+                        <DispatchMetric
+                            label="Final-mile tasks"
+                            value={stats.finalMileTasks}
+                            icon={Truck}
+                            tone="amber"
+                        />
+                        <DispatchMetric
+                            label="Delivered today"
+                            value={stats.completedToday}
+                            icon={CheckCircle2}
+                            tone="emerald"
+                        />
                     </div>
                 </section>
 
-                <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <MetricCard label="Available pickups" value={stats.availablePickups} icon={Package} />
-                    <MetricCard label="My pickup tasks" value={stats.activePickups} icon={Store} />
-                    <MetricCard label="Final-mile tasks" value={stats.finalMileTasks} icon={Truck} />
-                    <MetricCard label="Delivered today" value={stats.completedToday} icon={CheckCircle2} />
-                </section>
-
-                <section className="rounded-lg border border-slate-300 bg-white p-2">
-                    <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+                <nav aria-label="Dispatch queues" className="border-b border-slate-300">
+                    <div className="flex gap-1 overflow-x-auto">
                         {tabs.map((tab) => (
                             <button
                                 type="button"
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex min-w-36 shrink-0 items-center justify-between gap-2 rounded-sm border px-3 py-2.5 text-left text-sm font-semibold transition lg:min-w-0 ${
+                                className={`flex min-w-36 shrink-0 items-center justify-between gap-2 border-b-2 px-3 py-3 text-left text-sm font-semibold transition ${
                                     activeTab === tab.id
-                                        ? 'border-[#E00D42] bg-[#FDF2F4] text-[#A1052B]'
-                                        : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                        ? tabTone(tab.tone).activeTab
+                                        : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
                                 }`}
                             >
                                 <span className="flex min-w-0 items-center gap-2">
@@ -312,7 +339,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 <span
                                     className={`rounded-sm px-1.5 py-0.5 text-xs ${
                                         activeTab === tab.id
-                                            ? 'bg-[#E00D42] text-white'
+                                            ? tabTone(tab.tone).activeCount
                                             : 'bg-slate-100 text-slate-600'
                                     }`}
                                 >
@@ -321,7 +348,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </button>
                         ))}
                     </div>
-                </section>
+                </nav>
 
                 {activeTab === 'pickup' && (
                     <QueueSection
@@ -556,28 +583,63 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
     );
 }
 
-function MetricCard({
+function DispatchMetric({
     label,
     value,
     icon: Icon,
+    tone,
 }: {
     label: string;
     value: number;
     icon: React.ElementType;
+    tone: DispatchTone;
 }) {
+    const styles = tabTone(tone);
+
     return (
-        <div className="rounded-lg border border-slate-300 bg-white p-3.5 sm:p-4">
+        <div className="bg-white p-3.5 sm:p-4">
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-sm font-medium text-slate-500">{label}</p>
-                    <p className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
+                    <p className={`mt-1.5 text-2xl font-extrabold tracking-tight ${styles.metricValue}`}>
+                        {value}
+                    </p>
                 </div>
-                <span className="rounded-md border border-slate-300 bg-slate-50 p-2 text-slate-600">
+                <span className={`rounded-md border p-2 ${styles.metricIcon}`}>
                     <Icon className="h-4 w-4" />
                 </span>
             </div>
         </div>
     );
+}
+
+function tabTone(tone: DispatchTone) {
+    return {
+        crimson: {
+            activeTab: 'border-[#E00D42] text-[#A1052B]',
+            activeCount: 'bg-[#E00D42] text-white',
+            metricValue: 'text-[#C20836]',
+            metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
+        },
+        indigo: {
+            activeTab: 'border-indigo-600 text-indigo-800',
+            activeCount: 'bg-indigo-600 text-white',
+            metricValue: 'text-indigo-700',
+            metricIcon: 'border-indigo-300 bg-indigo-50 text-indigo-700',
+        },
+        amber: {
+            activeTab: 'border-amber-500 text-amber-800',
+            activeCount: 'bg-amber-500 text-slate-950',
+            metricValue: 'text-amber-700',
+            metricIcon: 'border-amber-300 bg-amber-50 text-amber-800',
+        },
+        emerald: {
+            activeTab: 'border-emerald-600 text-emerald-800',
+            activeCount: 'bg-emerald-600 text-white',
+            metricValue: 'text-emerald-700',
+            metricIcon: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        },
+    }[tone];
 }
 
 function QueueSection({
