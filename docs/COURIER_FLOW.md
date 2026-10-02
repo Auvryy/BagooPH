@@ -20,7 +20,7 @@ Seller marks READY_FOR_PICKUP
 -> Pickup assignment complete
 ```
 
-The pickup rider may claim multiple eligible jobs from the assigned Origin Bayan Hub until the active-pickup capacity is reached. The rider cannot move a parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. Each pickup assignment ends only when its assigned Origin Bayan Hub scans that parcel inbound. The hub controls all facility custody after intake.
+The pickup rider may claim multiple eligible jobs from the assigned Origin Bayan Hub until the active-pickup capacity is reached. An optional pickup note is sent to the seller's delivery-linked Messages thread only after the pickup is confirmed. The rider cannot move a parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. Each pickup assignment ends only when its assigned Origin Bayan Hub scans that parcel inbound. The hub controls all facility custody after intake.
 
 ## 3. Delivery-Rider Phase
 
