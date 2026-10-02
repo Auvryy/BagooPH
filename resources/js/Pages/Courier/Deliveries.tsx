@@ -885,7 +885,7 @@ function DetailBlock({
     children: React.ReactNode;
 }) {
     return (
-        <div className="border-l-2 border-slate-300 pl-3">
+        <div>
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <Icon className="h-4 w-4" />
                 {label}
