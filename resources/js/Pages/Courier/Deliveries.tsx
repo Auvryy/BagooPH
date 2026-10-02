@@ -415,7 +415,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('pickup')}
-                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'pickup'
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
@@ -437,7 +437,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('final_mile')}
-                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'final_mile'
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
@@ -459,7 +459,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('available')}
-                                    className={`flex-1 min-w-[110px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'available'
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
@@ -481,7 +481,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('activity')}
-                                    className={`flex-1 min-w-[90px] py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
+                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
                                         activeTab === 'activity'
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
