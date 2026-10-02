@@ -255,6 +255,22 @@ class CourierOperationsHardeningTest extends TestCase
         $this->assertTrue(Hash::check('CourierPassword2026!', $this->rider->fresh()->password));
     }
 
+    public function test_unverified_courier_cannot_change_password_from_the_courier_portal(): void
+    {
+        $this->rider->update(['email_verified_at' => null]);
+
+        $this->actingAs($this->rider)
+            ->from(route('courier.profile'))
+            ->put(route('courier.profile.password.update'), [
+                'current_password' => 'password',
+                'password' => 'CourierPassword2026!',
+                'password_confirmation' => 'CourierPassword2026!',
+            ])
+            ->assertSessionHasErrors('email');
+
+        $this->assertTrue(Hash::check('password', $this->rider->fresh()->password));
+    }
+
     public function test_rider_can_claim_multiple_pickups_within_capacity(): void
     {
         $active = $this->createDelivery('assigned_pickup', $this->rider);

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PhoneInput from '@/Components/PhoneInput';
+import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
 import { User, Shop } from '@/types';
 import { 
     User as UserIcon, 
@@ -341,6 +342,10 @@ export default function SellerProfile({ user, shop }: Props) {
                         </button>
                     </div>
                 </form>
+
+                <div className="rounded-lg border border-slate-300 bg-white p-6 shadow-2xs sm:p-8">
+                    <UpdatePasswordForm className="max-w-xl" />
+                </div>
 
                 {/* Storefront Integration & Settings Link */}
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs space-y-4">

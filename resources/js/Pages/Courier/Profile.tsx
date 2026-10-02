@@ -21,12 +21,14 @@ import {
     Truck,
 } from 'lucide-react';
 import { useCourierDutyControl } from '@/Components/CourierDutyControl';
+import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import CourierLayout from '@/Layouts/CourierLayout';
 
 interface Props {
     rider: {
         name: string;
         email: string;
+        email_verified_at: string | null;
         phone: string | null;
         account_status: string;
         kyc_status: string;
@@ -663,7 +665,7 @@ export default function CourierProfile({
                                         </div>
                                         <div className="sm:col-span-2 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                                             <p className="text-xs text-slate-500">
-                                                Verified email: <span className="font-semibold text-slate-700">{rider.email}</span>
+                                                Account email: <span className="font-semibold text-slate-700">{rider.email}</span>
                                             </p>
                                             <button
                                                 type="submit"
@@ -690,6 +692,13 @@ export default function CourierProfile({
                                         </div>
                                     </div>
 
+                                    <EmailVerificationStatus
+                                        email={rider.email}
+                                        verifiedAt={rider.email_verified_at}
+                                        className="mt-5"
+                                    />
+
+                                    {rider.email_verified_at && (
                                     <form onSubmit={changePassword} className="mt-5 space-y-4">
                                         <PasswordField
                                             id="courier-current-password"
@@ -734,6 +743,7 @@ export default function CourierProfile({
                                             </button>
                                         </div>
                                     </form>
+                                    )}
                                 </section>
                             </div>
                         )}
