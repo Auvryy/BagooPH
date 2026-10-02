@@ -588,16 +588,16 @@ function DispatchMetric({
 
     return (
         <div className="bg-white p-3.5 sm:p-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start gap-2.5">
+                <span className={`mt-0.5 shrink-0 rounded-md border p-2 ${styles.metricIcon}`}>
+                    <Icon className="h-4 w-4" />
+                </span>
                 <div>
                     <p className="text-sm font-medium text-slate-500">{label}</p>
                     <p className={`mt-1.5 text-2xl font-extrabold tracking-tight ${styles.metricValue}`}>
                         {value}
                     </p>
                 </div>
-                <span className={`rounded-md border p-2 ${styles.metricIcon}`}>
-                    <Icon className="h-4 w-4" />
-                </span>
             </div>
         </div>
     );
@@ -608,8 +608,8 @@ function tabTone(tone: DispatchTone) {
         crimson: {
             activeTab: 'border-[#E00D42] text-[#A1052B]',
             activeCount: 'bg-[#E00D42] text-white',
-            inactiveTab: 'border-transparent text-[#C20836] hover:border-rose-200 hover:text-[#A1052B]',
-            inactiveCount: 'bg-rose-50 text-[#A1052B]',
+            inactiveTab: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+            inactiveCount: 'bg-slate-100 text-slate-600',
             metricValue: 'text-[#C20836]',
             metricIcon: 'border-rose-300 bg-[#FDF2F4] text-[#C20836]',
         },
