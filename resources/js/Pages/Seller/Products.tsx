@@ -80,6 +80,7 @@ interface Props {
 export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [stockProduct, setStockProduct] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
@@ -213,6 +214,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
         description: '',
         status: 'active',
         _method: 'PUT',
+    });
+
+    const stockForm = useForm<{
+        mode: 'set' | 'add';
+        quantity: string;
+    }>({
+        mode: 'set',
+        quantity: '0',
     });
 
     useEffect(() => {
@@ -605,6 +614,38 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 if (editFileInputRef.current) {
                     editFileInputRef.current.value = '';
                 }
+            },
+        });
+    };
+
+    const openStockEditor = (product: Product) => {
+        stockForm.clearErrors();
+        stockForm.setData({
+            mode: 'set',
+            quantity: String(product.stock),
+        });
+        setStockProduct(product);
+    };
+
+    const changeStockMode = (mode: 'set' | 'add') => {
+        if (!stockProduct) return;
+
+        stockForm.clearErrors();
+        stockForm.setData({
+            mode,
+            quantity: mode === 'set' ? String(stockProduct.stock) : '1',
+        });
+    };
+
+    const handleStockUpdate = (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!stockProduct) return;
+
+        stockForm.patch(route('seller.products.stock.update', stockProduct.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setStockProduct(null);
+                stockForm.reset();
             },
         });
     };
@@ -1938,13 +1979,19 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             </td>
                                             <td className="py-4 px-4">
                                                 <div className="space-y-1">
-                                                    <span className={`inline-flex rounded-sm border px-2.5 py-1 text-[11px] font-bold ${
-                                                        product.stock > 10 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : (product.stock > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-rose-200 bg-rose-50 text-rose-700')
-                                                    }`}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openStockEditor(product)}
+                                                        aria-label={`Update available stock for ${product.name}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
+                                                            product.stock > 10 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
+                                                        }`}
+                                                    >
+                                                        <Box className="h-3 w-3" />
                                                         {product.stock} available
-                                                    </span>
+                                                    </button>
                                                     <p className="text-[10px] text-slate-500">
-                                                        {Number(product.open_order_units || 0)} reserved in open orders
+                                                        {Number(product.open_order_units || 0)} reserved in open orders · Click to update
                                                     </p>
                                                 </div>
                                             </td>
@@ -2016,6 +2063,106 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     )}
                 </div>
             </div>
+
+            {typeof document !== 'undefined' && stockProduct && createPortal(
+                <div
+                    className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4 font-sans"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="stock-modal-title"
+                    onClick={() => !stockForm.processing && setStockProduct(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg border border-slate-300 bg-white shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+                            <div className="min-w-0 pr-4">
+                                <h2 id="stock-modal-title" className="text-base font-bold text-slate-950">Update available stock</h2>
+                                <p className="mt-1 truncate text-xs text-slate-500">{stockProduct.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setStockProduct(null)}
+                                disabled={stockForm.processing}
+                                className="rounded-sm p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                                aria-label="Close stock editor"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleStockUpdate} className="space-y-5 p-5">
+                            <div className="rounded-md border border-slate-300 bg-slate-50 px-4 py-3">
+                                <p className="text-[11px] font-semibold text-slate-500">Current available stock</p>
+                                <p className="mt-0.5 text-2xl font-bold text-slate-950">{stockProduct.stock}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2" aria-label="Stock update method">
+                                <button
+                                    type="button"
+                                    onClick={() => changeStockMode('set')}
+                                    className={`rounded-sm border px-3 py-2.5 text-xs font-bold transition ${stockForm.data.mode === 'set' ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'}`}
+                                >
+                                    Set exact stock
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => changeStockMode('add')}
+                                    className={`rounded-sm border px-3 py-2.5 text-xs font-bold transition ${stockForm.data.mode === 'add' ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'}`}
+                                >
+                                    Add stock
+                                </button>
+                            </div>
+
+                            <div>
+                                <label htmlFor="stock-quantity" className="mb-1.5 block text-xs font-bold text-slate-700">
+                                    {stockForm.data.mode === 'set' ? 'New available stock' : 'Units to add'}
+                                </label>
+                                <input
+                                    id="stock-quantity"
+                                    type="number"
+                                    min={stockForm.data.mode === 'add' ? 1 : 0}
+                                    max={1000000}
+                                    step={1}
+                                    required
+                                    autoFocus
+                                    value={stockForm.data.quantity}
+                                    onChange={(event) => stockForm.setData('quantity', event.target.value)}
+                                    className="w-full rounded-sm border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-950 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                />
+                                {stockForm.errors.quantity && (
+                                    <p className="mt-1.5 text-xs font-semibold text-rose-700">{stockForm.errors.quantity}</p>
+                                )}
+                                {stockProduct.variants?.sizes?.length ? (
+                                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                                        This updates overall inventory. Size-specific limits remain unchanged and can be managed in Edit Product.
+                                    </p>
+                                ) : null}
+                            </div>
+
+                            <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setStockProduct(null)}
+                                    disabled={stockForm.processing}
+                                    className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={stockForm.processing}
+                                    className="rounded-sm bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#C20836] disabled:opacity-50"
+                                >
+                                    {stockForm.processing ? 'Updating...' : 'Update stock'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Create Product Slide-Over Sidebar Drawer */}
             {typeof document !== 'undefined' && isCreateOpen && createPortal(

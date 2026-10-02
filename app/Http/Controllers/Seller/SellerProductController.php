@@ -9,7 +9,9 @@ use App\Models\ProductImage;
 use App\Services\Commerce\SellerSalesMetricsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -190,6 +192,45 @@ class SellerProductController extends Controller
         $this->syncProductImages($product, $request);
 
         return back()->with('success', 'Product updated successfully.');
+    }
+
+    public function updateStock(Request $request, Product $product): RedirectResponse
+    {
+        $shop = $this->getActiveShop($request);
+        $validated = $request->validate([
+            'mode' => 'required|in:set,add',
+            'quantity' => 'required|integer|min:0|max:1000000',
+        ]);
+
+        if ($validated['mode'] === 'add' && (int) $validated['quantity'] < 1) {
+            throw ValidationException::withMessages([
+                'quantity' => 'Enter at least 1 unit to add to stock.',
+            ]);
+        }
+
+        $newStock = DB::transaction(function () use ($product, $shop, $request, $validated): int {
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
+
+            if ($lockedProduct->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+                abort(403, 'Unauthorized stock modification.');
+            }
+
+            $newStock = $validated['mode'] === 'add'
+                ? $lockedProduct->stock + (int) $validated['quantity']
+                : (int) $validated['quantity'];
+
+            if ($newStock > 1000000) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Available stock cannot exceed 1,000,000 units.',
+                ]);
+            }
+
+            $lockedProduct->update(['stock' => $newStock]);
+
+            return $newStock;
+        });
+
+        return back()->with('success', "Available stock updated to {$newStock} units.");
     }
 
     /**

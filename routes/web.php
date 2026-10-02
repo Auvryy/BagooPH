@@ -65,6 +65,7 @@ $registerSellerRoutes = function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::post('/products', [SellerProductController::class, 'store']);
+        Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock']);
         Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
         Route::get('/orders', [SellerOrderController::class, 'index']);
@@ -356,6 +357,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
         ->middleware('throttle:20,1')
         ->name('products.assist-description');
+    Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock'])->name('products.stock.update');
     Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');

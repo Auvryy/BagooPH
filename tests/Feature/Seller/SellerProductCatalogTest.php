@@ -85,4 +85,61 @@ class SellerProductCatalogTest extends TestCase
                 ->where('products.data.0.shop_id', $shop->id)
             );
     }
+
+    public function test_seller_can_set_and_add_available_stock_from_the_catalog(): void
+    {
+        $seller = User::factory()->seller()->create();
+        $shop = Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $product = Product::factory()->create([
+            'shop_id' => $shop->id,
+            'stock' => 0,
+            'variants' => [
+                'sizes' => [
+                    ['id' => 'standard', 'name' => 'Standard', 'extra_price' => 0, 'stock' => 8],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($seller)
+            ->patch(route('seller.products.stock.update', $product), [
+                'mode' => 'set',
+                'quantity' => 12,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame(12, $product->fresh()->stock);
+        $this->assertSame(8, $product->fresh()->variants['sizes'][0]['stock']);
+
+        $this->actingAs($seller)
+            ->patch(route('seller.products.stock.update', $product), [
+                'mode' => 'add',
+                'quantity' => 5,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame(17, $product->fresh()->stock);
+    }
+
+    public function test_stock_update_validates_quantity_and_rejects_a_foreign_product(): void
+    {
+        $seller = User::factory()->seller()->create();
+        Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $foreignProduct = Product::factory()->create(['stock' => 10]);
+
+        $this->actingAs($seller)
+            ->patch(route('seller.products.stock.update', $foreignProduct), [
+                'mode' => 'set',
+                'quantity' => -1,
+            ])
+            ->assertSessionHasErrors('quantity');
+
+        $this->actingAs($seller)
+            ->patch(route('seller.products.stock.update', $foreignProduct), [
+                'mode' => 'add',
+                'quantity' => 2,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(10, $foreignProduct->fresh()->stock);
+    }
 }
