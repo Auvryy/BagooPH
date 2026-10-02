@@ -20,6 +20,7 @@ import {
     X,
 } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
+import { useCourierDutyControl } from '@/Components/CourierDutyControl';
 
 interface Scope {
     company?: string | null;
@@ -140,19 +141,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [loadingId, setLoadingId] = useState<number | null>(null);
-    const [dutyLoading, setDutyLoading] = useState(false);
-
-    const toggleDuty = () => {
-        setDutyLoading(true);
-        router.post(
-            route('courier.toggleDuty'),
-            { is_available: !isOnline },
-            {
-                preserveScroll: true,
-                onFinish: () => setDutyLoading(false),
-            },
-        );
-    };
+    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
 
     const formatCurrency = (amount: number | null) =>
         amount === null
@@ -284,7 +273,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         </div>
                         <button
                             type="button"
-                            onClick={toggleDuty}
+                            onClick={requestDutyChange}
                             disabled={dutyLoading}
                             className="px-3 py-1.5 rounded-lg bg-[#E00D42] text-white text-xs font-bold shadow-xs hover:bg-[#C20836] transition shrink-0 cursor-pointer disabled:opacity-60"
                         >
@@ -1060,6 +1049,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </div>
                 </div>
             )}
+            {confirmationDialog}
         </CourierLayout>
     );
 }

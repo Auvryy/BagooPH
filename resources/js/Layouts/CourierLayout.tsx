@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     CheckCircle2,
     ChevronDown,
@@ -15,6 +15,7 @@ import {
     X,
 } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
+import { useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { getDomainUrl } from '@/utils/domain';
 import { PageProps } from '@/types';
 
@@ -49,9 +50,9 @@ export default function CourierLayout({
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [dutyLoading, setDutyLoading] = useState(false);
     const userMenuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const user = auth?.user;
+    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
 
     const isDeliveriesActive =
         component === 'Courier/Deliveries' ||
@@ -104,18 +105,6 @@ export default function CourierLayout({
             current: isProfileActive,
         },
     ];
-
-    const toggleDuty = () => {
-        setDutyLoading(true);
-        router.post(
-            route('courier.toggleDuty'),
-            { is_available: !isOnline },
-            {
-                preserveScroll: true,
-                onFinish: () => setDutyLoading(false),
-            },
-        );
-    };
 
     const openUserMenu = () => {
         if (userMenuTimeout.current) {
@@ -184,7 +173,7 @@ export default function CourierLayout({
                             className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs border uppercase font-sans ${
                                 isOnline
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
                             }`}
                         >
                             {isOnline ? 'On Duty' : 'Off Duty'}
@@ -201,15 +190,15 @@ export default function CourierLayout({
 
                         <button
                             type="button"
-                            onClick={toggleDuty}
+                            onClick={requestDutyChange}
                             disabled={dutyLoading}
                             className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
                                 isOnline
-                                    ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                                    : 'bg-[#E00D42] text-white hover:bg-[#C20836]'
+                                    ? 'border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                                    : 'border border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700'
                             }`}
                         >
-                            <Power className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-600' : 'text-white'}`} />
+                            <Power className={`w-3.5 h-3.5 ${isOnline ? 'text-[#E00D42]' : 'text-white'}`} />
                             <span>
                                 {dutyLoading
                                     ? 'Updating...'
@@ -319,17 +308,17 @@ export default function CourierLayout({
                         {/* On-Duty Switch Button */}
                         <button
                             type="button"
-                            onClick={toggleDuty}
+                            onClick={requestDutyChange}
                             disabled={dutyLoading}
                             className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
                                 isOnline
                                     ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/80'
-                                    : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                                    : 'bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100'
                             }`}
                         >
                             <span
                                 className={`w-2 h-2 rounded-full shrink-0 ${
-                                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-[#E00D42]'
                                 }`}
                             />
                             <span className="hidden xs:inline">{isOnline ? 'On Duty' : 'Off Duty'}</span>
@@ -517,6 +506,7 @@ export default function CourierLayout({
                         <span className="mt-1">Profile</span>
                     </Link>
                 </nav>
+                {confirmationDialog}
             </div>
         </div>
     );
