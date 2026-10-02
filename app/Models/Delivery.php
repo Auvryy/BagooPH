@@ -26,6 +26,12 @@ class Delivery extends Model
         'delivery_failed',
     ];
 
+    /**
+     * Pickup work a rider may hold before the next claim requires a handoff.
+     * This keeps batching practical without allowing an unbounded custody queue.
+     */
+    public const MAX_ACTIVE_PICKUPS_PER_RIDER = 5;
+
     protected $fillable = [
         'order_id',
         'courier_id',
@@ -114,6 +120,14 @@ class Delivery extends Model
             ->when($exceptDeliveryId, fn ($query) => $query->whereKeyNot($exceptDeliveryId))
             ->whereRaw("deliveries.status in ({$placeholders})", self::RIDER_ACTIVE_STATUSES)
             ->exists();
+    }
+
+    public static function activePickupCount(int $riderId): int
+    {
+        return self::query()
+            ->where('courier_id', $riderId)
+            ->whereRaw("deliveries.status in ('assigned', 'assigned_pickup', 'picked_up')")
+            ->count();
     }
 
     public function order(): BelongsTo

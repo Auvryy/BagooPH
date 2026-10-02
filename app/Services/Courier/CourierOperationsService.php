@@ -24,8 +24,10 @@ class CourierOperationsService
             $this->assertEligibleRider($rider, $profile);
             $this->assertOperationalScope($profile);
 
-            if (Delivery::riderHasActiveWork($rider->id, $lockedDelivery->id)) {
-                throw new DomainException('Finish or hand over your active task before claiming another pickup.');
+            if (Delivery::activePickupCount($rider->id) >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) {
+                throw new DomainException(
+                    'Pickup capacity reached. Complete or hand over one of your active pickups before claiming another.'
+                );
             }
 
             if ($lockedDelivery->courier_id !== null || $lockedDelivery->status !== 'unassigned') {

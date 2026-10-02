@@ -102,6 +102,7 @@ class CourierDeliveryController extends Controller
             'stats' => [
                 'availablePickups' => $availableJobs->count(),
                 'activePickups' => $pickupTasks->count(),
+                'activePickupLimit' => Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER,
                 'finalMileTasks' => $finalMileTasks->count(),
                 'completedToday' => $completedToday,
             ],

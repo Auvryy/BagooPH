@@ -200,9 +200,34 @@ class CourierOperationsHardeningTest extends TestCase
         $this->assertSame('unassigned', $delivery->fresh()->status);
     }
 
-    public function test_busy_rider_cannot_claim_a_second_pickup(): void
+    public function test_rider_can_claim_multiple_pickups_within_capacity(): void
     {
-        $this->createDelivery('assigned_pickup', $this->rider);
+        $active = $this->createDelivery('assigned_pickup', $this->rider);
+        $nextDelivery = $this->createDelivery('unassigned');
+
+        $this->actingAs($this->rider)
+            ->post(route('courier.claim', $nextDelivery))
+            ->assertSessionHas('success');
+
+        $this->assertSame($this->rider->id, $nextDelivery->fresh()->courier_id);
+        $this->assertSame('assigned_pickup', $nextDelivery->fresh()->status);
+
+        $this->actingAs($this->rider)
+            ->get(route('courier.deliveries'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.activePickups', 2)
+                ->where('stats.activePickupLimit', Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER)
+                ->has('queues.pickupTasks', 2)
+                ->where('queues.pickupTasks.0.id', $active->id)
+                ->where('queues.pickupTasks.1.id', $nextDelivery->id)
+            );
+    }
+
+    public function test_rider_cannot_claim_beyond_pickup_capacity(): void
+    {
+        foreach (range(1, Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) as $_) {
+            $this->createDelivery('assigned_pickup', $this->rider);
+        }
         $nextDelivery = $this->createDelivery('unassigned');
 
         $this->actingAs($this->rider)
@@ -210,6 +235,10 @@ class CourierOperationsHardeningTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertNull($nextDelivery->fresh()->courier_id);
+        $this->assertSame(
+            Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER,
+            Delivery::activePickupCount($this->rider->id)
+        );
     }
 
     public function test_pickup_claim_is_scoped_and_creates_one_assignment_checkpoint(): void
