@@ -52,7 +52,10 @@ class OtpVerificationController extends Controller
         $result = $this->otpService->sendOtp($email, $purpose);
 
         if (! $result['success']) {
-            return response()->json($result, 429);
+            $status = $result['status'] ?? 429;
+            unset($result['status']);
+
+            return response()->json($result, $status);
         }
 
         return response()->json($result);

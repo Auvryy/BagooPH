@@ -55,6 +55,7 @@ class LogisticsNetworkSeeder extends Seeder
             ['email' => 'pickup.rider@bagoo.test'],
             [
                 'name' => 'Los Banos Pickup Rider',
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'courier',
                 'phone' => '+63 917 000 0006',
@@ -241,6 +242,7 @@ class LogisticsNetworkSeeder extends Seeder
             ['email' => $email],
             [
                 'name' => $name,
+                'email_verified_at' => now(),
                 'password' => 'Password1234',
                 'role' => 'logistics',
                 'phone' => $phone,

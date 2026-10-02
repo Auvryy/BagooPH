@@ -22,6 +22,14 @@ class LogisticsSeedBaselineTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
+        $this->assertSame(
+            0,
+            User::where('email', 'like', '%@bagoo.test')
+                ->whereNull('email_verified_at')
+                ->count(),
+            'Seeded demo accounts must be pre-verified because .test addresses cannot receive email.'
+        );
+
         $companyAdmin = User::where('email', 'logistics.admin@bagoo.test')->firstOrFail();
         $operator = User::where('email', 'logistics@bagoo.test')->firstOrFail();
         $motherHubOperator = User::where('email', 'motherhub@bagoo.test')->firstOrFail();

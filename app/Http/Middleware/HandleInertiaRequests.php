@@ -2,6 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Cart;
+use App\Models\HubHandler;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
+use App\Models\Message;
+use App\Models\Shop;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -34,9 +40,9 @@ class HandleInertiaRequests extends Middleware
         $unreadMessagesCount = 0;
 
         if ($user) {
-            $cart = \App\Models\Cart::where('user_id', $user->id)->first();
+            $cart = Cart::where('user_id', $user->id)->first();
             $cartCount = $cart ? $cart->items()->sum('quantity') : 0;
-            $unreadMessagesCount = \App\Models\Message::where('receiver_id', $user->id)
+            $unreadMessagesCount = Message::where('receiver_id', $user->id)
                 ->where('is_read', false)
                 ->count();
         }
@@ -48,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                     'role' => $user->role,
                     'avatar' => $user->avatar,
                     'phone' => $user->phone,
@@ -67,35 +74,36 @@ class HandleInertiaRequests extends Middleware
                         $activeId = $request->session()->get('active_seller_shop_id');
                         $shop = null;
                         if ($activeId) {
-                            $shop = \App\Models\Shop::with('rootCategory')->where('id', $activeId)->where('user_id', $user->id)->first();
+                            $shop = Shop::with('rootCategory')->where('id', $activeId)->where('user_id', $user->id)->first();
                         }
-                        if (!$shop) {
-                            $shop = \App\Models\Shop::with('rootCategory')->where('user_id', $user->id)->where('is_default', true)->first()
-                                ?? \App\Models\Shop::with('rootCategory')->where('user_id', $user->id)->first();
+                        if (! $shop) {
+                            $shop = Shop::with('rootCategory')->where('user_id', $user->id)->where('is_default', true)->first()
+                                ?? Shop::with('rootCategory')->where('user_id', $user->id)->first();
                         }
+
                         return $shop;
                     })() : null,
-                    'sellerShops' => ($user && $user->role === 'seller') ? \App\Models\Shop::with('rootCategory:id,name,slug')
+                    'sellerShops' => ($user && $user->role === 'seller') ? Shop::with('rootCategory:id,name,slug')
                         ->where('user_id', $user->id)
                         ->orderByDesc('is_default')
                         ->get() : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
                     'logisticsCompany' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
                         ? ($user->logisticsCompany ?? ($user->isAdmin()
-                            ? \App\Models\LogisticsCompany::where('is_active', true)->first()
-                            : \App\Models\HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
+                            ? LogisticsCompany::where('is_active', true)->first()
+                            : HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
                         : null,
                     'canSwitchHubs' => $user->role === 'logistics' && (bool) $user->logisticsCompany,
                     'activeHub' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
                         ? (function () use ($request, $user) {
-                            $accessibleHubs = \App\Models\LogisticsHub::query()
+                            $accessibleHubs = LogisticsHub::query()
                                 ->where('is_active', true)
                                 ->when(! $user->isAdmin(), function ($query) use ($user) {
                                     $companyId = $user->logisticsCompany?->id;
                                     if ($companyId) {
                                         $query->where('logistics_company_id', $companyId);
                                     } else {
-                                        $query->whereIn('id', \App\Models\HubHandler::where('user_id', $user->id)
+                                        $query->whereIn('id', HubHandler::where('user_id', $user->id)
                                             ->where('is_active', true)
                                             ->pluck('hub_id'));
                                     }
@@ -103,25 +111,30 @@ class HandleInertiaRequests extends Middleware
                             $hubId = $request->session()->get('active_hub_id');
                             if ($hubId) {
                                 $h = (clone $accessibleHubs)->find($hubId);
-                                if ($h) return $h;
+                                if ($h) {
+                                    return $h;
+                                }
                             }
-                            $handler = \App\Models\HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
+                            $handler = HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
                             if ($handler) {
                                 $handlerHub = (clone $accessibleHubs)->find($handler->hub_id);
-                                if ($handlerHub) return $handlerHub;
+                                if ($handlerHub) {
+                                    return $handlerHub;
+                                }
                             }
+
                             return $accessibleHubs->first();
                         })()
                         : null,
                     'allHubs' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
-                        ? \App\Models\LogisticsHub::query()
+                        ? LogisticsHub::query()
                             ->where('is_active', true)
                             ->when(! $user->isAdmin(), function ($query) use ($user) {
                                 $companyId = $user->logisticsCompany?->id;
                                 if ($companyId) {
                                     $query->where('logistics_company_id', $companyId);
                                 } else {
-                                    $query->whereIn('id', \App\Models\HubHandler::where('user_id', $user->id)
+                                    $query->whereIn('id', HubHandler::where('user_id', $user->id)
                                         ->where('is_active', true)
                                         ->pluck('hub_id'));
                                 }

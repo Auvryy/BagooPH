@@ -317,6 +317,7 @@ class CourierDeliveryController extends Controller
             'rider' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 'phone' => $user->phone,
                 'account_status' => $user->status,
                 'kyc_status' => $user->kyc_status,

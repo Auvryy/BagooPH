@@ -15,6 +15,7 @@ class SellerProfileTest extends TestCase
     use RefreshDatabase;
 
     private User $seller;
+
     private Shop $shop;
 
     protected function setUp(): void
@@ -92,6 +93,21 @@ class SellerProfileTest extends TestCase
         $this->assertNotSame($storedPath, $secondPath);
         Storage::disk('public')->assertMissing($storedPath);
         Storage::disk('public')->assertExists($secondPath);
+    }
+
+    public function test_changing_seller_email_requires_verification_again(): void
+    {
+        $this->assertNotNull($this->seller->email_verified_at);
+
+        $this->actingAs($this->seller)
+            ->post(route('seller.profile.update'), [
+                'name' => $this->seller->name,
+                'email' => 'updated.seller@example.com',
+                'phone' => $this->seller->phone,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertNull($this->seller->fresh()->email_verified_at);
     }
 
     public function test_seller_can_remove_avatar(): void
