@@ -14,6 +14,15 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::saving(function (Order $order) {
+            if ($order->status === 'completed' && ! $order->completed_at) {
+                $order->completed_at = now();
+            }
+        });
+    }
+
     protected $fillable = [
         'order_number',
         'buyer_id',
@@ -37,6 +46,7 @@ class Order extends Model
         'destination_latitude',
         'destination_longitude',
         'notes',
+        'completed_at',
     ];
 
     protected $casts = [
@@ -46,6 +56,7 @@ class Order extends Model
         'total_amount' => 'decimal:2',
         'destination_latitude' => 'float',
         'destination_longitude' => 'float',
+        'completed_at' => 'datetime',
     ];
 
     public function newEloquentBuilder($query): OrderBuilder

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Services\Commerce\SellerSalesMetricsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,6 +17,8 @@ class SellerProductController extends Controller
 {
     use HasSellerShop;
 
+    public function __construct(private readonly SellerSalesMetricsService $salesMetrics) {}
+
     public function index(Request $request): Response
     {
         $validated = $request->validate([
@@ -23,8 +26,8 @@ class SellerProductController extends Controller
         ]);
         $shop = $this->getActiveShop($request);
         $search = trim((string) ($validated['search'] ?? ''));
-        $products = Product::query()
-            ->where('shop_id', $shop->id)
+        $products = $this->salesMetrics
+            ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
             ->when($search !== '', function ($query) use ($search) {
                 $pattern = "%{$search}%";
                 $query->where(function ($productQuery) use ($pattern) {

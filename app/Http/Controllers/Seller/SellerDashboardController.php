@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\OrderItem;
+use App\Models\CommissionLedger;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Services\Commerce\SellerSalesMetricsService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -19,58 +22,42 @@ class SellerDashboardController extends Controller
 {
     use HasSellerShop;
 
+    public function __construct(private readonly SellerSalesMetricsService $salesMetrics) {}
+
     public function index(Request $request): Response
     {
-        $user = $request->user();
         $shop = $this->getActiveShop($request);
 
         $totalProducts = Product::where('shop_id', $shop->id)->count();
         $lowStockCount = Product::where('shop_id', $shop->id)->where('stock', '<=', 5)->count();
-        
-        $totalSales = OrderItem::where('shop_id', $shop->id)->sum('quantity');
-        $totalRevenue = OrderItem::where('shop_id', $shop->id)->sum('subtotal');
+        $salesSummary = $this->salesMetrics->dashboardSummary($shop->id);
+        $shopOrders = fn () => Order::query()->whereHas(
+            'items',
+            fn ($query) => $query->where('shop_id', $shop->id)
+        );
 
         // Order Pipeline metrics (Canonical 13-stage lifecycle support)
-        $pendingPackCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']))
+        $pendingPackCount = $shopOrders()
+            ->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging'])
             ->count();
 
-        $readyPickupCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['ready_for_pickup']))
+        $readyPickupCount = $shopOrders()
+            ->whereIn('status', ['ready_for_pickup'])
             ->count();
 
-        $shippedCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped']))
+        $shippedCount = $shopOrders()
+            ->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'])
             ->count();
 
-        $completedCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['delivered', 'completed']))
+        $completedCount = $shopOrders()
+            ->whereIn('status', ['delivered', 'completed'])
             ->count();
 
         // Cancellation & Return claims count (cancelled/returned orders + actionable disputes)
-        $cancelledCount = OrderItem::where('shop_id', $shop->id)
-            ->whereHas('order', fn($q) => $q->whereIn('status', ['cancelled', 'canceled', 'returned', 'delivery_failed']))
+        $cancelledCount = $shopOrders()
+            ->whereIn('status', ['cancelled', 'canceled', 'returned', 'delivery_failed'])
             ->count();
         $returnCount = $cancelledCount;
-
-        // 7-day revenue analytics
-        $dailySales = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i)->format('Y-m-d');
-            $dayLabel = now()->subDays($i)->format('M j');
-            $revenue = OrderItem::where('shop_id', $shop->id)
-                ->whereDate('created_at', $date)
-                ->sum('subtotal');
-            $units = OrderItem::where('shop_id', $shop->id)
-                ->whereDate('created_at', $date)
-                ->sum('quantity');
-
-            $dailySales[] = [
-                'date' => $dayLabel,
-                'revenue' => (float) $revenue,
-                'units' => (int) $units,
-            ];
-        }
 
         $recentOrders = OrderItem::where('shop_id', $shop->id)
             ->with(['order.buyer', 'order.delivery', 'product'])
@@ -78,26 +65,27 @@ class SellerDashboardController extends Controller
             ->take(6)
             ->get();
 
-        $topProducts = Product::where('shop_id', $shop->id)
+        $topProducts = $this->salesMetrics
+            ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
             ->with('category')
-            ->orderBy('sales_count', 'desc')
+            ->orderByDesc('completed_units')
+            ->orderBy('name')
             ->take(5)
             ->get();
 
         return Inertia::render('Seller/Dashboard', [
             'shop' => $shop,
             'stats' => [
+                ...$salesSummary,
                 'totalProducts' => $totalProducts,
                 'lowStockCount' => $lowStockCount,
-                'totalSales' => (int) $totalSales,
-                'totalRevenue' => (float) $totalRevenue,
                 'pendingPackCount' => $pendingPackCount,
                 'readyPickupCount' => $readyPickupCount,
                 'shippedCount' => $shippedCount,
                 'completedCount' => $completedCount,
                 'returnCount' => $returnCount,
             ],
-            'dailySales' => $dailySales,
+            'dailySales' => $this->salesMetrics->sevenDayCompletedSales($shop->id),
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
             'availableShops' => $this->getAvailableShops($request),
@@ -128,7 +116,7 @@ class SellerDashboardController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $slug = Str::slug($validated['name'] . '-' . $request->user()->id . '-' . Str::random(4));
+        $slug = Str::slug($validated['name'].'-'.$request->user()->id.'-'.Str::random(4));
 
         $shop = Shop::create([
             'user_id' => $request->user()->id,
@@ -151,41 +139,58 @@ class SellerDashboardController extends Controller
 
     public function reports(Request $request): Response
     {
-        $user = $request->user();
         $shop = $this->getActiveShop($request);
 
-        $fromDate = $request->input('from_date', now()->subDays(30)->format('Y-m-d'));
-        $toDate = $request->input('to_date', now()->format('Y-m-d'));
+        $validated = $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+        ]);
+        $fromDate = CarbonImmutable::parse($validated['from_date'] ?? now()->subDays(30)->format('Y-m-d'));
+        $toDate = CarbonImmutable::parse($validated['to_date'] ?? now()->format('Y-m-d'));
 
-        $query = OrderItem::where('shop_id', $shop?->id ?? 0)
-            ->whereDate('created_at', '>=', $fromDate)
-            ->whereDate('created_at', '<=', $toDate)
-            ->with(['order.buyer', 'product.category']);
+        $query = $this->salesMetrics
+            ->completedItemsBetween($shop->id, $fromDate->startOfDay(), $toDate->endOfDay())
+            ->with(['order.buyer', 'order.commissionLedger', 'product.category']);
 
         $orderItems = $query->get();
 
-        $grossSales = (float) $orderItems->sum('subtotal');
-        $totalUnits = (int) $orderItems->sum('quantity');
-        $platformCommission = $grossSales * 0.10; // 10% platform fee
-        $netPayout = $grossSales - $platformCommission;
+        $completedGrossSales = round((float) $orderItems->sum('subtotal'), 2);
+        $completedUnits = (int) $orderItems->sum('quantity');
+        $estimatedPlatformCommission = round($completedGrossSales * 0.10, 2);
+        $estimatedSellerShare = round($completedGrossSales * 0.90, 2);
         $orderCount = $orderItems->pluck('order_id')->unique()->count();
-        $avgOrderValue = $orderCount > 0 ? $grossSales / $orderCount : 0;
+        $averageCompletedOrderValue = $orderCount > 0
+            ? round($completedGrossSales / $orderCount, 2)
+            : 0.0;
+        $settledSellerAmount = round((float) CommissionLedger::query()
+            ->where('seller_id', $shop->user_id)
+            ->whereIn('order_id', $orderItems->pluck('order_id')->unique())
+            ->where('status', 'settled')
+            ->whereHas('order', fn ($orderQuery) => $orderQuery
+                ->where('status', 'completed')
+                ->where('payment_status', 'paid'))
+            ->sum('seller_amount'), 2);
 
         return Inertia::render('Seller/Reports', [
             'shop' => $shop,
             'filters' => [
-                'from_date' => $fromDate,
-                'to_date' => $toDate,
+                'from_date' => $fromDate->format('Y-m-d'),
+                'to_date' => $toDate->format('Y-m-d'),
             ],
             'report' => [
-                'grossSales' => $grossSales,
-                'totalUnits' => $totalUnits,
-                'platformCommission' => $platformCommission,
-                'netPayout' => $netPayout,
-                'orderCount' => $orderCount,
-                'avgOrderValue' => $avgOrderValue,
+                'completedGrossSales' => $completedGrossSales,
+                'completedUnits' => $completedUnits,
+                'completedOrderCount' => $orderCount,
+                'averageCompletedOrderValue' => $averageCompletedOrderValue,
+                'estimatedPlatformCommission' => $estimatedPlatformCommission,
+                'estimatedSellerShare' => $estimatedSellerShare,
+                'settledSellerAmount' => $settledSellerAmount,
+                'pendingSettlementAmount' => max(0, round($estimatedSellerShare - $settledSellerAmount, 2)),
             ],
-            'orderItems' => $orderItems->take(25),
+            'orderItems' => $orderItems
+                ->sortByDesc(fn (OrderItem $item) => $item->order?->completed_at)
+                ->take(25)
+                ->values(),
         ]);
     }
 
@@ -232,7 +237,7 @@ class SellerDashboardController extends Controller
         if ($request->hasFile('logo') || $request->hasFile('logo_file')) {
             $file = $request->file('logo') ?? $request->file('logo_file');
             $path = $file->store('shops/logos', 'public');
-            $shop->logo = '/storage/' . $path;
+            $shop->logo = '/storage/'.$path;
         } elseif ($request->filled('logo')) {
             $shop->logo = $validated['logo'];
         }
@@ -240,16 +245,26 @@ class SellerDashboardController extends Controller
         if ($request->hasFile('banner') || $request->hasFile('banner_file')) {
             $file = $request->file('banner') ?? $request->file('banner_file');
             $path = $file->store('shops/banners', 'public');
-            $shop->banner = '/storage/' . $path;
+            $shop->banner = '/storage/'.$path;
         } elseif ($request->filled('banner')) {
             $shop->banner = $validated['banner'];
         }
 
-        if (isset($validated['name'])) $shop->name = $validated['name'];
-        if (array_key_exists('description', $validated)) $shop->description = $validated['description'];
-        if (isset($validated['phone'])) $shop->phone = $validated['phone'];
-        if (isset($validated['address'])) $shop->address = $validated['address'];
-        if (isset($validated['city'])) $shop->city = $validated['city'];
+        if (isset($validated['name'])) {
+            $shop->name = $validated['name'];
+        }
+        if (array_key_exists('description', $validated)) {
+            $shop->description = $validated['description'];
+        }
+        if (isset($validated['phone'])) {
+            $shop->phone = $validated['phone'];
+        }
+        if (isset($validated['address'])) {
+            $shop->address = $validated['address'];
+        }
+        if (isset($validated['city'])) {
+            $shop->city = $validated['city'];
+        }
 
         $shop->save();
 
@@ -275,7 +290,7 @@ class SellerDashboardController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:50',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:3072',
             'remove_avatar' => 'nullable|boolean',
         ]);
@@ -297,7 +312,7 @@ class SellerDashboardController extends Controller
             }
 
             $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = '/storage/' . $path;
+            $user->avatar = '/storage/'.$path;
         }
 
         $user->name = $validated['name'];

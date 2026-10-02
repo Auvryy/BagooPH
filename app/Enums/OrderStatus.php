@@ -25,9 +25,48 @@ enum OrderStatus: string
     case SHIPPED = 'shipped';
     case CANCELLED = 'cancelled';
 
+    /**
+     * Orders that still represent an open commercial commitment. Stock has
+     * already been reserved, but the sale is not yet completed.
+     *
+     * @return list<string>
+     */
+    public static function openCommerceStatuses(): array
+    {
+        return [
+            self::PLACED->value,
+            self::PENDING->value,
+            self::CONFIRMED->value,
+            self::PREPARING->value,
+            'packaging',
+            self::PROCESSING->value,
+            self::READY_FOR_PICKUP->value,
+            self::PICKED_UP->value,
+            self::AT_SORTING_CENTER->value,
+            self::SORTED->value,
+            self::ASSIGNED_TO_RIDER->value,
+            self::OUT_FOR_DELIVERY->value,
+            self::SHIPPED->value,
+            self::DELIVERED->value,
+            self::DELIVERY_FAILED->value,
+        ];
+    }
+
+    /** @return list<string> */
+    public static function completedCommerceStatuses(): array
+    {
+        return [self::COMPLETED->value];
+    }
+
+    /** @return list<string> */
+    public static function unrealizedCommerceStatuses(): array
+    {
+        return [self::CANCELLED->value, self::RETURNED->value];
+    }
+
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::PLACED, self::PENDING => 'Order Placed',
             self::CONFIRMED => 'Order Confirmed',
             self::PREPARING, self::PROCESSING => 'Preparing Order',
@@ -52,7 +91,8 @@ enum OrderStatus: string
         }
 
         $raw = strtolower(trim($status));
-        return match($raw) {
+
+        return match ($raw) {
             'placed' => self::PLACED->value,
             'confirmed' => self::CONFIRMED->value,
             'preparing', 'packaging' => self::PREPARING->value,
@@ -78,7 +118,7 @@ enum OrderStatus: string
     {
         $val = $status instanceof self ? $status->value : strtolower(trim((string) $status));
 
-        return match($val) {
+        return match ($val) {
             'placed', 'pending' => ['placed', 'pending'],
             'confirmed' => ['confirmed'],
             'preparing', 'processing', 'packaging' => ['preparing', 'processing', 'packaging'],
