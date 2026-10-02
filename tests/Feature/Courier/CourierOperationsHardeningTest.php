@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -198,6 +199,60 @@ class CourierOperationsHardeningTest extends TestCase
 
         $this->assertNull($delivery->fresh()->courier_id);
         $this->assertSame('unassigned', $delivery->fresh()->status);
+    }
+
+    public function test_off_duty_rider_does_not_receive_new_pickup_jobs_but_keeps_active_custody_visible(): void
+    {
+        $available = $this->createDelivery('unassigned');
+        $active = $this->createDelivery('assigned_pickup', $this->rider);
+        $this->rider->courierProfile->update(['is_available' => false]);
+
+        $this->actingAs($this->rider)
+            ->get(route('courier.deliveries'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('isOnline', false)
+                ->where('stats.availablePickups', 0)
+                ->has('queues.availablePickups', 0)
+                ->has('queues.pickupTasks', 1)
+                ->where('queues.pickupTasks.0.id', $active->id)
+            );
+
+        $this->assertNull($available->fresh()->courier_id);
+    }
+
+    public function test_courier_can_update_personal_contact_details_without_changing_operational_assignment(): void
+    {
+        $originalHubId = $this->rider->courierProfile->assigned_hub_id;
+        $originalCompanyId = $this->rider->courierProfile->logistics_company_id;
+
+        $this->actingAs($this->rider)
+            ->patch(route('courier.profile.update'), [
+                'name' => 'Rider Updated Name',
+                'phone' => '0917 123 4567',
+                'assigned_hub_id' => $this->destinationHub->id,
+                'logistics_company_id' => 999999,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame('Rider Updated Name', $this->rider->fresh()->name);
+        $this->assertSame('+639171234567', $this->rider->fresh()->phone);
+        $this->assertSame($originalHubId, $this->rider->courierProfile->fresh()->assigned_hub_id);
+        $this->assertSame($originalCompanyId, $this->rider->courierProfile->fresh()->logistics_company_id);
+    }
+
+    public function test_courier_can_change_password_from_the_courier_portal(): void
+    {
+        $this->actingAs($this->rider)
+            ->from(route('courier.profile'))
+            ->put(route('courier.profile.password.update'), [
+                'current_password' => 'password',
+                'password' => 'CourierPassword2026!',
+                'password_confirmation' => 'CourierPassword2026!',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('CourierPassword2026!', $this->rider->fresh()->password));
     }
 
     public function test_rider_can_claim_multiple_pickups_within_capacity(): void
