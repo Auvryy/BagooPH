@@ -182,7 +182,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - A rider must be approved, active, available, and within the required company/hub/barangay scope at claim and again at custody scan.
 - Pickup and final-mile work are phases of one courier role; a pickup assignment does not grant final-mile authority.
 - Pickup claims are atomic. Exactly one rider wins; all concurrent losers receive the already-claimed result without assignment changes.
-- An unavailable, suspended, already-busy, wrong-company, wrong-hub, or incompatible-barangay rider cannot claim or receive work.
+- An unavailable, suspended, at-capacity, wrong-company, wrong-hub, or incompatible-barangay rider cannot claim or receive work. Pickup riders may hold multiple active pickup assignments up to the configured capacity; final-mile assignment remains phase-separated.
 - Before pickup custody, a rider may release a claim only with an allowlisted reason; the release is audited and returns the job to the eligible board. After pickup scan, assignment release is prohibited until a hub records custody recovery.
 
 ### Pickup and Facility Handoff
