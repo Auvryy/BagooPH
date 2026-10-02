@@ -22,12 +22,13 @@ import {
 import CourierLayout from '@/Layouts/CourierLayout';
 
 interface Scope {
-    company: string | null;
-    hub: string | null;
-    hubCode: string | null;
-    barangay: string | null;
-    isAssigned: boolean;
-    isOperational: boolean;
+    company?: string | null;
+    hub?: string | null;
+    hubCode?: string | null;
+    hub_code?: string | null;
+    barangay?: string | null;
+    isAssigned?: boolean;
+    isOperational?: boolean;
 }
 
 interface PickupTask {
@@ -85,20 +86,20 @@ interface Activity {
 }
 
 interface Props {
-    scope: Scope;
-    isOnline: boolean;
-    stats: {
-        availablePickups: number;
-        activePickups: number;
-        activePickupLimit: number;
-        finalMileTasks: number;
-        completedToday: number;
+    scope?: Scope;
+    isOnline?: boolean;
+    stats?: {
+        availablePickups?: number;
+        activePickups?: number;
+        activePickupLimit?: number;
+        finalMileTasks?: number;
+        completedToday?: number;
     };
-    queues: {
-        availablePickups: PickupTask[];
-        pickupTasks: PickupTask[];
-        finalMileTasks: FinalMileTask[];
-        recentActivity: Activity[];
+    queues?: {
+        availablePickups?: PickupTask[];
+        pickupTasks?: PickupTask[];
+        finalMileTasks?: FinalMileTask[];
+        recentActivity?: Activity[];
     };
 }
 
@@ -109,12 +110,29 @@ type ActionTarget = {
     status: 'picked_up' | 'out_for_delivery' | 'delivered';
 } | null;
 
-export default function CourierDeliveries({ scope, isOnline, stats, queues }: Props) {
+export default function CourierDeliveries({ scope, isOnline = false, stats, queues }: Props) {
+    const availableJobs = queues?.availablePickups ?? [];
+    const pickupTasks = queues?.pickupTasks ?? [];
+    const finalMileTasks = queues?.finalMileTasks ?? [];
+    const recentActivity = queues?.recentActivity ?? [];
+
+    const availableCount = stats?.availablePickups ?? 0;
+    const activePickupCount = stats?.activePickups ?? 0;
+    const activePickupLimit = stats?.activePickupLimit ?? 5;
+    const finalMileCount = stats?.finalMileTasks ?? 0;
+    const completedTodayCount = stats?.completedToday ?? 0;
+
+    const hubName = scope?.hub ?? 'Bayan Hub';
+    const hubCode = scope?.hubCode ?? scope?.hub_code ?? 'BH-LBN';
+    const companyName = scope?.company ?? 'Logistics';
+    const isAssigned = scope?.isAssigned ?? false;
+    const isOperational = scope?.isOperational ?? true;
+
     const initialTab = useMemo<Tab>(() => {
-        if (queues.finalMileTasks.length > 0) return 'final_mile';
-        if (queues.pickupTasks.length > 0) return 'pickup';
+        if (finalMileTasks.length > 0) return 'final_mile';
+        if (pickupTasks.length > 0) return 'pickup';
         return 'available';
-    }, [queues.finalMileTasks.length, queues.pickupTasks.length]);
+    }, [finalMileTasks.length, pickupTasks.length]);
 
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [actionTarget, setActionTarget] = useState<ActionTarget>(null);
@@ -205,8 +223,8 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
         <CourierLayout
             title="Dispatch Dashboard"
             subtitle={
-                scope.isAssigned
-                    ? `${scope.hub} · ${scope.company}`
+                isAssigned
+                    ? `${hubName} · ${companyName}`
                     : 'Waiting for a logistics company and hub assignment'
             }
             isOnline={isOnline}
@@ -216,7 +234,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
 
             <div className="space-y-6 font-sans">
                 {/* Status Advisories */}
-                {!scope.isAssigned && (
+                {!isAssigned && (
                     <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-xs font-medium text-amber-950 flex items-start gap-3 shadow-2xs">
                         <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
@@ -228,7 +246,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                         </div>
                     </div>
                 )}
-                {scope.isAssigned && !scope.isOperational && (
+                {isAssigned && !isOperational && (
                     <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-4 text-xs font-medium text-rose-950 flex items-start gap-3 shadow-2xs">
                         <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                         <div>
@@ -252,7 +270,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.availablePickups}{' '}
+                                    {availableCount}{' '}
                                     <span className="text-sm font-bold text-slate-500">jobs</span>
                                 </p>
                             </div>
@@ -260,7 +278,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Ready at Bayan Hub</span>
                             <span className="font-bold text-slate-900">
-                                {scope.hubCode ?? 'Station pool'}
+                                {hubCode}
                             </span>
                         </div>
                     </div>
@@ -274,7 +292,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.activePickups}{' '}
+                                    {activePickupCount}{' '}
                                     <span className="text-sm font-bold text-slate-500">parcels</span>
                                 </p>
                             </div>
@@ -282,7 +300,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Batch capacity</span>
                             <span className="font-bold text-slate-900">
-                                {stats.activePickups} of {stats.activePickupLimit} limit
+                                {activePickupCount} of {activePickupLimit} limit
                             </span>
                         </div>
                     </div>
@@ -296,7 +314,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.finalMileTasks}{' '}
+                                    {finalMileCount}{' '}
                                     <span className="text-sm font-bold text-slate-500">deliveries</span>
                                 </p>
                             </div>
@@ -316,7 +334,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.completedToday}{' '}
+                                    {completedTodayCount}{' '}
                                     <span className="text-sm font-bold text-slate-500">handoffs</span>
                                 </p>
                             </div>
@@ -342,7 +360,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                     </h3>
                                 </div>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    {scope.hub ?? 'Working Hub'} · Real-time pickup collection and final-mile buyer delivery tasks
+                                    {hubName} · Real-time pickup collection and final-mile buyer delivery tasks
                                 </p>
                             </div>
 
@@ -366,7 +384,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                                 : 'bg-slate-200 text-slate-700'
                                         }`}
                                     >
-                                        {stats.activePickups}
+                                        {activePickupCount}
                                     </span>
                                 </button>
 
@@ -388,7 +406,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                                 : 'bg-slate-200 text-slate-700'
                                         }`}
                                     >
-                                        {stats.finalMileTasks}
+                                        {finalMileCount}
                                     </span>
                                 </button>
 
@@ -410,7 +428,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                                 : 'bg-slate-200 text-slate-700'
                                         }`}
                                     >
-                                        {stats.availablePickups}
+                                        {availableCount}
                                     </span>
                                 </button>
 
@@ -432,14 +450,14 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                                 : 'bg-slate-200 text-slate-700'
                                         }`}
                                     >
-                                        {queues.recentActivity.length}
+                                        {recentActivity.length}
                                     </span>
                                 </button>
                             </div>
                         </div>
 
                         {/* Duty Guidance Banner */}
-                        {!isOnline && activeTab === 'available' && queues.availablePickups.length > 0 && (
+                        {!isOnline && activeTab === 'available' && availableJobs.length > 0 && (
                             <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 text-xs text-amber-950 flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <Power className="w-4 h-4 text-amber-600 shrink-0" />
@@ -458,26 +476,26 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             {/* TAB 1: MY PICKUPS */}
                             {activeTab === 'pickup' && (
                                 <>
-                                    {queues.pickupTasks.length === 0 ? (
+                                    {pickupTasks.length === 0 ? (
                                         <EmptyState
                                             icon={Store}
                                             title="No Active Pickups In Progress"
                                             description="You have no claimed merchant pickups right now. Browse available jobs to start your batch route."
                                             action={
-                                                stats.availablePickups > 0 ? (
+                                                availableCount > 0 ? (
                                                     <button
                                                         type="button"
                                                         onClick={() => setActiveTab('available')}
                                                         className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E00D42] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#C20836] transition cursor-pointer"
                                                     >
-                                                        <span>View Available Jobs ({stats.availablePickups})</span>
+                                                        <span>View Available Jobs ({availableCount})</span>
                                                         <ArrowRight className="w-3.5 h-3.5" />
                                                     </button>
                                                 ) : undefined
                                             }
                                         />
                                     ) : (
-                                        queues.pickupTasks.map((task) => (
+                                        pickupTasks.map((task) => (
                                             <PickupRouteCard
                                                 key={task.id}
                                                 task={task}
@@ -494,18 +512,18 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             {/* TAB 2: FINAL-MILE TASKS */}
                             {activeTab === 'final_mile' && (
                                 <>
-                                    {queues.finalMileTasks.length === 0 ? (
+                                    {finalMileTasks.length === 0 ? (
                                         <EmptyState
                                             icon={Truck}
                                             title="No Final-Mile Dispatches"
                                             description="No buyer deliveries are assigned to you at this moment. Assignments are issued by your destination hub dispatcher."
                                         />
                                     ) : (
-                                        queues.finalMileTasks.map((task) => (
+                                        finalMileTasks.map((task) => (
                                             <FinalMileRouteCard
                                                 key={task.id}
                                                 task={task}
-                                                codLabel={formatCurrency(task.payment.codAmount)}
+                                                codLabel={formatCurrency(task.payment?.codAmount ?? null)}
                                                 loading={loadingId === task.id}
                                                 onStart={() =>
                                                     openAction(task.id, task.trackingNumber, 'out_for_delivery')
@@ -522,18 +540,18 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             {/* TAB 3: AVAILABLE PICKUPS */}
                             {activeTab === 'available' && (
                                 <>
-                                    {queues.availablePickups.length === 0 ? (
+                                    {availableJobs.length === 0 ? (
                                         <EmptyState
                                             icon={PackageCheck}
                                             title="No Available Pickup Jobs"
                                             description="All ready orders at your assigned Bayan Hub are currently claimed or awaiting merchant packing."
                                         />
                                     ) : (
-                                        queues.availablePickups.map((task) => (
+                                        availableJobs.map((task) => (
                                             <AvailablePickupRouteCard
                                                 key={task.id}
                                                 task={task}
-                                                disabled={!isOnline || loadingId !== null || stats.activePickups >= stats.activePickupLimit}
+                                                disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
                                                 loading={loadingId === task.id}
                                                 onClaim={() => claimPickup(task.id)}
                                             />
@@ -545,7 +563,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                             {/* TAB 4: RECENT ACTIVITY */}
                             {activeTab === 'activity' && (
                                 <>
-                                    {queues.recentActivity.length === 0 ? (
+                                    {recentActivity.length === 0 ? (
                                         <EmptyState
                                             icon={History}
                                             title="No Delivery Trips Recorded"
@@ -553,7 +571,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                         />
                                     ) : (
                                         <div className="grid gap-2.5">
-                                            {queues.recentActivity.map((activity) => (
+                                            {recentActivity.map((activity) => (
                                                 <div
                                                     key={activity.id}
                                                     className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans"
@@ -611,7 +629,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 type="button"
                                 onClick={() => setActiveTab('pickup')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    stats.activePickups > 0
+                                    activePickupCount > 0
                                         ? 'bg-amber-50/70 border border-amber-300 shadow-2xs hover:bg-amber-100/60'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
                                 }`}
@@ -619,7 +637,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     <div
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            stats.activePickups > 0
+                                            activePickupCount > 0
                                                 ? 'bg-amber-500 text-white shadow-xs'
                                                 : 'bg-amber-100 text-amber-700'
                                         }`}
@@ -637,12 +655,12 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 </div>
                                 <span
                                     className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        stats.activePickups > 0
+                                        activePickupCount > 0
                                             ? 'bg-amber-500 text-white shadow-xs'
                                             : 'bg-slate-200 text-slate-700'
                                     }`}
                                 >
-                                    {stats.activePickups}
+                                    {activePickupCount}
                                 </span>
                             </button>
 
@@ -651,7 +669,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 type="button"
                                 onClick={() => setActiveTab('final_mile')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    stats.finalMileTasks > 0
+                                    finalMileCount > 0
                                         ? 'bg-emerald-50/70 border border-emerald-300 shadow-2xs hover:bg-emerald-100/60'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-emerald-400'
                                 }`}
@@ -659,7 +677,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     <div
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            stats.finalMileTasks > 0
+                                            finalMileCount > 0
                                                 ? 'bg-emerald-600 text-white shadow-xs'
                                                 : 'bg-emerald-100 text-emerald-800'
                                         }`}
@@ -677,12 +695,12 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 </div>
                                 <span
                                     className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        stats.finalMileTasks > 0
+                                        finalMileCount > 0
                                             ? 'bg-emerald-600 text-white shadow-xs'
                                             : 'bg-slate-200 text-slate-700'
                                     }`}
                                 >
-                                    {stats.finalMileTasks}
+                                    {finalMileCount}
                                 </span>
                             </button>
 
@@ -691,7 +709,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 type="button"
                                 onClick={() => setActiveTab('available')}
                                 className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    stats.availablePickups > 0
+                                    availableCount > 0
                                         ? 'bg-rose-50/70 border border-rose-300 shadow-2xs hover:bg-rose-100/60'
                                         : 'bg-slate-50 border border-slate-200/90 hover:border-rose-400'
                                 }`}
@@ -699,7 +717,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     <div
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            stats.availablePickups > 0
+                                            availableCount > 0
                                                 ? 'bg-[#E00D42] text-white shadow-xs'
                                                 : 'bg-rose-100 text-rose-700'
                                         }`}
@@ -711,18 +729,18 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             Available Jobs
                                         </span>
                                         <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                            Ready at {scope.hubCode ?? 'Bayan Hub'}
+                                            Ready at {hubCode}
                                         </p>
                                     </div>
                                 </div>
                                 <span
                                     className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        stats.availablePickups > 0
+                                        availableCount > 0
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'bg-slate-200 text-slate-700'
                                     }`}
                                 >
-                                    {stats.availablePickups}
+                                    {availableCount}
                                 </span>
                             </button>
 
@@ -743,7 +761,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             Available
                                         </span>
                                         <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {stats.availablePickups}
+                                            {availableCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             ready
@@ -760,7 +778,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             In Custody
                                         </span>
                                         <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {stats.activePickups + stats.finalMileTasks}
+                                            {activePickupCount + finalMileCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             on route
@@ -777,7 +795,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             Delivered
                                         </span>
                                         <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {stats.completedToday}
+                                            {completedTodayCount}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             verified
@@ -794,7 +812,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                 <span>Custody Protocol</span>
                             </div>
                             <p className="leading-relaxed">
-                                Pickups must be handed off only to the assigned <strong>{scope.hubCode ?? 'Origin Hub'}</strong>.
+                                Pickups must be handed off only to the assigned <strong>{hubCode}</strong>.
                                 Custody transfers when facility operators scan the parcel inbound.
                             </p>
                         </div>
@@ -802,18 +820,18 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                 </div>
 
                 {/* 3. BOTTOM ROW: AVAILABLE PICKUP OPPORTUNITIES (FAST DISPATCH QUEUE) */}
-                {activeTab !== 'available' && queues.availablePickups.length > 0 && (
+                {activeTab !== 'available' && availableJobs.length > 0 && (
                     <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs font-sans">
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <Package className="w-4 h-4 text-[#E00D42]" />
                                     <h3 className="font-bold text-sm text-slate-900">
-                                        Available Pickup Opportunities ({queues.availablePickups.length})
+                                        Available Pickup Opportunities ({availableJobs.length})
                                     </h3>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Ready parcels at {scope.hub ?? 'Origin Bayan Hub'} eligible for batch claim
+                                    Ready parcels at {hubName} eligible for batch claim
                                 </p>
                             </div>
                             <button
@@ -827,7 +845,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                         </div>
 
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {queues.availablePickups.slice(0, 3).map((task) => (
+                            {availableJobs.slice(0, 3).map((task) => (
                                 <div
                                     key={task.id}
                                     className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col justify-between"
@@ -842,10 +860,10 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                             </span>
                                         </div>
                                         <p className="text-xs font-bold text-slate-800 mt-1.5">
-                                            {task.merchant.name ?? 'Merchant Store'}
+                                            {task.merchant?.name ?? 'Merchant Store'}
                                         </p>
                                         <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                                            {task.merchant.address}
+                                            {task.merchant?.address}
                                         </p>
                                     </div>
 
@@ -856,7 +874,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                                         <button
                                             type="button"
                                             onClick={() => claimPickup(task.id)}
-                                            disabled={!isOnline || loadingId !== null || stats.activePickups >= stats.activePickupLimit}
+                                            disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
                                             className="px-3 py-1 bg-[#E00D42] text-white hover:bg-[#C20836] text-[11px] font-bold rounded-md shadow-2xs transition disabled:opacity-50 cursor-pointer"
                                         >
                                             {loadingId === task.id ? 'Claiming...' : 'Claim Job'}
@@ -1066,12 +1084,12 @@ function PickupRouteCard({
                         <span>Merchant Store</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
-                        {task.merchant.name ?? 'Merchant Store'}
+                        {task.merchant?.name ?? 'Merchant Store'}
                     </p>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.merchant.address}
+                        {task.merchant?.address}
                     </p>
-                    {task.merchant.phone && (
+                    {task.merchant?.phone && (
                         <a
                             href={`tel:${task.merchant.phone}`}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline mt-0.5"
@@ -1088,10 +1106,10 @@ function PickupRouteCard({
                         <span>Origin Bayan Hub Handoff</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
-                        {task.originHub.name ?? 'Origin Bayan Hub'}
+                        {task.originHub?.name ?? 'Origin Bayan Hub'}
                     </p>
                     <p className="text-xs text-slate-500">
-                        Facility Station: <span className="font-semibold text-slate-700">{task.originHub.code ?? 'BH-01'}</span>
+                        Facility Station: <span className="font-semibold text-slate-700">{task.originHub?.code ?? 'BH-01'}</span>
                     </p>
                     <p className="text-[11px] text-slate-400 mt-1">
                         Parcel items: {task.itemCount} unit(s)
@@ -1161,12 +1179,12 @@ function FinalMileRouteCard({
                 <div className="flex items-center gap-2">
                     <span
                         className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                            task.payment.method === 'COD'
+                            task.payment?.method === 'COD'
                                 ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}
                     >
-                        {task.payment.method}
+                        {task.payment?.method ?? 'ONLINE'}
                     </span>
                     <span
                         className={`w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
@@ -1187,11 +1205,11 @@ function FinalMileRouteCard({
                         <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Buyer Recipient</span>
                     </div>
-                    <p className="text-xs font-bold text-slate-900">{task.recipient.name}</p>
+                    <p className="text-xs font-bold text-slate-900">{task.recipient?.name}</p>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.recipient.address}
+                        {task.recipient?.address}
                     </p>
-                    {task.recipient.phone && (
+                    {task.recipient?.phone && (
                         <a
                             href={`tel:${task.recipient.phone}`}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline mt-0.5"
@@ -1208,12 +1226,12 @@ function FinalMileRouteCard({
                         <span>Destination Hub</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
-                        {task.destinationHub.name ?? 'Destination Bayan Hub'}
+                        {task.destinationHub?.name ?? 'Destination Bayan Hub'}
                     </p>
                     <p className="text-xs text-slate-500">
-                        Code: {task.destinationHub.code ?? 'BH-02'}
+                        Code: {task.destinationHub?.code ?? 'BH-02'}
                     </p>
-                    {task.payment.method === 'COD' && (
+                    {task.payment?.method === 'COD' && (
                         <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
                             <span className="text-[10px] font-bold text-amber-800 uppercase block">
                                 Collect Exact COD
@@ -1291,10 +1309,10 @@ function AvailablePickupRouteCard({
                         <span>Merchant Location</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
-                        {task.merchant.name ?? 'Merchant Store'}
+                        {task.merchant?.name ?? 'Merchant Store'}
                     </p>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.merchant.address}
+                        {task.merchant?.address}
                     </p>
                 </div>
 
@@ -1304,10 +1322,10 @@ function AvailablePickupRouteCard({
                         <span>Origin Bayan Hub Target</span>
                     </div>
                     <p className="text-xs font-bold text-slate-900">
-                        {task.originHub.name ?? 'Origin Bayan Hub'}
+                        {task.originHub?.name ?? 'Origin Bayan Hub'}
                     </p>
                     <p className="text-xs text-slate-500">
-                        Facility Code: {task.originHub.code ?? 'BH-01'}
+                        Facility Code: {task.originHub?.code ?? 'BH-01'}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-1">
                         Total items: {task.itemCount} unit(s)
