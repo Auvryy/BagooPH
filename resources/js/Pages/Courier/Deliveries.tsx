@@ -86,6 +86,7 @@ interface Props {
     stats: {
         availablePickups: number;
         activePickups: number;
+        activePickupLimit: number;
         finalMileTasks: number;
         completedToday: number;
     };
@@ -343,8 +344,8 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                 {activeTab === 'pickup' && (
                     <QueueSection
                         title="My pickup tasks"
-                        description="Collect the parcel from the merchant, then hand it only to the listed Origin Bayan Hub."
-                        emptyTitle="No active pickup assignment"
+                        description={`Collect each parcel from its merchant, then hand it only to the listed Origin Bayan Hub. Your active pickup batch is limited to ${stats.activePickupLimit} parcels.`}
+                        emptyTitle="No active pickup assignments"
                         emptyText="Eligible jobs assigned to you will appear here."
                     >
                         {queues.pickupTasks.map((task) => (
@@ -363,7 +364,7 @@ export default function CourierDeliveries({ scope, isOnline, stats, queues }: Pr
                 {activeTab === 'available' && (
                     <QueueSection
                         title="Available pickup jobs"
-                        description="Only ready parcels from your assigned company and Origin Bayan Hub are listed."
+                        description={`Only ready parcels from your assigned company and Origin Bayan Hub are listed. Claim the jobs you can complete in one route batch, up to ${stats.activePickupLimit} active pickups.`}
                         emptyTitle="No eligible pickup jobs"
                         emptyText="There are no ready parcels at your working hub right now."
                     >
