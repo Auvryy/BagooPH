@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\LogisticsHubController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
@@ -15,29 +17,27 @@ use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
+use App\Http\Controllers\PublicTrackingController;
+use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
-use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
-use App\Http\Controllers\PublicTrackingController;
-use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Simulation\OrderSimulationController;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-
+use App\Http\Controllers\SitemapController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\RegisteredUserController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 $baseDomains = array_unique(array_filter([
     env('APP_DOMAIN'),
@@ -50,6 +50,7 @@ $registerSellerRoutes = function () {
         if (auth()->check() && auth()->user()->isSeller()) {
             return redirect('/dashboard');
         }
+
         return Inertia::render('Seller/Landing');
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createSeller']);
@@ -58,8 +59,8 @@ $registerSellerRoutes = function () {
     Route::post('/register', [RegisteredUserController::class, 'store']);
     Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/seller/login', fn() => redirect('/login'));
-    Route::get('/seller/register', fn() => redirect('/register'));
+    Route::get('/seller/login', fn () => redirect('/login'));
+    Route::get('/seller/register', fn () => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
@@ -95,9 +96,10 @@ $registerSellerRoutes = function () {
         Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
-        Route::get('/seller/dashboard', function (\Illuminate\Http\Request $request) {
+        Route::get('/seller/dashboard', function (Request $request) {
             $qs = $request->getQueryString();
-            return redirect('/dashboard' . ($qs ? '?' . $qs : ''));
+
+            return redirect('/dashboard'.($qs ? '?'.$qs : ''));
         });
         Route::get('/seller/orders', [SellerOrderController::class, 'index']);
     });
@@ -108,6 +110,7 @@ $registerCourierRoutes = function () {
         if (auth()->check() && auth()->user()->isCourier()) {
             return redirect('/deliveries');
         }
+
         return app(AuthenticatedSessionController::class)->createCourier();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createCourier']);
@@ -116,8 +119,8 @@ $registerCourierRoutes = function () {
     Route::post('/register', [RegisteredUserController::class, 'store']);
     Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/courier/login', fn() => redirect('/login'));
-    Route::get('/courier/register', fn() => redirect('/register'));
+    Route::get('/courier/login', fn () => redirect('/login'));
+    Route::get('/courier/register', fn () => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:courier'])->group(function () {
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
@@ -125,10 +128,11 @@ $registerCourierRoutes = function () {
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
         Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
         Route::get('/messages', [CourierDeliveryController::class, 'messages']);
+        Route::post('/messages/send', [CourierDeliveryController::class, 'sendMessage']);
         Route::get('/profile', [CourierDeliveryController::class, 'profile']);
         Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
-        Route::get('/dashboard', fn() => redirect('/deliveries'));
-        Route::get('/courier/deliveries', fn() => redirect('/deliveries'));
+        Route::get('/dashboard', fn () => redirect('/deliveries'));
+        Route::get('/courier/deliveries', fn () => redirect('/deliveries'));
     });
 };
 
@@ -137,6 +141,7 @@ $registerHubRoutes = function () {
         if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
             return redirect('/dashboard');
         }
+
         return app(AuthenticatedSessionController::class)->createHub();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
@@ -145,8 +150,8 @@ $registerHubRoutes = function () {
     Route::post('/register', [RegisteredUserController::class, 'store']);
     Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/hub/login', fn() => redirect('/login'));
-    Route::get('/hub/register', fn() => redirect('/register'));
+    Route::get('/hub/login', fn () => redirect('/login'));
+    Route::get('/hub/register', fn () => redirect('/register'));
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
@@ -161,7 +166,7 @@ $registerHubRoutes = function () {
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider']);
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap']);
-        Route::get('/hub', fn() => redirect('/dashboard'));
+        Route::get('/hub', fn () => redirect('/dashboard'));
     });
 };
 
@@ -170,11 +175,12 @@ $registerAdminRoutes = function () {
         if (auth()->check() && auth()->user()->isAdmin()) {
             return redirect('/dashboard');
         }
+
         return app(AuthenticatedSessionController::class)->createAdmin();
     });
     Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/admin/login', fn() => redirect('/login'));
+    Route::get('/admin/login', fn () => redirect('/login'));
 
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
@@ -187,7 +193,7 @@ $registerAdminRoutes = function () {
         Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
         Route::post('/logistics/override', [LogisticsHubController::class, 'override']);
-        Route::get('/admin/dashboard', fn() => redirect('/dashboard'));
+        Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
 };
 
@@ -211,6 +217,7 @@ Route::get('/seller', function () {
     if (auth()->check() && auth()->user()->isSeller()) {
         return redirect()->route('seller.dashboard');
     }
+
     return Inertia::render('Seller/Landing');
 })->name('seller.landing');
 
@@ -218,6 +225,7 @@ Route::get('/courier', function () {
     if (auth()->check() && auth()->user()->isCourier()) {
         return redirect()->route('courier.deliveries');
     }
+
     return app(AuthenticatedSessionController::class)->createCourier();
 })->name('courier.landing');
 
@@ -225,15 +233,15 @@ Route::get('/logistics', function () {
     if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
         return redirect()->route('hub.index');
     }
+
     return redirect()->route('logistics.register');
 })->name('logistics.landing');
-
-
 
 Route::get('/admin', function () {
     if (auth()->check() && auth()->user()->isAdmin()) {
         return redirect()->route('admin.dashboard');
     }
+
     return app(AuthenticatedSessionController::class)->createAdmin();
 })->name('admin.landing');
 
@@ -262,12 +270,12 @@ Route::post('/track/{tracking_number}/action', [PublicTrackingController::class,
 */
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
-    Route::get('/home', fn() => redirect()->route('marketplace'));
+    Route::get('/home', fn () => redirect()->route('marketplace'));
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
     Route::get('/cart', [CartController::class, 'index'])->name('cart');
-    
+
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
         Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
@@ -318,7 +326,8 @@ Route::middleware('auth')->group(function () {
         if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
             return redirect('/pending-approval');
         }
-        return redirect()->intended(match($user->role) {
+
+        return redirect()->intended(match ($user->role) {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
             'courier' => route('courier.deliveries'),
@@ -398,6 +407,7 @@ Route::middleware(['auth', 'role:courier'])->prefix('courier')->name('courier.')
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
     Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
     Route::get('/messages', [CourierDeliveryController::class, 'messages'])->name('messages');
+    Route::post('/messages/send', [CourierDeliveryController::class, 'sendMessage'])->name('messages.send');
     Route::get('/profile', [CourierDeliveryController::class, 'profile'])->name('profile');
     Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
 });
@@ -426,17 +436,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 |--------------------------------------------------------------------------
 */
 Route::prefix('hub')->name('hub.')->group(function () {
-    Route::get('/', function (\Illuminate\Http\Request $request) {
+    Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
             if ($user->status === 'pending_approval' || $user->kyc_status === 'pending_approval' || $user->kyc_status === 'rejected') {
                 return redirect()->route('kyc.pending');
             }
             if (! $user->isLogistics() && ! $user->isAdmin()) {
-                abort(403, 'Unauthorized access for your account role (' . $user->role . ').');
+                abort(403, 'Unauthorized access for your account role ('.$user->role.').');
             }
+
             return app(LogisticsHubWorkstationController::class)->index($request);
         }
+
         return app(AuthenticatedSessionController::class)->createHub();
     })->name('index');
 

@@ -384,7 +384,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Courier/Deliveries')
-                ->has('availableJobs', 0)
+                ->has('queues.availablePickups', 0)
             );
 
         $this->actingAs($foreignRider)->post(route('courier.claim', $delivery))

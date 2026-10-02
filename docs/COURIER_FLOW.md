@@ -4,7 +4,7 @@ Pickup and delivery riders are phases of the same approved `courier` account. A 
 
 ## 1. Registration and Availability
 
-Courier submits identity, license, vehicle, and required ownership/registration documents. Approval is required before portal access. A rider must be active, approved, and available to claim or receive work.
+Courier submits identity, license, vehicle, and required ownership/registration documents. Approval is required before portal access. A rider must be active, approved, and available to claim or receive work. A rider may hold several pickup assignments in one route batch, subject to the configured active-pickup capacity; each parcel still has exactly one pickup custodian.
 
 ## 2. Pickup-Rider Phase
 
@@ -20,7 +20,7 @@ Seller marks READY_FOR_PICKUP
 -> Pickup assignment complete
 ```
 
-The pickup rider cannot move the parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. The pickup assignment ends when the assigned Origin Bayan Hub scans the parcel inbound. The hub controls all facility custody after intake.
+The pickup rider may claim multiple eligible jobs from the assigned Origin Bayan Hub until the active-pickup capacity is reached. An optional pickup note is sent to the seller's delivery-linked Messages thread only after the pickup is confirmed. The rider cannot move a parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. Each pickup assignment ends only when its assigned Origin Bayan Hub scans that parcel inbound. The hub controls all facility custody after intake.
 
 ## 3. Delivery-Rider Phase
 

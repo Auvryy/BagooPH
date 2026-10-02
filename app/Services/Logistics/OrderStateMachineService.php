@@ -2,6 +2,7 @@
 
 namespace App\Services\Logistics;
 
+use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
@@ -211,7 +212,9 @@ class OrderStateMachineService
 
         if ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER) {
             $rider = User::with('courierProfile')->find($metadata['rider_id']);
-            $profile = $rider?->courierProfile;
+            $profile = $rider
+                ? CourierProfile::where('user_id', $rider->id)->lockForUpdate()->first()
+                : null;
             $barangay = trim((string) $delivery->order?->destination_barangay);
             if (
                 ! $rider
@@ -224,6 +227,10 @@ class OrderStateMachineService
                 || ($profile->assigned_barangay && $barangay !== '' && strcasecmp($profile->assigned_barangay, $barangay) !== 0)
             ) {
                 throw new DomainException('The selected rider is not eligible for this company, hub, and barangay.');
+            }
+
+            if (Delivery::riderHasActiveWork($rider->id, $delivery->id)) {
+                throw new DomainException('The selected rider already has active courier work.');
             }
         }
     }

@@ -47,6 +47,7 @@ Product settlement is not released merely because a rider marks the parcel deliv
 
 - New order requiring review.
 - Pickup rider claim and rider details.
+- Pickup rider note, when supplied at confirmed pickup, in the delivery-linked Messages thread.
 - Successful pickup and tracking link.
 - Delivery failure when seller action may become necessary.
 - Return-to-sender started and ready for seller receipt.

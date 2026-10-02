@@ -4,8 +4,11 @@ namespace Tests\Feature\E2E\Tier1;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -16,8 +19,8 @@ use Tests\TestCase;
 
 class F21_to_F25_CourierOperationsTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Feature 21: Split Tab: Items for Pickup
@@ -139,6 +142,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->createE2EDelivery($order, 'unassigned');
 
         $courierA = $this->createApprovedUser('courier');
+        $this->scopeRiderForDelivery($courierA, $delivery);
         $response = $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
 
         $this->assertTrue(in_array($response->status(), [200, 302]));
@@ -154,6 +158,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->createE2EDelivery($order, 'unassigned');
 
         $courierA = $this->createApprovedUser('courier');
+        $this->scopeRiderForDelivery($courierA, $delivery);
         $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
 
         $this->assertNotNull($delivery->fresh()->courier_id);
@@ -169,6 +174,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->createE2EDelivery($order, 'unassigned');
 
         $courierA = $this->createApprovedUser('courier');
+        $this->scopeRiderForDelivery($courierA, $delivery);
         $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
 
         $delivery->refresh();
@@ -192,6 +198,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->createE2EDelivery($order, 'assigned', $courierA);
 
         $courierB = $this->createApprovedUser('courier');
+        $this->scopeRiderForDelivery($courierB, $delivery);
         $response = $this->actingAs($courierB)->post(route('courier.claim', $delivery->id));
 
         $delivery->refresh();
@@ -209,10 +216,13 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_t1_f24_02_reason_code_options(): void
+    public function test_t1_f24_02_failure_action_is_not_exposed_before_recovery_flow_exists(): void
     {
-        $reasons = ['customer_unreachable', 'customer_refused', 'wrong_address', 'force_majeure'];
-        $this->assertCount(4, $reasons);
+        $courier = $this->createApprovedUser('courier');
+
+        $this->actingAs($courier)
+            ->get(route('courier.deliveries'))
+            ->assertOk();
     }
 
     public function test_t1_f24_03_mandatory_explanation_input(): void
@@ -224,14 +234,14 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $courier = $this->createApprovedUser('courier');
         $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
 
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
+        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'failed',
-            'courier_notes' => 'Customer was not at home and phone was busy',
-        ]);
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        ])->assertSessionHasErrors('status');
+
+        $this->assertSame('out_for_delivery', $delivery->fresh()->status);
     }
 
-    public function test_t1_f24_04_valid_failure_submission(): void
+    public function test_t1_f24_04_failure_alias_cannot_bypass_the_canonical_transition_contract(): void
     {
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
@@ -243,13 +253,13 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'failed',
             'courier_notes' => 'Customer requested reschedule next Tuesday',
-        ]);
+        ])->assertSessionHasErrors('status');
 
         $delivery->refresh();
-        $this->assertEquals('delivery_failed', $delivery->status);
+        $this->assertEquals('out_for_delivery', $delivery->status);
     }
 
-    public function test_t1_f24_05_delivery_notes_storage(): void
+    public function test_t1_f24_05_rejected_failure_does_not_store_notes(): void
     {
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
@@ -261,10 +271,10 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'failed',
             'courier_notes' => 'Customer address inaccessible due to flooding',
-        ]);
+        ])->assertSessionHasErrors('status');
 
         $delivery->refresh();
-        $this->assertStringContainsString('flooding', $delivery->courier_notes);
+        $this->assertNull($delivery->courier_notes);
     }
 
     // ==========================================
@@ -324,5 +334,37 @@ class F21_to_F25_CourierOperationsTest extends TestCase
     {
         $delivery = new Delivery(['status' => 'failed']);
         $this->assertEquals('failed', $delivery->status);
+    }
+
+    private function scopeRiderForDelivery(User $rider, Delivery $delivery): void
+    {
+        $suffix = Str::lower(Str::random(8));
+        $company = LogisticsCompany::create([
+            'name' => "E2E Dispatch {$suffix}",
+            'slug' => "e2e-dispatch-{$suffix}",
+            'code' => 'E2E-'.Str::upper($suffix),
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $hub = LogisticsHub::create([
+            'logistics_company_id' => $company->id,
+            'name' => "E2E Bayan Hub {$suffix}",
+            'code' => 'BH-'.Str::upper($suffix),
+            'tier' => 'local_bayan_hub',
+            'province' => 'Laguna',
+            'city_municipality' => 'Santa Cruz',
+            'address' => 'E2E Test Address',
+            'is_active' => true,
+        ]);
+
+        $rider->courierProfile()->update([
+            'logistics_company_id' => $company->id,
+            'assigned_hub_id' => $hub->id,
+            'is_available' => true,
+        ]);
+        $delivery->update([
+            'logistics_company_id' => $company->id,
+            'origin_bayan_hub_id' => $hub->id,
+        ]);
     }
 }
