@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'smtp'),
 
     /*
     |--------------------------------------------------------------------------
@@ -84,7 +84,6 @@ return [
             'transport' => 'failover',
             'mailers' => [
                 'smtp',
-                'log',
             ],
             'retry_after' => 60,
         ],

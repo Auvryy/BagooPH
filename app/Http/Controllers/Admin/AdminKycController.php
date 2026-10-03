@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +14,7 @@ class AdminKycController extends Controller
 {
     public function index(Request $request): Response
     {
+        abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
         $status = $request->input('status', 'pending_approval');
         $role = $request->input('role', 'all');
         $search = $request->input('search');
@@ -30,12 +32,13 @@ class AdminKycController extends Controller
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
         $applicants = $query->latest('kyc_submitted_at')->paginate(15)->withQueryString();
+        $applicants->through(fn (User $user) => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)]);
 
         $stats = [
             'pending_count' => User::where('kyc_status', 'pending_approval')->count(),
@@ -61,6 +64,7 @@ class AdminKycController extends Controller
 
     public function approve(Request $request, User $user): RedirectResponse
     {
+        abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
         $user->update([
             'kyc_status' => 'approved',
             'status' => 'active',
@@ -91,6 +95,7 @@ class AdminKycController extends Controller
 
     public function reject(Request $request, User $user): RedirectResponse
     {
+        abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
         $validated = $request->validate([
             'reason' => 'required|string|min:5|max:1000',
         ]);

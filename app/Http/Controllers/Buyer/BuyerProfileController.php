@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +40,7 @@ class BuyerProfileController extends Controller
             'balance' => 5000.00,
             'currency' => 'PHP',
             'status' => 'Active',
-            'account_number' => 'BG-WLT-' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT),
+            'account_number' => 'BG-WLT-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
             'recent_transactions' => [
                 ['id' => 'tx-1', 'title' => 'Top-up via Sandbox Simulation', 'amount' => 5000.00, 'type' => 'credit', 'date' => 'Today'],
                 ['id' => 'tx-2', 'title' => 'Order Payment #ORD-8821', 'amount' => -1250.00, 'type' => 'debit', 'date' => 'Yesterday'],
@@ -54,7 +55,7 @@ class BuyerProfileController extends Controller
         $initialTab = $request->query('tab', 'orders');
 
         return Inertia::render('Buyer/Profile', [
-            'user' => $user,
+            'user' => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)],
             'addresses' => $addresses,
             'wallet' => $wallet,
             'orders' => $orders,
@@ -104,7 +105,7 @@ class BuyerProfileController extends Controller
                 }
 
                 $path = $uploadedFile->store('avatars', 'public');
-                $user->avatar = '/storage/' . $path;
+                $user->avatar = '/storage/'.$path;
             }
         }
 

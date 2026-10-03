@@ -24,6 +24,7 @@ Use this map before reading or changing project documentation. A document's auth
 ## Supporting References
 
 - `ARCHITECTURE.md`, `PROJECT_PLAN.md`, and `MASTER_LOGISTICS_SPECIFICATION.md` explain architecture and context but cannot override normative flow contracts.
+- `VERIFICATION_DOCUMENT_SECURITY.md` explains private document deployment, migration, and secret-mail configuration.
 - `SCHEMA.md` is supporting context only. Migrations and models describe the current executable schema; planned data changes belong in the roadmap until implemented.
 
 ## Historical and Original Sources

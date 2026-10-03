@@ -382,6 +382,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     public function test_resubmit_rejects_disallowed_file_types(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -405,6 +406,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     public function test_resubmit_rejects_oversized_files(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -428,6 +430,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     public function test_resubmit_updates_shop_business_permit_and_resets_feedback(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -647,11 +650,11 @@ class Milestone1AdversarialSecurityTest extends TestCase
             "' OR '1'='1",
             "'; DROP TABLE users; --",
             "%' AND (SELECT 1 FROM pg_sleep(0))='1",
-            "<script>alert(1)</script>",
+            '<script>alert(1)</script>',
         ];
 
         foreach ($sqliPayloads as $payload) {
-            $response = $this->actingAs($admin)->get('/admin/kyc?search=' . urlencode($payload) . '&status=all&role=all');
+            $response = $this->actingAs($admin)->get('/admin/kyc?search='.urlencode($payload).'&status=all&role=all');
             $response->assertStatus(200);
         }
     }
@@ -802,6 +805,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     public function test_courier_resubmission_updates_driver_license_and_or_cr_paths(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $courier = User::factory()->create([
             'role' => 'courier',

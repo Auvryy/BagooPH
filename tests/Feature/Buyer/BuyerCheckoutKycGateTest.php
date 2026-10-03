@@ -101,6 +101,7 @@ class BuyerCheckoutKycGateTest extends TestCase
     public function test_buyer_can_upload_id_document_at_checkout_and_transitions_to_pending_approval(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -122,7 +123,7 @@ class BuyerCheckoutKycGateTest extends TestCase
         $this->assertEquals('pending_approval', $buyer->kyc_status);
         $this->assertNotNull($buyer->id_document_path);
         $this->assertNotNull($buyer->kyc_submitted_at);
-        Storage::disk('public')->assertExists(str_replace('/storage/', '', $buyer->id_document_path));
+        Storage::disk('local')->assertExists(str_replace('/storage/', '', $buyer->id_document_path));
     }
 
     public function test_pending_buyer_cannot_place_order_and_is_prompted_to_wait(): void

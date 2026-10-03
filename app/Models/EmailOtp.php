@@ -26,6 +26,8 @@ class EmailOtp extends Model
         'attempts' => 'integer',
     ];
 
+    protected $hidden = ['code_hash', 'token'];
+
     /**
      * Check if the OTP is currently active and eligible for verification.
      */

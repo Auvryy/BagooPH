@@ -53,11 +53,13 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
         business_permit: File | null;
         driver_license: File | null;
         or_cr_document: File | null;
+        franchise_document: File | null;
     }>({
         id_document: null,
         business_permit: null,
         driver_license: null,
         or_cr_document: null,
+        franchise_document: null,
     });
 
     const handleResubmit: FormEventHandler = (e) => {
@@ -306,7 +308,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                         </div>
 
                         {/* Seller Permit Re-upload */}
-                        {user.role === 'seller' && (
+                        {(user.role === 'seller' || user.role === 'logistics') && (
                             <div>
                                 <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                                     Updated Business Permit / DTI Certificate
@@ -352,6 +354,22 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                     </div>
                                 )}
                                 <InputError message={errors.business_permit} className="mt-1" />
+                            </div>
+                        )}
+
+                        {user.role === 'logistics' && (
+                            <div>
+                                <label htmlFor="franchise-document" className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                                    Updated Franchise Certificate
+                                </label>
+                                <input
+                                    id="franchise-document"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                                    onChange={(event) => setData('franchise_document', event.target.files?.[0] ?? null)}
+                                    className="w-full rounded-xs border border-slate-300 p-2 text-xs font-sans"
+                                />
+                                <InputError message={errors.franchise_document} className="mt-1" />
                             </div>
                         )}
 

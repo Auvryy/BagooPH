@@ -64,8 +64,9 @@ class OtpService
             'attempts' => 0,
         ]);
 
-        // 6. Send branded HTML email via configured mailer (Resend SMTP)
+        // Dispatch through a delivery transport that does not log secret message contents.
         try {
+            app(SecretMailService::class)->assertSafeTransport();
             Mail::to($normalizedEmail)->send(new OtpVerificationMail($code, $purpose));
         } catch (\Throwable $e) {
             $otp->delete();

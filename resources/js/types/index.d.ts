@@ -47,6 +47,7 @@ export interface User {
     business_permit_path?: string | null;
     driver_license_path?: string | null;
     or_cr_path?: string | null;
+    franchise_document_path?: string | null;
     kyc_feedback?: string | null;
     kyc_submitted_at?: string | null;
     kyc_reviewed_at?: string | null;

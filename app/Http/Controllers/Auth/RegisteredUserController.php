@@ -7,11 +7,15 @@ use App\Models\CourierProfile;
 use App\Models\LogisticsCompany;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\OtpService;
+use App\Services\VerificationDocumentService;
+use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -61,8 +65,8 @@ class RegisteredUserController extends Controller
         // Merge composite name if first_name or last_name is provided without a full name
         if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
             $compositeName = trim(
-                ($request->input('first_name', '') . ' ' .
-                ($request->input('middle_name') ? $request->input('middle_name') . ' ' : '') .
+                ($request->input('first_name', '').' '.
+                ($request->input('middle_name') ? $request->input('middle_name').' ' : '').
                 $request->input('last_name', ''))
             );
             $request->merge(['name' => $compositeName]);
@@ -122,26 +126,12 @@ class RegisteredUserController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Upload KYC documents to public storage disk
-        $idPath = $request->hasFile('id_document')
-            ? '/storage/' . $request->file('id_document')->store('kyc_documents', 'public')
-            : null;
-
-        $permitPath = $request->hasFile('business_permit')
-            ? '/storage/' . $request->file('business_permit')->store('kyc_documents', 'public')
-            : null;
-
-        $licensePath = $request->hasFile('driver_license')
-            ? '/storage/' . $request->file('driver_license')->store('kyc_documents', 'public')
-            : null;
-
-        $orCrPath = $request->hasFile('or_cr_document')
-            ? '/storage/' . $request->file('or_cr_document')->store('kyc_documents', 'public')
-            : null;
-
-        $franchisePath = $request->hasFile('franchise_document')
-            ? '/storage/' . $request->file('franchise_document')->store('kyc_documents', 'public')
-            : null;
+        $paths = app(VerificationDocumentService::class)->storeUploads($validated);
+        $idPath = $paths['id_document_path'] ?? null;
+        $permitPath = $paths['business_permit_path'] ?? null;
+        $licensePath = $paths['driver_license_path'] ?? null;
+        $orCrPath = $paths['or_cr_path'] ?? null;
+        $franchisePath = $paths['franchise_document_path'] ?? null;
 
         $isBuyer = ($role === 'buyer');
 
@@ -150,7 +140,7 @@ class RegisteredUserController extends Controller
         $age = $validated['age'] ?? null;
         if ($birthday && ! $age) {
             try {
-                $age = \Carbon\Carbon::parse($birthday)->age;
+                $age = Carbon::parse($birthday)->age;
             } catch (\Exception $e) {
                 $age = null;
             }
@@ -160,7 +150,7 @@ class RegisteredUserController extends Controller
         $otpToken = $request->input('otp_token');
         $emailVerifiedAt = null;
         if ($otpToken) {
-            $otpService = app(\App\Services\OtpService::class);
+            $otpService = app(OtpService::class);
             if ($otpService->validateAndBurnToken($validated['email'], $otpToken, 'registration')) {
                 $emailVerifiedAt = now();
             }
@@ -201,11 +191,10 @@ class RegisteredUserController extends Controller
             Shop::create([
                 'user_id' => $user->id,
                 'name' => $shopName,
-                'slug' => Str::slug($shopName . '-' . $user->id),
+                'slug' => Str::slug($shopName.'-'.$user->id),
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
                 'city' => $validated['city'] ?? $validated['municipality'] ?? null,
-                'business_permit_path' => $permitPath,
                 'status' => 'pending',
             ]);
         } elseif ($role === 'courier') {
@@ -228,18 +217,18 @@ class RegisteredUserController extends Controller
             $code = $baseCode;
             $counter = 1;
             while (LogisticsCompany::where('code', $code)->exists()) {
-                $code = $baseCode . $counter;
+                $code = $baseCode.$counter;
                 $counter++;
             }
 
             LogisticsCompany::create([
                 'user_id' => $user->id,
                 'name' => $companyName,
-                'slug' => Str::slug($companyName . '-' . $user->id),
+                'slug' => Str::slug($companyName.'-'.$user->id),
                 'code' => $code,
                 'contact_email' => $validated['email'],
                 'contact_phone' => $validated['phone'] ?? null,
-                'address' => trim(($validated['address'] ?? '') . ', ' . ($validated['city'] ?? '')),
+                'address' => trim(($validated['address'] ?? '').', '.($validated['city'] ?? '')),
                 'status' => 'pending',
                 'is_active' => false,
                 'accreditation_details' => [
@@ -253,13 +242,29 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        event(new Registered($user));
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to dispatch registration verification mail.', [
+                'user_id' => $user->id,
+                'exception' => $exception::class,
+            ]);
+            if (! $isBuyer) {
+                Auth::login($user);
+            }
+
+            return redirect($isBuyer ? route('login') : '/pending-approval')->withErrors([
+                'email' => 'Your account was created, but we could not send the verification email. Please sign in and request it again.',
+            ]);
+        }
 
         if ($isBuyer) {
             if ($emailVerifiedAt) {
                 Auth::login($user);
+
                 return redirect()->route('buyer.index')->with('success', 'Registration successful! Welcome to BagooPH.');
             }
+
             return redirect()->route('login')->with('status', 'Registration successful! Please sign in to your new account.');
         }
 
@@ -300,10 +305,7 @@ class RegisteredUserController extends Controller
                 'kyc_feedback' => $user->kyc_feedback,
                 'kyc_submitted_at' => $user->kyc_submitted_at ? $user->kyc_submitted_at->toIso8601String() : null,
                 'kyc_reviewed_at' => $user->kyc_reviewed_at ? $user->kyc_reviewed_at->toIso8601String() : null,
-                'id_document_path' => $user->id_document_path,
-                'business_permit_path' => $user->business_permit_path,
-                'driver_license_path' => $user->driver_license_path,
-                'or_cr_path' => $user->or_cr_path,
+                ...app(VerificationDocumentService::class)->links($user),
             ],
             'shop' => $user->shop,
             'courierProfile' => $user->courierProfile,
@@ -323,9 +325,10 @@ class RegisteredUserController extends Controller
             'business_permit' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
             'driver_license' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
             'or_cr_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+            'franchise_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
 
-        $request->validate($rules);
+        $validated = $request->validate($rules);
 
         $updates = [
             'kyc_status' => 'pending_approval',
@@ -334,20 +337,16 @@ class RegisteredUserController extends Controller
             'kyc_submitted_at' => now(),
         ];
 
-        if ($request->hasFile('id_document')) {
-            $updates['id_document_path'] = '/storage/' . $request->file('id_document')->store('kyc_documents', 'public');
-        }
-        if ($request->hasFile('business_permit')) {
-            $updates['business_permit_path'] = '/storage/' . $request->file('business_permit')->store('kyc_documents', 'public');
-            if ($user->shop) {
-                $user->shop->update(['business_permit_path' => $updates['business_permit_path']]);
+        $paths = app(VerificationDocumentService::class)->storeUploads($validated);
+        $updates += array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
+        if ($user->isLogistics() && $user->logisticsCompany) {
+            $accreditation = $user->logisticsCompany->accreditation_details ?? [];
+            foreach (['business_permit_path', 'franchise_document_path'] as $field) {
+                if (isset($paths[$field])) {
+                    $accreditation[$field] = $paths[$field];
+                }
             }
-        }
-        if ($request->hasFile('driver_license')) {
-            $updates['driver_license_path'] = '/storage/' . $request->file('driver_license')->store('kyc_documents', 'public');
-        }
-        if ($request->hasFile('or_cr_document')) {
-            $updates['or_cr_path'] = '/storage/' . $request->file('or_cr_document')->store('kyc_documents', 'public');
+            $user->logisticsCompany->update(['accreditation_details' => $accreditation]);
         }
 
         $user->update($updates);
