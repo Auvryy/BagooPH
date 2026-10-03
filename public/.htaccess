@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Verification documents are available only through authenticated application routes.
+    RewriteRule ^storage/kyc_documents(?:/|$) - [R=404,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

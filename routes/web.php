@@ -30,6 +30,7 @@ use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\VerificationDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
@@ -44,6 +45,11 @@ $baseDomains = array_unique(array_filter([
     'bagooph.shop',
     'localhost',
 ]));
+
+Route::middleware('auth')->get('/verification-documents/{user}/{document}', [VerificationDocumentController::class, 'show'])
+    ->name('verification-documents.show');
+
+Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
 
 $registerSellerRoutes = function () {
     Route::get('/', function () {

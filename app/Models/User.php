@@ -51,6 +51,10 @@ class User extends Authenticatable implements MustVerifyEmailContract
     protected $hidden = [
         'password',
         'remember_token',
+        'id_document_path',
+        'business_permit_path',
+        'driver_license_path',
+        'or_cr_path',
     ];
 
     protected function casts(): array

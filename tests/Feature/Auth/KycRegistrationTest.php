@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\LogisticsCompany;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -15,6 +16,7 @@ class KycRegistrationTest extends TestCase
     public function test_seller_registration_with_documents_creates_pending_user_and_shop(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $idFile = UploadedFile::fake()->create('seller_id.jpg', 500, 'image/jpeg');
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
@@ -53,6 +55,7 @@ class KycRegistrationTest extends TestCase
     public function test_courier_registration_creates_pending_user_and_courier_profile(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $idFile = UploadedFile::fake()->create('courier_id.jpg', 500, 'image/jpeg');
         $licenseFile = UploadedFile::fake()->create('driver_license.jpg', 500, 'image/jpeg');
@@ -121,6 +124,7 @@ class KycRegistrationTest extends TestCase
     public function test_buyer_registration_with_optional_id_sets_pending_and_redirects_to_login(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $idFile = UploadedFile::fake()->create('buyer_id.jpg', 500, 'image/jpeg');
 
         $response = $this->post('/register', [
@@ -168,6 +172,7 @@ class KycRegistrationTest extends TestCase
     public function test_logistics_registration_with_documents_creates_pending_user_and_logistics_company(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
         $franchiseFile = UploadedFile::fake()->create('franchise_cert.pdf', 1000, 'application/pdf');
@@ -221,7 +226,7 @@ class KycRegistrationTest extends TestCase
             'kyc_status' => 'pending_approval',
         ]);
 
-        $company = \App\Models\LogisticsCompany::create([
+        $company = LogisticsCompany::create([
             'user_id' => $applicant->id,
             'name' => 'Pacific Express Cargo',
             'slug' => 'pacific-express-cargo',

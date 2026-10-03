@@ -55,7 +55,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
     // Inspect Document Modal State
     const [inspectingApplicant, setInspectingApplicant] = useState<User | null>(null);
-    const [activeDocTab, setActiveDocTab] = useState<'id' | 'permit' | 'license' | 'orcr'>('id');
+    const [activeDocTab, setActiveDocTab] = useState<'id' | 'permit' | 'license' | 'orcr' | 'franchise'>('id');
 
     // Reject Modal State
     const [rejectingApplicant, setRejectingApplicant] = useState<User | null>(null);
@@ -143,7 +143,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     };
 
     const getAvailableDocs = (applicant: User) => {
-        const docs: { key: 'id' | 'permit' | 'license' | 'orcr'; label: string; path: string | null | undefined }[] = [
+        const docs: { key: 'id' | 'permit' | 'license' | 'orcr' | 'franchise'; label: string; path: string | null | undefined }[] = [
             { key: 'id', label: 'Gov ID', path: applicant.id_document_path },
         ];
 
@@ -159,15 +159,20 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
             docs.push({ key: 'orcr', label: 'Vehicle OR/CR', path: applicant.or_cr_path });
         }
 
+        if (applicant.role === 'logistics' || applicant.franchise_document_path) {
+            docs.push({ key: 'franchise', label: 'Franchise Certificate', path: applicant.franchise_document_path });
+        }
+
         return docs;
     };
 
-    const getDocPath = (applicant: User, type: 'id' | 'permit' | 'license' | 'orcr') => {
+    const getDocPath = (applicant: User, type: 'id' | 'permit' | 'license' | 'orcr' | 'franchise') => {
         switch (type) {
             case 'id': return applicant.id_document_path;
             case 'permit': return applicant.business_permit_path;
             case 'license': return applicant.driver_license_path;
             case 'orcr': return applicant.or_cr_path;
+            case 'franchise': return applicant.franchise_document_path;
         }
     };
 
@@ -189,7 +194,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                     <FileText className="w-16 h-16 text-rose-500" />
                     <div>
                         <p className="font-bold text-sm text-slate-800">PDF Document Uploaded</p>
-                        <p className="font-sans text-xs text-slate-500 truncate max-w-md">{path}</p>
+                        <p className="font-sans text-xs text-slate-500">Access is restricted to the applicant and authorized reviewers.</p>
                     </div>
                     <a
                         href={path}
@@ -622,59 +627,20 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
                         {/* Modal Document Tabs */}
                         <div className="flex items-center gap-2 p-3 bg-slate-100 border-b border-slate-200 shrink-0 text-xs font-semibold">
-                            <button
-                                onClick={() => setActiveDocTab('id')}
-                                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                                    activeDocTab === 'id' 
-                                        ? 'bg-white text-slate-900 shadow-xs border border-slate-300' 
-                                        : 'text-slate-600 hover:text-slate-900'
-                                }`}
-                            >
-                                <FileText className="w-3.5 h-3.5 text-[#E00D42]" />
-                                <span>Government ID</span>
-                            </button>
-
-                            {(inspectingApplicant.role === 'seller' || inspectingApplicant.business_permit_path) && (
+                            {getAvailableDocs(inspectingApplicant).map((document) => (
                                 <button
-                                    onClick={() => setActiveDocTab('permit')}
-                                    className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                                        activeDocTab === 'permit' 
-                                            ? 'bg-white text-slate-900 shadow-xs border border-slate-300' 
+                                    key={document.key}
+                                    onClick={() => setActiveDocTab(document.key)}
+                                    className={`px-3 py-1.5 rounded-xs border border-slate-300 transition flex items-center gap-1.5 ${
+                                        activeDocTab === document.key
+                                            ? 'bg-white text-slate-900 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Store className="w-3.5 h-3.5 text-purple-600" />
-                                    <span>Business Permit</span>
+                                    <FileText className="w-3.5 h-3.5 text-[#E00D42]" />
+                                    <span>{document.label}</span>
                                 </button>
-                            )}
-
-                            {(inspectingApplicant.role === 'courier' || inspectingApplicant.driver_license_path) && (
-                                <button
-                                    onClick={() => setActiveDocTab('license')}
-                                    className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                                        activeDocTab === 'license' 
-                                            ? 'bg-white text-slate-900 shadow-xs border border-slate-300' 
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Truck className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>Driver's License</span>
-                                </button>
-                            )}
-
-                            {(inspectingApplicant.role === 'courier' || inspectingApplicant.or_cr_path) && (
-                                <button
-                                    onClick={() => setActiveDocTab('orcr')}
-                                    className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                                        activeDocTab === 'orcr' 
-                                            ? 'bg-white text-slate-900 shadow-xs border border-slate-300' 
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Vehicle OR/CR</span>
-                                </button>
-                            )}
+                            ))}
                         </div>
 
                         {/* Modal Body: Document Preview */}

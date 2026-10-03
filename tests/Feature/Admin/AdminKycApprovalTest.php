@@ -144,6 +144,7 @@ class AdminKycApprovalTest extends TestCase
     public function test_rejected_applicant_can_resubmit_documents(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $seller = User::factory()->create([
             'role' => 'seller',

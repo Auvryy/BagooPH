@@ -61,6 +61,7 @@ class BuyerIdVerificationPromptTest extends TestCase
     public function test_authenticated_buyer_can_upload_valid_id_document(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -83,12 +84,13 @@ class BuyerIdVerificationPromptTest extends TestCase
         $this->assertNotNull($buyer->kyc_submitted_at);
 
         $storedPath = str_replace('/storage/', '', $buyer->id_document_path);
-        Storage::disk('public')->assertExists($storedPath);
+        Storage::disk('local')->assertExists($storedPath);
     }
 
     public function test_id_upload_rejects_invalid_file_type(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $buyer = User::factory()->create([
             'role' => 'buyer',

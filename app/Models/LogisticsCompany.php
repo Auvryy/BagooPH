@@ -30,6 +30,16 @@ class LogisticsCompany extends Model
         'is_active' => 'boolean',
     ];
 
+    public function attributesToArray(): array
+    {
+        $attributes = parent::attributesToArray();
+        if (isset($attributes['accreditation_details'])) {
+            unset($attributes['accreditation_details']['franchise_document_path'], $attributes['accreditation_details']['business_permit_path']);
+        }
+
+        return $attributes;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

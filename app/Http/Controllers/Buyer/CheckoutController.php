@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Voucher;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutOrderService;
+use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -115,12 +116,12 @@ class CheckoutController extends Controller
 
     public function uploadKycDocument(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ]);
 
         $user = $request->user();
-        $idPath = '/storage/'.$request->file('id_document')->store('kyc_documents', 'public');
+        $idPath = app(VerificationDocumentService::class)->storeUploads($validated)['id_document_path'];
 
         $user->update([
             'id_document_path' => $idPath,

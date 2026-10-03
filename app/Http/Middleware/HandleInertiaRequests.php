@@ -8,6 +8,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Message;
 use App\Models\Shop;
+use App\Services\VerificationDocumentService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -66,10 +67,7 @@ class HandleInertiaRequests extends Middleware
                     'kyc_feedback' => $user->kyc_feedback,
                     'kyc_submitted_at' => $user->kyc_submitted_at ? $user->kyc_submitted_at->toIso8601String() : null,
                     'kyc_reviewed_at' => $user->kyc_reviewed_at ? $user->kyc_reviewed_at->toIso8601String() : null,
-                    'id_document_path' => $user->id_document_path,
-                    'business_permit_path' => $user->business_permit_path,
-                    'driver_license_path' => $user->driver_license_path,
-                    'or_cr_path' => $user->or_cr_path,
+                    ...app(VerificationDocumentService::class)->links($user),
                     'shop' => ($user && $user->role === 'seller') ? (function () use ($user, $request) {
                         $activeId = $request->session()->get('active_seller_shop_id');
                         $shop = null;
