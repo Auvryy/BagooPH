@@ -140,6 +140,31 @@ Verification: 419 focused tests passed with 2,967 assertions using isolated SQLi
 
 Deployment and recovery steps are in `VERIFICATION_DOCUMENT_SECURITY.md`. Phase 0 remains partial until the other required controls pass their acceptance paths.
 
+### Rider Frontend Design Direction: October 3, 2026
+
+**State: Design documented; implementation pending.** The user requested a more playful BagooPH presentation, kept the crimson identity, and chose design documents first on `frontend/rider-mobile-ux`. `STYLE_GUIDE.md` now defines warm surfaces, visible depth, restrained parcel details, accessible color combinations, and phone-oriented interaction rules. `RIDER_UI_DESIGN.md` defines the five presentation concerns: next-task clarity, relevant-stop directions, mobile usability, truthful profile/history, and consistent settings.
+
+This documentation step does not change runtime UI, controllers, routes, schema, approval, custody, or financial behavior, and it does not raise implementation ratings. Apply the new presentation to the rider portal first; other portals adopt it only when their work is explicitly in scope.
+
+The next frontend work should be split into small concerns:
+
+1. Shared courier surfaces, typography, actual assignment context, and mobile navigation.
+2. Task-card hierarchy, current stop/action, honest counts, and accessible evidence/error interactions.
+3. Directions using existing authorized addresses, with explicit missing-data states.
+4. Truthful profile/trip information and mobile message/settings presentation.
+
+Source inspection establishes dependencies that presentation alone cannot complete:
+
+- `CourierDeliveryController::pickupPayload()` and `finalMilePayload()` expose hub name/code but not hub address/coordinates. Reliable hub directions and saved destination pins need an authorized payload extension; do not invent positions or expose buyer data to pickup pools.
+- `Courier/Profile.tsx` uses named contact/password mutations defined for courier subdomains, while the root courier route group lacks matching mutation endpoints. Both portal contexts need verified route consistency.
+- Generic `ProfileController::destroy()` has no active-assignment/custody guard. Controlled closure requires server-side protection; UI confirmation is insufficient.
+- `CourierMessagingService::conversations()` marks returned conversations read on inbox load. Selected-thread acknowledgement and durable update behavior need their own verified contract.
+- Completed-trip queries include delivered final-mile work at the rider's current company/hub. Full historical scope and pickup history need backend work before the UI can claim lifetime records.
+
+Keep these dependencies explicit and preserve the existing Phase 0 requirements. Submitted waybill evidence, failed-attempt/hub-return recovery, persistent lifecycle notifications, and COD ledgers retain their approved phases. Live GPS and route optimization remain deferred.
+
+Documentation verification checks local references, palette contrast calculations, repository-rule consistency, and whitespace. Runtime/mobile acceptance belongs to the later implementation and is not established by this document change.
+
 ## Delivery Phases
 
 Work on one phase at a time. Do not begin a later phase until the current phase has focused tests and its cross-role acceptance path passes.
