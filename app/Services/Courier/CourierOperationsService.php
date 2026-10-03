@@ -5,6 +5,7 @@ namespace App\Services\Courier;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
@@ -15,7 +16,11 @@ class CourierOperationsService
     public function claimPickup(User $rider, Delivery $delivery): Delivery
     {
         return DB::transaction(function () use ($rider, $delivery) {
-            $lockedDelivery = Delivery::with('order')->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+            // Serialize claims with seller cancellation using the same lock order.
+            $orderId = Delivery::whereKey($delivery->id)->value('order_id');
+            $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
+            $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
+            $lockedDelivery->setRelation('order', $lockedOrder);
             $profile = CourierProfile::with(['company', 'hub'])
                 ->where('user_id', $rider->id)
                 ->lockForUpdate()
@@ -87,7 +92,7 @@ class CourierOperationsService
         ?CourierProfile $profile,
         bool $requireAvailability = true
     ): void {
-        if (! $rider->isCourier() || $rider->status !== 'active' || ! $rider->isKycApproved()) {
+        if (! $rider->isEligibleCourier()) {
             throw new DomainException('Only an active and approved rider may perform courier work.');
         }
 

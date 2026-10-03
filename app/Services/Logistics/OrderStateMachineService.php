@@ -8,9 +8,11 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\Order;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class OrderStateMachineService
 {
@@ -79,7 +81,11 @@ class OrderStateMachineService
         array $scanMetadata = []
     ): Delivery {
         return DB::transaction(function () use ($delivery, $targetStatus, $actor, $scanMetadata) {
-            $lockedDelivery = Delivery::with('order')->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+            // Match seller fulfillment/cancellation: lock the order before its parcel.
+            $orderId = Delivery::whereKey($delivery->id)->value('order_id');
+            $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
+            $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
+            $lockedDelivery->setRelation('order', $lockedOrder);
             $targetStatus = strtolower(trim($targetStatus));
             $hub = $this->resolveHub($scanMetadata['hub_id'] ?? null);
 
@@ -97,6 +103,10 @@ class OrderStateMachineService
                 }
             }
 
+            if (in_array($lockedOrder->status, ['cancelled', 'completed', 'returned'], true)) {
+                throw new DomainException('This order is terminal and cannot change parcel custody.');
+            }
+
             $expectedStatus = isset($scanMetadata['expected_status'])
                 ? strtolower(trim((string) $scanMetadata['expected_status']))
                 : null;
@@ -107,6 +117,27 @@ class OrderStateMachineService
             $allowedFrom = self::ALLOWED_FROM[$targetStatus] ?? [];
             if (! in_array($lockedDelivery->status, $allowedFrom, true)) {
                 throw new DomainException("Parcel is {$lockedDelivery->status}; it cannot advance to {$targetStatus}.");
+            }
+
+            $requiredOrderStatus = match ($targetStatus) {
+                self::STATUS_PICKED_UP => self::STATUS_READY_FOR_PICKUP,
+                self::STATUS_OUT_FOR_DELIVERY => self::STATUS_ASSIGNED_TO_RIDER,
+                self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED => self::STATUS_OUT_FOR_DELIVERY,
+                default => null,
+            };
+            if ($requiredOrderStatus && $lockedOrder->status !== $requiredOrderStatus) {
+                throw new DomainException("Order is {$lockedOrder->status}; this scan requires {$requiredOrderStatus}.");
+            }
+
+            if ($targetStatus === self::STATUS_DELIVERED) {
+                $proof = $scanMetadata['proof_image'] ?? null;
+                if (
+                    ! is_string($proof)
+                    || preg_match('/\A\/storage\/delivery-proofs\/[A-Za-z0-9._-]+\z/', $proof) !== 1
+                    || ! Storage::disk('public')->exists(substr($proof, strlen('/storage/')))
+                ) {
+                    throw new DomainException('Upload a proof of delivery image before recording handoff.');
+                }
             }
 
             $previousStatus = $lockedDelivery->status;
@@ -129,13 +160,17 @@ class OrderStateMachineService
                 manifestNumber: $scanMetadata['manifest_number'] ?? null
             );
 
-            return $lockedDelivery->fresh();
+            return $lockedDelivery;
         });
     }
 
     private function assertActiveActor(User $actor): void
     {
-        if ($actor->status !== 'active' || $actor->kyc_status !== 'approved') {
+        $approved = $actor->isCourier()
+            ? $actor->isEligibleCourier()
+            : $actor->status === 'active' && $actor->kyc_status === 'approved';
+
+        if (! $approved) {
             throw new DomainException('Only active and approved accounts may change parcel custody.');
         }
     }
@@ -218,9 +253,7 @@ class OrderStateMachineService
             $barangay = trim((string) $delivery->order?->destination_barangay);
             if (
                 ! $rider
-                || ! $rider->isCourier()
-                || $rider->status !== 'active'
-                || $rider->kyc_status !== 'approved'
+                || ! $rider->isEligibleCourier()
                 || ! $profile?->is_available
                 || $profile->logistics_company_id !== $delivery->logistics_company_id
                 || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id

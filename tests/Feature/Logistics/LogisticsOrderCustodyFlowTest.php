@@ -10,8 +10,12 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
 use Database\Seeders\DatabaseSeeder;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class LogisticsOrderCustodyFlowTest extends TestCase
@@ -204,10 +208,66 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             ->assertJsonPath('prompt.requires_confirmation', false);
     }
 
-    public function test_hub_sorts_then_assigns_before_only_the_selected_rider_can_dispatch(): void
+    public static function courierApprovals(): array
+    {
+        return [['approved'], ['verified']];
+    }
+
+    public static function ineligibleFinalMileAccounts(): array
+    {
+        return [
+            ['courier', 'active', 'pending_approval', false],
+            ['courier', 'active', 'rejected', false],
+            ['courier', 'inactive', 'verified', false],
+            ['courier', 'suspended', 'approved', false],
+            ['admin', 'active', 'approved', false],
+            ['buyer', 'active', 'verified', false],
+            ['courier', 'active', 'verified', true],
+        ];
+    }
+
+    #[DataProvider('ineligibleFinalMileAccounts')]
+    public function test_assignment_rejects_unapproved_accounts_and_out_of_scope_legacy_riders(string $role, string $status, string $approval, bool $wrongHub): void
+    {
+        $operator = User::where('email', 'logistics@bagoo.test')->firstOrFail();
+        $rider = User::where('email', 'rider@bagoo.test')->firstOrFail();
+        $rider->update(['role' => $role, 'status' => $status, 'kyc_status' => $approval]);
+        $hub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
+        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
+        if ($wrongHub) {
+            $rider->courierProfile->update(['assigned_hub_id' => LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail()->id]);
+        }
+        $order = $this->createOrder('sorted', 'Poblacion III');
+        $delivery = Delivery::factory()->create([
+            'order_id' => $order->id, 'logistics_company_id' => $company->id,
+            'destination_bayan_hub_id' => $hub->id, 'current_hub_id' => $hub->id,
+            'delivery_type' => 'doorstep', 'status' => OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+        ]);
+
+        $this->actingAs($operator)->get(route('hub.deliveries'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('eligibleRiders', fn ($riders) => ! collect($riders)->contains('id', $rider->id)));
+        $this->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertStatus(422);
+
+        try {
+            app(OrderStateMachineService::class)->transition($delivery, OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER, $operator, [
+                'hub_id' => $hub->id, 'rider_id' => $rider->id,
+            ]);
+            $this->fail('An ineligible rider must not be assigned through the custody service.');
+        } catch (DomainException $exception) {
+            $this->assertStringContainsString('not eligible', $exception->getMessage());
+        }
+        $this->assertNull($delivery->fresh()->assigned_rider_id);
+        $this->assertSame('sorted', $order->fresh()->status);
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+    }
+
+    #[DataProvider('courierApprovals')]
+    public function test_hub_sorts_then_assigns_before_only_the_selected_rider_can_dispatch(string $approval): void
     {
         $logistics = User::where('email', 'logistics@bagoo.test')->firstOrFail();
         $assignedRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
+        $assignedRider->update(['kyc_status' => $approval]);
         $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
         $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
         $order = $this->createOrder('at_sorting_center', 'Poblacion III');
@@ -229,6 +289,10 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
         $this->assertSame(OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN, $delivery->fresh()->status);
         $this->assertSame('sorted', $order->fresh()->status);
+
+        $this->actingAs($logistics)->get(route('hub.deliveries'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('eligibleRiders', fn ($riders) => collect($riders)->contains('id', $assignedRider->id)));
 
         $this->actingAs($logistics)->postJson(route('hub.assignRider', $delivery), [
             'rider_id' => $assignedRider->id,
@@ -261,6 +325,16 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
         $this->assertSame(OrderStateMachineService::STATUS_OUT_FOR_DELIVERY, $delivery->fresh()->status);
         $this->assertSame('out_for_delivery', $order->fresh()->status);
+
+        Storage::fake('public');
+        $assignedRider->courierProfile->update(['is_available' => false]);
+        $this->actingAs($assignedRider)->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered',
+            'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertSame('delivered', $delivery->fresh()->status);
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame($approval, $assignedRider->fresh()->kyc_status);
     }
 
     public function test_handler_scan_station_cannot_switch_to_another_facility(): void

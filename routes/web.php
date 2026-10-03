@@ -29,7 +29,6 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
-use App\Http\Controllers\Simulation\OrderSimulationController;
 use App\Http\Controllers\SitemapController;
 /*
 |--------------------------------------------------------------------------
@@ -123,7 +122,7 @@ $registerCourierRoutes = function () {
     Route::get('/courier/login', fn () => redirect('/login'));
     Route::get('/courier/register', fn () => redirect('/register'));
 
-    Route::middleware(['auth', 'subdomain.role:courier'])->group(function () {
+    Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () {
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
@@ -195,7 +194,6 @@ $registerAdminRoutes = function () {
         Route::get('/products', [AdminDashboardController::class, 'products']);
         Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
-        Route::post('/logistics/override', [LogisticsHubController::class, 'override']);
         Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
 };
@@ -263,8 +261,7 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 | Universal Parcel Tracking Routes (Public & Role-Aware Operations)
 |--------------------------------------------------------------------------
 */
-Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->name('track.show');
-Route::post('/track/{tracking_number}/action', [PublicTrackingController::class, 'executeAction'])->middleware('auth')->name('track.action');
+Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
 
 /*
 |--------------------------------------------------------------------------
@@ -404,7 +401,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 | Courier Portal Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:courier'])->prefix('courier')->name('courier.')->group(function () {
+Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () {
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
@@ -430,7 +427,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
     Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
-    Route::post('/logistics/override', [LogisticsHubController::class, 'override'])->name('logistics.override');
 });
 
 /*
@@ -469,16 +465,6 @@ Route::prefix('hub')->name('hub.')->group(function () {
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });
-});
-
-/*
-|--------------------------------------------------------------------------
-| Order Progression Simulator Routes
-|--------------------------------------------------------------------------
-*/
-Route::middleware('auth')->prefix('simulator')->name('simulator.')->group(function () {
-    Route::post('/orders/{order}/advance', [OrderSimulationController::class, 'advance'])->name('orders.advance');
-    Route::post('/orders/{order}/reset', [OrderSimulationController::class, 'reset'])->name('orders.reset');
 });
 
 require __DIR__.'/auth.php';

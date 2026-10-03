@@ -9,6 +9,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\OrderStateMachineService;
@@ -566,10 +567,7 @@ class LogisticsHubWorkstationController extends Controller
         $eligibleRiders = CourierProfile::with('user')
             ->when($activeHub, fn ($query) => $query->where('assigned_hub_id', $activeHub->id))
             ->where('is_available', true)
-            ->whereHas('user', fn ($query) => $query
-                ->where('role', 'courier')
-                ->where('status', 'active')
-                ->where('kyc_status', 'approved'))
+            ->whereHas('user', fn ($query) => $query->eligibleCouriers())
             ->get()
             ->map(fn ($profile) => [
                 'id' => $profile->user_id,
@@ -1179,7 +1177,7 @@ class LogisticsHubWorkstationController extends Controller
 
         $rider = User::with('courierProfile')->findOrFail($validated['rider_id']);
 
-        if ($rider->role !== 'courier' || $rider->status !== 'active' || $rider->kyc_status !== 'approved') {
+        if (! $rider->isEligibleCourier()) {
             return $this->operationError($request, 'Selected rider is not an active, approved courier.');
         }
 
@@ -1202,7 +1200,9 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $result = DB::transaction(function () use ($delivery, $rider, $request, $validated) {
-            $lockedDelivery = Delivery::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+            $orderId = Delivery::whereKey($delivery->id)->value('order_id');
+            $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
+            $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedDelivery->delivery_type !== 'doorstep') {
                 return ['error' => 'Self-pickup parcels cannot be assigned to a delivery rider.'];

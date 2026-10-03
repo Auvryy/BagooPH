@@ -51,45 +51,12 @@ interface Props {
 export default function AdminLogistics({ deliveries, couriers, filters, stats }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
-    const [overrideModal, setOverrideModal] = useState(false);
-    const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
-    const [overrideCourierId, setOverrideCourierId] = useState<string>('');
-    const [overrideStatus, setOverrideStatus] = useState<string>('assigned');
-    const [reassigning, setReassigning] = useState(false);
-
     const handleFilterSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(route('admin.logistics'), {
             search: searchTerm || undefined,
             status: statusFilter === 'all' ? undefined : statusFilter,
         }, { preserveState: true });
-    };
-
-    const openOverride = (del: Delivery) => {
-        setSelectedDelivery(del);
-        setOverrideCourierId(del.courier_id ? String(del.courier_id) : (couriers.length > 0 ? String(couriers[0].id) : ''));
-        setOverrideStatus(del.status);
-        setOverrideModal(true);
-    };
-
-    const handleOverrideSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedDelivery || !overrideCourierId) return;
-
-        setReassigning(true);
-        router.post(route('admin.logistics.override'), {
-            delivery_id: selectedDelivery.id,
-            courier_id: overrideCourierId,
-            status: overrideStatus,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setOverrideModal(false);
-                setSelectedDelivery(null);
-                setReassigning(false);
-            },
-            onError: () => setReassigning(false),
-        });
     };
 
     const formatPrice = (val: number) => {
@@ -106,6 +73,11 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
             subtitle="Platform-wide parcel telemetry, fleet dispatch supervision, and revenue split ledger"
         >
             <Head title="Logistics Sorting Hub — Platform Admin" />
+
+            <div className="mb-5 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                Parcel custody changes must be recorded by assigned riders and logistics operators.
+                Platform corrections are currently unavailable.
+            </div>
 
             <div className="space-y-6 font-sans">
                 
@@ -234,7 +206,6 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                     <th className="pb-3 px-4">Recipient Destination</th>
                                     <th className="pb-3 px-4">Assigned Driver</th>
                                     <th className="pb-3 px-4">Status</th>
-                                    <th className="pb-3 pl-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-sans">
@@ -269,15 +240,6 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                                                 {del.status.replace('_', ' ')}
                                             </span>
                                         </td>
-                                        <td className="py-3.5 pl-4 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={() => openOverride(del)}
-                                                className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-bold transition"
-                                            >
-                                                Dispatch Override
-                                            </button>
-                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -285,85 +247,6 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats }:
                     </div>
 
                 </div>
-
-                {/* 4. OVERRIDE RE-DISPATCH MODAL */}
-                {overrideModal && selectedDelivery && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
-                                <h3 className="font-bold text-slate-900 text-sm uppercase">
-                                    Supervisor Dispatch Override
-                                </h3>
-                                <button
-                                    onClick={() => setOverrideModal(false)}
-                                    className="text-slate-400 hover:text-slate-700 font-bold"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleOverrideSubmit} className="space-y-4 text-xs">
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-sans space-y-1">
-                                    <span className="text-[10px] text-slate-400 uppercase">Selected Parcel</span>
-                                    <h4 className="font-bold text-slate-900">#{selectedDelivery.tracking_number}</h4>
-                                    <p className="text-slate-500 text-[10px]">Order #{selectedDelivery.order?.order_number}</p>
-                                </div>
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-sans">
-                                        Assign to Fleet Rider
-                                    </label>
-                                    <select
-                                        value={overrideCourierId}
-                                        onChange={(e) => setOverrideCourierId(e.target.value)}
-                                        className="w-full rounded-xl bg-slate-50 border border-slate-200 text-xs py-2 px-3"
-                                    >
-                                        {couriers.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name} ({c.phone}) — {c.active_jobs} active tasks
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 mb-1 font-sans">
-                                        Set Dispatch State
-                                    </label>
-                                    <select
-                                        value={overrideStatus}
-                                        onChange={(e) => setOverrideStatus(e.target.value)}
-                                        className="w-full rounded-xl bg-slate-50 border border-slate-200 text-xs py-2 px-3"
-                                    >
-                                        <option value="assigned">Assigned</option>
-                                        <option value="picked_up">Picked Up at Store</option>
-                                        <option value="in_transit">In Transit (Sorting Hub)</option>
-                                        <option value="out_for_delivery">Out for Delivery</option>
-                                        <option value="delivered">Delivered & Settled</option>
-                                    </select>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-2 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setOverrideModal(false)}
-                                        className="px-4 py-2 rounded-xl border border-slate-200 font-sans font-bold text-slate-600"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={reassigning}
-                                        className="px-5 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase transition shadow-xs"
-                                    >
-                                        {reassigning ? 'Reassigning...' : 'Confirm Override'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
             </div>
         </DashboardLayout>
     );

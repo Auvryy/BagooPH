@@ -3,7 +3,10 @@
 namespace Tests\Feature\E2E\Tier2;
 
 use App\Models\Delivery;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -113,7 +116,7 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
     // Boundary 23: FCFS Concurrency & Double Claim
     // ==========================================
 
-    public function test_t2_b23_01_double_claim_race_condition_returns_error(): void
+    public function test_t2_b23_01_second_eligible_rider_cannot_replace_a_claim(): void
     {
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
@@ -123,12 +126,31 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
 
         $courierA = $this->createApprovedUser('courier');
         $courierB = $this->createApprovedUser('courier');
+        $suffix = Str::random(8);
+        $company = LogisticsCompany::create([
+            'name' => 'Bagoo Test Dispatch', 'slug' => 'test-dispatch-'.$suffix,
+            'code' => 'TEST-'.$suffix, 'status' => 'active', 'is_active' => true,
+        ]);
+        $hub = LogisticsHub::create([
+            'logistics_company_id' => $company->id, 'name' => 'Test Origin Bayan Hub',
+            'code' => 'HUB-'.$suffix, 'tier' => 'local_bayan_hub', 'province' => 'Laguna',
+            'city_municipality' => 'Santa Cruz', 'address' => 'Test hub address', 'is_active' => true,
+        ]);
+        foreach ([$courierA, $courierB] as $courier) {
+            $courier->courierProfile()->update([
+                'logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id, 'is_available' => true,
+            ]);
+        }
+        $delivery->update(['logistics_company_id' => $company->id, 'origin_bayan_hub_id' => $hub->id]);
 
-        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
-        $res2 = $this->actingAs($courierB)->post(route('courier.claim', $delivery->id));
+        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id))->assertSessionHas('success');
+        $this->actingAs($courierB)->post(route('courier.claim', $delivery->id))->assertSessionHas('error');
 
-        $this->assertTrue(in_array($res2->status(), [200, 302, 400, 409]));
-        $this->assertEquals($courierA->id, $delivery->fresh()->courier_id);
+        $this->assertSame($courierA->id, $delivery->fresh()->courier_id);
+        $this->assertSame('assigned_pickup', $delivery->fresh()->status);
+        $this->assertSame('ready_for_pickup', $order->fresh()->status);
+        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertDatabaseCount('commission_ledgers', 0);
     }
 
     public function test_t2_b23_02_claiming_parcel_already_in_transit_barred(): void
@@ -199,7 +221,7 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 302, 422]));
     }
 
-    public function test_t2_b24_02_html_script_injection_sanitized(): void
+    public function test_t2_b24_02_unsupported_failure_status_cannot_persist_notes(): void
     {
         $courier = $this->createApprovedUser('courier');
         $buyer = $this->createApprovedUser('buyer');
@@ -211,10 +233,14 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'failed',
             'courier_notes' => '<script>alert(1)</script>Safe reason',
-        ]);
+        ])->assertSessionHasErrors('status');
 
         $delivery->refresh();
-        $this->assertEquals('delivery_failed', $delivery->status);
+        $this->assertSame('out_for_delivery', $delivery->status);
+        $this->assertNull($delivery->courier_notes);
+        $this->assertSame('shipped', $order->fresh()->status);
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
     }
 
     public function test_t2_b24_03_whitespace_only_reason_rejected(): void
