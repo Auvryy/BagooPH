@@ -86,7 +86,7 @@ These review scores compare the earlier rider audit with the scoped implementati
 | Profile and rider UI compliance | 6/10 | 6/10 | Public tracking was rebuilt; this branch does not complete the rider-profile or rider-portal style review. |
 | Enforcement across lifecycle entry points | 3/10 | 8/10 | Alternate mutations are removed; both courier portals require an active approved courier. Terminal or mismatched commercial states cannot resume custody. Wider Phase 0 gaps and PostgreSQL concurrency verification remain. |
 
-Public tracking now accepts tracking codes only, configures a shared web/API limit of 30 requests per minute per reported client IP, and returns the same masked parcel data to every role. The push-readiness review below found that untrusted forwarded headers can change the limiter key; proxy trust must be hardened before treating this limit as an effective abuse boundary. The public contract excludes database IDs, order numbers, line items, prices, payment details, actor identities, arbitrary checkpoint notes, exact addresses, and proof URLs. The page shows recorded checkpoints, canonical commercial status, nullable stored estimates, and links into authorized portals; it exposes no custody actions or predicted timeline events.
+Public tracking accepts tracking codes only, enforces a shared web/API limit of 30 requests per minute per trusted client IP, and returns the same masked parcel data to every role. Untrusted forwarded headers cannot create fresh limiter budgets; only explicitly configured proxy addresses or CIDRs may supply client information. The public contract excludes database IDs, order numbers, line items, prices, payment details, actor identities, arbitrary checkpoint notes, exact addresses, and proof URLs. The page shows recorded checkpoints, canonical commercial status, nullable stored estimates, and links into authorized portals; it exposes no custody actions or predicted timeline events.
 
 Simulator mutations are unavailable in every environment. Platform parcel corrections are unavailable until an audited workflow exists. Existing parcels with legacy or inconsistent order/delivery states cannot bypass the canonical gates; they need an authorized reconciliation workflow rather than a direct status edit.
 
@@ -99,12 +99,14 @@ Verification used isolated SQLite `:memory:` throughout:
 
 ### Push-Readiness Review: October 3, 2026
 
-The existing mutation-path closures remain implemented, but two closely related fixes should stay on `fix/rider-lifecycle-lockdown` before merging or deployment:
+The two related fixes are completed on `fix/rider-lifecycle-lockdown`:
 
 | Priority | Fix | Confirmed evidence and acceptance |
 |---|---|---|
-| P1 | Harden trusted proxy configuration for public tracking throttling | `bootstrap/app.php` trusts every proxy, while the limiter keys on `Request::ip()`. A SQLite HTTP probe rotated `X-Forwarded-For` on 31 requests from the same test connection; request 31 still reached parcel lookup instead of returning 429. Trust only the deployed proxy chain and test that untrusted headers cannot create fresh rate-limit budgets. |
-| P2 | Use one approval policy across courier entry points | `User::isKycApproved()` accepts legacy `verified`; portal access and pickup claims use it, while custody transitions and final-mile assignment require the literal `approved` value. A scoped `verified` rider successfully opened the board and claimed a pickup, then collection was rejected. Align approval checks without changing the documented approval authority or allowing role bypasses. |
+| P1 | Harden trusted proxy configuration for public tracking throttling | `config/trustedproxy.php` defaults to an explicit empty allowlist and rejects wildcard, invalid, and zero-prefix entries. HTTP tests verify rotating untrusted headers cannot evade the shared 30-request web/API budget, configured proxy chains preserve client budgets and HTTPS, and untrusted peers cannot spoof a trusted proxy or scheme. Raw forwarded-proto scheme forcing is removed. |
+| P2 | Use one approval policy across courier entry points | `User::isEligibleCourier()` and its query scope require an active courier with reviewed `approved` or legacy `verified` KYC. Portal access, claims, messaging, courier custody, rider selection, and assignment share this policy. Tests cover both portal URLs, pickup collection and final-mile delivery while off duty, unchanged account approval, and rejection of inactive, suspended, unapproved, wrong-role, and wrong-hub riders. Approval authority and other roles' custody policy are unchanged. |
+
+Deployment configuration: set `TRUSTED_PROXIES` to the actual proxy IP addresses or narrow CIDRs for the deployed chain, then rebuild the configuration cache. Leave it empty when requests reach the application directly. Do not use `*`, `REMOTE_ADDR`, or all-address CIDRs. Production still forces HTTPS; local forwarded HTTPS is honored only through trusted proxies.
 
 Later branches should retain the phase order:
 
@@ -113,7 +115,7 @@ Later branches should retain the phase order:
 - Phase 3: implement audited claim recovery, failed attempts, hub return, retry/RTS, and secure self-pickup. Counter release currently creates `delivery.status = customer_collected` and `order.status = delivered`, but `OrderLifecycleService::buyerComplete()` accepts only a parcel status of `delivered`; a separate SQLite service probe confirmed that buyer confirmation is blocked after counter collection. Secure code, identity, and COD evidence remain required before counter release is complete.
 - Phase 4 and 5: persistent lifecycle notifications, append-only COD collection/remittance, reconciliation, seller settlement, and audited admin corrections.
 
-Review verification: 242 existing focused tests passed with 1,932 assertions, including OTP failure handling and rider/logistics/tracking flows. Three additional isolated review probes reproduced the two branch fixes and the counter-completion gap; they are separate from the existing full-suite baseline. The last full run still has 58 failures and one error. This review does not declare the application ready for production.
+Follow-up verification: 261 focused tests passed with 2,245 assertions using isolated SQLite `:memory:`. The full suite ran 900 tests with 4,561 assertions and retained exactly the previous 58 failure IDs and one error; no new failures or errors appeared. Changed PHP files passed formatting checks, and the diff passed whitespace checks. No frontend code changed in this follow-up; the earlier Docker build remains the frontend evidence. PostgreSQL concurrency and deployment proxy configuration still require environment-specific verification. The counter-completion gap remains later Phase 3 work. This review does not declare the application ready for production.
 
 ## Delivery Phases
 
@@ -123,7 +125,7 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 ### Phase 0: Security and Lifecycle Entry-Point Lockdown
 
-**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain courier portals require active approved courier accounts. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Push review identified proxy-aware tracking throttling and consistent legacy approval checks as related follow-ups. Private KYC/secret handling, shared validators, and other live sample-success paths remain.
+**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain courier portals require active approved courier accounts. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Proxy-aware tracking throttling and consistent legacy courier approval checks are now implemented and tested. Private KYC/secret handling, shared validators, and other live sample-success paths remain.
 
 - Keep simulator advance/reset routes removed in every environment; use real role flows in tests.
 - Keep public tracking read-only, masked, and rate-limited; authenticated actions belong in their authorized portal and lifecycle service.
@@ -136,7 +138,7 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
 
-Next Phase 0 work: finish the proxy trust and approval-policy fixes identified above, protect KYC/accreditation documents, then complete shared input validators, remaining secret-log review, and removal of live sample-success paths. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
+Next Phase 0 work: protect KYC/accreditation documents, then complete shared input validators, remaining secret-log review, and removal of live sample-success paths. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
 ### Phase 1: Normal Order and Seller Flow
 
