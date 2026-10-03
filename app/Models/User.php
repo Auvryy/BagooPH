@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -72,6 +73,18 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        app(SecretMailService::class)->assertSafeTransport();
+        parent::sendEmailVerificationNotification();
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        app(SecretMailService::class)->assertSafeTransport();
+        parent::sendPasswordResetNotification($token);
     }
 
     public function isSeller(): bool

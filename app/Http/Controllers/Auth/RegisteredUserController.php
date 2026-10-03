@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -241,7 +242,21 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        event(new Registered($user));
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to dispatch registration verification mail.', [
+                'user_id' => $user->id,
+                'exception' => $exception::class,
+            ]);
+            if (! $isBuyer) {
+                Auth::login($user);
+            }
+
+            return redirect($isBuyer ? route('login') : '/pending-approval')->withErrors([
+                'email' => 'Your account was created, but we could not send the verification email. Please sign in and request it again.',
+            ]);
+        }
 
         if ($isBuyer) {
             if ($emailVerifiedAt) {
