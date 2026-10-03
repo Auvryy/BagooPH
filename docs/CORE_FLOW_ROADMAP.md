@@ -140,30 +140,38 @@ Verification: 419 focused tests passed with 2,967 assertions using isolated SQLi
 
 Deployment and recovery steps are in `VERIFICATION_DOCUMENT_SECURITY.md`. Phase 0 remains partial until the other required controls pass their acceptance paths.
 
-### Rider Frontend Design Direction: October 3, 2026
+### Rider Mobile Interface Review: October 3, 2026
 
-**State: Design documented; implementation pending.** The user requested a more playful BagooPH presentation, kept the crimson identity, and chose design documents first on `frontend/rider-mobile-ux`. `STYLE_GUIDE.md` now defines warm surfaces, visible depth, restrained parcel details, accessible color combinations, and phone-oriented interaction rules. `RIDER_UI_DESIGN.md` defines the five presentation concerns: next-task clarity, relevant-stop directions, mobile usability, truthful profile/history, and consistent settings.
+**State: Scoped implementation verified on `frontend/rider-mobile-ux`.** The rider portal applies the requested soft, rounded direction: 24px working cards, 12–16px controls, short finite entrance/press motion, warm surfaces, and reduced-motion support. `STYLE_GUIDE.md` and `RIDER_UI_DESIGN.md` describe the presentation contract. Other portals retain their existing presentation until separately scoped.
 
-This documentation step does not change runtime UI, controllers, routes, schema, approval, custody, or financial behavior, and it does not raise implementation ratings. Apply the new presentation to the rider portal first; other portals adopt it only when their work is explicitly in scope.
+- The shared layout uses natural page scrolling, actual company/hub context, one duty control, labelled navigation, safe-area spacing, and an absolute account menu with the existing pointer grace period. Task cards put the stop, parcel, cash due, and permitted action together. Counts reflect returned queues; selecting a map job does not reorder them.
+- The dashboard has an interactive selected-stop map with keyboard pan and 48px zoom/recenter controls. Seller pickup uses the authorized seller address; collected pickup uses the origin hub, final-mile collection uses the destination hub, and delivery uses the immutable checkout buyer destination. Hub and saved buyer coordinates are supplied only through authorized payloads. Missing or unprojectable pins use address-based directions; tile failures preserve the stop/address and offer retry. Available work is explicitly a preview. There is no live GPS, ETA, route optimization, default city, or fabricated rider position.
+- Proof submission keeps notes and the chosen image after rejection, supports preview/replace/remove, blocks repeats, and closes only on a confirmed server result. Off-duty riders can finish existing custody work. Buyer confirmation, COD remittance, and settlement remain separate backend steps.
+- Profile, contact, and password forms show actual account data, reviewed approval, and clearly missing managed vehicle/assignment fields. Settings mutations work on root and courier-subdomain portals. Generic profile access redirects couriers to their portal; self-service account deletion is blocked until controlled closure and handover exist.
+- Completed trips describe the current company/destination-hub final-mile scope, with working search, payment filters, pagination, and confirmed clipboard results. Daily counts use the Philippine calendar day, matching displayed timestamps. No lifetime, perfect-performance, payout, or credential claims are invented.
+- Phone messages use a conversation-list/detail flow, labelled send controls, per-thread drafts, and explicit errors. Inbox reads no longer mark every thread read. Authorized acknowledgement stops at the displayed message boundary and excludes unopened threads and new arrivals. Sending includes the selected phase, so a stale seller draft cannot be rerouted to the buyer after a phase change.
 
-The next frontend work should be split into small concerns:
+These scores compare the previous rider presentation with this scoped implementation. They are engineering assessments, not coverage percentages or results from rider usability research.
 
-1. Shared courier surfaces, typography, actual assignment context, and mobile navigation.
-2. Task-card hierarchy, current stop/action, honest counts, and accessible evidence/error interactions.
-3. Directions using existing authorized addresses, with explicit missing-data states.
-4. Truthful profile/trip information and mobile message/settings presentation.
+| Area | Before | After | User-visible improvement and limit |
+|---|---:|---:|---|
+| Rider task presentation and phone navigation | 6/10 | 8/10 | Softer surfaces, larger labelled controls, relevant stop/action, safe-area spacing, and recoverable proof errors; rendered phone/keyboard usability still needs user review. |
+| Directions and selected-job context | 4/10 | 8/10 | Stage-specific saved destinations, selectable street map, and honest address/tiles fallbacks; seller pins, live GPS, optimized routes, and ETA are not implemented. |
+| Profile and settings | 6/10 | 8/10 | Truthful data, consistent working forms on both portals, and protected account closure; a managed closure workflow remains. |
+| Messages | 6/10 | 8/10 | Phone list/detail flow, retained drafts, selected-thread read acknowledgement, and stale-phase rejection; refresh is manual and persistent lifecycle notifications remain absent. |
+| Rider lifecycle enforcement | 8/10 | 8/10 | Existing approval, custody, commercial, and payment rules are preserved; this presentation work does not complete later operational phases. |
+| Complete rider operations | About 6/10 | About 6/10 | Handoff evidence, claim recovery, failed attempts/returns, notifications, and COD ledgers remain in their existing phases. |
 
-Source inspection establishes dependencies that presentation alone cannot complete:
+Verification:
 
-- `CourierDeliveryController::pickupPayload()` and `finalMilePayload()` expose hub name/code but not hub address/coordinates. Reliable hub directions and saved destination pins need an authorized payload extension; do not invent positions or expose buyer data to pickup pools.
-- `Courier/Profile.tsx` uses named contact/password mutations defined for courier subdomains, while the root courier route group lacks matching mutation endpoints. Both portal contexts need verified route consistency.
-- Generic `ProfileController::destroy()` has no active-assignment/custody guard. Controlled closure requires server-side protection; UI confirmation is insufficient.
-- `CourierMessagingService::conversations()` marks returned conversations read on inbox load. Selected-thread acknowledgement and durable update behavior need their own verified contract.
-- Completed-trip queries include delivered final-mile work at the rider's current company/hub. Full historical scope and pickup history need backend work before the UI can claim lifetime records.
+- 93 focused courier/flow/password/profile tests passed with 1,107 assertions using isolated SQLite `:memory:`. They include both portal contexts, approval rejection, immutable destinations, unauthorized and phase-specific message access, stale draft rejection, Philippine-day boundaries, and account-closure protection.
+- 16 frontend helper and server-render checks passed via `npm run test:courier`. They verify stop/action states, invalid and missing pins, map selection after refresh/removal, available-job preview labels, exact COD amounts, honest history/profile states, and selected message phase. The production TypeScript/Vite build passed in Docker; map code is loaded lazily.
+- The full suite ran 971 tests and 5,182 assertions, retaining exactly the baseline's 58 failures and 1 error. Failure-ID comparison against the 949-test private-document baseline found no new or resolved failures/errors. Existing fixtures, legacy expectations, and the null-order stress-test error still prevent a green full suite.
+- Changed PHP files passed formatting and the diff passed whitespace checks. Static inspection covered responsive classes, touch sizing, focus/keyboard paths, map cleanup/resize, finite motion, and reduced-motion handling. Browser automation, screenshots, physical-device checks, actual tile-service availability, and PostgreSQL concurrency were not tested.
+- Full application route caching still encounters the pre-existing duplicate seller route name `shops.switch`; scoped courier named-route compilation and HTTP portal checks pass. This branch does not repair unrelated seller routing.
+- Dependency audit reports seven existing findings (six high, one moderate) in Axios, qs, and the Tailwind dependency chain. Their locked versions are unchanged; the newly added Leaflet runtime/types have no audit findings. Dependency remediation remains separate, including evaluation of the suggested Tailwind major upgrade.
 
-Keep these dependencies explicit and preserve the existing Phase 0 requirements. Submitted waybill evidence, failed-attempt/hub-return recovery, persistent lifecycle notifications, and COD ledgers retain their approved phases. Live GPS and route optimization remain deferred.
-
-Documentation verification checks local references, palette contrast calculations, repository-rule consistency, and whitespace. Runtime/mobile acceptance belongs to the later implementation and is not established by this document change.
+The scoped branch is ready for review and a user-managed GitHub push; the final regression comparison confirms no new failing tests. Existing suite failures, dependency findings, and unperformed rendered/device checks prevent declaring the complete application bug-free or ready for production.
 
 ## Delivery Phases
 

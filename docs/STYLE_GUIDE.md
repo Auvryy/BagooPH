@@ -2,7 +2,7 @@
 
 ## Purpose and Authority
 
-BagooPH should feel warm, lively, and dependable. The interface uses the original crimson identity, tangible surface depth, and small parcel-inspired details to give routine work personality. Riders should be able to find their next stop and action quickly on a phone.
+BagooPH should feel warm, playful, and dependable. Use generous rounded corners, a calm ivory canvas, soft raised surfaces, and small parcel-inspired details around the original crimson identity. Riders should be able to find their next stop and action quickly on a phone.
 
 This guide defines presentation across BagooPH. `RIDER_UI_DESIGN.md` applies it to the courier portal. Business permissions, commercial states, custody, and money remain governed by the system, role, and validation specifications. Implementation status and delivery order belong only in `CORE_FLOW_ROADMAP.md`.
 
@@ -34,6 +34,9 @@ Create personality through:
 - Asymmetric desktop composition where the work queue dominates; a simple ordered stack on phones.
 - Brief pressed and success feedback, and friendly empty-state language.
 - Warm spacing and varied surface levels, with one decorative moment in a header or empty state.
+- Rounded working cards and controls, with circular icon tiles and short pill badges that remain clearly labelled.
+
+Reference material includes the [Awwwards mobile award collection](https://www.awwwards.com/annual-awards-2021/mobile-site-of-the-year) and its [mobile performance publication](https://www.awwwards.com/brainfood-mobile-performance-vol3.pdf). Use these to review responsive personality and motion costs. The BagooPH corner sizes, palette, and working-screen hierarchy below are product choices; the references do not establish operational usability or justify copying another site's identity.
 
 Decorative details must not resemble an actual credential, barcode, verification seal, map pin, scan result, or financial balance. Keep them outside addresses, amounts, and action groups. Hide decorative artwork from assistive technology. Do not add large illustrations above mobile work queues, confetti, racing timers, background video, or continuous effects.
 
@@ -73,14 +76,16 @@ Dark interfaces retain visible slate-700/800 borders, light text, and labelled s
 
 ## 4. Geometry, Typography, and Spacing
 
-Retain the repository's shared radius scale. Personality comes from composition, color, depth, and interaction while controls remain precise.
+Use explicit local radii for the soft rider direction. Do not rely on the existing theme's small `rounded-lg` value or change global tokens to restyle unrelated pages. Other portals adopt the direction when their work is in scope.
 
 | Element | Class / actual current value | Rule |
 |---|---|---|
-| Buttons, fields, tabs, compact badges | `rounded-xs` / `rounded-sm`, 2px | Rectangular, easy to identify; no pills |
-| Cards and inner working panels | `rounded-md` / `rounded-lg`, 4px | Visible border and restrained depth |
-| Dialogs and sheets | `rounded-lg` / `rounded-xl`, 4px / 6px | Keep contents readable and scrollable |
-| Decorative illustration frame | Up to 8px | Not a substitute for working card geometry |
+| Buttons, fields, tabs | `rounded-[14px]` / `rounded-[16px]`, 12–16px | Comfortable outline, labelled action, 48px minimum touch area |
+| Cards | `rounded-[24px]`, 24px | Visible border, airy padding, restrained depth |
+| Inset surfaces and map frames | `rounded-[18px]`, 18px | Quiet grouping within the card |
+| Dialogs and sheets | `rounded-[28px]`, 28px | Bounded height with readable, scrollable contents |
+| Short badges and icon controls | `rounded-full` | Clear text or accessible name; never rely on shape alone |
+| Decorative illustration frame | 18–24px or circular | Small and outside operational values |
 
 Use Plus Jakarta Sans everywhere, including tracking numbers, prices, charts, and email. For aligned numbers use tabular numerals within the same family. Do not introduce another font or apply `font-mono`.
 
@@ -107,7 +112,7 @@ Use a 4px spacing rhythm: 4, 8, 12, 16, 24, and 32px. Phone gutters start at 16p
 
 A suitable primary-card shadow is `0 2px 0 rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)`. Shadows support borders; they do not identify buttons or create a new surface around every row. Keep layers predictable and scrolling inexpensive.
 
-Motion should explain an interaction: 120–180ms for a press or selection, up to 200ms for an entering sheet. A small press displacement can make an action feel tactile. No hover-only affordance or hover-dependent information. Respect `prefers-reduced-motion`; remove nonessential movement and preserve immediate feedback. Never animate a map marker to imply live location without live data.
+Motion should explain an interaction: 120–180ms for a press or selection, up to 200ms for a card or sheet entering with a small fade and 6px movement. Use short, finite effects; avoid staggered queues and endless bouncing. A small press displacement can make an action feel tactile. No hover-only affordance or hover-dependent information. Respect `prefers-reduced-motion`; remove nonessential movement and preserve immediate feedback. Never animate a map marker to imply live location without live data.
 
 Reuse the existing icon set and dialog/form primitives. New variants belong in shared components rather than repeated page-specific styling. Avoid additional UI libraries, external asset services, or decorative dependencies.
 
@@ -128,7 +133,7 @@ Design the rider portal at 360–430 CSS pixels first and support reflow at 320p
 
 Role dashboards share typography, surfaces, navigation behavior, and truthful states. Their content hierarchy follows the user's task rather than a mandatory four-KPI layout.
 
-For riders: compact identity/duty context, work filters, current tasks, stage-specific destination and action, then secondary history. Put the work queue before statistics. Do not repeat the same counts in cards, tabs, a custody panel, and another preview.
+For riders: compact identity/duty context, work filters, the first task, a bounded selected-stop map, then remaining tasks and secondary history. On desktop, place the map beside the first task. The map follows an explicit job selection and saved location; addresses and custody actions remain outside it. Put the work queue before statistics. Do not repeat the same counts in cards, tabs, a custody panel, and another preview.
 
 For broader operational dashboards: a concise title and primary action, only useful real metrics, a dominant work list, and secondary detail. An 8/4 desktop split is appropriate when supporting information helps the work. Phone layouts place actions before charts and decoration.
 

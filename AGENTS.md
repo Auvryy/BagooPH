@@ -41,8 +41,8 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - No emojis in code, UI copy, comments, commit messages, or repository documentation.
 - Primary accent: `#E00D42`.
 - Use Plus Jakarta Sans as the single typeface across every page, portal, component, chart, email, and data field. Do not introduce monospace fonts, `font-mono`, JetBrains Mono, Inter, or another display/body font.
-- Buttons, inputs, badges, and compact controls use 2px radii (`rounded-xs`/`rounded-sm`); avoid pill-shaped UI.
-- Cards use `rounded-md`/`rounded-lg`; dialogs may use `rounded-lg`/`rounded-xl`.
+- Use the soft, rounded direction in `docs/STYLE_GUIDE.md`: rider buttons/inputs use 12–16px radii, cards 24px, and dialogs 28px. Short badges and icon controls may be circular or pill-shaped.
+- Use explicit local radius classes for this direction; do not change global theme radii or restyle unrelated portals without scope. Keep borders and readable grouping.
 - Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
 - Avoid gradients and ornamental clutter on authentication screens. Preserve the split-screen login/register layout.
 - Floating navigation menus must be absolute and must not shift layout. Preserve the existing overlap/grace-period pattern.
@@ -62,6 +62,7 @@ Read only the documentation relevant to the task:
 - Logistics/hub: `docs/SORTING_CENTER_LOGISTICS_FLOW.md` and `docs/MASTER_LOGISTICS_SPECIFICATION.md`
 - Admin/commission/governance: `docs/ADMIN_FLOW.md`
 - UI/style: `docs/STYLE_GUIDE.md`
+- Rider interface and mobile interactions: `docs/RIDER_UI_DESIGN.md`
 - Schema: inspect migrations/models first; use `docs/SCHEMA.md` as supporting context.
 - History only when requested: `docs/PROGRESS.md`.
 
@@ -73,4 +74,5 @@ When documentation conflicts with executable code, identify the mismatch. For cu
 - For frontend changes, run `npm run build`; for backend/domain changes, run the relevant PHP tests. Use `./bagoo.sh` equivalents when host permissions or dependencies require Docker.
 - Never open a visible browser, use browser automation, or take screenshots for routine testing or visual checks. Prefer automated tests, builds, static inspection, and user-provided screenshots. Use browser UI testing only when the user explicitly requests it for that task.
 - Do not claim success when checks are blocked or failing; state the exact blocker.
+- After coding, report a brief before/after rating for the specific UI, feature, or flow changed. Explain the user-visible improvement, the supporting verification, and remaining gaps. Treat ratings as scoped engineering assessments; do not raise overall flow readiness for unrelated or unverified work. Record lasting implementation evidence and ratings in `docs/CORE_FLOW_ROADMAP.md`.
 - Keep final responses short: outcome, verification, commits created, and any blocker. Do not include token estimates or a commit command unless requested.

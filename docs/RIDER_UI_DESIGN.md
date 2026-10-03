@@ -16,12 +16,13 @@ Pickup and final-mile work remain phases of the same approved courier account. `
 | 2 | Page heading | “Your tasks” and a short real scope or unassigned explanation |
 | 3 | Work filters | Pickups, deliveries, available work; counts from the returned queues |
 | 4 | Task queue | Current stage, stop, complete address, parcel identifier, cash due where applicable, permitted action |
-| 5 | Secondary detail | Disclosed item summary, notes, recorded journey, or history |
-| 6 | Bottom navigation | Existing Tasks, Trips, Messages, and Profile destinations with visible labels |
+| 5 | Selected-stop map | Bounded map below the first task, saved stop and current stage, with address fallback |
+| 6 | Remaining tasks and detail | Returned queue order, disclosed item summary, notes, recorded journey, or history |
+| 7 | Bottom navigation | Existing Tasks, Trips, Messages, and Profile destinations with visible labels |
 
 The first working area should help a rider identify a task without scrolling through decorative panels. Avoid claiming that the first item is an optimized route or a dispatch priority unless the server supplies that priority. Preserve the returned task order or explain an explicit user-selected sort.
 
-Desktop can use a wide queue and a smaller duty/assignment context panel. Retain the same reading order and task controls. Do not force four metric tiles onto the phone layout or repeat counts throughout the screen.
+Desktop places the selected-stop map beside the first task, with remaining cards below in the returned order. Retain the same reading order and task controls. Use 24px cards, 12–16px controls, soft rose selection, short finite entrance/press motion, and small parcel/waypoint motifs. Do not force four metric tiles onto the phone layout or repeat counts throughout the screen.
 
 ### Task Card Anatomy
 
@@ -55,7 +56,7 @@ Directions should follow the rider's current responsibility:
 - Final-mile collection targets the Destination Bayan Hub; the delivery leg targets the saved buyer destination.
 - Hub-to-Mother-Hub transport belongs to its authorized logistics flow, not an invented rider shortcut.
 
-Show the destination name and address outside the map so they remain usable when navigation cannot open. Prefer a labelled “Directions” action over a generic pin icon. Reuse the existing external navigation-link approach before adding an embedded map or any new dependency.
+Show the destination name and address outside the map so they remain usable when navigation cannot open. Prefer a labelled “Directions” action over a generic pin icon. Pair existing external directions with a selected-job street map, using saved authorized coordinates. The rider can select a parcel with “View on map”; an available pickup is labelled as a preview until claimed.
 
 | Data condition | Interface behavior |
 |---|---|
@@ -67,7 +68,13 @@ Show the destination name and address outside the map so they remain usable when
 
 Buyer directions use the immutable checkout destination snapshot, not a subsequently edited default profile address. Coordinates support that destination and cannot replace an assigned hub, recipient, service area, or COD amount. Only expose location data to actors authorized for the current phase.
 
-An embedded map must earn its place: reliable authorized pins, a legible label/legend, usable address fallback, and a bounded area below operational essentials on phones. Do not add moving rider dots, automatic ETA, distance rankings, live GPS, or route optimization to imply capabilities outside the approved scope.
+The embedded map needs a reliable authorized pin, legible stop/stage labels, usable address fallback, and a bounded 240–288px area below the first task's operational essentials on phones. Keep selection by parcel/phase through refresh; when that selection disappears or is filtered out, use the first returned visible task. Empty queues and completed-history views have no current-job map. Selection must not reorder the queue.
+
+Use a lazily loaded [Leaflet map](https://leafletjs.com/reference.html) with drag, keyboard pan, and labelled 48px zoom/recenter controls. Disable wheel zoom so page scrolling remains predictable. Disable nonessential animation under reduced motion, release map resources on selection changes/unmount, and respond to container resizing. Saved text must remain text when used in map labels.
+
+Public street tiles follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, HTTPS, ordinary browser caching/referrers, and no bulk/offline fetching. Street tiles are best-effort; show load failures and a manual retry without hiding addresses or directions. Keep customer names, phone numbers, and addresses out of tile requests and do not geocode private addresses through a new service. Missing or unprojectable coordinates show address-based directions rather than a default city or guessed pin.
+
+Do not add moving rider dots, automatic ETA, distance rankings, live GPS, or route optimization to imply capabilities outside the approved scope.
 
 ## 3. Make Phone Use Comfortable and Recoverable
 
@@ -140,18 +147,20 @@ Account closure requires controlled handling of active assignments and custody. 
 | `CourierLayout.tsx` | Shared surfaces, actual scope, responsive navigation, focus and feedback |
 | `CourierDutyControl.tsx` | Consistent duty wording and accessible confirmation |
 | `Courier/Deliveries.tsx` | Task hierarchy, stage/stop/actions, evidence states, meaningful directions |
+| `CourierUI.tsx` / `CourierJobMap.tsx` | Shared rounded primitives and the selected saved-stop map with honest fallbacks |
 | `Courier/Profile.tsx` | Clear account/security forms and truthful managed information |
 | `Courier/Earnings.tsx` | Honest completed-trip presentation and functioning client-side filters |
 | `Courier/Messages.tsx` | Mobile list/detail flow, labelled composer, draft/error behavior |
 
 Reuse existing shared primitives. Extract genuinely repeated presentation patterns into small components. Do not replace the application stack, add a paid service, or put business decisions in frontend utilities.
 
-## Acceptance for the Later Implementation
+## Presentation Acceptance
 
 | Area | Evidence required |
 |---|---|
 | Task clarity | Available, claimed, collected, assigned final-mile, out-for-delivery, delivered, off-duty, and unassigned states show the correct actor/stop/action |
 | Directions | Seller, origin-hub, destination-hub, and buyer targets use authorized real data; missing address/pin states remain truthful |
+| Map | Selection, current-stage stop, preview labels, valid/missing pins, tile failures, zoom/recenter, keyboard pan, resize, cleanup, attribution, and reduced motion |
 | Mobile | 320/360/390/430px layouts, long content, 200% text enlargement, safe areas, keyboard-open forms, readable text, and required touch areas |
 | Accessibility | Contrast, control labels, focus order, dialog behavior, and announced errors/results; essential actions have non-gesture paths |
 | Profile/history | No unsupported credentials, sample records, perfect rates, default hubs, lifetime claims, or fabricated balances |
