@@ -23,6 +23,8 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 Audit date: September 24, 2026.
 
+Scoped rider lifecycle lockdown review: October 3, 2026. This review updates entry-point, portal-access, tracking-privacy, and delivery-evidence controls; it is not a fresh audit of every role.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -32,12 +34,12 @@ Audit date: September 24, 2026.
 |---|---|---|
 | Account roles and approval | Partial | Buyer, seller, courier, logistics, and admin portals exist; approval and tenant boundaries need one cross-role verification pass. |
 | Cross-cutting input and mutation safety | Partial | Many controllers use basic string validation, but canonical phone/postal/text rules, idempotency, stale-state conflicts, and adversarial authorization are not consistently enforced. |
-| Alternate lifecycle entry points | Critical gap | Authenticated simulator routes and public tracking actions can mutate order/delivery state outside the canonical custody rules. |
+| Alternate lifecycle entry points | Implemented | Simulator advance/reset routes, public tracking actions, and direct Platform Admin parcel overrides are removed on root and applicable subdomain routes. Guest and all-role tests verify repeated requests cannot change assignment, custody, checkpoints, payment, or commission records. |
 | Secret and KYC protection | Critical gap | KYC uploads use public storage paths, and OTP mail failure logging can include the generated code. |
 | Multi-shop checkout | Implemented | Checkout transactionally creates an independent order, delivery, waybill, shipping fee, and route per shop; routing failure rolls back the checkout. |
 | Voucher allocation | Implemented | Shop vouchers are isolated to their owning shop, while platform discounts are proportionally divided without exceeding the calculated discount. |
 | Seller fulfillment | Implemented | A central lifecycle service enforces `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`, shop ownership, and the pre-custody cancellation boundary. |
-| Pickup rider handoff | Implemented | Pickup claims use row locking and enforce ready state, assigned rider, logistics company, and origin-hub scope. Pickup checkpoints record the acting rider. |
+| Pickup rider handoff | Implemented | Pickup claims lock the commercial order before the parcel, matching seller cancellation; ready state, assigned rider, logistics company, and origin-hub scope remain enforced. Pickup state, checkpoints, notes, and seller messages commit or roll back together. A submitted waybill scan and stronger handoff evidence remain follow-up work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub, and destination Bayan Hub route and rejects incomplete routing. |
 | Manifest custody | Missing | Manifest numbers exist as delivery/checkpoint fields; there are no manifest and manifest-parcel records with dispatcher, receiver, vehicle, and close/receive control. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
@@ -47,7 +49,7 @@ Audit date: September 24, 2026.
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
 | Buyer-only completion | Implemented | Only the owning buyer can advance a delivered order to `COMPLETED`; normal-flow coverage verifies delivery remains financially pending before reconciliation. |
-| Admin governance and audit | Partial | Platform logistics views and overrides exist; corrections are not consistently routed through lifecycle rules with immutable audit records. |
+| Admin governance and audit | Partial | Platform logistics views remain read-only for parcel custody. Unsafe direct overrides and their UI are removed; replacement corrections require lifecycle validation and immutable audit records in Phase 5. Other admin operations and sample metrics still need review. |
 | Cross-role presentation | Partial | Courier work is separated into company/hub-scoped pickup and final-mile queues with persistent duty state, delivery-linked messages, real profile data, real proof, and truthful trip history. Other portals still need canonical-status and unfinished-feature cleanup. |
 | Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
@@ -68,6 +70,33 @@ These scores measure the approved core flow, not deferred enterprise features. D
 
 Before this validation audit, the documents described the happy path well but left malformed input, duplicate requests, concurrency, alternate endpoints, privacy, and recovery behavior open to interpretation. `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` closes those design gaps; the phases below close the implementation gaps.
 
+### Rider Lockdown Comparison: October 3, 2026
+
+These review scores compare the earlier rider audit with the scoped implementation below. They are engineering assessments, not test coverage percentages. Scores stay unchanged when the underlying workflow was not completed in this branch.
+
+| Rider area | Before | After | Evidence or remaining gap |
+|---|---:|---:|---|
+| Pickup claims and job board | 8/10 | 8/10 | Scoped claims remain enforced; order locking now serializes claims with seller cancellation. Claim release and recovery remain. |
+| Pickup custody and hub handoff | 7/10 | 7/10 | Pickup evidence is atomic; submitted barcode matching and complete handoff evidence remain. |
+| Final-mile assignment | 8/10 | 8/10 | Existing company, destination-hub, barangay, availability, and active-work checks remain. |
+| Successful delivery | 6/10 | 7/10 | Shared transitions require a stored proof file and the canonical commercial source state; retries preserve proof, notes, timestamps, and checkpoint counts. Recipient relationship evidence remains. |
+| Failed delivery, retry, and RTS | 2/10 | 2/10 | Rider failure submission, attempt records, retry scheduling, hub-return custody, and seller return receipt remain incomplete. |
+| COD remittance and earnings | 2/10 | 2/10 | Delivery still cannot settle COD or commission; collection and remittance ledgers remain absent. |
+| Messages and notifications | 6/10 | 6/10 | Pickup messages share the custody transaction; persistent lifecycle notifications remain missing. |
+| Profile and rider UI compliance | 6/10 | 6/10 | Public tracking was rebuilt; this branch does not complete the rider-profile or rider-portal style review. |
+| Enforcement across lifecycle entry points | 3/10 | 8/10 | Alternate mutations are removed; both courier portals require an active approved courier. Terminal or mismatched commercial states cannot resume custody. Wider Phase 0 gaps and PostgreSQL concurrency verification remain. |
+
+Public tracking now accepts tracking codes only, limits lookup to 30 requests per minute per client IP across web and API routes, and returns the same masked parcel data to every role. The public contract excludes database IDs, order numbers, line items, prices, payment details, actor identities, arbitrary checkpoint notes, exact addresses, and proof URLs. The page shows recorded checkpoints, canonical commercial status, nullable stored estimates, and links into authorized portals; it exposes no custody actions or predicted timeline events.
+
+Simulator mutations are unavailable in every environment. Platform parcel corrections are unavailable until an audited workflow exists. Existing parcels with legacy or inconsistent order/delivery states cannot bypass the canonical gates; they need an authorized reconciliation workflow rather than a direct status edit.
+
+Verification used isolated SQLite `:memory:` throughout:
+
+- The 229-test courier/logistics/flow/tracking/entry-point integration set passed with 1,872 assertions. Four canonical delivery-boundary checks passed separately; the final 77-test public tracking set also passed, including a real buyer-completion milestone. These runs cover 234 distinct focused tests.
+- The production TypeScript/Vite build passed in Docker. Browser UI testing was not performed.
+- The full suite ran 881 tests and 4,248 assertions: 58 failures and one error remain. The pre-change baseline had 61 failures and one error; failure-ID comparison found no new failures or errors. Existing checkout fixtures, legacy route/state/settlement expectations, and the null-order error in `ChallengerM1StressTest::test_standard_product_without_variants` still prevent a green full suite.
+- SQLite verifies stale submissions, duplicate results, and transaction rollback, but does not prove PostgreSQL row-lock behavior under simultaneous requests. Production/development PostgreSQL was not used for tests.
+
 ## Delivery Phases
 
 Work on one phase at a time. Do not begin a later phase until the current phase has focused tests and its cross-role acceptance path passes.
@@ -76,16 +105,20 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 ### Phase 0: Security and Lifecycle Entry-Point Lockdown
 
-**State: Partial.** Core order, rider, and scanner mutations now use guarded services and real delivery proof; simulator/public mutation paths and private KYC/secret handling still require review.
+**State: Partial.** Rider lifecycle entry-point lockdown is implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain courier portals require active approved courier accounts. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Private KYC/secret handling, shared validators, and other live sample-success paths remain.
 
-- Disable simulator advance/reset routes outside isolated local or test environments and prevent ordinary authenticated users from invoking them.
-- Make public tracking read-only by default; route every authorized tracking action through the same lifecycle services as its owning portal.
+- Keep simulator advance/reset routes removed in every environment; use real role flows in tests.
+- Keep public tracking read-only, masked, and rate-limited; authenticated actions belong in their authorized portal and lifecycle service.
+- Keep both courier portals restricted to active approved couriers, including read endpoints; going off duty must not prevent finishing an existing custody assignment.
+- Keep direct admin custody overrides unavailable until lifecycle validation and immutable correction audit records exist.
 - Move KYC and accreditation files to private storage with authorized download access.
 - Remove OTP/claim/password/token values from logs and fail safely when delivery fails.
 - Establish shared canonical validators for names, phones, postal codes, codes, plain text, files, and role-specific registration fields.
 - Remove fake proof, sample dispute/message success, and seeded operational fallbacks from live paths.
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
+
+Next Phase 0 work: protect KYC/accreditation documents and remove OTP values from failure logs, then complete shared input validators and remove remaining live sample-success paths. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
 ### Phase 1: Normal Order and Seller Flow
 
