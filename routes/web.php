@@ -122,7 +122,7 @@ $registerCourierRoutes = function () {
     Route::get('/courier/login', fn () => redirect('/login'));
     Route::get('/courier/register', fn () => redirect('/register'));
 
-    Route::middleware(['auth', 'subdomain.role:courier'])->group(function () {
+    Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () {
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
@@ -402,7 +402,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 | Courier Portal Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:courier'])->prefix('courier')->name('courier.')->group(function () {
+Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () {
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');

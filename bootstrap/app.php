@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CrossDomainFallbackMiddleware;
+use App\Http\Middleware\EnsureApprovedCourier;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'courier.approved' => EnsureApprovedCourier::class,
             'role' => RoleMiddleware::class,
             'subdomain.role' => SubdomainRoleMiddleware::class,
         ]);
