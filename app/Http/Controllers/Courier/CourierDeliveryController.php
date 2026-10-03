@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Courier;
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsHub;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +41,8 @@ class CourierDeliveryController extends Controller
         $finalMileTasks = collect();
         $recentActivity = collect();
         $completedToday = 0;
+        $todayStart = today('Asia/Manila')->utc();
+        $todayEnd = $todayStart->copy()->addDay();
         $canReceiveNewWork = (bool) (
             $profile?->logistics_company_id
             && $profile?->assigned_hub_id
@@ -93,7 +97,8 @@ class CourierDeliveryController extends Controller
                 ->where('logistics_company_id', $profile->logistics_company_id)
                 ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
                 ->whereRaw('deliveries.status = ?', [OrderStateMachineService::STATUS_DELIVERED])
-                ->whereDate('delivered_at', today())
+                ->where('delivered_at', '>=', $todayStart)
+                ->where('delivered_at', '<', $todayEnd)
                 ->count();
         }
 
@@ -271,7 +276,8 @@ class CourierDeliveryController extends Controller
             'isOnline' => (bool) $profile?->is_available,
             'summary' => [
                 'completedDeliveries' => $completed->count(),
-                'completedToday' => $completed->filter(fn (Delivery $delivery) => $delivery->delivered_at?->isToday())->count(),
+                'completedToday' => $completed->filter(fn (Delivery $delivery) => $delivery->delivered_at
+                    ?->copy()->timezone('Asia/Manila')->isSameDay(today('Asia/Manila')))->count(),
             ],
             'trips' => $completed->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
         ]);
@@ -279,13 +285,16 @@ class CourierDeliveryController extends Controller
 
     public function messages(Request $request): Response
     {
-        $user = $request->user()->load('courierProfile');
+        $user = $request->user()->load(['courierProfile.company', 'courierProfile.hub']);
         $selectedDeliveryId = $request->integer('delivery') ?: null;
 
         return Inertia::render('Courier/Messages', [
             'conversations' => $this->messaging->conversations($user),
             'currentUserId' => $user->id,
             'selectedDeliveryId' => $selectedDeliveryId,
+            'selectedPhase' => in_array($request->query('phase'), ['pickup', 'final_mile'], true)
+                ? $request->query('phase') : null,
+            'scope' => $this->scopePayload($user->courierProfile),
             'isOnline' => (bool) $user->courierProfile?->is_available,
         ]);
     }
@@ -295,19 +304,43 @@ class CourierDeliveryController extends Controller
         $validated = $request->validate([
             'delivery_id' => ['required', 'integer', 'exists:deliveries,id'],
             'message' => ['required', 'string', 'max:1000'],
+            'phase' => ['sometimes', 'required', Rule::in(['pickup', 'final_mile'])],
         ]);
 
         try {
             $this->messaging->send(
                 $request->user()->load('courierProfile'),
                 Delivery::findOrFail($validated['delivery_id']),
-                $validated['message']
+                $validated['message'],
+                $validated['phase'] ?? null,
             );
         } catch (DomainException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
         return back()->with('success', 'Message sent.');
+    }
+
+    public function acknowledgeMessages(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'delivery_id' => ['required', 'integer', 'exists:deliveries,id'],
+            'phase' => ['required', Rule::in(['pickup', 'final_mile'])],
+            'through_message_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $this->messaging->acknowledge(
+                $request->user()->load('courierProfile'),
+                Delivery::findOrFail($validated['delivery_id']),
+                $validated['phase'],
+                $validated['through_message_id'],
+            );
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 403);
+        }
+
+        return response()->json(['acknowledged' => true]);
     }
 
     public function profile(Request $request): Response
@@ -342,6 +375,7 @@ class CourierDeliveryController extends Controller
                 'license_number' => $profile?->license_number,
                 'registration_status' => $profile?->or_cr_status,
             ],
+            'scope' => $this->scopePayload($profile),
             'isOnline' => (bool) $profile?->is_available,
         ]);
     }
@@ -452,10 +486,7 @@ class CourierDeliveryController extends Controller
                 'address' => $delivery->pickup_address,
                 'phone' => $delivery->pickup_phone,
             ],
-            'originHub' => [
-                'name' => $delivery->originBayanHub?->name,
-                'code' => $delivery->originBayanHub?->code,
-            ],
+            'originHub' => $this->hubPayload($delivery->originBayanHub),
             'assignedAt' => $delivery->assigned_at?->toIso8601String(),
             'nextAction' => $isAvailable
                 ? 'claim_pickup'
@@ -479,6 +510,8 @@ class CourierDeliveryController extends Controller
                 'name' => $delivery->delivery_recipient_name,
                 'address' => $delivery->delivery_address,
                 'phone' => $delivery->delivery_phone,
+                'latitude' => $delivery->order?->destination_latitude,
+                'longitude' => $delivery->order?->destination_longitude,
             ],
             'payment' => [
                 'method' => strtoupper((string) $delivery->order?->payment_method),
@@ -486,10 +519,7 @@ class CourierDeliveryController extends Controller
                     ? (float) $delivery->order->total_amount
                     : null,
             ],
-            'destinationHub' => [
-                'name' => $delivery->destinationBayanHub?->name,
-                'code' => $delivery->destinationBayanHub?->code,
-            ],
+            'destinationHub' => $this->hubPayload($delivery->destinationBayanHub),
             'assignedAt' => $delivery->assigned_at?->toIso8601String(),
             'nextAction' => $delivery->status === OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER
                 ? 'start_delivery'
@@ -509,6 +539,17 @@ class CourierDeliveryController extends Controller
             'paymentMethod' => strtoupper((string) $delivery->order?->payment_method),
             'destinationHub' => $delivery->destinationBayanHub?->name,
             'deliveredAt' => $delivery->delivered_at?->toIso8601String(),
+        ];
+    }
+
+    private function hubPayload(?LogisticsHub $hub): array
+    {
+        return [
+            'name' => $hub?->name,
+            'code' => $hub?->code,
+            'address' => $hub?->address,
+            'latitude' => $hub?->latitude,
+            'longitude' => $hub?->longitude,
         ];
     }
 }

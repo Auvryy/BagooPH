@@ -42,6 +42,9 @@ class CourierPortalAccessTest extends TestCase
         $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up'])->assertRedirect();
         $this->post($prefix.'/profile/toggle-duty', ['is_available' => true])->assertRedirect();
         $this->post($prefix.'/messages/send', ['delivery_id' => $delivery->id, 'message' => 'Pickup note'])->assertRedirect();
+        $this->patch($prefix.'/profile/account', ['name' => 'Changed Rider'])->assertRedirect();
+        $this->put($prefix.'/profile/password', ['current_password' => 'password', 'password' => 'ChangedPassword!'])->assertRedirect();
+        $this->postJson($prefix.'/messages/read', ['delivery_id' => $delivery->id, 'phase' => 'pickup', 'through_message_id' => 1])->assertRedirect();
 
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertDatabaseCount('delivery_checkpoints', 0);
@@ -66,6 +69,9 @@ class CourierPortalAccessTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => $role, 'status' => 'active', 'kyc_status' => 'approved']));
         $this->get($prefix.'/deliveries')->assertForbidden();
         $this->post($prefix.'/profile/toggle-duty', ['is_available' => true])->assertForbidden();
+        $this->patch($prefix.'/profile/account', ['name' => 'Changed Rider'])->assertForbidden();
+        $this->put($prefix.'/profile/password', ['current_password' => 'password', 'password' => 'ChangedPassword!'])->assertForbidden();
+        $this->postJson($prefix.'/messages/read', ['delivery_id' => 1, 'phase' => 'pickup', 'through_message_id' => 1])->assertForbidden();
     }
 
     public function test_suspended_riders_are_logged_out_on_both_portal_urls(): void

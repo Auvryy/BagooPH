@@ -30,11 +30,11 @@ class CourierMessagingService
                 $query->where('sender_id', $rider->id)
                     ->orWhere('receiver_id', $rider->id);
             })
-            ->latest()
+            ->orderBy('created_at')
+            ->orderBy('id')
             ->get();
 
         $conversations = [];
-        $readMessageIds = [];
 
         foreach ($deliveries as $delivery) {
             foreach ($this->participantsForDelivery($delivery, $rider) as $participant) {
@@ -51,7 +51,6 @@ class CourierMessagingService
                 $unread = $conversationMessages
                     ->where('receiver_id', $rider->id)
                     ->where('is_read', false);
-                $readMessageIds = array_merge($readMessageIds, $unread->pluck('id')->all());
                 $latest = $conversationMessages->last();
 
                 $conversations[] = [
@@ -79,10 +78,6 @@ class CourierMessagingService
             }
         }
 
-        if ($readMessageIds !== []) {
-            Message::whereIn('id', array_unique($readMessageIds))->update(['is_read' => true]);
-        }
-
         usort($conversations, function (array $left, array $right): int {
             if ($left['can_send'] !== $right['can_send']) {
                 return $left['can_send'] ? -1 : 1;
@@ -94,15 +89,55 @@ class CourierMessagingService
         return $conversations;
     }
 
-    public function send(User $rider, Delivery $delivery, string $body): Message
+    public function acknowledge(User $rider, Delivery $delivery, string $phase, int $throughMessageId): void
     {
-        return DB::transaction(function () use ($rider, $delivery, $body) {
+        if (! $rider->isEligibleCourier()) {
+            throw new DomainException('This delivery conversation is not available to your account.');
+        }
+
+        $accessible = $this->accessibleDeliveries($rider)->firstWhere('id', $delivery->id);
+        $participant = $accessible
+            ? collect($this->participantsForDelivery($accessible, $rider))->firstWhere('phase', $phase)
+            : null;
+        $profile = $rider->courierProfile;
+        $expectedHubId = $phase === 'pickup' ? $delivery->origin_bayan_hub_id : $delivery->destination_bayan_hub_id;
+
+        if (! $participant || $profile?->assigned_hub_id !== $expectedHubId) {
+            throw new DomainException('This delivery conversation is outside your assignment.');
+        }
+
+        $thread = Message::query()
+            ->where('order_id', $delivery->order_id)
+            ->where(function ($query) use ($rider, $participant) {
+                $query->where(function ($incoming) use ($rider, $participant) {
+                    $incoming->where('sender_id', $participant['user']->id)->where('receiver_id', $rider->id);
+                })->orWhere(function ($outgoing) use ($rider, $participant) {
+                    $outgoing->where('sender_id', $rider->id)->where('receiver_id', $participant['user']->id);
+                });
+            });
+
+        if (! (clone $thread)->whereKey($throughMessageId)->exists()) {
+            throw new DomainException('The selected message does not belong to this conversation.');
+        }
+
+        $thread->where('receiver_id', $rider->id)
+            ->where('id', '<=', $throughMessageId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+    }
+
+    public function send(User $rider, Delivery $delivery, string $body, ?string $phase = null): Message
+    {
+        return DB::transaction(function () use ($rider, $delivery, $body, $phase) {
             $lockedDelivery = Delivery::with([
                 'order.buyer',
                 'order.items.product.shop.user',
             ])->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
 
             $participant = $this->activeParticipantForDelivery($lockedDelivery, $rider);
+            if ($phase !== null && $participant['phase'] !== $phase) {
+                throw new DomainException('This conversation is no longer active. Refresh and select the current delivery conversation.');
+            }
             $messageBody = trim($body);
 
             if ($messageBody === '') {
@@ -194,7 +229,7 @@ class CourierMessagingService
     {
         $participants = [];
 
-        if ($delivery->courier_id === $rider->id) {
+        if ($delivery->courier_id === $rider->id && $rider->courierProfile?->assigned_hub_id === $delivery->origin_bayan_hub_id) {
             $seller = $delivery->order?->items?->first()?->product?->shop?->user;
             if ($seller) {
                 $participants[] = [
@@ -207,7 +242,9 @@ class CourierMessagingService
             }
         }
 
-        if ($delivery->assigned_rider_id === $rider->id && $delivery->order?->buyer) {
+        if ($delivery->assigned_rider_id === $rider->id
+            && $rider->courierProfile?->assigned_hub_id === $delivery->destination_bayan_hub_id
+            && $delivery->order?->buyer) {
             $participants[] = [
                 'phase' => 'final_mile',
                 'user' => $delivery->order->buyer,
