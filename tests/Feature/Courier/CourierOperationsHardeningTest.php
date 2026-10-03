@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
@@ -41,6 +42,30 @@ class CourierOperationsHardeningTest extends TestCase
     private LogisticsHub $originHub;
 
     private LogisticsHub $destinationHub;
+
+    public static function approvedCourierPortals(): array
+    {
+        return [
+            ['/courier', 'approved'], ['/courier', 'verified'],
+            ['http://courier.localhost', 'approved'], ['http://courier.localhost', 'verified'],
+        ];
+    }
+
+    #[DataProvider('approvedCourierPortals')]
+    public function test_approved_rider_can_claim_then_collect_off_duty_on_each_portal(string $prefix, string $approval): void
+    {
+        $this->rider->update(['kyc_status' => $approval]);
+        $delivery = $this->createDelivery('unassigned');
+        $this->actingAs($this->rider)->get($prefix.'/deliveries')->assertOk();
+        $this->post($prefix.'/deliveries/'.$delivery->id.'/claim')->assertSessionHas('success');
+        $this->post($prefix.'/profile/toggle-duty', ['is_available' => false])->assertSessionHas('success');
+        $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up'])->assertSessionHas('success');
+
+        $this->assertSame('picked_up', $delivery->fresh()->status);
+        $this->assertSame('picked_up', $delivery->order->fresh()->status);
+        $this->assertSame($approval, $this->rider->fresh()->kyc_status);
+        $this->assertSame(['assigned_pickup', 'picked_up', 'courier_pickup'], $delivery->checkpoints()->orderBy('id')->pluck('checkpoint_type')->all());
+    }
 
     protected function setUp(): void
     {

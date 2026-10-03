@@ -224,9 +224,7 @@ class CourierMessagingService
     {
         $profile = $rider->courierProfile;
         if (
-            ! $rider->isCourier()
-            || $rider->status !== 'active'
-            || ! $rider->isKycApproved()
+            ! $rider->isEligibleCourier()
             || ! $profile
             || $profile->logistics_company_id !== $delivery->logistics_company_id
         ) {

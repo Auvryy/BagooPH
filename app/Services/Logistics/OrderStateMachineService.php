@@ -166,7 +166,11 @@ class OrderStateMachineService
 
     private function assertActiveActor(User $actor): void
     {
-        if ($actor->status !== 'active' || $actor->kyc_status !== 'approved') {
+        $approved = $actor->isCourier()
+            ? $actor->isEligibleCourier()
+            : $actor->status === 'active' && $actor->kyc_status === 'approved';
+
+        if (! $approved) {
             throw new DomainException('Only active and approved accounts may change parcel custody.');
         }
     }
@@ -249,9 +253,7 @@ class OrderStateMachineService
             $barangay = trim((string) $delivery->order?->destination_barangay);
             if (
                 ! $rider
-                || ! $rider->isCourier()
-                || $rider->status !== 'active'
-                || $rider->kyc_status !== 'approved'
+                || ! $rider->isEligibleCourier()
                 || ! $profile?->is_available
                 || $profile->logistics_company_id !== $delivery->logistics_company_id
                 || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id

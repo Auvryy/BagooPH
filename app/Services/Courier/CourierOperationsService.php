@@ -92,7 +92,7 @@ class CourierOperationsService
         ?CourierProfile $profile,
         bool $requireAvailability = true
     ): void {
-        if (! $rider->isCourier() || $rider->status !== 'active' || ! $rider->isKycApproved()) {
+        if (! $rider->isEligibleCourier()) {
             throw new DomainException('Only an active and approved rider may perform courier work.');
         }
 

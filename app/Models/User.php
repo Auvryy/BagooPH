@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -12,6 +13,8 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements MustVerifyEmailContract
 {
     use HasFactory, Notifiable;
+
+    public const APPROVED_KYC_STATUSES = ['approved', 'verified'];
 
     protected $fillable = [
         'name',
@@ -89,7 +92,18 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function isKycApproved(): bool
     {
-        return $this->isAdmin() || in_array($this->kyc_status, ['approved', 'verified'], true);
+        return $this->isAdmin() || in_array($this->kyc_status, self::APPROVED_KYC_STATUSES, true);
+    }
+
+    public function isEligibleCourier(): bool
+    {
+        return $this->isCourier() && $this->status === 'active' && $this->isKycApproved();
+    }
+
+    public function scopeEligibleCouriers(Builder $query): Builder
+    {
+        return $query->where('role', 'courier')->where('status', 'active')
+            ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES);
     }
 
     /**

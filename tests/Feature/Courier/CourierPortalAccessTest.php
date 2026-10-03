@@ -17,7 +17,7 @@ class CourierPortalAccessTest extends TestCase
     {
         $cases = [];
         foreach (['/courier', 'http://courier.localhost'] as $prefix) {
-            foreach ([['active', 'none'], ['active', 'pending_approval'], ['active', 'rejected'], ['pending_approval', 'approved'], ['inactive', 'approved']] as [$status, $kyc]) {
+            foreach ([['active', 'none'], ['active', 'pending_approval'], ['active', 'rejected'], ['pending_approval', 'approved'], ['inactive', 'approved'], ['inactive', 'verified'], ['pending_approval', 'verified']] as [$status, $kyc]) {
                 $cases[$prefix.' '.$status.' '.$kyc] = [$prefix, $status, $kyc];
             }
         }

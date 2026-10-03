@@ -24,7 +24,7 @@ class EnsureApprovedCourier
             ]);
         }
 
-        if ($user->status !== 'active' || ! $user->isKycApproved()) {
+        if (! $user->isEligibleCourier()) {
             return redirect('/pending-approval');
         }
 

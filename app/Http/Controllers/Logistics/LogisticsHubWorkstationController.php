@@ -567,10 +567,7 @@ class LogisticsHubWorkstationController extends Controller
         $eligibleRiders = CourierProfile::with('user')
             ->when($activeHub, fn ($query) => $query->where('assigned_hub_id', $activeHub->id))
             ->where('is_available', true)
-            ->whereHas('user', fn ($query) => $query
-                ->where('role', 'courier')
-                ->where('status', 'active')
-                ->where('kyc_status', 'approved'))
+            ->whereHas('user', fn ($query) => $query->eligibleCouriers())
             ->get()
             ->map(fn ($profile) => [
                 'id' => $profile->user_id,
@@ -1180,7 +1177,7 @@ class LogisticsHubWorkstationController extends Controller
 
         $rider = User::with('courierProfile')->findOrFail($validated['rider_id']);
 
-        if ($rider->role !== 'courier' || $rider->status !== 'active' || $rider->kyc_status !== 'approved') {
+        if (! $rider->isEligibleCourier()) {
             return $this->operationError($request, 'Selected rider is not an active, approved courier.');
         }
 
