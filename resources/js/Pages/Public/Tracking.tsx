@@ -62,6 +62,7 @@ const checkpointLabels: Record<string, string> = {
     customer_collected: 'Collected at destination hub',
     doorstep_handover: 'Recipient handoff recorded',
     buyer_confirmed: 'Buyer confirmed receipt',
+    buyer_completed: 'Buyer confirmed receipt',
     return_to_sender: 'Return to seller in progress',
 };
 
@@ -208,7 +209,7 @@ export default function Tracking({ parcel, searchedNumber, notFound, validationM
                         <aside className="self-start rounded-lg border border-slate-300 bg-white p-5 sm:p-6" aria-labelledby="recipient-title">
                             <h2 id="recipient-title" className="text-sm font-bold text-slate-900">Recipient</h2>
                             <dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-slate-500">Name</dt><dd className="mt-1 font-semibold">{parcel.delivery_recipient_name}</dd></div><div><dt className="text-xs text-slate-500">Contact</dt><dd className="mt-1 font-semibold">{parcel.delivery_phone}</dd></div></dl>
-                            <p className="mt-4 border-t border-slate-300 pt-4 text-xs leading-relaxed text-slate-500">Full addresses, payment details, and handoff evidence are available only through authorized account pages.</p>
+                            <p className="mt-4 border-t border-slate-300 pt-4 text-xs leading-relaxed text-slate-500">Open your account for full delivery details and receipt confirmation.</p>
                         </aside>
                     </div>
                 )}

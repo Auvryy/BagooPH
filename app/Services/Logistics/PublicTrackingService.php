@@ -33,6 +33,7 @@ class PublicTrackingService
         'doorstep_handover' => 'Recipient handoff',
         'completed' => 'Buyer receipt confirmed',
         'buyer_confirmed' => 'Buyer receipt confirmed',
+        'buyer_completed' => 'Buyer receipt confirmed',
         'delivery_failed' => 'Delivery area',
         'return_to_sender' => 'Return route',
         'returned' => 'Seller return handoff',

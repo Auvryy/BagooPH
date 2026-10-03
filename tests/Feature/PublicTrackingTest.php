@@ -6,6 +6,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -101,6 +102,25 @@ class PublicTrackingTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'parcel.checkpoints')
             ->assertJsonPath('parcel.checkpoints.0.location_name', 'BagooPH');
+    }
+
+    public function test_real_buyer_confirmation_appears_as_a_masked_public_milestone(): void
+    {
+        $this->order->update(['status' => 'delivered']);
+        $this->delivery->update(['status' => 'delivered']);
+        app(OrderLifecycleService::class)->buyerComplete($this->order, $this->order->buyer);
+
+        foreach (['/track/', '/api/track/'] as $prefix) {
+            $this->getJson($prefix.$this->delivery->tracking_number)->assertOk()
+                ->assertJsonPath('parcel.status', 'completed')
+                ->assertJsonCount(3, 'parcel.checkpoints')
+                ->assertJsonPath('parcel.checkpoints.2.checkpoint_type', 'buyer_completed')
+                ->assertJsonPath('parcel.checkpoints.2.location_name', 'Buyer receipt confirmed')
+                ->assertJsonMissingPath('parcel.checkpoints.2.scanned_by_id')
+                ->assertJsonMissingPath('parcel.checkpoints.2.notes');
+        }
+        $this->assertSame('pending', $this->order->fresh()->payment_status);
+        $this->assertDatabaseCount('commission_ledgers', 0);
     }
 
     public function test_lookup_normalizes_case_and_spaces_but_does_not_accept_order_numbers(): void
