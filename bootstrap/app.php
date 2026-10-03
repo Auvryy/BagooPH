@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\CrossDomainFallbackMiddleware;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\SubdomainRoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -15,16 +20,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
 
-        $middleware->prepend(\App\Http\Middleware\CrossDomainFallbackMiddleware::class);
+        // Tracking validation must see controls before generic input trimming removes them.
+        $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*')]);
+
+        $middleware->prepend(CrossDomainFallbackMiddleware::class);
 
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'subdomain.role' => \App\Http\Middleware\SubdomainRoleMiddleware::class,
+            'role' => RoleMiddleware::class,
+            'subdomain.role' => SubdomainRoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

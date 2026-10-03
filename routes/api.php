@@ -9,4 +9,4 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/track/{tracking_number}', [PublicTrackingController::class, 'apiTrack'])->name('api.track.show');
+Route::get('/track/{tracking_number}', [PublicTrackingController::class, 'apiTrack'])->middleware('throttle:public-tracking')->name('api.track.show');

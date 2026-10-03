@@ -262,8 +262,7 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 | Universal Parcel Tracking Routes (Public & Role-Aware Operations)
 |--------------------------------------------------------------------------
 */
-Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->name('track.show');
-Route::post('/track/{tracking_number}/action', [PublicTrackingController::class, 'executeAction'])->middleware('auth')->name('track.action');
+Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
 
 /*
 |--------------------------------------------------------------------------
