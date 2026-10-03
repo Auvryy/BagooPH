@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,8 +17,12 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): Response|RedirectResponse
     {
+        if ($request->user()->isCourier()) {
+            return Redirect::route('courier.profile');
+        }
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
@@ -50,6 +55,12 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (! $user->canDeleteOwnAccount()) {
+            throw ValidationException::withMessages([
+                'password' => 'Rider self-service deletion is unavailable. Account closure requires review of parcel custody and cash handover.',
+            ]);
+        }
 
         Auth::logout();
 
