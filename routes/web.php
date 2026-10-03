@@ -29,7 +29,6 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerVoucherController;
-use App\Http\Controllers\Simulation\OrderSimulationController;
 use App\Http\Controllers\SitemapController;
 /*
 |--------------------------------------------------------------------------
@@ -469,16 +468,6 @@ Route::prefix('hub')->name('hub.')->group(function () {
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });
-});
-
-/*
-|--------------------------------------------------------------------------
-| Order Progression Simulator Routes
-|--------------------------------------------------------------------------
-*/
-Route::middleware('auth')->prefix('simulator')->name('simulator.')->group(function () {
-    Route::post('/orders/{order}/advance', [OrderSimulationController::class, 'advance'])->name('orders.advance');
-    Route::post('/orders/{order}/reset', [OrderSimulationController::class, 'reset'])->name('orders.reset');
 });
 
 require __DIR__.'/auth.php';
