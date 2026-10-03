@@ -270,22 +270,25 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
 
     public function test_t2_b15_03_double_out_for_delivery_invocation(): void
     {
-        $courier = $this->createApprovedUser('courier');
+        $this->seed(DatabaseSeeder::class);
+        $courier = User::where('email', 'rider@bagoo.test')->firstOrFail();
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'assigned_to_rider', $courier);
+        $order = $this->createE2EOrder($buyer, $shop, [], 'assigned_to_rider');
+        $delivery = $this->createE2EDelivery($order, 'assigned_to_rider', $courier, $this->seededFinalMileRoute());
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'out_for_delivery',
-        ]);
+        ])->assertSessionHas('success');
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'out_for_delivery',
-        ]);
+        ])->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertEquals('out_for_delivery', $delivery->status);
+        $this->assertSame('out_for_delivery', $order->fresh()->status);
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'out_for_delivery')->count());
     }
 
     public function test_t2_b15_04_out_for_delivery_on_cancelled_order(): void
@@ -325,14 +328,14 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
+        $order = $this->createE2EOrder($buyer, $shop, [], 'out_for_delivery');
         $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier, $this->seededFinalMileRoute());
 
         $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'delivered',
         ]);
 
-        $response->assertSessionHas('error');
+        $response->assertSessionHasErrors('proof_image_file');
         $delivery->refresh();
         $this->assertEquals('out_for_delivery', $delivery->status);
         $this->assertNull($delivery->proof_image);
@@ -357,27 +360,32 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
 
     public function test_t2_b16_03_double_delivered_invocation_idempotency(): void
     {
+        Storage::fake('public');
         $this->seed(DatabaseSeeder::class);
         $courier = User::where('email', 'rider@bagoo.test')->firstOrFail();
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
+        $order = $this->createE2EOrder($buyer, $shop, [], 'out_for_delivery');
         $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier, $this->seededFinalMileRoute());
 
         $payload = [
             'status' => 'delivered',
             'proof_image_file' => UploadedFile::fake()->create('delivery-proof.jpg', 20, 'image/jpeg'),
         ];
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), $payload);
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), ['status' => 'delivered']);
+        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), $payload)->assertSessionHas('success');
+        $before = $delivery->fresh()->getAttributes();
+        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), ['status' => 'delivered'])->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertEquals('delivered', $delivery->status);
+        $this->assertSame($before, $delivery->getAttributes());
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
         $this->assertSame(1, DeliveryCheckpoint::where('delivery_id', $delivery->id)
             ->where('checkpoint_type', 'delivered')
             ->count());
-        Storage::disk('public')->delete(str_replace('/storage/', '', $delivery->proof_image));
+        $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
     }
 
     private function seededFinalMileRoute(): array
@@ -415,24 +423,25 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
 
     public function test_t2_b16_05_proof_image_storage(): void
     {
+        Storage::fake('public');
         $this->seed(DatabaseSeeder::class);
         $courier = User::where('email', 'rider@bagoo.test')->firstOrFail();
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
+        $order = $this->createE2EOrder($buyer, $shop, [], 'out_for_delivery');
         $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier, $this->seededFinalMileRoute());
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'delivered',
             'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
-        ]);
+        ])->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertStringStartsWith('/storage/delivery-proofs/', $delivery->proof_image);
         $proofPath = str_replace('/storage/', '', $delivery->proof_image);
         $this->assertTrue(Storage::disk('public')->exists($proofPath));
-        Storage::disk('public')->delete($proofPath);
+        $this->assertSame('pending', $order->fresh()->payment_status);
     }
 
     // ==========================================
