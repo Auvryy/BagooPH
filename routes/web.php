@@ -194,7 +194,6 @@ $registerAdminRoutes = function () {
         Route::get('/products', [AdminDashboardController::class, 'products']);
         Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
-        Route::post('/logistics/override', [LogisticsHubController::class, 'override']);
         Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
 };
@@ -428,7 +427,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
     Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
-    Route::post('/logistics/override', [LogisticsHubController::class, 'override'])->name('logistics.override');
 });
 
 /*

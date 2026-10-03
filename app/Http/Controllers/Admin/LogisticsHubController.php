@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -46,6 +45,7 @@ class LogisticsHubController extends Controller
         $couriers = User::where('role', 'courier')->get()->map(function ($c) {
             $assignedCount = Delivery::where('courier_id', $c->id)->whereIn('status', ['assigned', 'picked_up', 'in_transit', 'out_for_delivery'])->count();
             $completedCount = Delivery::where('courier_id', $c->id)->where('status', 'delivered')->count();
+
             return [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -80,33 +80,5 @@ class LogisticsHubController extends Controller
                 'activeFleetCount' => $couriers->count(),
             ],
         ]);
-    }
-
-    public function override(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'delivery_id' => 'required|exists:deliveries,id',
-            'courier_id' => 'required|exists:users,id',
-            'status' => 'required|in:assigned,picked_up,in_transit,out_for_delivery,delivered',
-        ]);
-
-        $delivery = Delivery::findOrFail($validated['delivery_id']);
-        $oldCourierId = $delivery->courier_id;
-        $delivery->update([
-            'courier_id' => $validated['courier_id'],
-            'status' => $validated['status'],
-            'assigned_at' => $delivery->assigned_at ?? now(),
-        ]);
-
-        \App\Models\DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'supervisor_override',
-            'location_name' => 'Logistics Central Dispatch Hub',
-            'barcode_scanned' => $delivery->tracking_number,
-            'notes' => "Reassigned from Courier #{$oldCourierId} to Courier #{$validated['courier_id']}",
-            'scanned_by_id' => $request->user()?->id,
-        ]);
-
-        return back()->with('success', "Delivery #{$delivery->tracking_number} manually reassigned by supervisor.");
     }
 }
