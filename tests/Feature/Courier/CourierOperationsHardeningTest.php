@@ -7,12 +7,17 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Courier\CourierMessagingService;
+use App\Services\Logistics\OrderStateMachineService;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Mockery\MockInterface;
+use RuntimeException;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\TestCase;
@@ -453,6 +458,142 @@ class CourierOperationsHardeningTest extends TestCase
         $this->assertSame('delivered', $delivery->fresh()->status);
         $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
         $this->assertDatabaseCount('delivery_checkpoints', 1);
+    }
+
+    public function test_terminal_orders_cannot_resume_rider_custody_even_with_active_delivery_rows(): void
+    {
+        Storage::fake('public');
+        $finalRider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
+        foreach (['cancelled', 'completed', 'returned'] as $terminalStatus) {
+            $pickup = $this->createDelivery('assigned_pickup', $this->rider);
+            $pickup->order->update(['status' => $terminalStatus]);
+            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $pickup), ['status' => 'picked_up'])->assertSessionHas('error');
+            $this->assertSame('assigned_pickup', $pickup->fresh()->status);
+
+            $drop = $this->createDelivery('out_for_delivery', $finalRider);
+            $drop->order->update(['status' => $terminalStatus]);
+            $this->actingAs($finalRider)->patch(route('courier.updateStatus', $drop), [
+                'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            ])->assertSessionHas('error');
+            $this->assertSame('out_for_delivery', $drop->fresh()->status);
+            $this->assertSame($terminalStatus, $drop->order->fresh()->status);
+        }
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+        $this->assertSame([], Storage::disk('public')->allFiles('delivery-proofs'));
+    }
+
+    public function test_rider_scan_requires_the_current_commercial_state(): void
+    {
+        Storage::fake('public');
+        foreach (['placed', 'confirmed', 'preparing'] as $orderStatus) {
+            $delivery = $this->createDelivery('assigned_pickup', $this->rider);
+            $delivery->order->update(['status' => $orderStatus]);
+            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up'])->assertSessionHas('error');
+            $this->assertSame('assigned_pickup', $delivery->fresh()->status);
+            $this->assertSame($orderStatus, $delivery->order->fresh()->status);
+        }
+        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
+        foreach (['assigned_to_rider' => 'out_for_delivery', 'out_for_delivery' => 'delivered'] as $source => $target) {
+            $delivery = $this->createDelivery($source, $rider);
+            $delivery->order->update(['status' => 'ready_for_pickup']);
+            $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+                'status' => $target, 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            ])->assertSessionHas('error');
+            $this->assertSame($source, $delivery->fresh()->status);
+            $this->assertSame('ready_for_pickup', $delivery->order->fresh()->status);
+        }
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+        $this->assertSame([], Storage::disk('public')->allFiles('delivery-proofs'));
+    }
+
+    public function test_shared_lifecycle_service_rejects_missing_or_untrusted_proof(): void
+    {
+        Storage::fake('public');
+        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
+        $delivery = $this->createDelivery('out_for_delivery', $rider);
+        foreach ([null, '<UNTRUSTED_PROOF_URL>', '/storage/delivery-proofs/missing.jpg', '/storage/delivery-proofs/../private.jpg'] as $proof) {
+            try {
+                app(OrderStateMachineService::class)->transition($delivery, 'delivered', $rider, ['proof_image' => $proof]);
+                $this->fail('Delivery must require a stored proof file.');
+            } catch (DomainException $exception) {
+                $this->assertSame('Upload a proof of delivery image before recording handoff.', $exception->getMessage());
+            }
+            $this->assertSame('out_for_delivery', $delivery->fresh()->status);
+            $this->assertSame('out_for_delivery', $delivery->order->fresh()->status);
+        }
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+    }
+
+    public function test_retried_delivery_keeps_original_proof_notes_and_timestamp_after_buyer_completion(): void
+    {
+        Storage::fake('public');
+        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
+        $delivery = $this->createDelivery('out_for_delivery', $rider);
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'courier_notes' => 'Original handoff note',
+            'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $before = $delivery->fresh()->getAttributes();
+        $delivery->order->update(['status' => 'completed']);
+        $this->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'courier_notes' => 'Replacement handoff note',
+            'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertSame($before, $delivery->fresh()->getAttributes());
+        $this->assertSame('completed', $delivery->order->fresh()->status);
+        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
+    }
+
+    public function test_stale_delivery_submission_removes_unused_proof_and_preserves_the_winning_result(): void
+    {
+        Storage::fake('public');
+        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
+        $delivery = $this->createDelivery('out_for_delivery', $rider, ['courier_notes' => 'Original handoff note']);
+        $originalProof = '/storage/'.UploadedFile::fake()->create('original.jpg', 20, 'image/jpeg')->store('delivery-proofs', 'public');
+        $service = new OrderStateMachineService;
+        $this->mock(OrderStateMachineService::class, function (MockInterface $mock) use ($service, $originalProof) {
+            $mock->shouldReceive('transition')->once()->andReturnUsing(function ($parcel, $target, $actor, $metadata) use ($service, $originalProof) {
+                // Model a second submission winning after this request bound the old parcel state.
+                $service->transition($parcel, $target, $actor, ['proof_image' => $originalProof]);
+
+                return $service->transition($parcel, $target, $actor, $metadata);
+            });
+        });
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'courier_notes' => 'Stale replacement note',
+            'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertSame($originalProof, $delivery->fresh()->proof_image);
+        $this->assertSame('Original handoff note', $delivery->fresh()->courier_notes);
+        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertDatabaseCount('commission_ledgers', 0);
+    }
+
+    public function test_pickup_and_checkpoints_roll_back_when_recording_the_message_fails(): void
+    {
+        $delivery = $this->createDelivery('assigned_pickup', $this->rider);
+        $this->mock(CourierMessagingService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('recordPickupNote')->once()->andThrow(new RuntimeException('Message storage failed.'));
+        });
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $delivery), [
+                'status' => 'picked_up', 'courier_notes' => 'Parcel collected',
+            ]);
+            $this->fail('A failed transaction must not claim a successful pickup.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Message storage failed.', $exception->getMessage());
+        }
+        $this->assertSame('assigned_pickup', $delivery->fresh()->status);
+        $this->assertSame('ready_for_pickup', $delivery->order->fresh()->status);
+        $this->assertNull($delivery->fresh()->courier_notes);
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
+        $this->assertDatabaseCount('messages', 0);
     }
 
     public function test_final_mile_queue_exposes_delivery_details_only_after_assignment(): void

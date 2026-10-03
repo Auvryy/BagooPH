@@ -9,6 +9,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\OrderStateMachineService;
@@ -1202,7 +1203,9 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $result = DB::transaction(function () use ($delivery, $rider, $request, $validated) {
-            $lockedDelivery = Delivery::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+            $orderId = Delivery::whereKey($delivery->id)->value('order_id');
+            $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
+            $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedDelivery->delivery_type !== 'doorstep') {
                 return ['error' => 'Self-pickup parcels cannot be assigned to a delivery rider.'];

@@ -173,7 +173,6 @@ class CourierDeliveryController extends Controller
                 $rider,
                 $courierNote,
                 $proofPath,
-                $isIdempotentRetry,
             ) {
                 $updatedDelivery = app(OrderStateMachineService::class)->transition(
                     delivery: $delivery,
@@ -189,6 +188,14 @@ class CourierDeliveryController extends Controller
                     ]
                 );
 
+                if (! $updatedDelivery->wasChanged('status')) {
+                    if ($proofPath) {
+                        Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
+                    }
+
+                    return $updatedDelivery;
+                }
+
                 $updatedDelivery->update([
                     'courier_notes' => $courierNote !== '' ? $courierNote : $updatedDelivery->courier_notes,
                 ]);
@@ -196,9 +203,22 @@ class CourierDeliveryController extends Controller
                 if (
                     $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
                     && $courierNote !== ''
-                    && ! $isIdempotentRetry
                 ) {
                     $this->messaging->recordPickupNote($rider, $updatedDelivery, $courierNote);
+                }
+
+                if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
+                    DeliveryCheckpoint::firstOrCreate(
+                        ['delivery_id' => $updatedDelivery->id, 'checkpoint_type' => 'courier_pickup'],
+                        [
+                            'location_name' => $updatedDelivery->pickup_store_name ?? 'Merchant store',
+                            'barcode_scanned' => $updatedDelivery->tracking_number,
+                            'notes' => $courierNote !== ''
+                                ? $courierNote
+                                : 'Pickup rider matched the waybill and collected the seller parcel.',
+                            'scanned_by_id' => $rider->id,
+                        ]
+                    );
                 }
 
                 return $updatedDelivery;
@@ -215,20 +235,6 @@ class CourierDeliveryController extends Controller
             }
 
             throw $exception;
-        }
-
-        if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
-            DeliveryCheckpoint::firstOrCreate(
-                ['delivery_id' => $delivery->id, 'checkpoint_type' => 'courier_pickup'],
-                [
-                    'location_name' => $delivery->pickup_store_name ?? 'Merchant store',
-                    'barcode_scanned' => $delivery->tracking_number,
-                    'notes' => $courierNote !== ''
-                        ? $courierNote
-                        : 'Pickup rider matched the waybill and collected the seller parcel.',
-                    'scanned_by_id' => $rider->id,
-                ]
-            );
         }
 
         $message = match ($targetStatus) {
