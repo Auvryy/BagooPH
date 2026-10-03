@@ -29,11 +29,7 @@ class AppServiceProvider extends ServiceProvider
 
         Vite::prefetch(concurrency: 3);
 
-        if (
-            request()->header('x-forwarded-proto') === 'https' ||
-            request()->server('HTTP_X_FORWARDED_PROTO') === 'https' ||
-            app()->environment('production')
-        ) {
+        if (app()->environment('production')) {
             URL::forceScheme('https');
         }
     }

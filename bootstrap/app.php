@@ -19,8 +19,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
-
         // Tracking validation must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*')]);
 
