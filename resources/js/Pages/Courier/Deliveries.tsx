@@ -1,36 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    ArrowRight,
-    Building2,
-    Camera,
-    CheckCircle2,
-    ChevronRight,
-    Clock3,
-    History,
-    MapPin,
-    MessageSquare,
-    Package,
-    PackageCheck,
-    Phone,
-    Power,
-    ShieldAlert,
-    Store,
-    Truck,
-    X,
-} from 'lucide-react';
+import { Camera, CheckCircle2, MapPin, Package, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
-import { useCourierDutyControl } from '@/Components/CourierDutyControl';
-
-interface Scope {
-    company?: string | null;
-    hub?: string | null;
-    hubCode?: string | null;
-    hub_code?: string | null;
-    barangay?: string | null;
-    isAssigned?: boolean;
-    isOperational?: boolean;
-}
+import CourierJobMap from '@/Components/CourierJobMap';
+import { CourierBadge, CourierDialog, CourierEmpty, CourierFieldError, CourierPanel, CourierStop, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
+import { courierDate, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
+import { PageProps } from '@/types';
+import useCourierRequestError from '@/hooks/useCourierRequestError';
 
 interface PickupTask {
     id: number;
@@ -38,15 +14,8 @@ interface PickupTask {
     orderNumber: string | null;
     status: string;
     itemCount: number;
-    merchant: {
-        name: string | null;
-        address: string;
-        phone: string | null;
-    };
-    originHub: {
-        name: string | null;
-        code: string | null;
-    };
+    merchant: CourierPlace & { phone: string | null };
+    originHub: CourierPlace;
     assignedAt: string | null;
     nextAction: 'claim_pickup' | 'confirm_pickup' | 'await_origin_hub_scan' | null;
     canMessage: boolean;
@@ -57,19 +26,9 @@ interface FinalMileTask {
     trackingNumber: string;
     orderNumber: string | null;
     status: string;
-    recipient: {
-        name: string;
-        address: string;
-        phone: string;
-    };
-    payment: {
-        method: string;
-        codAmount: number | null;
-    };
-    destinationHub: {
-        name: string | null;
-        code: string | null;
-    };
+    recipient: CourierPlace & { phone: string | null };
+    payment: { method: string; codAmount: number | null };
+    destinationHub: CourierPlace;
     assignedAt: string | null;
     nextAction: 'start_delivery' | 'complete_delivery';
     canMessage: boolean;
@@ -87,1327 +46,207 @@ interface Activity {
 }
 
 interface Props {
-    scope?: Scope;
+    scope?: CourierScope;
     isOnline?: boolean;
-    stats?: {
-        availablePickups?: number;
-        activePickups?: number;
-        activePickupLimit?: number;
-        finalMileTasks?: number;
-        completedToday?: number;
-    };
-    queues?: {
-        availablePickups?: PickupTask[];
-        pickupTasks?: PickupTask[];
-        finalMileTasks?: FinalMileTask[];
-        recentActivity?: Activity[];
-    };
+    stats?: { availablePickups?: number; activePickups?: number; activePickupLimit?: number; finalMileTasks?: number; completedToday?: number };
+    queues?: { availablePickups?: PickupTask[]; pickupTasks?: PickupTask[]; finalMileTasks?: FinalMileTask[]; recentActivity?: Activity[] };
 }
 
-type Tab = 'pickup' | 'available' | 'final_mile' | 'activity';
-type ActionTarget = {
-    deliveryId: number;
-    trackingNumber: string;
-    status: 'picked_up' | 'out_for_delivery' | 'delivered';
-} | null;
+type Tab = 'pickup' | 'final_mile' | 'available' | 'activity';
+type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' };
+const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery' };
 
 export default function CourierDeliveries({ scope, isOnline = false, stats, queues }: Props) {
-    const availableJobs = queues?.availablePickups ?? [];
-    const pickupTasks = queues?.pickupTasks ?? [];
-    const finalMileTasks = queues?.finalMileTasks ?? [];
-    const recentActivity = queues?.recentActivity ?? [];
-
-    const availableCount = stats?.availablePickups ?? 0;
-    const activePickupCount = stats?.activePickups ?? 0;
-    const activePickupLimit = stats?.activePickupLimit ?? 5;
-    const finalMileCount = stats?.finalMileTasks ?? 0;
-    const completedTodayCount = stats?.completedToday ?? 0;
-
-    const hubName = scope?.hub ?? 'Bayan Hub';
-    const companyName = scope?.company ?? 'Logistics';
-    const isAssigned = scope?.isAssigned ?? false;
-    const isOperational = scope?.isOperational ?? true;
-
-    const initialTab = useMemo<Tab>(() => {
-        if (finalMileTasks.length > 0) return 'final_mile';
-        if (pickupTasks.length > 0) return 'pickup';
-        return 'available';
-    }, [finalMileTasks.length, pickupTasks.length]);
-
-    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-    const [actionTarget, setActionTarget] = useState<ActionTarget>(null);
+    const pickups = queues?.pickupTasks ?? [];
+    const available = queues?.availablePickups ?? [];
+    const deliveries = queues?.finalMileTasks ?? [];
+    const activity = queues?.recentActivity ?? [];
+    const [tab, setTab] = useState<Tab>(deliveries.length ? 'final_mile' : pickups.length ? 'pickup' : 'available');
+    const [search, setSearch] = useState('');
+    const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
+    const mapRegion = useRef<HTMLDivElement>(null);
+    const [target, setTarget] = useState<ActionTarget | null>(null);
     const [notes, setNotes] = useState('');
-    const [proofFile, setProofFile] = useState<File | null>(null);
-    const [proofPreview, setProofPreview] = useState<string | null>(null);
+    const [proof, setProof] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [loadingId, setLoadingId] = useState<number | null>(null);
-    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
-
-    const formatCurrency = (amount: number | null) =>
-        amount === null
-            ? 'Not applicable'
-            : new Intl.NumberFormat('en-PH', {
-                  style: 'currency',
-                  currency: 'PHP',
-              }).format(amount);
-
-    const formatDate = (value: string | null) => {
-        if (!value) return 'Not recorded';
-        return new Intl.DateTimeFormat('en-PH', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-        }).format(new Date(value));
+    const pending = useRef(false);
+    useCourierRequestError(pending, (message) => setErrors({ status: message }));
+    const normalizedSearch = search.trim().toLowerCase();
+    const matches = (...values: Array<string | null | undefined>) => values.some((value) => value?.toLowerCase().includes(normalizedSearch));
+    const matchingPickups = (items: PickupTask[]) => items.filter((task) => matches(task.trackingNumber, task.orderNumber, task.merchant.name, task.merchant.address, task.originHub.name, task.originHub.address));
+    const matchingDeliveries = deliveries.filter((task) => matches(task.trackingNumber, task.orderNumber, task.recipient.name, task.recipient.address, task.destinationHub.name, task.destinationHub.address));
+    const mapJobs: CourierMapJob[] = tab === 'pickup' || tab === 'available'
+        ? matchingPickups(tab === 'pickup' ? pickups : available).map((task) => {
+            const collected = task.nextAction === 'await_origin_hub_scan';
+            return {
+                key: `${tab}-${task.id}`, trackingNumber: task.trackingNumber,
+                stage: tab === 'available' ? 'Available pickup' : collected ? 'Bring to origin hub' : 'Collect from seller',
+                stopLabel: collected ? 'Origin Bayan Hub' : 'Seller pickup point',
+                place: collected ? task.originHub : task.merchant, preview: tab === 'available',
+                instruction: collected ? 'Hub staff must record intake before this parcel travels onward.' : tab === 'available' ? 'This is a preview. Claim the pickup before collecting the parcel.' : 'Collect this parcel from the seller, then bring it to the origin Bayan Hub.',
+            };
+        }) : tab === 'final_mile' ? matchingDeliveries.map((task) => ({
+            key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
+            stage: task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
+            stopLabel: task.nextAction === 'start_delivery' ? 'Destination Bayan Hub' : 'Saved buyer destination',
+            place: task.nextAction === 'start_delivery' ? task.destinationHub : task.recipient, preview: false,
+            instruction: task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
+        })) : [];
+    const selectedMapJob = selectCourierMapJob(mapJobs, selectedMapKey);
+    const showOnMap = (key: string) => {
+        setSelectedMapKey(key);
+        requestAnimationFrame(() => {
+            mapRegion.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+            mapRegion.current?.querySelector<HTMLElement>('#rider-map-title')?.focus({ preventScroll: true });
+        });
     };
+    const mapButton = (key: string) => <button type="button" onClick={() => showOnMap(key)} aria-pressed={selectedMapJob?.key === key} aria-controls="rider-job-map" className={courierClasses(courierButton, 'mt-3', selectedMapJob?.key === key && 'border-[#C20836] bg-[#FDF2F4] text-[#C20836]')}><MapPin className="h-4 w-4" aria-hidden="true" />{selectedMapJob?.key === key ? 'Shown on map' : 'View on map'}</button>;
+    const activeCount = stats?.activePickups ?? pickups.length;
+    const limit = stats?.activePickupLimit;
+    const claimReason = !scope?.isAssigned ? 'A logistics company and hub assignment is needed.'
+        : !scope.isOperational ? 'New work is paused at your company or hub.'
+        : !isOnline ? 'Go on duty to claim new pickups.'
+        : limit !== undefined && activeCount >= limit ? `Your pickup limit of ${limit} has been reached. Bring collected parcels to the origin hub before claiming more.` : '';
 
-    const claimPickup = (deliveryId: number) => {
-        setLoadingId(deliveryId);
-        router.post(
-            route('courier.claim', deliveryId),
-            {},
-            {
-                preserveScroll: true,
-                onFinish: () => setLoadingId(null),
+    useEffect(() => {
+        if (!proof) { setPreview(null); return; }
+        const url = URL.createObjectURL(proof);
+        setPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [proof]);
+
+    const resetAction = () => { setTarget(null); setNotes(''); setProof(null); setErrors({}); };
+    const openAction = (id: number, trackingNumber: string, status: ActionTarget['status']) => {
+        if (pending.current) return;
+        setNotes(''); setProof(null); setErrors({});
+        setTarget({ id, trackingNumber, status });
+    };
+    const claim = (id: number) => {
+        if (pending.current || claimReason) return;
+        pending.current = true;
+        setLoadingId(id);
+        setErrors({});
+        router.post(courierPath(`/deliveries/${id}/claim`), {}, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const error = (page.props as PageProps).flash?.error;
+                if (error) setErrors({ status: error });
+                else setTab('pickup');
             },
-        );
+            onError: (validation) => setErrors(validation),
+            onFinish: () => { pending.current = false; setLoadingId(null); },
+        });
     };
-
-    const openAction = (
-        deliveryId: number,
-        trackingNumber: string,
-        status: ActionTarget extends infer T
-            ? T extends { status: infer S }
-                ? S
-                : never
-            : never,
-    ) => {
-        setNotes('');
-        setProofFile(null);
-        setProofPreview(null);
-        setActionTarget({ deliveryId, trackingNumber, status });
+    const selectProof = (file: File | null) => {
+        if (file && (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+            setErrors((current) => ({ ...current, proof_image_file: 'Choose an image up to 5 MB. Your previous photo is kept.' }));
+            return;
+        }
+        setProof(file);
+        setErrors((current) => ({ ...current, proof_image_file: '' }));
     };
-
-    const closeAction = () => {
-        if (loadingId !== null) return;
-        if (proofPreview) URL.revokeObjectURL(proofPreview);
-        setActionTarget(null);
-        setProofFile(null);
-        setProofPreview(null);
-        setNotes('');
-    };
-
-    const submitAction = (event: React.FormEvent) => {
+    const submit = (event: FormEvent) => {
         event.preventDefault();
-        if (!actionTarget) return;
-
-        setLoadingId(actionTarget.deliveryId);
-        router.post(
-            route('courier.updateStatus', actionTarget.deliveryId),
-            {
-                _method: 'patch',
-                status: actionTarget.status,
-                courier_notes: notes.trim() || undefined,
-                proof_image_file:
-                    actionTarget.status === 'delivered' ? proofFile ?? undefined : undefined,
+        if (!target || pending.current) return;
+        if (target.status === 'delivered' && !proof) {
+            setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
+            return;
+        }
+        pending.current = true;
+        setLoadingId(target.id);
+        setErrors({});
+        router.post(courierPath(`/deliveries/${target.id}/status`), {
+            _method: 'patch', status: target.status, courier_notes: notes.trim() || undefined,
+            proof_image_file: target.status === 'delivered' ? proof ?? undefined : undefined,
+        }, {
+            forceFormData: true, preserveScroll: true,
+            onSuccess: (page) => {
+                const error = (page.props as PageProps).flash?.error;
+                if (error) setErrors({ status: error });
+                else resetAction();
             },
-            {
-                forceFormData: true,
-                preserveScroll: true,
-                onSuccess: closeAction,
-                onFinish: () => setLoadingId(null),
-            },
-        );
+            onError: (validation) => setErrors(validation),
+            onFinish: () => { pending.current = false; setLoadingId(null); },
+        });
     };
 
+    const pickupCards = (items: PickupTask[], isAvailable: boolean) => {
+        const filtered = matchingPickups(items);
+        if (!filtered.length) return [<CourierEmpty key="empty" title={normalizedSearch ? 'No matching pickups' : isAvailable ? 'No available pickups' : 'No assigned pickups'}>{normalizedSearch ? 'Try another tracking number, store, or address.' : isAvailable ? (claimReason || 'Eligible pickups from your origin hub will appear here.') : 'Pickups you claim will stay here until the origin hub records intake.'}</CourierEmpty>];
+        return filtered.map((task) => {
+            const collected = task.nextAction === 'await_origin_hub_scan';
+            return <CourierPanel key={task.id} className={courierClasses('min-w-0 p-4 sm:p-5', selectedMapJob?.key === `${tab}-${task.id}` && 'border-rose-400')}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><CourierBadge tone={collected ? 'waiting' : 'brand'}>{isAvailable ? 'Available pickup' : collected ? 'Bring to origin hub' : 'Collect from seller'}</CourierBadge><span className="break-all text-sm font-semibold text-slate-700">{task.trackingNumber}</span></div>
+                <CourierStop place={collected ? task.originHub : task.merchant} label={collected ? 'Origin Bayan Hub' : 'Seller pickup point'} phone={collected ? null : task.merchant.phone} messageDeliveryId={!collected && task.canMessage ? task.id : undefined} messagePhase="pickup" />
+                {mapButton(`${tab}-${task.id}`)}
+                <p className={`mt-4 rounded-[18px] border p-3 text-base leading-relaxed ${collected ? 'border-amber-300 bg-[#FFF4DF] text-[#92400E]' : 'border-slate-300 bg-[#F8F6F2] text-slate-700'}`}>{collected ? 'Bring this parcel to the origin hub. Hub staff must scan it into custody before it can travel onward.' : isAvailable ? 'Claim this pickup before collecting the parcel from the seller.' : 'Check the parcel and waybill at the seller, then confirm collection.'}</p>
+                <details className="mt-3 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-semibold text-slate-800">Parcel details</summary><div className="space-y-2 pb-3"><p>Order: {task.orderNumber || 'Not provided'}</p><p>Items: {task.itemCount}</p><p>Assigned: {courierDate(task.assignedAt)}</p>{collected && task.canMessage && <Link href={`${courierPath('/messages')}?delivery=${task.id}&phase=pickup`} className={courierButton}>Message seller</Link>}</div></details>
+                {isAvailable && <><button type="button" onClick={() => claim(task.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full`}>{loadingId === task.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="mt-2 text-sm text-slate-600">{claimReason}</p>}</>}
+                {task.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
+            </CourierPanel>;
+        });
+    };
+
+    const finalMileCards = () => {
+        const filtered = matchingDeliveries;
+        if (!filtered.length) return [<CourierEmpty key="empty" title={normalizedSearch ? 'No matching deliveries' : 'No assigned deliveries'}>{normalizedSearch ? 'Try another tracking number, recipient, or address.' : 'Final-mile parcels appear after your destination hub assigns them to you.'}</CourierEmpty>];
+        return filtered.map((task) => {
+            const departing = task.nextAction === 'start_delivery';
+            const isCod = task.payment.method === 'COD';
+            return <CourierPanel key={task.id} className={courierClasses('min-w-0 p-4 sm:p-5', selectedMapJob?.key === `final_mile-${task.id}` && 'border-rose-400')}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><CourierBadge tone="brand">{departing ? 'Collect at destination hub' : 'Out for delivery'}</CourierBadge><span className="break-all text-sm font-semibold text-slate-700">{task.trackingNumber}</span></div>
+                <CourierStop place={departing ? task.destinationHub : task.recipient} label={departing ? 'Destination Bayan Hub' : 'Saved buyer destination'} phone={departing ? null : task.recipient.phone} messageDeliveryId={!departing && task.canMessage ? task.id : undefined} messagePhase="final_mile" />
+                {mapButton(`final_mile-${task.id}`)}
+                <div className="mt-4 rounded-[18px] border border-slate-300 bg-[#F8F6F2] p-3"><p className="text-sm font-semibold text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="mt-1 text-xl font-bold tabular-nums">{isCod ? courierMoney(task.payment.codAmount) : task.payment.method ? `${task.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="mt-2 text-sm text-slate-600">Delivery proof does not record cash remittance or settle the order.</p>}</div>
+                <p className="mt-4 text-base leading-relaxed text-slate-700">{departing ? 'Collect the assigned parcel from this hub before starting the delivery leg.' : 'Hand the parcel to the recipient and upload a proof photo. The buyer confirms receipt separately.'}</p>
+                <details className="mt-3 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-semibold text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order: {task.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(task.assignedAt)}</p>{departing && <p className="whitespace-pre-line break-words text-base">Recipient: {task.recipient.name || 'Not provided'}<br />{task.recipient.address || 'Address not provided'}</p>}</div></details>
+                <button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>
+            </CourierPanel>;
+        });
+    };
+
+    const cards = tab === 'pickup' ? pickupCards(pickups, false) : tab === 'available' ? pickupCards(available, true) : tab === 'final_mile' ? finalMileCards() : [];
+
     return (
-        <CourierLayout
-            title="Dispatch Dashboard"
-            subtitle={
-                isAssigned
-                    ? `${hubName} · ${companyName}`
-                    : 'Waiting for a logistics company and hub assignment'
-            }
-            isOnline={isOnline}
-            scope={scope}
-        >
-            <Head title="Dispatch Dashboard — BagooPH" />
-
-            <div className="space-y-4 sm:space-y-6 font-sans">
-                {/* Status Advisories */}
-                {!isAssigned && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 sm:p-4 text-xs font-medium text-amber-950 flex items-start gap-3 shadow-2xs">
-                        <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-bold text-amber-900">Working Hub Not Assigned</p>
-                            <p className="mt-0.5 text-amber-800">
-                                Your courier account is approved, but has not yet been linked to an active logistics facility.
-                                A logistics administrator must assign your station before available pickup orders appear.
-                            </p>
-                        </div>
-                    </div>
-                )}
-                {isAssigned && !isOperational && (
-                    <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-3.5 sm:p-4 text-xs font-medium text-rose-950 flex items-start gap-3 shadow-2xs">
-                        <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-bold text-rose-900">Facility Operations Paused</p>
-                            <p className="mt-0.5 text-rose-800">
-                                Your assigned logistics company or working hub is currently marked inactive. New pickup dispatches
-                                are suspended, but any parcels already in your custody remain active and must be processed.
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Mobile Quick On-Duty Alert (if currently off-duty) */}
-                {!isOnline && (
-                    <div className="lg:hidden rounded-xl border border-amber-300 bg-amber-50/95 p-3.5 shadow-2xs flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-xs font-bold text-amber-950 truncate">You are Off Duty</p>
-                                <p className="text-[10px] text-amber-800 truncate">Go on duty to receive & claim pickups</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={requestDutyChange}
-                            disabled={dutyLoading}
-                            className="px-3 py-1.5 rounded-lg bg-[#E00D42] text-white text-xs font-bold shadow-xs hover:bg-[#C20836] transition shrink-0 cursor-pointer disabled:opacity-60"
-                        >
-                            {dutyLoading ? 'Updating...' : 'Go On Duty'}
-                        </button>
-                    </div>
-                )}
-
-                {/* 1. TOP BENTO KPI TILES (COMPACT 2x2 ON MOBILE, 4-COL ON DESKTOP) */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-                    {/* 1: Available Pickups */}
-                    <div
-                        onClick={() => setActiveTab('available')}
-                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
-                            activeTab === 'available' ? 'border-[#E00D42] ring-1 ring-[#E00D42]/30' : 'border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
-                                <span className="font-semibold truncate">Available pickups</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
-                                    <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42]" />
-                                </div>
-                            </div>
-                            <div className="mt-1 sm:mt-2">
-                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {availableCount}{' '}
-                                    <span className="text-xs sm:text-sm font-bold text-slate-500">jobs</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 text-[10px] sm:text-[11px] font-sans">
-                            <span className="text-slate-500 truncate">Ready at assigned hub</span>
-                        </div>
-                    </div>
-
-                    {/* 2: My Pickup Tasks */}
-                    <div
-                        onClick={() => setActiveTab('pickup')}
-                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
-                            activeTab === 'pickup' ? 'border-indigo-600 ring-1 ring-indigo-600/30' : 'border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
-                                <span className="font-semibold truncate">My pickups</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
-                                </div>
-                            </div>
-                            <div className="mt-1 sm:mt-2">
-                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {activePickupCount}{' '}
-                                    <span className="text-xs sm:text-sm font-bold text-slate-500">parcels</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
-                            <span className="text-slate-500 truncate">Batch Limit</span>
-                            <span className="font-bold text-slate-800 shrink-0 ml-1">
-                                {activePickupCount}/{activePickupLimit}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* 3: Final-Mile Tasks */}
-                    <div
-                        onClick={() => setActiveTab('final_mile')}
-                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
-                            activeTab === 'final_mile' ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
-                                <span className="font-semibold truncate">Final-mile</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                                    <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
-                                </div>
-                            </div>
-                            <div className="mt-1 sm:mt-2">
-                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {finalMileCount}{' '}
-                                    <span className="text-xs sm:text-sm font-bold text-slate-500">deliveries</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
-                            <span className="text-slate-500 truncate">Destination</span>
-                            <span className="font-bold text-slate-800 shrink-0 ml-1">Direct Buyer</span>
-                        </div>
-                    </div>
-
-                    {/* 4: Delivered Today */}
-                    <div
-                        onClick={() => setActiveTab('activity')}
-                        className={`bg-white rounded-xl p-3.5 sm:p-5 border shadow-2xs flex flex-col justify-between transition cursor-pointer group ${
-                            activeTab === 'activity' ? 'border-emerald-600 ring-1 ring-emerald-600/30' : 'border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-[11px] sm:text-xs">
-                                <span className="font-semibold truncate">Delivered today</span>
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-                                </div>
-                            </div>
-                            <div className="mt-1 sm:mt-2">
-                                <p className="text-xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {completedTodayCount}{' '}
-                                    <span className="text-xs sm:text-sm font-bold text-slate-500">trips</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-sans">
-                            <span className="text-slate-500 truncate">Verified</span>
-                            <span className="font-semibold text-slate-700 shrink-0 ml-1">100% OK</span>
-                        </div>
-                    </div>
+        <CourierLayout title="Your tasks" subtitle={scope?.isAssigned ? 'Choose a parcel to see its current stop and next step.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
+            <Head title="Your tasks — BagooPH" />
+            <div className="space-y-5">
+                {!isOnline && <p className="rounded-[18px] border border-amber-300 bg-[#FFF4DF] p-4 text-base text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
+                {scope?.isAssigned && !scope.isOperational && <p className="rounded-[18px] border border-amber-300 bg-[#FFF4DF] p-4 text-base text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
+                <div role="group" aria-label="Task filters" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    {([{ key: 'pickup', label: 'Pickups', count: pickups.length }, { key: 'final_mile', label: 'Deliveries', count: deliveries.length }, { key: 'available', label: 'Available', count: available.length }, { key: 'activity', label: 'Recent', count: activity.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={tab === item.key} onClick={() => setTab(item.key)} className={courierClasses(courierButton, 'min-w-0', tab === item.key && 'border-[#C20836] bg-[#FDF2F4] text-[#C20836]')}><span>{item.label}</span><span className="tabular-nums">{item.count}</span></button>)}
                 </div>
-
-                {/* 2. MIDDLE BENTO ROW: 8-COL EXECUTION QUEUE + 4-COL CUSTODY PIPELINE */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
-                    {/* LEFT (8 COLS): ACTIVE ROUTE & EXECUTION QUEUE */}
-                    <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4">
-                        {/* Section Header: Title Top, Segmented Tabs Full-Width Below */}
-                        <div className="pb-3.5 border-b border-slate-100 space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h3 className="text-sm sm:text-base font-black text-slate-900 font-sans tracking-tight truncate">
-                                        Route & Execution Queue
-                                    </h3>
-                                    <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
-                                        {hubName}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Queue Segmented Switcher (Horizontally Scrollable on Mobile) */}
-                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80">
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('pickup')}
-                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
-                                        activeTab === 'pickup'
-                                            ? 'bg-[#E00D42] text-white shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Store className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pickup' ? 'text-white' : 'text-slate-400'}`} />
-                                    <span>My Pickups</span>
-                                    <span
-                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            activeTab === 'pickup'
-                                                ? 'bg-white/20 text-white border border-white/30'
-                                                : 'bg-slate-200/80 text-slate-600'
-                                        }`}
-                                    >
-                                        {activePickupCount}
-                                    </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('final_mile')}
-                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
-                                        activeTab === 'final_mile'
-                                            ? 'bg-[#E00D42] text-white shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Truck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'final_mile' ? 'text-white' : 'text-slate-400'}`} />
-                                    <span>Final-Mile</span>
-                                    <span
-                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            activeTab === 'final_mile'
-                                                ? 'bg-white/20 text-white border border-white/30'
-                                                : 'bg-slate-200/80 text-slate-600'
-                                        }`}
-                                    >
-                                        {finalMileCount}
-                                    </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('available')}
-                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
-                                        activeTab === 'available'
-                                            ? 'bg-[#E00D42] text-white shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Package className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'available' ? 'text-white' : 'text-slate-400'}`} />
-                                    <span>Available</span>
-                                    <span
-                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            activeTab === 'available'
-                                                ? 'bg-white/20 text-white border border-white/30'
-                                                : 'bg-slate-200/80 text-slate-600'
-                                        }`}
-                                    >
-                                        {availableCount}
-                                    </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('activity')}
-                                    className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
-                                        activeTab === 'activity'
-                                            ? 'bg-[#E00D42] text-white shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'activity' ? 'text-white' : 'text-slate-400'}`} />
-                                    <span>Trips</span>
-                                    <span
-                                        className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            activeTab === 'activity'
-                                                ? 'bg-white/20 text-white border border-white/30'
-                                                : 'bg-slate-200/80 text-slate-600'
-                                        }`}
-                                    >
-                                        {recentActivity.length}
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Content Area for Active Tab */}
-                        <div className="space-y-3 min-h-[300px]">
-                            {/* TAB 1: MY PICKUPS */}
-                            {activeTab === 'pickup' && (
-                                <>
-                                    {pickupTasks.length === 0 ? (
-                                        <EmptyState
-                                            icon={Store}
-                                            title="No Active Pickups In Progress"
-                                            description="You have no claimed merchant pickups right now. Browse available jobs to start your batch route."
-                                            action={
-                                                availableCount > 0 ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setActiveTab('available')}
-                                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-[#E00D42] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#C20836] transition cursor-pointer"
-                                                    >
-                                                        <span>View Available Jobs ({availableCount})</span>
-                                                        <ArrowRight className="w-3.5 h-3.5" />
-                                                    </button>
-                                                ) : undefined
-                                            }
-                                        />
-                                    ) : (
-                                        pickupTasks.map((task) => (
-                                            <PickupRouteCard
-                                                key={task.id}
-                                                task={task}
-                                                loading={loadingId === task.id}
-                                                onConfirm={() =>
-                                                    openAction(task.id, task.trackingNumber, 'picked_up')
-                                                }
-                                            />
-                                        ))
-                                    )}
-                                </>
-                            )}
-
-                            {/* TAB 2: FINAL-MILE TASKS */}
-                            {activeTab === 'final_mile' && (
-                                <>
-                                    {finalMileTasks.length === 0 ? (
-                                        <EmptyState
-                                            icon={Truck}
-                                            title="No Final-Mile Dispatches"
-                                            description="No buyer deliveries are assigned to you at this moment. Assignments are issued by your destination hub dispatcher."
-                                        />
-                                    ) : (
-                                        finalMileTasks.map((task) => (
-                                            <FinalMileRouteCard
-                                                key={task.id}
-                                                task={task}
-                                                codLabel={formatCurrency(task.payment?.codAmount ?? null)}
-                                                loading={loadingId === task.id}
-                                                onStart={() =>
-                                                    openAction(task.id, task.trackingNumber, 'out_for_delivery')
-                                                }
-                                                onComplete={() =>
-                                                    openAction(task.id, task.trackingNumber, 'delivered')
-                                                }
-                                            />
-                                        ))
-                                    )}
-                                </>
-                            )}
-
-                            {/* TAB 3: AVAILABLE PICKUPS */}
-                            {activeTab === 'available' && (
-                                <>
-                                    {availableJobs.length === 0 ? (
-                                        <EmptyState
-                                            icon={PackageCheck}
-                                            title="No Available Pickup Jobs"
-                                            description="All ready orders at your assigned Bayan Hub are currently claimed or awaiting merchant packing."
-                                        />
-                                    ) : (
-                                        availableJobs.map((task) => (
-                                            <AvailablePickupRouteCard
-                                                key={task.id}
-                                                task={task}
-                                                disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
-                                                loading={loadingId === task.id}
-                                                onClaim={() => claimPickup(task.id)}
-                                            />
-                                        ))
-                                    )}
-                                </>
-                            )}
-
-                            {/* TAB 4: RECENT ACTIVITY */}
-                            {activeTab === 'activity' && (
-                                <>
-                                    {recentActivity.length === 0 ? (
-                                        <EmptyState
-                                            icon={History}
-                                            title="No Delivery Trips Recorded"
-                                            description="Your completed buyer handoffs for today will appear here once verified."
-                                        />
-                                    ) : (
-                                        <div className="grid gap-2.5">
-                                            {recentActivity.map((activity) => (
-                                                <div
-                                                    key={activity.id}
-                                                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-xs text-slate-900 font-mono">
-                                                                {activity.trackingNumber}
-                                                            </span>
-                                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
-                                                                Delivered
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                                                            Recipient: <span className="font-semibold text-slate-800">{activity.recipientName}</span> • {activity.deliveryAddress}
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="sm:text-right shrink-0 text-xs">
-                                                        <p className="font-bold text-slate-800">
-                                                            {formatDate(activity.deliveredAt)}
-                                                        </p>
-                                                        <p className="text-[10px] text-slate-400 mt-0.5">
-                                                            Payment: {activity.paymentMethod}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* RIGHT (4 COLS): CUSTODY & DISPATCH PIPELINE (MATCHING SELLER'S FULFILLMENT ACTIONS) */}
-                    <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4 self-start">
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <Truck className="w-4 h-4 text-[#E00D42]" />
-                                <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
-                                    Custody Pipeline
-                                </h3>
-                            </div>
-                        </div>
-
-                        {/* Interactive Pipeline Action Cards */}
-                        <div className="space-y-2.5 font-sans">
-                            {/* 1. TO PICK UP */}
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('pickup')}
-                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    activePickupCount > 0
-                                        ? 'bg-amber-50/80 border border-amber-300 shadow-2xs hover:bg-amber-100/70'
-                                        : 'bg-slate-50 border border-slate-200/90 hover:border-amber-400'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            activePickupCount > 0
-                                                ? 'bg-amber-500 text-white shadow-xs'
-                                                : 'bg-amber-100 text-amber-700'
-                                        }`}
-                                    >
-                                        <Store className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-amber-900 block leading-tight">
-                                            To Pick Up
-                                        </span>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        activePickupCount > 0
-                                            ? 'bg-amber-500 text-white shadow-xs'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {activePickupCount}
-                                </span>
-                            </button>
-
-                            {/* 2. FINAL-MILE DELIVERY */}
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('final_mile')}
-                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    finalMileCount > 0
-                                        ? 'bg-emerald-50/80 border border-emerald-300 shadow-2xs hover:bg-emerald-100/70'
-                                        : 'bg-slate-50 border border-slate-200/90 hover:border-emerald-400'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            finalMileCount > 0
-                                                ? 'bg-emerald-600 text-white shadow-xs'
-                                                : 'bg-emerald-100 text-emerald-800'
-                                        }`}
-                                    >
-                                        <Truck className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-emerald-900 block leading-tight">
-                                            Final-Mile
-                                        </span>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        finalMileCount > 0
-                                            ? 'bg-emerald-600 text-white shadow-xs'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {finalMileCount}
-                                </span>
-                            </button>
-
-                            {/* 3. AVAILABLE PICKUPS POOL */}
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('available')}
-                                className={`w-full p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 text-left cursor-pointer group ${
-                                    availableCount > 0
-                                        ? 'bg-rose-50/80 border border-rose-300 shadow-2xs hover:bg-rose-100/70'
-                                        : 'bg-slate-50 border border-slate-200/90 hover:border-rose-400'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            availableCount > 0
-                                                ? 'bg-[#E00D42] text-white shadow-xs'
-                                                : 'bg-rose-100 text-rose-700'
-                                        }`}
-                                    >
-                                        <Package className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight">
-                                            Available Jobs
-                                        </span>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`px-2.5 py-1 min-w-[28px] text-center rounded-lg font-sans text-sm font-black shrink-0 ${
-                                        availableCount > 0
-                                            ? 'bg-[#E00D42] text-white shadow-xs'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {availableCount}
-                                </span>
-                            </button>
-
-                            {/* LOGISTICS PIPELINE SUMMARY BOX */}
-                            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-sans shrink-0">
-                                <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                                    <span>Route Custody</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-1 divide-x divide-slate-200/80 text-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveTab('available')}
-                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
-                                        title="Available pickup jobs"
-                                    >
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
-                                            Available
-                                        </span>
-                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {availableCount}
-                                        </span>
-                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
-                                            ready
-                                        </span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveTab('pickup')}
-                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
-                                        title="Active route tasks in custody"
-                                    >
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
-                                            In Custody
-                                        </span>
-                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {activePickupCount + finalMileCount}
-                                        </span>
-                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
-                                            on route
-                                        </span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveTab('activity')}
-                                        className="px-1 hover:bg-slate-100/80 rounded-lg transition group block cursor-pointer"
-                                        title="Delivered parcels today"
-                                    >
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block group-hover:text-slate-900">
-                                            Delivered
-                                        </span>
-                                        <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {completedTodayCount}
-                                        </span>
-                                        <span className="text-[8px] text-slate-400 block -mt-0.5">
-                                            verified
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
+                <label className="block text-sm font-semibold text-slate-700">Search this queue<span className="relative block"><Search className="pointer-events-none absolute left-3 top-6 h-5 w-5 text-slate-600" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tracking, name, or address" className={`${courierInput} pl-10`} /></span></label>
+                {!target && <CourierFieldError message={errors.status || Object.values(errors).find(Boolean)} />}
+                <div className="grid items-start gap-4 xl:grid-cols-2">
+                    {cards[0]}
+                    {selectedMapJob && <div id="rider-job-map" ref={mapRegion} className="min-w-0"><CourierJobMap job={selectedMapJob} /></div>}
+                    {cards.slice(1)}
+                    {tab === 'activity' && (activity.filter((trip) => matches(trip.trackingNumber, trip.orderNumber, trip.recipientName, trip.deliveryAddress)).length ? activity.filter((trip) => matches(trip.trackingNumber, trip.orderNumber, trip.recipientName, trip.deliveryAddress)).map((trip) => <CourierPanel key={trip.id} className="p-4 sm:p-5"><CourierBadge tone="success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Delivery recorded</CourierBadge><p className="mt-3 break-all text-sm font-semibold">{trip.trackingNumber}</p><h2 className="mt-2 break-words text-xl font-bold">{trip.recipientName}</h2><p className="mt-2 break-words text-base text-slate-700">{trip.deliveryAddress}</p><p className="mt-3 text-sm text-slate-600">{courierDate(trip.deliveredAt)}</p><p className="mt-2 text-sm text-slate-600">Buyer receipt confirmation is a separate step.</p></CourierPanel>) : <CourierEmpty title={normalizedSearch ? 'No matching records' : 'No recent deliveries'}>Recorded final-mile deliveries at your current hub appear here.</CourierEmpty>)}
                 </div>
-
-                {/* 3. BOTTOM ROW: AVAILABLE PICKUP OPPORTUNITIES (FAST DISPATCH QUEUE) */}
-                {activeTab !== 'available' && availableJobs.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs font-sans">
-                        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <Package className="w-4 h-4 text-[#E00D42]" />
-                                    <h3 className="font-bold text-sm text-slate-900">
-                                        Available Pickup Opportunities ({availableJobs.length})
-                                    </h3>
-                                </div>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    Ready parcels at {hubName} eligible for batch claim
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('available')}
-                                className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase cursor-pointer"
-                            >
-                                <span>Manage All</span>
-                                <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {availableJobs.slice(0, 3).map((task) => (
-                                <div
-                                    key={task.id}
-                                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition shadow-2xs flex flex-col justify-between"
-                                >
-                                    <div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-bold text-xs text-slate-900 font-mono">
-                                                {task.trackingNumber}
-                                            </span>
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-[#C20836] border border-rose-200 uppercase">
-                                                Ready
-                                            </span>
-                                        </div>
-                                        <p className="text-xs font-bold text-slate-800 mt-1.5">
-                                            {task.merchant?.name ?? 'Merchant Store'}
-                                        </p>
-                                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                                            {task.merchant?.address}
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-500 font-semibold">
-                                            {task.itemCount} item(s)
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => claimPickup(task.id)}
-                                            disabled={!isOnline || loadingId !== null || activePickupCount >= activePickupLimit}
-                                            className="px-3 py-1.5 bg-[#E00D42] text-white hover:bg-[#C20836] text-[11px] font-bold rounded-lg shadow-2xs transition disabled:opacity-50 cursor-pointer min-h-[32px]"
-                                        >
-                                            {loadingId === task.id ? 'Claiming...' : 'Claim Job'}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                {tab === 'activity' && <Link href={courierPath('/earnings')} className={courierButton}>View completed trips</Link>}
             </div>
 
-            {/* ACTION MODAL (FOR PICKUP CONFIRMATION, FINAL-MILE START, AND DELIVERY PHOTO PROOF) */}
-            {actionTarget && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 font-sans">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-300 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        <div className="flex items-start justify-between border-b border-slate-100 p-5 bg-slate-50/50">
-                            <div>
-                                <h2 className="text-base font-black text-slate-900 tracking-tight">
-                                    {actionTarget.status === 'picked_up' && 'Confirm Merchant Pickup'}
-                                    {actionTarget.status === 'out_for_delivery' && 'Start Final-Mile Delivery'}
-                                    {actionTarget.status === 'delivered' && 'Record Successful Delivery'}
-                                </h2>
-                                <p className="mt-0.5 text-xs text-slate-500 font-mono">
-                                    Waybill tracking: <span className="font-bold text-slate-800">{actionTarget.trackingNumber}</span>
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                aria-label="Close"
-                                onClick={closeAction}
-                                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={submitAction} className="space-y-4 p-5">
-                            {actionTarget.status === 'picked_up' && (
-                                <InstructionBox text="Match the waybill barcode at the merchant premises before confirming pickup. Custody remains yours until the Origin Bayan Hub scans the parcel." />
-                            )}
-                            {actionTarget.status === 'out_for_delivery' && (
-                                <InstructionBox text="Confirm you have received physical possession of this parcel from the Destination Bayan Hub staging area before departing for the buyer address." />
-                            )}
-                            {actionTarget.status === 'delivered' && (
-                                <>
-                                    <InstructionBox text="Successful handoff requires clear photographic proof of delivery at the recipient location." />
-                                    <div>
-                                        <label
-                                            htmlFor="proof-image"
-                                            className="mb-1.5 block text-xs font-bold text-slate-800 uppercase tracking-wider"
-                                        >
-                                            Handoff Proof Photo <span className="text-[#E00D42]">*</span>
-                                        </label>
-                                        <label
-                                            htmlFor="proof-image"
-                                            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 text-xs font-bold text-slate-700 hover:bg-slate-100 transition hover:border-slate-400 min-h-[48px]"
-                                        >
-                                            <Camera className="w-5 h-5 text-[#E00D42]" />
-                                            <span>{proofFile ? proofFile.name : 'Choose or capture handoff photo'}</span>
-                                        </label>
-                                        <input
-                                            id="proof-image"
-                                            type="file"
-                                            className="sr-only"
-                                            accept="image/*"
-                                            capture="environment"
-                                            required
-                                            onChange={(event) => {
-                                                const file = event.target.files?.[0] ?? null;
-                                                if (proofPreview) URL.revokeObjectURL(proofPreview);
-                                                setProofFile(file);
-                                                setProofPreview(file ? URL.createObjectURL(file) : null);
-                                            }}
-                                        />
-                                        {proofPreview && (
-                                            <div className="mt-3 aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs">
-                                                <img
-                                                    src={proofPreview}
-                                                    alt="Selected handoff proof"
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            <div>
-                                <label
-                                    htmlFor="courier-notes"
-                                    className="mb-1.5 block text-xs font-bold text-slate-800 uppercase tracking-wider"
-                                >
-                                    {actionTarget.status === 'picked_up'
-                                        ? 'Pickup Note for Merchant'
-                                        : 'Operational Delivery Notes'}{' '}
-                                    <span className="font-normal text-slate-400 lowercase">(optional)</span>
-                                </label>
-                                <textarea
-                                    id="courier-notes"
-                                    rows={3}
-                                    maxLength={500}
-                                    value={notes}
-                                    onChange={(event) => setNotes(event.target.value)}
-                                    placeholder={
-                                        actionTarget.status === 'picked_up'
-                                            ? 'e.g. Received from merchant counter, packages verified.'
-                                            : 'e.g. Received by buyer at gate, verified signature.'
-                                    }
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E00D42] focus:ring-[#E00D42] shadow-2xs font-sans"
-                                />
-                            </div>
-
-                            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={closeAction}
-                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer uppercase tracking-wider"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={
-                                        loadingId !== null ||
-                                        (actionTarget.status === 'delivered' && !proofFile)
-                                    }
-                                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-bold text-white bg-[#E00D42] hover:bg-[#C20836] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider cursor-pointer"
-                                >
-                                    {loadingId !== null ? 'Saving...' : 'Confirm Action'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {confirmationDialog}
+            <CourierDialog open={target !== null} title={target ? actionLabels[target.status] : 'Parcel action'} onClose={() => { if (!pending.current) resetAction(); }} busy={loadingId !== null}>
+                {target && <form onSubmit={submit} className="space-y-4">
+                    <p className="break-all text-sm font-semibold text-slate-700">{target.trackingNumber}</p>
+                    <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : 'Record the actual handoff with a proof photo. Only the buyer can confirm receipt and complete the order.'}</p>
+                    <CourierFieldError message={errors.status} />
+                    {target.status === 'delivered' && <div>
+                        <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">Proof of delivery photo</label>
+                        <p id="proof-help" className="mt-1 text-sm text-slate-600">An image is required, up to 5 MB. Choosing a photo does not record delivery.</p>
+                        <input id="delivery-proof" type="file" accept="image/*" disabled={loadingId !== null} aria-invalid={Boolean(errors.proof_image_file)} aria-describedby="proof-help proof-error" onChange={(event) => { selectProof(event.target.files?.[0] ?? null); event.target.value = ''; }} className={`${courierInput} file:mr-3 file:rounded-[14px] file:border-0 file:bg-[#FDF2F4] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#C20836]`} />
+                        <CourierFieldError id="proof-error" message={errors.proof_image_file} />
+                        {proof && <div className="mt-3 space-y-2">{preview && <img src={preview} alt="Selected delivery proof preview" className="max-h-56 w-full rounded-[18px] border border-slate-300 object-contain" />}<p className="break-words text-sm text-slate-600">{proof.name}</p><button type="button" disabled={loadingId !== null} onClick={() => selectProof(null)} className={courierButton}>Remove photo</button></div>}
+                    </div>}
+                    <label className="block text-sm font-semibold text-slate-800" htmlFor="courier-notes">Optional note<textarea id="courier-notes" rows={3} maxLength={500} value={notes} disabled={loadingId !== null} aria-invalid={Boolean(errors.courier_notes)} aria-describedby="notes-help notes-error" onChange={(event) => setNotes(event.target.value)} className={`${courierInput} resize-y`} /></label>
+                    <p id="notes-help" className="text-sm text-slate-600">Up to 500 characters.{target.status === 'picked_up' ? ' Pickup notes are also sent to the seller.' : ''}</p>
+                    <CourierFieldError id="notes-error" message={errors.courier_notes} />
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
+                </form>}
+            </CourierDialog>
         </CourierLayout>
-    );
-}
-
-{/* SUBCOMPONENTS */}
-
-function EmptyState({
-    icon: Icon,
-    title,
-    description,
-    action,
-}: {
-    icon: React.ElementType;
-    title: string;
-    description: string;
-    action?: React.ReactNode;
-}) {
-    return (
-        <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 text-center font-sans">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
-                <Icon className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-800">{title}</h4>
-            <p className="mt-1 text-xs text-slate-500 max-w-md">{description}</p>
-            {action}
-        </div>
-    );
-}
-
-function PickupRouteCard({
-    task,
-    loading,
-    onConfirm,
-}: {
-    task: PickupTask;
-    loading: boolean;
-    onConfirm: () => void;
-}) {
-    const awaitingHub = task.nextAction === 'await_origin_hub_scan';
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
-
-    return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="min-w-0">
-                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
-                        {task.trackingNumber}
-                    </span>
-                    {task.orderNumber && (
-                        <span className="text-[11px] text-slate-500 font-medium font-mono">
-                            Order {task.orderNumber}
-                        </span>
-                    )}
-                </div>
-                <span
-                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                        awaitingHub
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                            : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                    }`}
-                >
-                    {awaitingHub ? 'In Custody' : 'Assigned Pickup'}
-                </span>
-            </div>
-
-            {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Merchant Location</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">
-                        {task.merchant?.name ?? 'Merchant Store'}
-                    </p>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.merchant?.address}
-                    </p>
-                    {/* Action Links on Mobile/Desktop */}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                        {task.merchant?.address && (
-                            <a
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
-                            >
-                                <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                <span>Open Maps</span>
-                            </a>
-                        )}
-                        {task.merchant?.phone && (
-                            <a
-                                href={`tel:${task.merchant.phone}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
-                            >
-                                <Phone className="w-3 h-3 text-slate-500" />
-                                <span>{task.merchant.phone}</span>
-                            </a>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Origin Bayan Hub Target</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">
-                        {task.originHub?.name ?? 'Origin Bayan Hub'}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                        Facility Code: <span className="font-semibold text-slate-700 font-mono">{task.originHub?.code ?? 'BH-01'}</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
-                    </p>
-                </div>
-            </div>
-
-            {/* Action Bar (Stack on Mobile, Row on Desktop) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
-                <Link
-                    href={route('courier.messages', { delivery: task.id })}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
-                >
-                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Message Merchant</span>
-                </Link>
-
-                {awaitingHub ? (
-                    <div className="w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-                        <Clock3 className="w-3.5 h-3.5" />
-                        <span>Awaiting Origin Hub Intake Scan</span>
-                    </div>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        disabled={loading}
-                        className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
-                    >
-                        {loading ? 'Saving...' : 'Confirm Merchant Pickup'}
-                    </button>
-                )}
-            </div>
-        </article>
-    );
-}
-
-function FinalMileRouteCard({
-    task,
-    codLabel,
-    loading,
-    onStart,
-    onComplete,
-}: {
-    task: FinalMileTask;
-    codLabel: string;
-    loading: boolean;
-    onStart: () => void;
-    onComplete: () => void;
-}) {
-    const outForDelivery = task.nextAction === 'complete_delivery';
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.recipient?.address || '')}`;
-
-    return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="min-w-0">
-                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
-                        {task.trackingNumber}
-                    </span>
-                    {task.orderNumber && (
-                        <span className="text-[11px] text-slate-500 font-medium font-mono">
-                            Order {task.orderNumber}
-                        </span>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                            task.payment?.method === 'COD'
-                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}
-                    >
-                        {task.payment?.method ?? 'ONLINE'}
-                    </span>
-                    <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                            outForDelivery
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                : 'bg-blue-50 text-blue-700 border border-blue-200'
-                        }`}
-                    >
-                        {outForDelivery ? 'Out for Delivery' : 'Assigned'}
-                    </span>
-                </div>
-            </div>
-
-            {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="space-y-1.5 sm:col-span-2">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Buyer Recipient</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">{task.recipient?.name}</p>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.recipient?.address}
-                    </p>
-                    {/* Action Links */}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                        {task.recipient?.address && (
-                            <a
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
-                            >
-                                <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                <span>Open Maps</span>
-                            </a>
-                        )}
-                        {task.recipient?.phone && (
-                            <a
-                                href={`tel:${task.recipient.phone}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
-                            >
-                                <Phone className="w-3 h-3 text-slate-500" />
-                                <span>{task.recipient.phone}</span>
-                            </a>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Destination Hub</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">
-                        {task.destinationHub?.name ?? 'Destination Bayan Hub'}
-                    </p>
-                    <p className="text-xs text-slate-500 font-mono">
-                        Code: {task.destinationHub?.code ?? 'BH-02'}
-                    </p>
-                    {task.payment?.method === 'COD' && (
-                        <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
-                            <span className="text-[10px] font-bold text-amber-800 uppercase block">
-                                Collect Exact COD
-                            </span>
-                            <span className="text-xs font-black text-amber-900 block font-mono">
-                                {codLabel}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
-                <Link
-                    href={route('courier.messages', { delivery: task.id })}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition"
-                >
-                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Message Buyer</span>
-                </Link>
-
-                <button
-                    type="button"
-                    onClick={outForDelivery ? onComplete : onStart}
-                    disabled={loading}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider cursor-pointer"
-                >
-                    {loading
-                        ? 'Saving...'
-                        : outForDelivery
-                          ? 'Record Successful Delivery'
-                          : 'Start Final-Mile Delivery'}
-                </button>
-            </div>
-        </article>
-    );
-}
-
-function AvailablePickupRouteCard({
-    task,
-    disabled,
-    loading,
-    onClaim,
-}: {
-    task: PickupTask;
-    disabled: boolean;
-    loading: boolean;
-    onClaim: () => void;
-}) {
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.merchant?.address || '')}`;
-
-    return (
-        <article className="p-4 sm:p-5 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition shadow-2xs space-y-3.5 font-sans">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                <div className="min-w-0">
-                    <span className="font-black text-sm text-slate-900 tracking-tight font-mono truncate block">
-                        {task.trackingNumber}
-                    </span>
-                    {task.orderNumber && (
-                        <span className="text-[11px] text-slate-500 font-medium font-mono">
-                            Order {task.orderNumber}
-                        </span>
-                    )}
-                </div>
-                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-[#C20836] border border-rose-200 uppercase tracking-wider">
-                    Ready for Pickup
-                </span>
-            </div>
-
-            {/* Grid Route Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Merchant Location</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">
-                        {task.merchant?.name ?? 'Merchant Store'}
-                    </p>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.merchant?.address}
-                    </p>
-                    {task.merchant?.address && (
-                        <div className="pt-1">
-                            <a
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
-                            >
-                                <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                <span>Open Maps</span>
-                            </a>
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
-                        <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>Origin Bayan Hub Target</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">
-                        {task.originHub?.name ?? 'Origin Bayan Hub'}
-                    </p>
-                    <p className="text-xs text-slate-500 font-mono">
-                        Facility Code: {task.originHub?.code ?? 'BH-01'}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                        Parcel items: <strong className="text-slate-700">{task.itemCount} unit(s)</strong>
-                    </p>
-                </div>
-            </div>
-
-            {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
-                <span className="text-xs text-slate-500 font-medium">
-                    Batch claim limit applies (up to 5)
-                </span>
-                <button
-                    type="button"
-                    onClick={onClaim}
-                    disabled={disabled}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold rounded-lg shadow-xs transition uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                    {loading ? 'Claiming...' : 'Claim Pickup'}
-                </button>
-            </div>
-        </article>
-    );
-}
-
-function InstructionBox({ text }: { text: string }) {
-    return (
-        <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs leading-relaxed text-blue-950 font-sans">
-            {text}
-        </div>
     );
 }
