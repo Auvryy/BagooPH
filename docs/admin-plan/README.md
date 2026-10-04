@@ -12,6 +12,19 @@ This is an initial branch allocation, not a count of every remaining branch in t
 
 First review and publish the foundation branch, including this plan. After that branch is merged, create B01 from updated `main`. Use [WORKFLOW.md](WORKFLOW.md) for the exact start, verification, review, and stopping process. The user publishes commits; agents never run `git push`.
 
+## Delivery window
+
+The project window starts **October 4, 2026** and ends **November 20, 2026**, following [the main delivery target](../README.md#project-delivery-target). B01 starts on October 4. Keep every planned branch and prerequisite deadline within this window.
+
+| Planning checkpoint | Target window |
+|---|---|
+| B01-B13 governance and Phase 0 acceptance | October 4-30 |
+| Remaining role-owned manifests, recovery, self-pickup, and notification gates | November 2-6, after the applicable preceding gate passes |
+| B14-B18 exception, notification, COD, settlement, and financial oversight | November 9-17 |
+| Final regression checks, fixes, and demonstration preparation | November 18-20 |
+
+These are calendar targets, not reduced effort estimates or a readiness claim. Reassess capacity against actual remaining work; identify additional help or a scope decision when needed. Preserve serial branch review and required phase gates. A missing prerequisite keeps dependent work blocked, even near the deadline. Do not automatically move a task beyond November 20 or suppress checks to meet the date.
+
 ## Ordered branch list
 
 Work serially by default. The dependency column records the minimum prerequisites; the recommended execution order is the numbered order. Merge a finished branch before creating the next branch from `main`.

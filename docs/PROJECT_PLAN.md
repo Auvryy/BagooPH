@@ -67,6 +67,8 @@ Complete post-delivery refunds, exchanges, and dispute processing remain separat
 
 ## 6. Delivery and Verification
 
+The planning window is **October 4-November 20, 2026**, with expected project completion around November 20. Keep planned task deadlines at or before November 20 and reserve the end of the window for checks, fixes, and demonstration preparation. The delivery target is recorded in [README.md](README.md); it does not certify unfinished flows or remove required acceptance gates.
+
 Follow the existing roadmap phase order: shared safety and approval gates, normal commerce, manifests, delivery exceptions/self-pickup, notifications, COD/admin reconciliation, then cross-role cleanup. This overview adds no new implementation milestone.
 
 Acceptance means the same order and parcel remain consistent across all five roles, including invalid actors, malformed input, stale decisions, retries, rollback, and financial gates. Automated tests use isolated SQLite `:memory:`; they never wipe PostgreSQL. Record implementation evidence and scoped ratings in the roadmap rather than treating this plan as a completion report.

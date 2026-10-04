@@ -2,6 +2,14 @@
 
 This document is the single source for current implementation gaps and delivery order across buyer, seller, courier, logistics, and admin. Stable business rules remain authoritative in `SYSTEM_FLOW_AND_SPECIFICATIONS.md`; physical custody rules remain authoritative in `SORTING_CENTER_LOGISTICS_FLOW.md`.
 
+## Project Delivery Target: October 4, 2026
+
+At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation remains 18 future admin branches, or 19 checkpoints including the existing foundation.
+
+**Capacity risk:** the current 18-branch effort estimate is 360 hours. October 5-November 20 contains 35 weekdays, providing 140-210 focused hours at the earlier assumption of 4-6 hours per weekday, before other required work. The date therefore requires an explicit capacity and priority review; it is not evidence that one developer can complete the entire baseline in that time. Keep estimates honest and identify additional help or an approved scope decision rather than shrinking estimates to fit the calendar.
+
+Reserve November 18-20 for regression fixes, review, and demonstration preparation. Required safety, custody, recovery, notification, COD, and settlement gates remain unchanged. Missing or failing prerequisites stay visible; do not claim completion or silently extend the target. This documentation change leaves runtime readiness and the existing test baseline unchanged.
+
 ## Definition of Done
 
 ```text
