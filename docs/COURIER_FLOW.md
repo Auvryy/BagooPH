@@ -4,9 +4,13 @@ Pickup and delivery riders are phases of the same approved `courier` account. A 
 
 ## 1. Registration and Availability
 
-Courier submits identity, license, vehicle, and required ownership/registration documents. Approval is required before portal access. A rider must be active, approved, and available to claim or receive work. A rider may hold several pickup assignments in one route batch, subject to the configured active-pickup capacity; each parcel still has exactly one pickup custodian.
+Courier submits identity, license, vehicle, and required ownership/registration documents. Platform Admin KYC approval is required before transactional portal access; pending/rejected applicants use their own review/resubmission holding screen. An approved Logistics Company Admin may accept and place that courier at an eligible company/hub and barangay. This operational placement cannot grant platform approval or reverse suspension. The authority and evidence rules are in [ADMIN_FLOW.md](ADMIN_FLOW.md).
+
+A rider must be active, approved, available, and within eligible company/hub scope to claim or receive work. A rider may hold several pickup assignments in one route batch, subject to the configured active-pickup capacity; each parcel still has exactly one pickup custodian.
 
 Going off duty removes the rider from new pickup and final-mile assignment choices at the assigned hub. It does not abandon any parcel already claimed or assigned: the rider must still complete the relevant pickup, hub handoff, delivery, or approved exception process.
+
+Suspension differs from going off duty: it blocks new work and requires controlled recovery of any parcel or cash already held. The expected hub must record custody recovery before reassignment. Recovery uses a narrowly authorized action; approval, resubmission, or a company placement cannot restore unrestricted access to a suspended courier.
 
 ## 2. Pickup-Rider Phase
 

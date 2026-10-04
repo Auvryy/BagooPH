@@ -4,7 +4,9 @@ This document defines seller actions. Parcel custody and settlement follow `docs
 
 ## 1. Registration and Store Management
 
-Seller submits identity and business requirements. Admin approval is required before portal access. Each shop keeps its approved root category and manages products, stock, variants, prices, images, and vouchers within that scope.
+Seller submits identity and business requirements. Platform Admin approval is required before transactional portal access. Pending/rejected applicants use their own review/resubmission holding screen. The account and selected shop must both be eligible; each shop keeps its approved root category and manages products, stock, variants, prices, images, and vouchers within that scope. An approved account or switching shops does not approve another shop automatically.
+
+Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or selected shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.
 
 ## 2. Order Fulfillment
 

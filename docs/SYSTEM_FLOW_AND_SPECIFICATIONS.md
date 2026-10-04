@@ -16,6 +16,14 @@ When documents disagree, use this order:
 
 Internal delivery statuses and checkpoints may be more detailed than the 13 customer-facing statuses, but they must map back to this lifecycle.
 
+## Project Scale and Scope
+
+BagooPH is a normal ecommerce project with a bounded, realistic cross-role demonstration. A small supported road network and a modest number of users are enough to prove the flow; thousands of users, enterprise availability, and nationwide commercial deployment are not baseline requirements. The existing Laravel/Inertia application and database are sufficient architecture for this scope.
+
+Small scale does not relax approval, ownership, atomic stock changes, authenticated custody, evidence, or money rules. Required recovery, self-pickup, basic in-app notifications, and COD reconciliation remain in the existing roadmap phases. Advanced automation and new external services are separate future work.
+
+Transport is strictly by land on supported contiguous roads. No boats, ports, RORO, sea crossings, or air freight may be introduced to complete a route. Unsupported destinations fail serviceability validation rather than receiving a shortcut route.
+
 ## Core Transaction Contract
 
 The complete baseline transaction is:
@@ -83,6 +91,8 @@ Seller cancellation is allowed only before pickup and before any rider has claim
 
 Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Logistics Company Admin manages only its own facilities, personnel, manifests, exceptions, and operational remittance. Hub Handlers perform scans only at facilities assigned to them.
 
+Platform Admin owns account KYC approval; a company's acceptance or hub placement of an already approved courier is a separate operational decision. Approval does not clear an independent suspension, and inactive/suspended admins cannot use the KYC exemption to retain privileges. [ADMIN_FLOW.md](ADMIN_FLOW.md) defines review authority and suspension recovery across all roles under the validation contract.
+
 Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, complete dispute/refund/exchange processing, and external notification services are outside the core baseline.
 
 All inputs, actor permissions, transitions, duplicate requests, concurrent operations, and recovery paths must satisfy `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
@@ -139,7 +149,7 @@ Browse Products
 ↓
 View Product Details
 ↓
-Add to Cart
+Add to Bag
 ↓
 Checkout
 ↓

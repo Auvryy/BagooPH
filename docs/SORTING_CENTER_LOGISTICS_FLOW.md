@@ -32,6 +32,12 @@ Other rules:
 - One parcel has one seller pickup origin and one waybill. A multi-shop Shopping Bag must be split into one order and parcel per shop.
 - Only the buyer may change `DELIVERED` to `COMPLETED`.
 
+### Approval and Operational Eligibility
+
+Platform Admin approves marketplace accounts and logistics companies. An approved Logistics Company Admin manages only its own facilities, eligible handler access, and placement of already platform-approved couriers. Company placement cannot grant KYC approval or reverse suspension. Hub Handler is a facility-scoped responsibility of the `logistics` role, not an extra public registration role. See [ADMIN_FLOW.md](ADMIN_FLOW.md) for review authority, state, and suspension rules.
+
+New routing, manifest dispatch, and rider assignment require eligible accounts, company, facilities, personnel, and vehicles where applicable. Suspension blocks new work in the affected scope and sends active parcels/cash to authorized exception handling. Preserve the current custodian and checkpoints until a valid recovery scan; changing a status or assignee is not a custody handoff. Reactivation re-checks every required scope and does not silently restart stale work.
+
 ## 2. Status Model
 
 ### Customer-Facing Order Statuses
