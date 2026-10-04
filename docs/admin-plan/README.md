@@ -14,9 +14,9 @@ First review and publish the foundation branch, including this plan. After that 
 
 ## Delivery window
 
-The project window starts **October 4, 2026** and ends **November 20, 2026**, following [the main delivery target](../README.md#project-delivery-target). B01 starts on October 4. Keep every planned branch and prerequisite deadline within this window.
+The project window starts **October 4, 2026** and ends **November 20, 2026**, following [the main delivery target](../README.md#project-delivery-target). Every planned task has the same October 4 start date and stretches to its own deadline, at or before November 20. This is the planning window for each task. Actual implementation still waits for its prerequisites and the previous branch's review; the common start date does not mean all work begins at once.
 
-| Planning checkpoint | Target window |
+| Planning checkpoint | Intended work and review window |
 |---|---|
 | B01-B13 governance and Phase 0 acceptance | October 4-30 |
 | Remaining role-owned manifests, recovery, self-pickup, and notification gates | November 2-6, after the applicable preceding gate passes |
