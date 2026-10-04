@@ -72,7 +72,7 @@ export default function CourierSidebar({ collapsed, mobileOpen, onCloseMobile, .
     }, [collapsed]);
 
     return <>
-        <aside ref={sidebar} id="rider-sidebar" aria-label="Rider sidebar" aria-hidden={collapsed} data-collapsed={collapsed} className={courierClasses('courier-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-slate-300 bg-white md:flex', content.subtle && 'border-transparent shadow-[2px_0_16px_rgba(15,23,42,0.035)]')}>
+        <aside ref={sidebar} id="rider-sidebar" aria-label="Rider sidebar" aria-hidden={collapsed} data-collapsed={collapsed} className={courierClasses('courier-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-slate-300 bg-white xl:flex', content.subtle && 'border-transparent shadow-[2px_0_16px_rgba(15,23,42,0.035)]')}>
             <SidebarContent {...content} onClose={onCloseMobile} />
         </aside>
         <Dialog open={mobileOpen} onClose={onCloseMobile} className="relative z-[60] font-sans text-slate-900">

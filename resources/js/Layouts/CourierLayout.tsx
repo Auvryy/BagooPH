@@ -5,7 +5,7 @@ import { CalendarDays, ChevronRight, LogOut, RefreshCw, UserRound } from 'lucide
 import CourierSidebar, { CourierSidebarToggle, courierNavItems } from '@/Components/CourierSidebar';
 import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
-import { courierDayKey, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
+import { courierDayKey, courierDesktopMedia, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 
@@ -76,7 +76,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     }, [menuOpen]);
 
     useEffect(() => {
-        const media = window.matchMedia('(min-width: 768px)');
+        const media = window.matchMedia(courierDesktopMedia);
         const resized = () => {
             setDesktop(media.matches);
             if (media.matches) setMobileSidebarOpen(false);
@@ -144,8 +144,8 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                         <div className={courierClasses('flex min-w-0 items-center gap-3 sm:w-auto sm:flex-1', isChat ? 'w-auto' : 'w-full')}>
                             <CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} />
                             <div className={courierClasses('min-w-0', isChat && 'hidden sm:block')}>
-                                <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
-                                <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
+                                <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold xl:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
+                                <p className="hidden items-center gap-2 text-sm text-slate-600 xl:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
                                 <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
                             </div>
                         </div>
@@ -168,7 +168,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                     </div>
                 </header>
 
-                <main id="rider-content" tabIndex={-1} className={courierClasses('outline-none', isChat ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 md:pb-8')}>
+                <main id="rider-content" tabIndex={-1} className={courierClasses('outline-none', isChat ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 xl:pb-8')}>
                     {!isChat && !hidePageHeading && <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1"><h1 className="break-words text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{subtitle && <div className="mt-2 max-w-2xl break-words text-sm leading-relaxed text-slate-600">{subtitle}</div>}</div>
                         <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-transparent bg-white px-4 py-2 text-sm font-medium text-[#C20836] shadow-[0_2px_8px_rgba(15,23,42,0.04)]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
@@ -183,7 +183,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                 </main>
             </div>
 
-            <nav aria-label="Rider navigation" className="courier-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-100/80 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
+            <nav aria-label="Rider navigation" className="courier-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-100/80 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 xl:hidden">
                 {navItems.map(({ name, path, page, icon: Icon }) => (
                     <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
                 ))}

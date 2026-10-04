@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, MessageSquare, Search, Send } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import { CourierAvatar, CourierBadge, CourierFieldError, courierButton, courierInput, courierPrimary } from '@/Components/CourierUI';
-import { courierDate, courierPath, type CourierScope } from '@/utils/courier';
+import { courierDate, courierDesktopMedia, courierPath, type CourierScope } from '@/utils/courier';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 import { PageProps } from '@/types';
 
@@ -55,7 +55,7 @@ export default function CourierMessages({ conversations, currentUserId, selected
     const filtered = conversations.filter((item) => [item.tracking_number, item.order_number, item.participant.name, item.participant.shop_name].some((value) => value?.toLowerCase().includes(search.trim().toLowerCase())));
 
     useEffect(() => {
-        const media = window.matchMedia('(min-width: 768px)');
+        const media = window.matchMedia(courierDesktopMedia);
         const resized = () => setDesktop(media.matches);
         const visibility = () => setDocumentVisible(document.visibilityState === 'visible');
         resized(); visibility();
@@ -133,8 +133,8 @@ export default function CourierMessages({ conversations, currentUserId, selected
     return (
         <CourierLayout title="Messages" contentMode="chat" scope={scope} isOnline={isOnline}>
             <Head title="Messages — BagooPH" />
-            <div className="grid min-h-0 min-w-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,28%)_minmax(0,1fr)] lg:grid-cols-[minmax(14rem,20rem)_minmax(0,1fr)]" data-chat-workspace="true">
-                    <aside className={`${chatOpen ? 'hidden md:flex' : 'flex'} min-h-0 min-w-0 flex-col md:border-r md:border-slate-100/80`} aria-label="Conversation list">
+            <div className="grid min-h-0 min-w-0 flex-1 overflow-hidden xl:grid-cols-[minmax(14rem,20rem)_minmax(0,1fr)]" data-chat-workspace="true">
+                    <aside className={`${chatOpen ? 'hidden xl:flex' : 'flex'} min-h-0 min-w-0 flex-col xl:border-r xl:border-slate-300/60`} aria-label="Conversation list">
                         <div className="shrink-0 space-y-4 p-4 sm:p-5">
                             <div className="flex items-center justify-between gap-2"><h1 className="text-lg font-semibold">Conversations</h1><span className="text-xs tabular-nums text-slate-500">{conversations.length}</span></div>
                             <label className="relative block"><span className="sr-only">Search conversations</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tracking or contact" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
@@ -156,11 +156,11 @@ export default function CourierMessages({ conversations, currentUserId, selected
                         </div>
                         <p className="shrink-0 px-5 py-3 text-xs leading-relaxed text-slate-500">Refresh for new messages. Drafts stay in this page while you switch conversations.</p>
                     </aside>
-                    <section className={`${chatOpen ? 'flex' : 'hidden md:flex'} min-h-0 min-w-0 flex-col overflow-hidden`} aria-label="Selected conversation">
+                    <section className={`${chatOpen ? 'flex' : 'hidden xl:flex'} min-h-0 min-w-0 flex-col overflow-hidden`} aria-label="Selected conversation">
                         {selected ? <>
                             <header className="shrink-0 border-b border-slate-100/80 bg-white/60 px-4 py-3 sm:px-5" data-chat-header="true">
                                 <div className="flex items-center gap-3">
-                                    <button type="button" onClick={back} className={`${courierButton} h-12 w-12 shrink-0 border-transparent bg-transparent p-0 md:hidden`} aria-label="Back to conversations"><ArrowLeft className="h-5 w-5" aria-hidden="true" /><span className="sr-only">Conversations</span></button>
+                                    <button type="button" onClick={back} className={`${courierButton} h-12 w-12 shrink-0 border-transparent bg-transparent p-0 xl:hidden`} aria-label="Back to conversations"><ArrowLeft className="h-5 w-5" aria-hidden="true" /><span className="sr-only">Conversations</span></button>
                                     <CourierAvatar name={selected.participant.name} src={selected.participant.avatar} />
                                     <div className="min-w-0 flex-1"><h2 ref={heading} tabIndex={-1} className="break-words text-base font-semibold outline-none">{selected.participant.shop_name || selected.participant.name}</h2><p className="mt-1 break-all text-xs text-slate-600">{selected.tracking_number}{selected.order_number ? ` · Order ${selected.order_number}` : ''}</p></div>
                                     <span className="hidden sm:block"><CourierBadge>{selected.phase === 'pickup' ? 'Seller · Pickup' : 'Buyer · Final mile'}</CourierBadge></span>
