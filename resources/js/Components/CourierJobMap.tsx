@@ -75,7 +75,7 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
             <div className={embedded ? 'sr-only' : 'space-y-3 p-4 sm:p-5'}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 id="rider-map-title" tabIndex={-1} className="text-xl font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">{job.preview ? 'Pickup preview' : 'Your selected stop'}</h2>
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Navigation className="h-6 w-6" aria-hidden="true" /></span>
+                    <span className="flex h-12 w-12 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Navigation className="h-6 w-6" aria-hidden="true" /></span>
                 </div>
                 <CourierBadge tone={job.preview ? 'neutral' : 'brand'}>{job.stage}</CourierBadge>
                 <p className="break-all text-sm font-semibold text-slate-700">{job.trackingNumber}</p>
@@ -84,8 +84,8 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
                 <p className="whitespace-pre-line break-words text-base leading-relaxed text-slate-700">{job.place.address || 'Address not provided'}</p>
             </div>
             {coordinates ? <>
-                <div className={courierClasses('courier-map-surface relative isolate overflow-hidden rounded-[16px] border border-slate-300', !embedded && 'mx-4 sm:mx-5')}>
-                    {embedded && <div className="pointer-events-none absolute left-3 right-3 top-3 z-[700] flex items-start"><span className="inline-flex max-w-full items-center gap-2 rounded-[12px] border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700"><MapPin className="h-4 w-4 shrink-0 text-[#C20836]" aria-hidden="true" /><span className="break-words">{job.place.name || job.stopLabel}</span></span></div>}
+                <div className={courierClasses('courier-map-surface relative isolate overflow-hidden rounded-[8px] border border-slate-300', !embedded && 'mx-4 sm:mx-5')}>
+                    {embedded && <div className="pointer-events-none absolute left-3 right-3 top-3 z-[700] flex items-start"><span className="courier-map-label inline-flex max-w-full items-center gap-2 rounded-[8px] border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700"><MapPin className="h-4 w-4 shrink-0 text-[#C20836]" aria-hidden="true" /><span className="break-words">{job.place.name || job.stopLabel}</span></span></div>}
                     <div ref={container} role="region" aria-label={`Map of ${job.stopLabel}`} aria-describedby="rider-map-help" className={embedded ? 'h-60 w-full min-[860px]:aspect-[4/3] min-[860px]:h-auto min-[860px]:max-h-80' : 'h-60 w-full sm:h-72'} />
                 </div>
                 <div className={courierClasses('space-y-3 pt-3', !embedded && 'px-4 sm:px-5')}>
@@ -98,7 +98,7 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
                     <p role="status" className={courierClasses('text-sm text-slate-600', embedded && status !== 'error' && 'sr-only')}>{status === 'loading' ? 'Loading the street map…' : status === 'error' ? 'Street tiles could not load. The saved stop and address are still available.' : 'Street map loaded.'}</p>
                     {status === 'error' && <button type="button" onClick={() => setAttempt((value) => value + 1)} className={courierButton}><RotateCcw className="h-4 w-4" aria-hidden="true" />Retry map</button>}
                 </div>
-            </> : <div className={courierClasses('flex min-h-60 flex-col items-center justify-center gap-4 rounded-[16px] border border-slate-300 bg-[#FFF2F4] p-5 text-center', !embedded && 'mx-4 sm:mx-5')}><span className="flex h-14 w-14 items-center justify-center rounded-full border border-rose-300 bg-white text-[#C20836]"><MapPin className="h-6 w-6" aria-hidden="true" /></span><p className="max-w-xs text-base font-semibold text-slate-800">No usable saved pin for this stop.</p><p className="max-w-xs text-sm leading-relaxed text-slate-600">{directions ? 'Use address-based directions for this stop.' : 'Ask your logistics team to provide the destination.'}</p></div>}
+            </> : <div className={courierClasses('courier-inset flex min-h-60 flex-col items-center justify-center gap-4 rounded-[8px] border border-slate-300 bg-[#FFF2F4] p-5 text-center', !embedded && 'mx-4 sm:mx-5')}><span className="flex h-14 w-14 items-center justify-center rounded-[8px] border border-rose-300 bg-white text-[#C20836]"><MapPin className="h-6 w-6" aria-hidden="true" /></span><p className="max-w-xs text-base font-semibold text-slate-800">No usable saved pin for this stop.</p><p className="max-w-xs text-sm leading-relaxed text-slate-600">{directions ? 'Use address-based directions for this stop.' : 'Ask your logistics team to provide the destination.'}</p></div>}
             <div className={embedded ? 'sr-only' : 'space-y-3 p-4 sm:p-5'}>
                 <p className="text-base leading-relaxed text-slate-700">{job.instruction}</p>
                 {!embedded && directions && <a href={directions} target="_blank" rel="noopener noreferrer" className={`${courierButton} w-full`}><Navigation className="h-4 w-4" aria-hidden="true" />Directions</a>}

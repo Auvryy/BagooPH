@@ -62,6 +62,7 @@ class CourierMessagingService
                     'participant' => [
                         'id' => $participant['user']->id,
                         'name' => $participant['user']->name,
+                        'avatar' => $participant['user']->avatar,
                         'role' => $participant['user']->role,
                         'shop_name' => $participant['shop_name'],
                     ],
