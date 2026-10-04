@@ -1,8 +1,8 @@
 import '../../css/courier.css';
 import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
-import { ArrowUpRight, CalendarDays, ChevronRight, History, LayoutDashboard, LogOut, MapPin, MessageSquare, RefreshCw, UserRound } from 'lucide-react';
-import BagooLogo from '@/Components/BagooLogo';
+import { CalendarDays, ChevronRight, LogOut, RefreshCw, UserRound } from 'lucide-react';
+import CourierSidebar, { CourierSidebarToggle, courierNavItems } from '@/Components/CourierSidebar';
 import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierDayKey, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
@@ -31,12 +31,12 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     const menuClicked = useRef(false);
     const refreshPending = useRef(false);
     useCourierRequestError(refreshPending, setRefreshResult);
-    const navItems = [
-        { name: 'Dashboard', path: '/deliveries', page: 'Courier/Deliveries', icon: LayoutDashboard },
-        { name: 'Trips', path: '/earnings', page: 'Courier/Earnings', icon: History },
-        { name: 'Messages', path: '/messages', page: 'Courier/Messages', icon: MessageSquare },
-        { name: 'Profile', path: '/profile', page: 'Courier/Profile', icon: UserRound },
-    ];
+    const navItems = courierNavItems;
+    const isDashboard = component === 'Courier/Deliveries';
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [desktop, setDesktop] = useState(false);
+    const sidebarControl = useRef<HTMLDivElement>(null);
     const hub = scope?.hub || 'Hub not assigned';
     const hubCode = scope?.hubCode || scope?.hub_code;
     const initials = courierInitials(auth.user?.name);
@@ -71,6 +71,32 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
         };
     }, [menuOpen]);
 
+    useEffect(() => {
+        const media = window.matchMedia('(min-width: 768px)');
+        const resized = () => {
+            setDesktop(media.matches);
+            if (media.matches) setMobileSidebarOpen(false);
+        };
+        resized();
+        media.addEventListener('change', resized);
+        try { setSidebarCollapsed(window.localStorage.getItem('bagoo.rider.sidebar-collapsed') === 'true'); } catch {}
+        return () => media.removeEventListener('change', resized);
+    }, []);
+
+    const setCollapsed = (collapsed: boolean) => {
+        setSidebarCollapsed(collapsed);
+        try { window.localStorage.setItem('bagoo.rider.sidebar-collapsed', String(collapsed)); } catch {}
+    };
+    const collapseSidebar = () => {
+        setCollapsed(true);
+        sidebarControl.current?.querySelector('button')?.focus();
+    };
+    const toggleSidebar = () => {
+        closeMenu();
+        if (desktop) setCollapsed(!sidebarCollapsed);
+        else setMobileSidebarOpen((open) => !open);
+    };
+
     const refresh = () => {
         if (refreshPending.current) return;
         refreshPending.current = true;
@@ -84,42 +110,20 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     };
 
     return (
-        <div className="courier-portal min-h-dvh bg-[#FFF2F4] font-sans text-slate-900 antialiased">
+        <div className={courierClasses('courier-portal min-h-dvh font-sans text-slate-900 antialiased', isDashboard ? 'courier-dashboard bg-[#FFFAFB]' : 'bg-[#FFF2F4]')}>
             <a href="#rider-content" className="sr-only z-[90] bg-white p-4 text-base font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
-            <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-slate-300 bg-white md:flex">
-                <Link href={courierPath('/deliveries')} className="flex min-h-[76px] shrink-0 items-center gap-2 px-4 focus-visible:outline-[#E00D42]">
-                    <BagooLogo className="h-8 w-8" rounded="rounded-[8px]" />
-                    <span className="text-lg font-bold tracking-tight">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                    <span className="ml-auto rounded-[8px] bg-[#FCE7EA] px-2 py-1 text-xs font-semibold text-[#A1052B]">Rider</span>
-                </Link>
-                <nav aria-label="Rider navigation" className="shrink-0 space-y-1.5 px-3 py-4">
-                    <p className="mb-3 px-3 text-xs font-medium tracking-wide text-slate-500">Your workspace</p>
-                    {navItems.map(({ name, path, page, icon: Icon }) => (
-                        <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-12 items-center gap-3 rounded-[8px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none ${component === page ? 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{name}</Link>
-                    ))}
-                </nav>
-                <div className="mt-auto shrink-0 px-3 pb-4 pt-8">
-                    <div className="rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-4">
-                        <MapPin className="h-5 w-5 text-[#E00D42]" aria-hidden="true" />
-                        <p className="mt-3 text-sm font-semibold">Your dispatch point</p>
-                        <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{hub}</p>
-                        <Link href={courierPath('/profile')} className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View profile<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
-                    </div>
-                    <p className="px-2 py-4 text-xs leading-relaxed text-slate-600">A clear handoff, every step of the way. Use the portal while safely stopped.</p>
-                    <Link href={courierPath('/profile')} className="flex min-h-14 items-center gap-3 rounded-[8px] border border-transparent px-2 py-2 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E00D42] text-sm font-semibold text-white" aria-hidden="true">{initials}</span>
-                        <span className="min-w-0"><span className="block truncate text-sm font-semibold">{auth.user?.name}</span><span className="block truncate text-xs text-slate-600">{scope?.company || 'Company not assigned'}</span></span>
-                    </Link>
-                </div>
-            </aside>
+            <CourierSidebar component={component} hub={hub} company={scope?.company || 'Company not assigned'} name={auth.user?.name || 'Rider'} initials={initials} subtle={isDashboard} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen && !desktop} onCollapse={collapseSidebar} onCloseMobile={() => setMobileSidebarOpen(false)} />
 
-            <div className="min-w-0 md:ml-52">
-                <header className="relative z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-6">
+            <div className={courierClasses('min-w-0', sidebarCollapsed ? 'md:ml-0' : 'md:ml-60')}>
+                <header className={courierClasses('relative z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-6', isDashboard && 'border-slate-100/80')}>
                     <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-                        <div className="w-full min-w-0 sm:w-auto sm:flex-1">
-                            <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
-                            <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
-                            <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
+                        <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
+                            <div ref={sidebarControl}><CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} /></div>
+                            <div className="min-w-0">
+                                <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
+                                <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
+                                <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
+                            </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} onChange={requestDutyChange} />
@@ -143,7 +147,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                 <main id="rider-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-none sm:px-6 md:pb-8">
                     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1"><h1 className="break-words text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{subtitle && <div className="mt-2 max-w-2xl break-words text-sm leading-relaxed text-slate-600">{subtitle}</div>}</div>
-                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
+                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className={courierClasses('inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]', isDashboard && 'border-transparent bg-white shadow-[0_2px_8px_rgba(15,23,42,0.04)]')}><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
                     </div>
                     <p role="status" className={refreshResult ? 'mb-3 text-sm text-slate-600' : 'sr-only'}>{refreshResult}</p>
                     {flash?.success && <p role="status" className="mb-4 rounded-[8px] border border-emerald-300 bg-[#ECFDF5] p-4 text-base text-[#047857]">{flash.success}</p>}

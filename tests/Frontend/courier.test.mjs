@@ -17,7 +17,8 @@ const bundle = buildSync({
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
             export { default as Messages } from '@/Pages/Courier/Messages';
-            export { CourierDutySwitch } from '@/Components/CourierDutyControl';`,
+            export { CourierDutySwitch } from '@/Components/CourierDutyControl';
+            export { CourierSidebarToggle } from '@/Components/CourierSidebar';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx',
     },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -75,6 +76,24 @@ test('pending duty updates disable the switch while preserving the saved state',
     const html = renderToStaticMarkup(createElement(ui.CourierDutySwitch, { isOnline: true, busy: true, onChange() {} }));
     assert.match(html, /aria-checked="true" aria-busy="true" disabled=""/);
     assert.match(html, />Updating…</);
+});
+
+test('sidebar controls expose their target and support reopening in desktop and mobile modes', () => {
+    for (const mobile of [false, true]) {
+        let open = false;
+        const onClick = () => { open = !open; };
+        for (const expanded of [false, true, false]) {
+            const control = ui.CourierSidebarToggle({ open, mobile, onClick });
+            const html = renderToStaticMarkup(control);
+            assert.equal(open, expanded);
+            assert.match(html, new RegExp(`aria-expanded="${expanded}"`));
+            assert.match(html, new RegExp(`aria-controls="${mobile ? 'rider-mobile-sidebar' : 'rider-sidebar'}"`));
+            assert.match(html, new RegExp(`aria-label="${mobile ? expanded ? 'Close sidebar' : 'Open sidebar' : expanded ? 'Collapse sidebar' : 'Expand sidebar'}"`));
+            if (mobile) assert.match(html, /aria-haspopup="dialog"/);
+            else assert.doesNotMatch(html, /aria-haspopup/);
+            control.props.onClick();
+        }
+    }
 });
 
 test('portal navigation stays on the root or courier subdomain path', () => {
