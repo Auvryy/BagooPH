@@ -6,13 +6,13 @@ import { twMerge } from 'tailwind-merge';
 import { CourierPlace, courierPath, directionsUrl, telephoneUrl } from '@/utils/courier';
 
 export const courierButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
-export const courierPrimary = 'inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[16px] bg-[#E00D42] px-5 py-3 text-base font-bold text-white shadow-[0_4px_12px_rgba(224,13,66,0.14)] transition duration-150 hover:bg-[#C20836] enabled:active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none';
+export const courierPrimary = 'inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[16px] bg-[#E00D42] px-5 py-3 text-base font-semibold text-white transition duration-150 hover:bg-[#C20836] enabled:active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none';
 export const courierInput = 'mt-2 min-h-12 w-full rounded-[14px] border border-slate-500 bg-white px-3 py-3 text-base text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export const courierClasses = twMerge;
 
 export function CourierPanel({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-    return <section className={twMerge('courier-enter rounded-[24px] border border-slate-300 bg-white shadow-[0_2px_0_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)]', className)}>{children}</section>;
+    return <section className={twMerge('courier-enter rounded-[24px] border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]', className)}>{children}</section>;
 }
 
 export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{ tone?: 'neutral' | 'brand' | 'waiting' | 'success' }>) {
@@ -40,10 +40,20 @@ export function CourierFieldError({ message, id }: { message?: string; id?: stri
     return message ? <p id={id} role="alert" className="mt-2 text-sm font-medium text-rose-700">{message}</p> : null;
 }
 
-export function CourierStop({ place, label, phone, messageDeliveryId, messagePhase }: { place: CourierPlace; label: string; phone?: string | null; messageDeliveryId?: number; messagePhase?: 'pickup' | 'final_mile' }) {
+interface StopActionsProps {
+    place: CourierPlace;
+    label: string;
+    phone?: string | null;
+    messageDeliveryId?: number;
+    messagePhase?: 'pickup' | 'final_mile';
+    compact?: boolean;
+}
+
+export function CourierStopActions({ place, label, phone, messageDeliveryId, messagePhase, compact = false }: StopActionsProps) {
     const [copyResult, setCopyResult] = useState('');
     const directions = directionsUrl(place);
     const telephone = telephoneUrl(phone);
+    const iconButton = twMerge(courierButton, compact && 'h-12 w-12 shrink-0 rounded-full p-0');
     const copyAddress = async () => {
         try {
             if (!navigator.clipboard || !place.address) throw new Error('Clipboard unavailable');
@@ -52,14 +62,21 @@ export function CourierStop({ place, label, phone, messageDeliveryId, messagePha
         } catch { setCopyResult('Could not copy. Select the address to copy it.'); }
     };
     return <div className="space-y-3">
-        <div><p className="text-sm font-semibold text-slate-600">{label}</p><h3 className="mt-1 break-words text-xl font-bold text-slate-900">{place.name || 'Name not provided'}</h3><p className="mt-2 whitespace-pre-line break-words text-base leading-relaxed text-slate-800">{place.address || (place.code ? `Facility ${place.code}. Address not provided.` : 'Address not provided.')}</p></div>
         <div className="flex flex-wrap gap-2">
-            {directions && <a href={directions} target="_blank" rel="noopener noreferrer" className={courierButton} aria-label={`Directions to ${place.name || label}`}><MapPin className="h-4 w-4" aria-hidden="true" />Directions</a>}
-            {telephone && <a href={telephone} className={courierButton} aria-label={`Call ${place.name || label}`}><Phone className="h-4 w-4" aria-hidden="true" />Call</a>}
-            {messageDeliveryId !== undefined && <Link href={`${courierPath('/messages')}?delivery=${messageDeliveryId}${messagePhase ? `&phase=${messagePhase}` : ''}`} className={courierButton}><MessageSquare className="h-4 w-4" aria-hidden="true" />Message</Link>}
-            {place.address && <button type="button" onClick={copyAddress} className={courierButton} aria-label={`Copy address for ${place.name || label}`}><Copy className="h-4 w-4" aria-hidden="true" />Copy address</button>}
+            {directions && <a href={directions} target="_blank" rel="noopener noreferrer" className={twMerge(courierButton, compact && 'flex-1 border-rose-300 text-[#C20836]')} aria-label={`Directions to ${place.name || label}`}><MapPin className="h-4 w-4" aria-hidden="true" />{compact ? 'Navigate' : 'Directions'}</a>}
+            {telephone && <a href={telephone} className={iconButton} aria-label={`Call ${place.name || label}`} title={`Call ${place.name || label}`}><Phone className="h-4 w-4" aria-hidden="true" />{!compact && 'Call'}</a>}
+            {messageDeliveryId !== undefined && <Link href={`${courierPath('/messages')}?delivery=${messageDeliveryId}${messagePhase ? `&phase=${messagePhase}` : ''}`} className={iconButton} aria-label={`Message ${place.name || label}`} title={`Message ${place.name || label}`}><MessageSquare className="h-4 w-4" aria-hidden="true" />{!compact && 'Message'}</Link>}
+            {place.address && <button type="button" onClick={copyAddress} className={iconButton} aria-label={`Copy address for ${place.name || label}`} title="Copy address"><Copy className="h-4 w-4" aria-hidden="true" />{!compact && 'Copy address'}</button>}
         </div>
         {!directions && <p className="text-sm text-slate-600">Directions are unavailable until a destination address or location is provided.</p>}
-        <p role="status" className="text-sm text-slate-600">{copyResult}</p>
+        <p role="status" className={copyResult ? 'text-sm text-slate-600' : 'sr-only'}>{copyResult}</p>
+    </div>;
+}
+
+export function CourierStop(props: StopActionsProps) {
+    const { place, label } = props;
+    return <div className="space-y-3">
+        <div><p className="text-sm font-semibold text-slate-600">{label}</p><h3 className="mt-1 break-words text-xl font-bold text-slate-900">{place.name || 'Name not provided'}</h3><p className="mt-2 whitespace-pre-line break-words text-base leading-relaxed text-slate-800">{place.address || (place.code ? `Facility ${place.code}. Address not provided.` : 'Address not provided.')}</p></div>
+        <CourierStopActions {...props} />
     </div>;
 }

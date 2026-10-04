@@ -10,6 +10,8 @@
 .courier-job-map .leaflet-control,
 .courier-job-map .leaflet-tooltip { font-family: 'Plus Jakarta Sans', sans-serif; }
 .courier-job-map .leaflet-container { background: #F8F6F2; }
+.courier-map-surface .leaflet-tile-pane { filter: grayscale(1); }
+.courier-stop-pin { filter: drop-shadow(0 3px 4px rgba(15,23,42,0.18)); }
 .courier-job-map .leaflet-control-attribution {
     max-width: 100%;
     white-space: normal;

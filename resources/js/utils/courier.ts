@@ -26,6 +26,49 @@ export interface CourierMapJob {
     preview: boolean;
 }
 
+export function courierInitials(name?: string | null): string {
+    const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+    if (!words.length) return 'R';
+    return [words[0], ...(words.length > 1 ? [words[words.length - 1]] : [])]
+        .map((word) => Array.from(word)[0]).join('').toLocaleUpperCase('en-PH');
+}
+
+export function courierGreeting(name?: string | null, now = new Date()): string {
+    const hour = Number(new Intl.DateTimeFormat('en-PH', {
+        hour: 'numeric', hourCycle: 'h23', timeZone: 'Asia/Manila',
+    }).format(now));
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const firstName = name?.trim().split(/\s+/)[0];
+    return `${greeting}${firstName ? `, ${firstName}` : ''}.`;
+}
+
+export function courierDayKey(date: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date);
+    return ['year', 'month', 'day'].map((type) => parts.find((part) => part.type === type)?.value).join('-');
+}
+
+export function courierActivitySeries(records: Array<{ deliveredAt: string | null }>, days = 7, now = new Date()) {
+    const today = new Date(`${courierDayKey(now)}T00:00:00Z`);
+    const series = Array.from({ length: days }, (_, index) => {
+        const date = new Date(today.getTime() - (days - index - 1) * 86400000);
+        return {
+            key: courierDayKey(date),
+            label: new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', ...(days > 7 ? { day: 'numeric' as const } : { weekday: 'short' as const }) }).format(date),
+            fullLabel: new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }).format(date),
+            count: 0,
+        };
+    });
+    for (const record of records) {
+        const date = record.deliveredAt ? new Date(record.deliveredAt) : null;
+        if (!date || !Number.isFinite(date.getTime()) || date.getTime() > now.getTime()) continue;
+        const day = series.find((item) => item.key === courierDayKey(date));
+        if (day) day.count++;
+    }
+    return series;
+}
+
 export function courierMapCoordinates(place: CourierPlace): [number, number] | null {
     const { latitude, longitude } = place;
     if (typeof latitude !== 'number' || typeof longitude !== 'number'
