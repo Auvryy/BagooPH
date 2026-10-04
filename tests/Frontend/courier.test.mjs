@@ -99,6 +99,73 @@ test('telephone links and recorded display values have truthful missing states',
     assert.equal(ui.courierMoney(Infinity), 'Amount not provided');
     assert.match(ui.courierDate('2026-10-02T18:00:00Z'), /Oct 3, 2026/);
 });
+test('rider greetings and initials use the actual name and Philippine time', () => {
+    assert.equal(ui.courierInitials('  Ana Maria Reyes  '), 'AR');
+    assert.equal(ui.courierInitials('Érica'), 'É');
+    assert.equal(ui.courierInitials(null), 'R');
+    assert.equal(ui.courierGreeting('Ana Rider', new Date('2026-10-04T01:00:00Z')), 'Good morning, Ana.');
+    assert.equal(ui.courierGreeting('Ana Rider', new Date('2026-10-04T05:00:00Z')), 'Good afternoon, Ana.');
+    assert.equal(ui.courierGreeting('Ana Rider', new Date('2026-10-04T12:00:00Z')), 'Good evening, Ana.');
+    assert.equal(ui.courierGreeting(null, new Date('2026-10-04T16:00:00Z')), 'Good morning.');
+});
+test('activity groups records at Philippine midnight and excludes invalid, future, and older records', () => {
+    const now = new Date('2026-10-05T03:00:00Z');
+    const records = Object.freeze([
+        { deliveredAt: '2026-10-04T16:00:00Z' },
+        { deliveredAt: '2026-10-04T15:59:59Z' },
+        { deliveredAt: '2026-09-28T02:00:00Z' },
+        { deliveredAt: '2026-10-05T04:00:00Z' },
+        { deliveredAt: 'invalid' },
+        { deliveredAt: null },
+    ].map(Object.freeze));
+    const week = ui.courierActivitySeries(records, 7, now);
+    assert.equal(week.length, 7);
+    assert.equal(week[0].key, '2026-09-29');
+    assert.equal(week[6].key, '2026-10-05');
+    assert.equal(week[6].count, 1);
+    assert.equal(week[5].count, 1);
+    assert.equal(week.reduce((total, day) => total + day.count, 0), 2);
+    const fortnight = ui.courierActivitySeries(records, 14, now);
+    assert.equal(fortnight.length, 14);
+    assert.equal(fortnight.find(day => day.key === '2026-09-28').count, 1);
+    assert.equal(fortnight.reduce((total, day) => total + day.count, 0), 3);
+    assert.ok(ui.courierActivitySeries([], 7, now).every(day => day.count === 0));
+});
+test('dashboard uses server overview counts and recent records without inventing earnings or goals', async () => {
+    const record = { id: 10, trackingNumber: 'BGO-RECENT', orderNumber: 'BGO-OLD', recipientName: 'Actual recipient', deliveryAddress: 'Recorded street', paymentMethod: 'COD', destinationHub: scope.hub, deliveredAt: '2026-10-03T02:00:00Z' };
+    const html = await renderPage(ui.Deliveries, 'Deliveries', {
+        scope, isOnline: true,
+        stats: { availablePickups: 27, activePickups: 3, activePickupLimit: 5, finalMileTasks: 2, completedToday: 12 },
+        queues: { pickupTasks: [pickup], recentActivity: [record] },
+    });
+    const overview = html.slice(html.indexOf('aria-label="Work overview"'), html.indexOf('aria-label="Task filters"'));
+    for (const count of [27, 3, 2, 12]) assert.match(overview, new RegExp(`<span[^>]*>${count}</span>`));
+    assert.match(html, /aria-label="Pickup capacity in use" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3"/);
+    assert.match(html, /2 slots free/);
+    assert.match(html, /Your latest 10 delivery records at this hub/);
+    assert.match(html, /Recent deliveries[^]*BGO-RECENT[^]*Actual recipient[^]*Recorded street/);
+    assert.doesNotMatch(html, /Today.s earnings|Rider rating|bonus|Estimated arrival|Live GPS|Online time/);
+});
+test('parcel selection preserves queue order and current-stop contact restrictions', async () => {
+    const html = await renderPage(ui.Deliveries, 'Deliveries', {
+        scope, isOnline: true,
+        queues: { finalMileTasks: [finalMile, { ...finalMile, id: 8, trackingNumber: 'BGO-SECOND' }, { ...finalMile, id: 5, trackingNumber: 'BGO-THIRD' }] },
+    });
+    const keys = [...html.matchAll(/<option value="(final_mile-\d+)"/g)].map(match => match[1]);
+    assert.deepEqual(keys, ['final_mile-2', 'final_mile-8', 'final_mile-5']);
+    assert.match(html, /id="rider-current-job"[^]*Delivery leg stops/);
+    assert.match(html, /Destination Bayan Hub[^]*Current stop[^]*Saved buyer destination[^]*Next stop/);
+    assert.doesNotMatch(html, /href="tel:|phase=final_mile/);
+    assert.deepEqual(directionDestinations(html), ['14.3,121.4']);
+});
+test('missing COD amount remains missing and prepaid jobs do not show a cash amount', async () => {
+    const missing = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'COD', codAmount: null } }] } });
+    assert.match(missing, /Amount not provided/);
+    assert.doesNotMatch(missing, /₱0/);
+    const prepaid = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'PREPAID', codAmount: null } }] } });
+    assert.match(prepaid, /PREPAID · No COD due/);
+    assert.doesNotMatch(prepaid, /Cash due at delivery|₱/);
+});
 test('claimed pickup shows seller directions and collection action', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
     assert.deepEqual(directionDestinations(html), ['Seller road, Laguna']);
