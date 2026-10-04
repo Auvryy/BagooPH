@@ -6,11 +6,11 @@ import { courierPath } from '@/utils/courier';
 import { PageProps } from '@/types';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 
-export function CourierDutySwitch({ isOnline, busy = false, onChange }: { isOnline: boolean; busy?: boolean; onChange: () => void }) {
-    return <button type="button" role="switch" aria-label="Rider duty" aria-checked={isOnline} aria-busy={busy} disabled={busy} onClick={onChange} title={isOnline ? 'Go off duty' : 'Go on duty'} className={courierClasses(courierButton, 'gap-2 px-3 font-medium')}>
-        <span className={`h-2 w-2 shrink-0 rounded-full ${isOnline ? 'bg-emerald-600' : 'bg-slate-500'}`} aria-hidden="true" />
-        <span>{busy ? 'Updating…' : isOnline ? 'On duty' : 'Off duty'}</span>
-        <svg width="40" height="24" viewBox="0 0 40 24" aria-hidden="true" focusable="false" className="ml-1 h-6 w-10 shrink-0">
+export function CourierDutySwitch({ isOnline, busy = false, compact = false, onChange }: { isOnline: boolean; busy?: boolean; compact?: boolean; onChange: () => void }) {
+    return <button type="button" role="switch" aria-label="Rider duty" aria-checked={isOnline} aria-busy={busy} disabled={busy} onClick={onChange} title={isOnline ? 'Go off duty' : 'Go on duty'} className={courierClasses(courierButton, 'gap-2 px-3 font-medium', compact && 'px-2 sm:px-3')}>
+        <span className={courierClasses('h-2 w-2 shrink-0 rounded-full', isOnline ? 'bg-emerald-600' : 'bg-slate-500', compact && 'hidden sm:block')} aria-hidden="true" />
+        <span className={compact ? 'sr-only sm:not-sr-only' : undefined}>{busy ? 'Updating…' : isOnline ? 'On duty' : 'Off duty'}</span>
+        <svg width="40" height="24" viewBox="0 0 40 24" aria-hidden="true" focusable="false" className={courierClasses('ml-1 h-6 w-10 shrink-0', compact && 'ml-0 sm:ml-1')}>
             <rect width="40" height="24" rx="12" fill={isOnline ? '#E00D42' : '#64748B'} />
             <circle cx={isOnline ? 28 : 12} cy="12" r="9" fill="#FFFFFF" />
         </svg>

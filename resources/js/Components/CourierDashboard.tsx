@@ -59,7 +59,7 @@ export function CourierDeliveryOverview({ activity, activePickups, pickupLimit, 
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><h2 className="text-lg font-semibold">Delivery activity</h2><p className="mt-2 text-sm text-slate-600">Your latest 10 delivery records at this hub.</p></div>
                 <label className="sr-only" htmlFor={chartId}>Activity period</label>
-                <select id={chartId} value={days} onChange={(event) => setDays(Number(event.target.value))} className={`${courierInput} mt-0 w-auto border-[#E00D42] py-2 pr-8 text-sm text-[#C20836]`}><option value={7}>Last 7 days</option><option value={14}>Last 14 days</option></select>
+                <select id={chartId} value={days} onChange={(event) => setDays(Number(event.target.value))} className={`${courierInput} mt-0 w-auto py-2 pr-8 text-sm`}><option value={7}>Last 7 days</option><option value={14}>Last 14 days</option></select>
             </div>
             <div className="relative mt-6 pl-7" role="img" aria-label={`Recent delivery records: ${series.map((day) => `${day.fullLabel}, ${day.count}`).join('; ')}`}>
                 <div className="pointer-events-none absolute inset-x-0 top-0 flex h-36 flex-col justify-between" aria-hidden="true">

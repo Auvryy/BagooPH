@@ -77,7 +77,7 @@ export default function CourierSidebar({ collapsed, mobileOpen, onCloseMobile, .
         </aside>
         <Dialog open={mobileOpen} onClose={onCloseMobile} className="relative z-[60] font-sans text-slate-900">
             <DialogBackdrop transition className="courier-sidebar-backdrop fixed inset-0 bg-slate-950/25" />
-            <DialogPanel transition id="rider-mobile-sidebar" className={courierClasses('courier-sidebar-drawer fixed inset-y-0 left-0 flex w-80 max-w-[calc(100vw-3rem)] flex-col overflow-y-auto bg-white shadow-xl', content.subtle && 'courier-dashboard')}>
+            <DialogPanel transition id="rider-mobile-sidebar" className={courierClasses('courier-sidebar-drawer fixed inset-y-0 left-0 flex w-80 max-w-[calc(100vw-3rem)] flex-col overflow-y-auto bg-white shadow-xl', content.subtle && 'courier-soft')}>
                 <DialogTitle className="sr-only">Rider navigation</DialogTitle>
                 <SidebarContent {...content} mobile onClose={onCloseMobile} />
             </DialogPanel>
