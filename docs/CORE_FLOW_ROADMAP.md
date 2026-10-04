@@ -215,6 +215,16 @@ Rider presentation assessment: **8.7/10 before -> 8.7/10 after**. The slightly s
 
 Verification: all 23 existing frontend helper/server-render checks and the TypeScript/Vite production build passed again after the 8px refinement. Static inspection confirmed only corner and rotation changes in the frontend diff, no remaining decorative rotation in rider surfaces, and the remaining circular classes serve the shapes listed above. The diff passed whitespace checks. The shared email-verification component changes only its comfortable variant, which is currently used by the rider profile. Global theme radii, other portals, and backend behavior are unchanged. No browser automation or new screenshots were used.
 
+### Rider Dashboard Surface and Navigation Polish: October 4, 2026
+
+**State: Scoped frontend follow-up verified on `fix/rider-corner-radius`.** The dashboard canvas is now an almost-white blush (`#FFFAFB`). Work counters, current-parcel and overview cards, the dispatch card, and map surfaces use soft shadows and transparent outlines. Inset notices and icon backgrounds are quieter, while form boundaries, focus outlines, status indicators, and light table separators remain readable. The latest 8px corners and upright icons are retained.
+
+The shared rider shell now has hamburger controls in the sidebar and header. Desktop users can collapse the sidebar, use the full content width, and reopen it from the header; the preference is stored locally with a fallback when storage is unavailable. Collapsing from the sidebar returns keyboard focus to the header control. Phones use the existing dialog library for a drawer with a close button, outside-click/Escape dismissal, focus management, and scroll locking. Selecting a drawer link closes it, and switching to desktop closes the mobile drawer. The existing bottom navigation, account menu, refresh, and duty controls remain available.
+
+Scoped dashboard presentation/navigation assessment: **8.7/10 before -> 8.8/10 after**. The quieter canvas and card edges reduce visual clutter, and the sidebar toggle gives more space to parcel information. Complete rider operations remain **about 6/10** because this work does not implement recovery, handoff evidence, notifications, or COD reconciliation. Trips, Messages, and Profile retain their page content and surface treatment; only the shared navigation changes apply to them.
+
+Verification: all 24 frontend helper/server-render checks passed, including the new sidebar control checks for expanded state, controlled targets, mobile dialog semantics, and reopening callbacks. The TypeScript/Vite production build and whitespace checks passed. No backend code changed. Static review covered responsive visibility, dashboard-only surface selectors, focus restoration, storage fallback, and reuse of the existing navigation paths and dialog controls. Rendered/device interaction review remains with the user; no browser automation or new screenshots were used.
+
 ## Delivery Phases
 
 Work on one phase at a time. Do not begin a later phase until the current phase has focused tests and its cross-role acceptance path passes.

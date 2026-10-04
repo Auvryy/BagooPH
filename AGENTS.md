@@ -42,7 +42,8 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Primary accent: `#E00D42`.
 - Use Plus Jakarta Sans as the single typeface across every page, portal, component, chart, email, and data field. Do not introduce monospace fonts, `font-mono`, JetBrains Mono, Inter, or another display/body font.
 - Use the October 4 rider corner refinement: cards, dialogs, inputs, buttons, navigation, badges, inset panels, and maps use 8px radii across rider pages. This refinement supersedes the initial 4px adjustment and earlier larger rider radii. Keep empty-state icon tiles and their icons upright, without decorative rotation. Avatars, status dots, timeline markers, progress tracks, and duty-switch shapes may remain circular or pill-shaped.
-- Use explicit local radius classes for this direction; do not change global theme radii or restyle unrelated portals without scope. Keep borders and readable grouping.
+- Use explicit local radius classes for this direction; do not change global theme radii or restyle unrelated portals without scope. Keep readable grouping and clear form controls.
+- For the rider dashboard, follow the latest October 4 surface preference: use the almost-white blush canvas `#FFFAFB`, soft card shadows, and transparent or very subtle card outlines. Keep input boundaries, focus states, status distinctions, and necessary row separators clear. Scope this surface treatment to the dashboard until other pages are requested.
 - Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
 - Avoid gradients and ornamental clutter on authentication screens. Preserve the split-screen login/register layout.
 - Floating navigation menus must be absolute and must not shift layout. Preserve the existing overlap/grace-period pattern.
