@@ -25,18 +25,29 @@ class KycSubmissionService
                 $birthDates = app(BirthDateEligibility::class);
                 $adult = $birthDates->requiresAdult($user->role);
                 $birthdayProvided = array_key_exists('birthday', $validated);
-                $pendingCorrection = ! $buyerUpload && $adult && $user->isKycPending() && $birthdayProvided;
+                $categoryProvided = array_key_exists('root_category_id', $validated);
+                $pendingCorrection = ! $buyerUpload && $user->isKycPending()
+                    && (($adult && $birthdayProvided) || ($user->isSeller() && $categoryProvided));
                 $allowedStates = $buyerUpload ? ['none', 'rejected', 'pending_approval'] : ['rejected'];
                 if ($pendingCorrection) {
                     $allowedStates[] = 'pending_approval';
                 }
-                abort_unless(in_array($user->kyc_status, $allowedStates, true) && (! $buyerUpload || $user->isBuyer()), 409, 'Only an unreviewed buyer ID, pending birth-date correction, or rejected application can be submitted.');
+                abort_unless(in_array($user->kyc_status, $allowedStates, true) && (! $buyerUpload || $user->isBuyer()), 409, 'Only an unreviewed buyer ID, pending application correction, or rejected application can be submitted.');
                 $this->decisions->lockProfile($user);
+                if ($categoryProvided) {
+                    abort_unless($user->isSeller(), 403);
+                    if (! $user->shop) {
+                        throw ValidationException::withMessages(['root_category_id' => 'The original shop application is missing. Contact support before correcting its category.']);
+                    }
+                    app(MasterCategoryService::class)->requireEligible((int) $validated['root_category_id']);
+                }
+                $categoryChanged = $categoryProvided && (int) $validated['root_category_id'] !== (int) $user->shop->root_category_id;
                 $birthday = $birthdayProvided ? $validated['birthday'] : $user->birthday?->toDateString();
                 Validator::make(['birthday' => $birthday], ['birthday' => [$adult ? 'required' : 'nullable', new BirthDate($adult)]])->validate();
                 $birthdayChanged = $birthdayProvided && $birthday !== $user->birthday?->toDateString();
-                if ($pendingCorrection && ! $birthdayChanged) {
-                    throw ValidationException::withMessages(['birthday' => 'Change your birth date to submit a correction.']);
+                if ($pendingCorrection && ! $birthdayChanged && ! $categoryChanged) {
+                    $field = $categoryProvided ? 'root_category_id' : 'birthday';
+                    throw ValidationException::withMessages([$field => 'Change your birth date or shop category to submit a correction.']);
                 }
                 $allowedFiles = match ($user->role) {
                     'buyer' => ['id_document'],
@@ -45,13 +56,16 @@ class KycSubmissionService
                     'logistics' => ['business_permit', 'franchise_document'],
                 };
                 $uploads = array_filter(array_intersect_key($validated, array_flip($allowedFiles)), fn ($upload) => $upload instanceof UploadedFile);
-                if (! $uploads && ! $birthdayChanged) {
-                    throw ValidationException::withMessages(['documents' => 'Upload at least one corrected document or change your birth date.']);
+                if (! $uploads && ! $birthdayChanged && ! $categoryChanged) {
+                    throw ValidationException::withMessages(['documents' => 'Upload a corrected document or change your birth date or shop category.']);
                 }
                 if ($user->isLogistics() && ! $user->logisticsCompany) {
                     throw ValidationException::withMessages(['documents' => 'The company application is missing. Contact support before resubmitting.']);
                 }
                 $paths = $this->documents->storeUploads($uploads);
+                if ($categoryChanged) {
+                    $user->shop->update(['root_category_id' => (int) $validated['root_category_id']]);
+                }
                 $updates = array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
                 if ($user->isLogistics()) {
                     $accreditation = $user->logisticsCompany->accreditation_details ?? [];

@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
+import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 import { CourierProfile, Shop, User } from '@/types';
 import { 
     Clock, 
@@ -26,6 +27,13 @@ import {
 interface PendingApprovalProps {
     user: User;
     birthDate: { value: string | null; needs_correction: boolean; limits: BirthDateLimits };
+    sellerCategory: {
+        value: number | null;
+        name: string | null;
+        issue: string | null;
+        can_correct: boolean;
+        choices: MasterCategoryChoice[];
+    } | null;
     shop?: Shop | null;
     courierProfile?: CourierProfile | null;
     logisticsCompany?: {
@@ -37,7 +45,7 @@ interface PendingApprovalProps {
     } | null;
 }
 
-export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate }: PendingApprovalProps) {
+export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory }: PendingApprovalProps) {
     const isRejected = user.kyc_status === 'rejected';
 
     const idInputRef = useRef<HTMLInputElement>(null);
@@ -50,8 +58,9 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
     const [licenseFileName, setLicenseFileName] = useState<string | null>(null);
     const [orCrFileName, setOrCrFileName] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm<{
+    const { data, setData, post, processing, errors, reset, transform } = useForm<{
         birthday: string;
+        root_category_id: string;
         id_document: File | null;
         business_permit: File | null;
         driver_license: File | null;
@@ -59,6 +68,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
         franchise_document: File | null;
     }>({
         birthday: birthDate.value || '',
+        root_category_id: sellerCategory?.value ? String(sellerCategory.value) : '',
         id_document: null,
         business_permit: null,
         driver_license: null,
@@ -68,6 +78,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
 
     const handleResubmit: FormEventHandler = (e) => {
         e.preventDefault();
+        transform(({ root_category_id, ...fields }) => sellerCategory?.can_correct ? { ...fields, root_category_id } : fields);
         post(route('kyc.resubmit'), {
             forceFormData: true,
             preserveScroll: true,
@@ -78,6 +89,8 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 setOrCrFileName(null);
                 reset('id_document', 'business_permit', 'driver_license', 'or_cr_document', 'franchise_document');
                 setData('birthday', (page.props.birthDate as PendingApprovalProps['birthDate']).value || '');
+                const category = page.props.sellerCategory as PendingApprovalProps['sellerCategory'];
+                setData('root_category_id', category?.value ? String(category.value) : '');
             },
         });
     };
@@ -99,14 +112,18 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
             <Head title="Account Verification Status — BagooPH" />
 
             <div className="space-y-6 font-sans text-xs">
-                {user.kyc_status === 'pending_approval' && birthDate.needs_correction && (
+                {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || sellerCategory?.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">
-                        <p className="font-semibold text-slate-900">Complete your birth date before review</p>
-                        <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />
+                        <p className="font-semibold text-slate-900">Correct your application before review</p>
+                        {birthDate.needs_correction && <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />}
+                        {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}
+                        {sellerCategory?.issue && <p className="text-xs text-amber-800">{sellerCategory.issue}</p>}
+                        {!birthDate.needs_correction && <InputError message={errors.birthday} />}
                         <InputError message={(errors as { documents?: string }).documents} />
-                        <button type="submit" disabled={processing || !data.birthday || data.birthday === birthDate.value} className="rounded-[12px] border border-[#E00D42] bg-[#E00D42] px-4 py-2 font-semibold text-white disabled:opacity-50">{processing ? 'Submitting...' : 'Submit birth date for review'}</button>
+                        <button type="submit" disabled={processing || (data.birthday === (birthDate.value || '') && data.root_category_id === (sellerCategory?.value ? String(sellerCategory.value) : ''))} className="rounded-[12px] border border-[#E00D42] bg-[#E00D42] px-4 py-2 font-semibold text-white disabled:opacity-50">{processing ? 'Submitting...' : 'Submit correction for review'}</button>
                     </form>
                 )}
+                {sellerCategory?.issue && !sellerCategory.can_correct && <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">{sellerCategory.issue} Contact an admin for a controlled review; this form cannot replace a completed decision or create a missing shop.</p>}
                 {!isRejected && user.kyc_status !== 'pending_approval' && birthDate.needs_correction && (
                     <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">Your reviewed account needs an administrator check of its birth date. A completed review cannot be changed from this form.</p>
                 )}
@@ -186,6 +203,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                 <div>
                                     <span className="text-black/50 block text-[9px] uppercase">Registered Store</span>
                                     <span className="font-bold">{shop.name} ({shop.city || 'Metro Manila'})</span>
+                                    <span className="block text-xs text-slate-600">Category: {sellerCategory?.name || 'Not provided'}</span>
                                 </div>
                             </div>
                         )}
@@ -270,6 +288,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                     <form onSubmit={handleResubmit} className="p-4 bg-white border-2 border-[#E00D42]/30 rounded-xl space-y-4">
                         <InputError message={(errors as { documents?: string }).documents} />
                         <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />
+                        {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}
                         <div className="flex items-center gap-2 border-b border-black/10 pb-2">
                             <Upload className="w-4 h-4 text-[#E00D42]" />
                             <span className="font-bold text-xs uppercase tracking-wider">
@@ -495,7 +514,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                             disabled={processing}
                             className="w-full py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
                         >
-                            <span>{processing ? 'Submitting Documents...' : 'Resubmit KYC Documents'}</span>
+                            <span>{processing ? 'Submitting Application...' : 'Resubmit Application'}</span>
                             <ArrowRight className="w-4 h-4" />
                         </button>
                     </form>

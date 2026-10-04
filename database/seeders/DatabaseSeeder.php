@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(MasterCategorySeeder::class);
+
         // 1. Platform Admin
         User::updateOrCreate(
             ['email' => 'admin@bagoo.test'],

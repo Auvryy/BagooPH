@@ -10,6 +10,12 @@ Keep the rules realistic even at that scale: server-side approval and authorizat
 
 Complete the existing phased core flow before considering extras. New services, advanced analytics, live GPS, AI dispatch, warehouse automation, or complete refunds/exchanges/disputes need separate scope approval. Supporting architecture and brainstorming ideas cannot add them to the baseline.
 
+## Project Delivery Target
+
+Planning starts **October 4, 2026**, with expected completion around **November 20, 2026**, in Asia/Manila. **November 20 is the latest planned task deadline** for this delivery window. Reserve time for verification, fixes, and the final demonstration before that date.
+
+Prioritize the existing core baseline and keep optional additions deferred. Calendar targets do not waive approval, custody, recovery, notification, financial, or test requirements. If work cannot fit, report the capacity or prerequisite gap and obtain a scope decision; do not silently extend the deadline or mark unfinished work complete. Current evidence and schedule risks belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).
+
 ## Normative Product Contracts
 
 | Question | Authoritative document |

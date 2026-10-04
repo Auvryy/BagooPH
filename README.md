@@ -15,6 +15,8 @@
 
 ## Overview & Architecture
 
+**Expected project completion: around November 20, 2026.** The planning window runs from October 4 to November 20, 2026; planned task deadlines must stay within that window. Required scope, phase order, and acceptance gates are defined in [the documentation map](docs/README.md) and [the core roadmap](docs/CORE_FLOW_ROADMAP.md).
+
 **Bagoo** is a modern e-commerce application featuring Role-Based Access Control (RBAC) across distinct user workflows:
 
 - **Buyer / Customer**: Browse catalog by category, search & filter products, shopping cart, multi-step checkout, real-time courier shipment tracking.

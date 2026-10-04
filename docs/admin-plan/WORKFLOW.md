@@ -17,6 +17,7 @@ Do not create all planned Git branches now. An unused branch list is not progres
 3. Verify minimum dependencies and phase gates. If a required record/workflow is absent, report the exact blocker before dependent implementation.
 4. Start from updated `main`. A clean working tree is required for the normal branch switch; do not automatically stash, discard, reset, or move unrelated changes.
 5. Record the single branch objective and its acceptance cases. Do not activate an unbounded goal such as "finish every admin feature."
+6. Keep the selected task inside the October 4-November 20, 2026 delivery window. Allow time for verification and review before the final target. Preserve honest effort estimates; a deadline change does not justify reporting less work, skipping a gate, or extending the window automatically.
 
 Example commands for the selected B01 branch, after the foundation is merged and the worktree is clean:
 

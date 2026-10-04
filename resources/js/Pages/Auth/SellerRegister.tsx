@@ -25,8 +25,9 @@ import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
+import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 
-export default function SellerRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
+export default function SellerRegister({ birthDateLimits, masterCategories }: { birthDateLimits: BirthDateLimits; masterCategories: MasterCategoryChoice[] }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -45,6 +46,7 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
         name: string;
         birthday: string;
         shop_name: string;
+        root_category_id: string;
         email: string;
         phone: string;
         address: string;
@@ -62,6 +64,7 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
         name: '',
         birthday: '',
         shop_name: '',
+        root_category_id: '',
         email: '',
         phone: '',
         address: '',
@@ -122,6 +125,7 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
     const validateStep1 = () => {
         const newErrors: Record<string, string> = {};
         if (!data.shop_name.trim()) newErrors.shop_name = 'Store name is required';
+        if (!masterCategories.some(category => String(category.id) === data.root_category_id)) newErrors.root_category_id = 'Choose an available main category for your shop';
         if (!data.name.trim()) newErrors.name = 'Merchant contact name is required';
         if (!data.birthday) newErrors.birthday = 'Date of birth is required';
         else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
@@ -172,7 +176,7 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
 
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { if (errors.birthday || errors.root_category_id) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -186,7 +190,7 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
         }));
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { if (errors.birthday || errors.root_category_id) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -300,6 +304,8 @@ export default function SellerRegister({ birthDateLimits }: { birthDateLimits: B
                                 <InputError message={stepErrors.shop_name || errors.shop_name} className="mt-1" />
                             )}
                         </div>
+
+                        <MasterCategorySelect choices={masterCategories} value={data.root_category_id} onChange={value => { setData('root_category_id', value); setStepErrors(previous => ({ ...previous, root_category_id: '' })); }} error={stepErrors.root_category_id || errors.root_category_id} />
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\CourierProfile;
 use App\Models\LogisticsCompany;
-use App\Models\Shop;
 use App\Models\User;
 use App\Rules\BirthDate;
+use App\Rules\MasterCategory;
 use App\Services\BirthDateEligibility;
 use App\Services\KycSubmissionService;
+use App\Services\MasterCategoryService;
 use App\Services\OtpService;
+use App\Services\SellerApplicationService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -38,7 +41,10 @@ class RegisteredUserController extends Controller
      */
     public function createSeller(): Response
     {
-        return Inertia::render('Auth/SellerRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
+        return Inertia::render('Auth/SellerRegister', [
+            'birthDateLimits' => app(BirthDateEligibility::class)->limits(),
+            'masterCategories' => app(MasterCategoryService::class)->choices(),
+        ]);
     }
 
     /**
@@ -100,6 +106,7 @@ class RegisteredUserController extends Controller
         // Role-specific validation rules
         if ($role === 'seller') {
             $rules['shop_name'] = 'required|string|max:255';
+            $rules['root_category_id'] = ['bail', 'required', 'integer', new MasterCategory];
             $rules['phone'] = 'required|string|max:255';
             $rules['address'] = 'required|string|max:255';
             $rules['city'] = 'required|string|max:255';
@@ -152,7 +159,7 @@ class RegisteredUserController extends Controller
         }
 
         // Create User with appropriate role status
-        $user = User::create([
+        $account = [
             'name' => $validated['name'],
             'email_verified_at' => $emailVerifiedAt,
             'first_name' => $validated['first_name'] ?? null,
@@ -178,21 +185,21 @@ class RegisteredUserController extends Controller
             'driver_license_path' => $licensePath,
             'or_cr_path' => $orCrPath,
             'kyc_submitted_at' => $idPath ? now() : ($isBuyer ? null : now()),
-        ]);
+        ];
 
-        // Create associated role profile
         if ($role === 'seller') {
-            $shopName = $validated['shop_name'];
-            Shop::create([
-                'user_id' => $user->id,
-                'name' => $shopName,
-                'slug' => Str::slug($shopName.'-'.$user->id),
-                'phone' => $validated['phone'] ?? null,
-                'address' => $validated['address'] ?? null,
-                'city' => $validated['city'] ?? $validated['municipality'] ?? null,
-                'status' => 'pending',
-            ]);
-        } elseif ($role === 'courier') {
+            try {
+                $user = app(SellerApplicationService::class)->register($account, $validated['shop_name'], (int) $validated['root_category_id']);
+            } catch (\Throwable $exception) {
+                Storage::disk('local')->delete(array_values($paths));
+                throw $exception;
+            }
+        } else {
+            $user = User::create($account);
+        }
+
+        // Create the remaining role profiles using their existing registration flow.
+        if ($role === 'courier') {
             CourierProfile::create([
                 'user_id' => $user->id,
                 'vehicle_type' => $validated['vehicle_type'],
@@ -285,6 +292,9 @@ class RegisteredUserController extends Controller
             return redirect()->route('dashboard');
         }
 
+        $shop = $user->isSeller() ? $user->shop()->orderBy('id')->with('rootCategory')->first() : $user->shop;
+        $category = app(MasterCategoryService::class)->snapshot($shop?->root_category_id);
+
         return Inertia::render('Auth/PendingApproval', [
             'user' => [
                 'id' => $user->id,
@@ -302,7 +312,14 @@ class RegisteredUserController extends Controller
                 'kyc_reviewed_at' => $user->kyc_reviewed_at ? $user->kyc_reviewed_at->toIso8601String() : null,
                 ...app(VerificationDocumentService::class)->links($user),
             ],
-            'shop' => $user->shop,
+            'shop' => $shop,
+            'sellerCategory' => $user->isSeller() ? [
+                'value' => $shop?->root_category_id,
+                'name' => $category['name'] ?? null,
+                'issue' => ($category['eligible'] ?? false) ? null : MasterCategoryService::ISSUE,
+                'can_correct' => $shop !== null && in_array($user->kyc_status, ['pending_approval', 'rejected'], true),
+                'choices' => app(MasterCategoryService::class)->choices(),
+            ] : null,
             'courierProfile' => $user->courierProfile,
             'logisticsCompany' => $user->logisticsCompany,
             'birthDate' => [
@@ -329,6 +346,12 @@ class RegisteredUserController extends Controller
             'or_cr_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
             'franchise_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
+        if ($user->isSeller()) {
+            $rules['root_category_id'] = ['bail', 'sometimes', 'required', 'integer', new MasterCategory];
+            $rules['shop_id'] = ['prohibited'];
+        } else {
+            $rules['root_category_id'] = ['prohibited'];
+        }
 
         $validated = $request->validate($rules);
 

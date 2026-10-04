@@ -9,13 +9,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Tests\TestCase;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\TestCase;
 
 class Milestone1AdversarialSecurityTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithKycReviews;
+    use RefreshDatabase;
 
     /*
     |--------------------------------------------------------------------------
@@ -747,6 +747,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         Shop::create([
             'user_id' => $seller->id,
             'name' => 'Idempotent Shop',
+            'root_category_id' => $this->validMasterCategory()->id,
             'slug' => 'idempotent-shop',
             'status' => 'pending',
         ]);
