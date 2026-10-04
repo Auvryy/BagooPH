@@ -905,6 +905,7 @@ class CourierOperationsHardeningTest extends TestCase
 
     public function test_rider_can_message_only_the_participant_for_an_active_assignment(): void
     {
+        $this->seller->update(['avatar' => '/images/seller-profile.png']);
         $delivery = $this->createDelivery('assigned_pickup', $this->rider);
 
         $this->actingAs($this->rider)
@@ -926,6 +927,7 @@ class CourierOperationsHardeningTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('conversations', 1)
                 ->where('conversations.0.participant.id', $this->seller->id)
+                ->where('conversations.0.participant.avatar', '/images/seller-profile.png')
                 ->where('conversations.0.phase', 'pickup')
                 ->where('currentUserId', $this->rider->id)
             );

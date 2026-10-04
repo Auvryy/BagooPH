@@ -1,11 +1,11 @@
 import '../../css/courier.css';
 import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
-import { ArrowUpRight, CalendarDays, ChevronRight, History, LayoutDashboard, LogOut, MapPin, MessageSquare, RefreshCw, UserRound } from 'lucide-react';
-import BagooLogo from '@/Components/BagooLogo';
+import { CalendarDays, ChevronRight, LogOut, RefreshCw, UserRound } from 'lucide-react';
+import CourierSidebar, { CourierSidebarToggle, courierNavItems } from '@/Components/CourierSidebar';
 import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
-import { courierDayKey, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
+import { courierDayKey, courierDesktopMedia, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 
@@ -16,9 +16,11 @@ interface Props {
     actions?: ReactNode;
     scope?: CourierScope;
     pageLabel?: string;
+    contentMode?: 'page' | 'chat';
+    hidePageHeading?: boolean;
 }
 
-export default function CourierLayout({ children, title, subtitle, isOnline = false, actions, scope, pageLabel }: PropsWithChildren<Props>) {
+export default function CourierLayout({ children, title, subtitle, isOnline = false, actions, scope, pageLabel, contentMode = 'page', hidePageHeading = false }: PropsWithChildren<Props>) {
     const { auth, flash } = usePage<PageProps>().props;
     const { component } = usePage();
     const { confirmationDialog, dutyLoading, dutyError, requestDutyChange } = useCourierDutyControl(isOnline);
@@ -31,12 +33,14 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     const menuClicked = useRef(false);
     const refreshPending = useRef(false);
     useCourierRequestError(refreshPending, setRefreshResult);
-    const navItems = [
-        { name: 'Dashboard', path: '/deliveries', page: 'Courier/Deliveries', icon: LayoutDashboard },
-        { name: 'Trips', path: '/earnings', page: 'Courier/Earnings', icon: History },
-        { name: 'Messages', path: '/messages', page: 'Courier/Messages', icon: MessageSquare },
-        { name: 'Profile', path: '/profile', page: 'Courier/Profile', icon: UserRound },
-    ];
+    const navItems = courierNavItems;
+    const isDashboard = component === 'Courier/Deliveries';
+    const isChat = contentMode === 'chat';
+    const portal = useRef<HTMLDivElement>(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [desktop, setDesktop] = useState(false);
+    const [sidebarReady, setSidebarReady] = useState(false);
     const hub = scope?.hub || 'Hub not assigned';
     const hubCode = scope?.hubCode || scope?.hub_code;
     const initials = courierInitials(auth.user?.name);
@@ -71,6 +75,52 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
         };
     }, [menuOpen]);
 
+    useEffect(() => {
+        const media = window.matchMedia(courierDesktopMedia);
+        const resized = () => {
+            setDesktop(media.matches);
+            if (media.matches) setMobileSidebarOpen(false);
+        };
+        resized();
+        media.addEventListener('change', resized);
+        try { setSidebarCollapsed(window.localStorage.getItem('bagoo.rider.sidebar-collapsed') === 'true'); } catch {}
+        const frame = requestAnimationFrame(() => setSidebarReady(true));
+        return () => { media.removeEventListener('change', resized); cancelAnimationFrame(frame); };
+    }, []);
+
+    const setCollapsed = (collapsed: boolean) => {
+        setSidebarCollapsed(collapsed);
+        try { window.localStorage.setItem('bagoo.rider.sidebar-collapsed', String(collapsed)); } catch {}
+    };
+    useEffect(() => {
+        if (!isChat) return;
+        const viewport = window.visualViewport;
+        let frame = 0;
+        const measure = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                const height = viewport?.height ?? window.innerHeight;
+                portal.current?.style.setProperty('--courier-chat-height', `${height}px`);
+                portal.current?.toggleAttribute('data-chat-short-viewport', height < 480);
+            });
+        };
+        measure();
+        viewport?.addEventListener('resize', measure);
+        window.addEventListener('resize', measure);
+        return () => {
+            viewport?.removeEventListener('resize', measure);
+            window.removeEventListener('resize', measure);
+            cancelAnimationFrame(frame);
+            portal.current?.style.removeProperty('--courier-chat-height');
+            portal.current?.removeAttribute('data-chat-short-viewport');
+        };
+    }, [isChat]);
+    const toggleSidebar = () => {
+        closeMenu();
+        if (desktop) setCollapsed(!sidebarCollapsed);
+        else setMobileSidebarOpen((open) => !open);
+    };
+
     const refresh = () => {
         if (refreshPending.current) return;
         refreshPending.current = true;
@@ -84,51 +134,29 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     };
 
     return (
-        <div className="courier-portal min-h-dvh bg-[#FFF2F4] font-sans text-slate-900 antialiased">
+        <div ref={portal} data-sidebar-collapsed={sidebarCollapsed} data-sidebar-ready={sidebarReady} className={courierClasses('courier-portal courier-soft bg-[#FFFAFB] font-sans text-slate-900 antialiased', isChat ? 'courier-chat-layout min-h-0' : 'min-h-dvh', isDashboard && 'courier-dashboard')}>
             <a href="#rider-content" className="sr-only z-[90] bg-white p-4 text-base font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
-            <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-slate-300 bg-white md:flex">
-                <Link href={courierPath('/deliveries')} className="flex min-h-[76px] shrink-0 items-center gap-2 px-4 focus-visible:outline-[#E00D42]">
-                    <BagooLogo className="h-8 w-8" rounded="rounded-[10px]" />
-                    <span className="text-lg font-bold tracking-tight">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                    <span className="ml-auto rounded-[8px] bg-[#FCE7EA] px-2 py-1 text-xs font-semibold text-[#A1052B]">Rider</span>
-                </Link>
-                <nav aria-label="Rider navigation" className="shrink-0 space-y-1.5 px-3 py-4">
-                    <p className="mb-3 px-3 text-xs font-medium tracking-wide text-slate-500">Your workspace</p>
-                    {navItems.map(({ name, path, page, icon: Icon }) => (
-                        <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-12 items-center gap-3 rounded-[12px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none ${component === page ? 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{name}</Link>
-                    ))}
-                </nav>
-                <div className="mt-auto shrink-0 px-3 pb-4 pt-8">
-                    <div className="rounded-[16px] border border-rose-200 bg-[#FFF2F4] p-4">
-                        <MapPin className="h-5 w-5 text-[#E00D42]" aria-hidden="true" />
-                        <p className="mt-3 text-sm font-semibold">Your dispatch point</p>
-                        <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{hub}</p>
-                        <Link href={courierPath('/profile')} className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View profile<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
-                    </div>
-                    <p className="px-2 py-4 text-xs leading-relaxed text-slate-600">A clear handoff, every step of the way. Use the portal while safely stopped.</p>
-                    <Link href={courierPath('/profile')} className="flex min-h-14 items-center gap-3 rounded-[12px] border border-transparent px-2 py-2 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E00D42] text-sm font-semibold text-white" aria-hidden="true">{initials}</span>
-                        <span className="min-w-0"><span className="block truncate text-sm font-semibold">{auth.user?.name}</span><span className="block truncate text-xs text-slate-600">{scope?.company || 'Company not assigned'}</span></span>
-                    </Link>
-                </div>
-            </aside>
+            <CourierSidebar component={component} hub={hub} company={scope?.company || 'Company not assigned'} name={auth.user?.name || 'Rider'} initials={initials} subtle collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen && !desktop} onCloseMobile={() => setMobileSidebarOpen(false)} />
 
-            <div className="min-w-0 md:ml-52">
-                <header className="relative z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-6">
+            <div className="courier-content min-w-0">
+                <header className="relative z-30 shrink-0 border-b border-slate-100/80 bg-white px-4 py-3 sm:px-6">
                     <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-                        <div className="w-full min-w-0 sm:w-auto sm:flex-1">
-                            <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
-                            <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
-                            <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
+                        <div className={courierClasses('flex min-w-0 items-center gap-3 sm:w-auto sm:flex-1', isChat ? 'w-auto' : 'w-full')}>
+                            <CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} />
+                            <div className={courierClasses('min-w-0', isChat && 'hidden sm:block')}>
+                                <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold xl:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
+                                <p className="hidden items-center gap-2 text-sm text-slate-600 xl:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
+                                <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
+                            </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} onChange={requestDutyChange} />
+                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} compact={isChat} onChange={requestDutyChange} />
                             <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'h-12 w-12 border-transparent p-0 hover:border-slate-300')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
                             <div ref={menu} className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleClose(); }}>
                                 <button ref={menuButton} type="button" aria-label="Account options" aria-expanded={menuOpen} aria-controls="rider-account-options" onClick={() => { clearMenuTimeout(); if (menuOpen && menuClicked.current) closeMenu(); else { menuClicked.current = true; setMenuOpen(true); } }} className={courierClasses(courierButton, 'h-12 w-12 rounded-full border-[#E00D42] bg-[#E00D42] p-0 text-white hover:bg-[#C20836]')}><span aria-hidden="true">{initials}</span></button>
                                 {menuOpen && (
                                     <div id="rider-account-options" className="courier-enter absolute right-0 top-[calc(100%-2px)] w-[min(18rem,calc(100vw-2rem))] pt-2" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
-                                        <div className="rounded-[16px] border border-slate-300 bg-white p-2 shadow-xl">
+                                        <div className="rounded-[8px] border border-slate-300 bg-white p-2 shadow-xl">
                                             <p className="break-words px-3 py-2 text-sm font-semibold">{auth.user?.name}<span className="mt-1 block break-all font-normal text-slate-600">{auth.user?.email}</span></p>
                                             <Link href={courierPath('/profile')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account settings</Link>
                                             <Link href="/logout" method="post" as="button" className={`${courierButton} w-full justify-start border-transparent`}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</Link>
@@ -140,22 +168,24 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                     </div>
                 </header>
 
-                <main id="rider-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-none sm:px-6 md:pb-8">
-                    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <main id="rider-content" tabIndex={-1} className={courierClasses('outline-none', isChat ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 xl:pb-8')}>
+                    {!isChat && !hidePageHeading && <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1"><h1 className="break-words text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{subtitle && <div className="mt-2 max-w-2xl break-words text-sm leading-relaxed text-slate-600">{subtitle}</div>}</div>
-                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[12px] border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
+                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-transparent bg-white px-4 py-2 text-sm font-medium text-[#C20836] shadow-[0_2px_8px_rgba(15,23,42,0.04)]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
+                    </div>}
+                    <div className={courierClasses('shrink-0', isChat && 'px-4 sm:px-6')}>
+                        <p role="status" className={refreshResult ? 'my-3 text-sm text-slate-600' : 'sr-only'}>{refreshResult}</p>
+                        {flash?.success && <p role="status" className="my-3 rounded-[8px] bg-[#ECFDF5] p-3 text-sm text-[#047857]">{flash.success}</p>}
+                        {(flash?.error || dutyError) && <p role="alert" className="my-3 rounded-[8px] bg-[#FDF2F4] p-3 text-sm text-rose-800">{dutyError || flash.error}</p>}
                     </div>
-                    <p role="status" className={refreshResult ? 'mb-3 text-sm text-slate-600' : 'sr-only'}>{refreshResult}</p>
-                    {flash?.success && <p role="status" className="mb-4 rounded-[16px] border border-emerald-300 bg-[#ECFDF5] p-4 text-base text-[#047857]">{flash.success}</p>}
-                    {(flash?.error || dutyError) && <p role="alert" className="mb-4 rounded-[16px] border border-rose-300 bg-[#FDF2F4] p-4 text-base text-rose-800">{dutyError || flash.error}</p>}
                     {children}
-                    <footer className="mt-7 flex flex-wrap justify-between gap-2 text-xs leading-relaxed text-slate-600"><span>One parcel at a time. Every handoff matters.</span><span className="break-words">{scope?.company || 'Assignment pending'}</span></footer>
+                    {!isChat && <footer className="mt-7 flex flex-wrap justify-between gap-2 text-xs leading-relaxed text-slate-600"><span>One parcel at a time. Every handoff matters.</span><span className="break-words">{scope?.company || 'Assignment pending'}</span></footer>}
                 </main>
             </div>
 
-            <nav aria-label="Rider navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-300 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
+            <nav aria-label="Rider navigation" className="courier-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-100/80 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 xl:hidden">
                 {navItems.map(({ name, path, page, icon: Icon }) => (
-                    <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[12px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
+                    <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
                 ))}
             </nav>
             {confirmationDialog}

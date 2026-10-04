@@ -17,7 +17,8 @@ const bundle = buildSync({
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
             export { default as Messages } from '@/Pages/Courier/Messages';
-            export { CourierDutySwitch } from '@/Components/CourierDutyControl';`,
+            export { CourierDutySwitch } from '@/Components/CourierDutyControl';
+            export { CourierSidebarToggle } from '@/Components/CourierSidebar';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx',
     },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -28,10 +29,10 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const ui = await import(pathToFileURL(bundlePath).href);
 const scope = { company: 'Bagoo Dispatch', hub: 'Assigned Bayan Hub', hubCode: 'BH-TEST', isAssigned: true, isOperational: true };
 const auth = { user: { id: 5, name: 'Ana Rider', email: 'rider@bagoo.test', role: 'courier' } };
-async function renderPage(Component, name, props) {
+async function renderPage(Component, name, props, shared = {}) {
     let view;
     const result = await createInertiaApp({
-        page: { component: `Courier/${name}`, props: { ...props, auth, flash: {}, cartCount: 0 }, url: '/courier/deliveries', version: null },
+        page: { component: `Courier/${name}`, props: { ...props, auth, flash: {}, cartCount: 0, ...shared }, url: '/courier/deliveries', version: null },
         resolve: () => Component,
         setup: ({ App, props: appProps }) => { view = createElement(App, appProps); return view; },
         render: () => renderToStaticMarkup(view),
@@ -76,12 +77,47 @@ test('pending duty updates disable the switch while preserving the saved state',
     assert.match(html, /aria-checked="true" aria-busy="true" disabled=""/);
     assert.match(html, />Updating…</);
 });
+test('compact chat duty control retains its accessible state and status text', () => {
+    const html = renderToStaticMarkup(createElement(ui.CourierDutySwitch, { isOnline: false, compact: true, onChange() {} }));
+    assert.match(html, /role="switch" aria-label="Rider duty" aria-checked="false"/);
+    assert.match(html, /class="sr-only sm:not-sr-only">Off duty</);
+    assert.match(html, /viewBox="0 0 40 24"/);
+});
+
+test('sidebar controls expose their target and support reopening in desktop and mobile modes', () => {
+    for (const mobile of [false, true]) {
+        let open = false;
+        const onClick = () => { open = !open; };
+        for (const expanded of [false, true, false]) {
+            const control = ui.CourierSidebarToggle({ open, mobile, onClick });
+            const html = renderToStaticMarkup(control);
+            assert.equal(open, expanded);
+            assert.match(html, new RegExp(`aria-expanded="${expanded}"`));
+            assert.match(html, new RegExp(`aria-controls="${mobile ? 'rider-mobile-sidebar' : 'rider-sidebar'}"`));
+            assert.match(html, new RegExp(`aria-label="${mobile ? expanded ? 'Close sidebar' : 'Open sidebar' : expanded ? 'Collapse sidebar' : 'Expand sidebar'}"`));
+            if (mobile) assert.match(html, /aria-haspopup="dialog"/);
+            else assert.doesNotMatch(html, /aria-haspopup/);
+            control.props.onClick();
+        }
+    }
+});
 
 test('portal navigation stays on the root or courier subdomain path', () => {
     assert.equal(ui.courierPath('/profile/account', 'bagoo.test'), '/courier/profile/account');
     assert.equal(ui.courierPath('/profile/password', 'courier.bagoo.test'), '/profile/password');
     assert.equal(ui.courierPath('messages', 'courier.localhost'), '/messages');
     assert.equal(ui.courierPath('/deliveries', 'localhost'), '/courier/deliveries');
+});
+test('dashboard renders one sidebar hamburger and keeps it outside the sliding sidebar', async () => {
+    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
+    const sidebar = html.match(/<aside\b[^]*?<\/aside>/)?.[0];
+    assert.ok(sidebar);
+    assert.equal([...html.matchAll(/class="[^"\n]*\blucide-menu\b/g)].length, 1);
+    assert.doesNotMatch(sidebar, /aria-label="(?:Open|Close|Collapse|Expand) sidebar"/);
+    assert.match(html.slice(html.indexOf('</aside>')), /aria-controls="rider-mobile-sidebar"/);
+    for (const page of ['deliveries', 'earnings', 'messages', 'profile']) {
+        assert.match(sidebar, new RegExp(`href="/courier/${page}"`));
+    }
 });
 test('directions reject absent or invalid coordinates without inventing a pin', () => {
     assert.equal(ui.directionsUrl({ name: 'Hub', code: 'BH-TEST' }), null);
@@ -272,7 +308,111 @@ test('message deep links select the correct parcel phase and show a labelled com
         ],
     });
     assert.match(html, /aria-label="Selected conversation"[^]*Buyer recipient/);
-    assert.match(html, />Conversations<\/button>/);
+    assert.match(html, /aria-label="Back to conversations"/);
     assert.match(html, /Send message/);
     assert.doesNotMatch(html, /conversation is read-only/);
+});
+
+test('chat fills the workspace without a page heading, date chip, or floating parent card', async () => {
+    const html = await renderPage(ui.Messages, 'Messages', {
+        scope, isOnline: true, currentUserId: 5, selectedDeliveryId: 3, selectedPhase: 'pickup',
+        conversations: [{ delivery_id: 3, tracking_number: 'BGO-CHAT', order_number: null, phase: 'pickup', can_send: true,
+            participant: { id: 6, name: 'Seller Contact', role: 'seller', shop_name: null, avatar: '/images/contact.png' },
+            last_message: 'Ready for pickup', last_time: null, unread_count: 1,
+            messages: [{ id: 9, sender_id: 6, message: 'Ready for pickup', created_at: null }] }],
+    });
+    const main = html.match(/<main\b[^]*?<\/main>/)?.[0];
+    assert.ok(main);
+    assert.match(html, /courier-chat-layout min-h-0/);
+    assert.match(main, /class="[^"]*flex min-h-0 flex-1 flex-col overflow-hidden"/);
+    assert.doesNotMatch(main, /Delivery messages|<time|courier-panel|One parcel at a time/);
+    assert.match(main, /data-chat-workspace="true"/);
+    assert.match(main, /class="[^"]*min-h-0 flex-1[^"]*overflow-y-auto[^"]*" data-chat-scroll="contacts"/);
+    assert.match(main, /class="[^"]*min-h-0 flex-1[^"]*overflow-y-auto[^"]*" data-chat-scroll="messages"/);
+    assert.match(main, /<form[^>]*class="shrink-0 [^"]*" data-chat-composer="true"/);
+    assert.match(main, /<textarea[^>]*rows="1"[^>]*maxLength="1000"[^>]*class="[^"]*max-h-24 resize-none"/);
+    assert.match(main, /<label[^>]*for="rider-message"/);
+    assert.match(main, /aria-label="Send message"/);
+    assert.match(main, /src="\/images\/contact.png" alt="Seller Contact&#x27;s profile"/);
+    assert.match(main, /aria-label="1 unread messages"/);
+});
+
+test('read-only and empty conversations stay honest and retain the contact identity fallback', async () => {
+    const html = await renderPage(ui.Messages, 'Messages', {
+        scope, isOnline: false, currentUserId: 5, selectedDeliveryId: 3,
+        conversations: [{ delivery_id: 3, tracking_number: 'BGO-READONLY', order_number: null, phase: 'pickup', can_send: false,
+            participant: { id: 6, name: 'Seller Contact', role: 'seller', shop_name: null, avatar: null },
+            last_message: 'Collected', last_time: null, unread_count: 0,
+            messages: [{ id: 9, sender_id: 5, message: 'Collected', created_at: null }] }],
+    });
+    assert.match(html, /conversation is read-only/);
+    assert.match(html, /aria-label="Seller Contact&#x27;s profile initials">SC</);
+    assert.doesNotMatch(html, /id="rider-message"|data-chat-composer/);
+    const empty = await renderPage(ui.Messages, 'Messages', { scope, isOnline: false, currentUserId: 5, selectedDeliveryId: null, conversations: [] });
+    assert.match(empty, /No delivery conversations/);
+    assert.doesNotMatch(empty, /id="rider-message"|data-chat-composer|Delivery messages/);
+});
+
+test('profile cover, real account ID, and dedicated sections preserve editable and managed fields', async () => {
+    const html = await renderPage(ui.Profile, 'Profile', {
+        scope, isOnline: false,
+        rider: { name: 'Ana Rider', email: 'rider@bagoo.test', phone: null, email_verified_at: null, account_status: 'active', kyc_status: 'approved' },
+        assignment: { company: scope.company, hub: scope.hub, hub_code: scope.hubCode, barangay: null },
+        vehicle: { type: null, model: null, plate_number: null, fleet_status: null, license_number: null, registration_status: null },
+    });
+    assert.match(html, /data-profile-cover="true"/);
+    assert.match(html, /<h1[^>]*>Ana Rider<\/h1>/);
+    assert.match(html, /Account ID<\/p><p[^>]*>#5<\/p>/);
+    assert.match(html, /aria-label="Ana Rider&#x27;s profile initials">AR</);
+    assert.match(html, /<section id="profile-information" aria-labelledby="profile-information-title">/);
+    for (const key of ['information', 'edit', 'privacy', 'assignment', 'vehicle']) {
+        assert.match(html, new RegExp(`aria-pressed="${key === 'information'}" aria-controls="profile-${key}"`));
+        if (key !== 'information') assert.match(html, new RegExp(`<section id="profile-${key}" aria-labelledby="profile-${key}-title" hidden="">`));
+    }
+    const edit = html.match(/<section id="profile-edit"[^]*?<\/section><\/section>/)?.[0];
+    const privacy = html.match(/<section id="profile-privacy"[^]*?<\/section><\/section>/)?.[0];
+    assert.ok(edit && privacy);
+    assert.match(edit, /id="rider-name"[^>]*required=""[^>]*minLength="2"[^>]*maxLength="100"/);
+    assert.match(edit, /id="rider-phone" type="tel"/);
+    assert.match(edit, /Save contact details/);
+    assert.match(privacy, /Send verification email/);
+    assert.match(privacy, /id="rider-password"[^>]*minLength="12"[^>]*maxLength="128"[^>]*disabled=""/);
+    for (const key of ['assignment', 'vehicle']) {
+        const managed = html.match(new RegExp(`<section id="profile-${key}"[^]*?<\/section><\/section>`))?.[0];
+        assert.ok(managed);
+        assert.doesNotMatch(managed, /<input|<form|<select/);
+        assert.match(managed, /Not provided/);
+    }
+});
+
+test('trips retain tracking details, payment filters, and bounded history pagination', async () => {
+    const trips = Array.from({ length: 11 }, (_, index) => ({ id: index + 1, trackingNumber: `BGO-TRIP-${index + 1}`,
+        orderNumber: 'BGO-ORDER', recipientName: 'Saved recipient', deliveryAddress: 'Saved buyer road',
+        paymentMethod: 'COD', destinationHub: scope.hub, deliveredAt: null }));
+    const html = await renderPage(ui.Trips, 'Earnings', { scope, isOnline: true, summary: { completedDeliveries: 11, completedToday: 2 }, trips });
+    assert.match(html, /aria-label="Trip overview"/);
+    assert.match(html, /Recorded deliveries/);
+    assert.match(html, /Search deliveries/);
+    assert.match(html, /option value="cod"/);
+    assert.match(html, /option value="other"/);
+    assert.equal([...html.matchAll(/aria-label="Copy tracking number BGO-TRIP-/g)].length, 10);
+    assert.match(html, /Page 1 of 2/);
+    assert.match(html, /buyer receipt, cash remittance, or a rider payout/);
+    assert.doesNotMatch(html, /aria-label="Copy tracking number BGO-TRIP-11"/);
+});
+
+test('profile uses the stored avatar and enables password updates only for a verified email', async () => {
+    const html = await renderPage(ui.Profile, 'Profile', {
+        scope, isOnline: true,
+        rider: { name: 'Ana Rider', email: 'rider@bagoo.test', phone: '+639171234567', email_verified_at: '2026-10-01T00:00:00Z', account_status: 'active', kyc_status: 'approved' },
+        assignment: { company: scope.company, hub: scope.hub, hub_code: scope.hubCode, barangay: null },
+        vehicle: { type: 'motorcycle', model: 'Stored model', plate_number: null, fleet_status: 'active', license_number: null, registration_status: 'approved' },
+    }, { auth: { user: { ...auth.user, avatar: '/images/rider-profile.png' } } });
+    assert.match(html, /src="\/images\/rider-profile.png" alt="Ana Rider&#x27;s profile"/);
+    assert.match(html, /Email verified/);
+    assert.doesNotMatch(html, /Send verification email/);
+    const password = html.match(/<input id="rider-password"[^>]*>/)?.[0];
+    assert.ok(password);
+    assert.doesNotMatch(password, /disabled=""/);
+    assert.match(html, /Stored model/);
 });

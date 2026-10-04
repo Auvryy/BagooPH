@@ -1,3 +1,5 @@
+export const courierDesktopMedia = '(min-width: 1280px)';
+
 export interface CourierScope {
     company?: string | null;
     hub?: string | null;
