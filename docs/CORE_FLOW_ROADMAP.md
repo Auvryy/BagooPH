@@ -195,7 +195,7 @@ This is a scoped presentation assessment, not a full operational or rendered-dev
 
 **State: Scoped frontend follow-up verified on `frontend/rider-mobile-ux`.** The supplied dashboard screenshot confirmed a missing white knob in the header duty control. Its unanchored, translated span is replaced by an explicit-size SVG track and white thumb whose geometry remains inside the track in both saved duty states. The switch exposes its checked and busy state, keeps the existing off-duty confirmation, and blocks interaction during a pending update.
 
-The latest requested radius balance now uses 20px primary cards, 12px buttons/inputs/navigation/date and period controls, 24px dialogs, and 16px inset panels/maps/message bubbles. Metric hover surfaces match their parent card corners. Short badges, avatars, and icon controls retain their appropriate circular shapes. The shared primitives cover Dashboard, Trips, Messages, and Profile without changing global theme radii or other portals. `AGENTS.md` records this scale, which supersedes the earlier larger rider corner guidance.
+The earlier radius balance used 20px primary cards, 12px buttons/inputs/navigation/date and period controls, 24px dialogs, and 16px inset panels/maps/message bubbles. Metric hover surfaces matched their parent card corners. Short badges, avatars, and icon controls retained their appropriate circular shapes. The shared primitives covered Dashboard, Trips, Messages, and Profile without changing global theme radii or other portals. The subsequent 4px corner preference below supersedes this scale.
 
 | Area | Before | After | User-visible improvement and limit |
 |---|---:|---:|---|
@@ -206,6 +206,14 @@ The latest requested radius balance now uses 20px primary cards, 12px buttons/in
 Verification: all 23 frontend helper/server-render checks and the TypeScript/Vite production build passed. New regression checks verify both duty states, white-thumb containment, disabled busy behavior, and integration into the rider layout. All 82 courier feature tests had already passed today with 969 assertions using SQLite `:memory:`; no backend code changed in this follow-up. The diff passed whitespace checks. No browser automation or new screenshots were used.
 
 Branch review: October 3 commits provide the rider mobile screens, saved-stop maps, proof recovery, profile/account safeguards, and selected-thread message acknowledgement. October 4 adds the supplied-reference dashboard and this polish. Read-only remote inspection confirmed `main` still matches the branch base. The branch is recommended for a user-managed push and pull-request review against `main`; the previously recorded full-suite failures, dependency findings, seller route-cache issue, and unperformed device checks remain separate limitations.
+
+### Rider Compact Corners: October 4, 2026
+
+**State: Scoped frontend follow-up verified on `fix/rider-corner-radius`, created from the updated `main`.** The latest supplied dashboard screenshot led to a revised 3-4px corner preference. Rider cards, dialogs, buttons, inputs, navigation, badges, maps, notices, message bubbles, and profile verification surfaces now use explicit 4px corners across Dashboard, Trips, Messages, and Profile. Metric hover surfaces match their parent cards. Avatars, status dots, timeline markers, progress tracks, and duty-switch shapes retain their functional round shapes.
+
+Rider presentation assessment: **8.7/10 before -> 8.7/10 after**. The box edges now match the user's compact corner preference; this cosmetic change does not increase lifecycle or operational readiness. The final rendered/device review remains outstanding. `AGENTS.md` records the revised preference for subsequent rider work.
+
+Verification: all 23 existing frontend helper/server-render checks and the TypeScript/Vite production build passed. Static inspection confirmed the remaining circular classes serve the shapes listed above, and the diff passed whitespace checks. The shared email-verification component changes only its comfortable variant, which is currently used by the rider profile. Global theme radii, other portals, and backend behavior are unchanged. No browser automation or new screenshots were used.
 
 ## Delivery Phases
 

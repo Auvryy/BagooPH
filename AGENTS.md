@@ -41,7 +41,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - No emojis in code, UI copy, comments, commit messages, or repository documentation.
 - Primary accent: `#E00D42`.
 - Use Plus Jakarta Sans as the single typeface across every page, portal, component, chart, email, and data field. Do not introduce monospace fonts, `font-mono`, JetBrains Mono, Inter, or another display/body font.
-- Use the balanced rider radii requested on October 4: buttons/inputs/navigation use 12px, cards 20px, dialogs 24px, and inset panels/maps 16px. This scale supersedes the earlier larger rider radii in the design guidance. Short badges and icon controls may be circular or pill-shaped.
+- Use the latest rider corner preference requested on October 4: cards, dialogs, inputs, buttons, navigation, badges, inset panels, and maps use 4px radii across rider pages. This preference supersedes the earlier larger rider radii in the design guidance. Avatars, status dots, timeline markers, progress tracks, and duty-switch shapes may remain circular or pill-shaped.
 - Use explicit local radius classes for this direction; do not change global theme radii or restyle unrelated portals without scope. Keep borders and readable grouping.
 - Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
 - Avoid gradients and ornamental clutter on authentication screens. Preserve the split-screen login/register layout.
