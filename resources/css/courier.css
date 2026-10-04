@@ -21,7 +21,7 @@
     padding: 4px 8px;
 }
 .courier-job-map .leaflet-control-attribution a { color: #C20836; text-decoration: underline; }
-.courier-job-map .leaflet-tooltip { border-radius: 4px; border-color: #CBD5E1; color: #0F172A; }
+.courier-job-map .leaflet-tooltip { border-radius: 8px; border-color: #CBD5E1; color: #0F172A; }
 .courier-job-map .leaflet-container:focus-visible { outline: 3px solid #E00D42; outline-offset: -3px; }
 
 @media (prefers-reduced-motion: reduce) {
