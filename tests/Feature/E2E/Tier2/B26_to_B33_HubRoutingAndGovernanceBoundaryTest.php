@@ -15,10 +15,12 @@ use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
 use Tests\TestCase;
+use Tests\Concerns\InteractsWithKycReviews;
 
 class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithKycReviews;
     use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
@@ -230,7 +232,7 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $this->prepareKycReview($admin, $pendingCourier));
         $pendingCourier->refresh();
 
         $this->assertEquals('approved', $pendingCourier->kyc_status);
@@ -242,7 +244,7 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $this->prepareKycReview($admin, $pendingCourier));
         $pendingCourier->refresh();
 
         $this->assertNotNull($pendingCourier->kyc_reviewed_at);
@@ -253,8 +255,9 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
+        $payload = $this->prepareKycReview($admin, $pendingCourier);
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $payload)->assertSessionHas('success');
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $payload)->assertSessionHas('success');
         $pendingCourier->refresh();
 
         $this->assertEquals('approved', $pendingCourier->kyc_status);
@@ -274,8 +277,9 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $activeCourier = $this->createApprovedUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $activeCourier->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $activeCourier->id), $this->kycPayload($activeCourier));
+        $response->assertConflict();
+        $this->assertDatabaseCount('kyc_decisions', 0);
     }
 
     // ==========================================
@@ -287,7 +291,7 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $response = $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), [
+        $response = $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), $this->kycPayload($pendingCourier) + [
             'reason' => 'bad',
         ]);
         $response->assertSessionHasErrors('reason');
@@ -298,7 +302,7 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $response = $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), [
+        $response = $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), $this->kycPayload($pendingCourier) + [
             'reason' => '',
         ]);
         $response->assertSessionHasErrors('reason');
@@ -309,7 +313,7 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), [
+        $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), $this->kycPayload($pendingCourier) + [
             'reason' => 'Plate number blurred and unreadable',
         ]);
         $pendingCourier->refresh();
@@ -317,17 +321,18 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
         $this->assertEquals('rejected', $pendingCourier->kyc_status);
     }
 
-    public function test_t2_b31_04_rejection_clears_approval(): void
+    public function test_t2_b31_04_rejection_cannot_overwrite_existing_approval(): void
     {
         $approvedCourier = $this->createApprovedUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.reject', $approvedCourier->id), [
+        $this->actingAs($admin)->post(route('admin.kyc.reject', $approvedCourier->id), $this->kycPayload($approvedCourier) + [
             'reason' => 'Suspicious document reported by operator',
-        ]);
+        ])->assertConflict();
         $approvedCourier->refresh();
 
-        $this->assertEquals('rejected', $approvedCourier->kyc_status);
+        $this->assertEquals('approved', $approvedCourier->kyc_status);
+        $this->assertDatabaseCount('kyc_decisions', 0);
     }
 
     public function test_t2_b31_05_non_admin_rejection_attempt_barred(): void

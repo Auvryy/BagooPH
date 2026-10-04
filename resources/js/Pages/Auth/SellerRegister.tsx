@@ -24,8 +24,9 @@ import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function SellerRegister() {
+export default function SellerRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -42,6 +43,7 @@ export default function SellerRegister() {
 
     const { data, setData, post, processing, errors, reset, transform } = useForm<{
         name: string;
+        birthday: string;
         shop_name: string;
         email: string;
         phone: string;
@@ -58,6 +60,7 @@ export default function SellerRegister() {
         otp_token: string;
     }>({
         name: '',
+        birthday: '',
         shop_name: '',
         email: '',
         phone: '',
@@ -120,6 +123,8 @@ export default function SellerRegister() {
         const newErrors: Record<string, string> = {};
         if (!data.shop_name.trim()) newErrors.shop_name = 'Store name is required';
         if (!data.name.trim()) newErrors.name = 'Merchant contact name is required';
+        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
+        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
         if (!data.email.trim()) {
             newErrors.email = 'Email address is required';
         } else if (!/\S+@\S+\.\S+/.test(data.email)) {
@@ -167,6 +172,7 @@ export default function SellerRegister() {
 
         post(route('register'), {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -180,6 +186,7 @@ export default function SellerRegister() {
         }));
         post(route('register'), {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -318,6 +325,8 @@ export default function SellerRegister() {
                                 <InputError message={stepErrors.name || errors.name} className="mt-1" />
                             )}
                         </div>
+
+                        <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">

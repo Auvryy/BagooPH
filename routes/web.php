@@ -194,7 +194,6 @@ $registerAdminRoutes = function () {
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
-        Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole']);
         Route::get('/kyc', [AdminKycController::class, 'index']);
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
@@ -310,7 +309,7 @@ Route::get('/products', [BuyerProductController::class, 'search'])->name('produc
 Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
-Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware('auth')->name('shop.updateBranding');
+Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware(['auth', 'role:seller'])->name('shop.updateBranding');
 
 // Cart (Accessible to guests and logged in users)
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -330,10 +329,6 @@ Route::middleware('auth')->group(function () {
         if (! $user) {
             return redirect()->route('login');
         }
-        if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect('/pending-approval');
-        }
-
         return redirect()->intended(match ($user->role) {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
@@ -341,7 +336,7 @@ Route::middleware('auth')->group(function () {
             'logistics' => route('hub.index'),
             default => route('buyer.index'),
         });
-    })->name('dashboard');
+    })->middleware('account.approved')->name('dashboard');
 
     // Profile Settings
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -430,7 +425,6 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
-    Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
     Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
@@ -448,14 +442,11 @@ Route::prefix('hub')->name('hub.')->group(function () {
     Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
-            if ($user->status === 'pending_approval' || $user->kyc_status === 'pending_approval' || $user->kyc_status === 'rejected') {
-                return redirect()->route('kyc.pending');
-            }
-            if (! $user->isLogistics() && ! $user->isAdmin()) {
-                abort(403, 'Unauthorized access for your account role ('.$user->role.').');
-            }
-
-            return app(LogisticsHubWorkstationController::class)->index($request);
+            return app(\App\Http\Middleware\RoleMiddleware::class)->handle(
+                $request,
+                fn (Request $request) => app(LogisticsHubWorkstationController::class)->index($request)->toResponse($request),
+                'logistics', 'admin',
+            );
         }
 
         return app(AuthenticatedSessionController::class)->createHub();

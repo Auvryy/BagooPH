@@ -10,10 +10,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Tests\Concerns\InteractsWithKycReviews;
 
 class Milestone1AdversarialSecurityTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithKycReviews;
 
     /*
     |--------------------------------------------------------------------------
@@ -25,6 +27,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -55,6 +58,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -84,6 +88,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid business permit submitted.',
@@ -103,6 +108,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'OR/CR is blurred.',
@@ -116,6 +122,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $pendingUser = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -125,6 +132,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $rejectedUser = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -143,6 +151,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $suspendedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'suspended',
             'kyc_status' => 'approved',
         ]);
@@ -220,6 +229,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -232,6 +242,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -268,6 +279,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -280,6 +292,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -292,6 +305,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $pendingUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -313,6 +327,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $rejectedUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -335,6 +350,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $pendingUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -371,6 +387,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $approvedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -386,6 +403,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid documents',
@@ -410,6 +428,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid documents',
@@ -434,6 +453,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Permit is outdated.',
@@ -491,6 +511,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $rejectedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -527,6 +548,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -539,6 +561,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -573,6 +596,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             // Missing shop_name, phone, address, city, id_document, business_permit
         ]);
 
@@ -587,6 +611,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             // Missing vehicle_type, plate_number, id_document, driver_license, or_cr_document
         ]);
 
@@ -673,7 +698,8 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'kyc_status' => 'pending_approval',
         ]);
 
-        $response = $this->actingAs($admin)->post("/admin/kyc/{$buyer->id}/approve");
+        $payload = $this->prepareKycReview($admin, $buyer);
+        $response = $this->actingAs($admin)->post("/admin/kyc/{$buyer->id}/approve", $payload);
         $response->assertRedirect();
         $buyer->refresh();
         $this->assertEquals('approved', $buyer->kyc_status);
@@ -694,7 +720,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'kyc_status' => 'pending_approval',
         ]);
 
-        $response = $this->actingAs($admin)->post("/admin/kyc/{$buyer->id}/reject", [
+        $response = $this->actingAs($admin)->post("/admin/kyc/{$buyer->id}/reject", $this->kycPayload($buyer) + [
             'reason' => 'Government ID is unreadable.',
         ]);
         $response->assertRedirect();
@@ -713,6 +739,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -725,18 +752,24 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         // Double approval
-        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve")->assertRedirect();
-        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve")->assertRedirect();
+        $payload = $this->prepareKycReview($admin, $seller);
+        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve", $payload)->assertSessionHas('success');
+        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve", $payload)->assertSessionHas('success');
         $seller->refresh();
         $this->assertEquals('approved', $seller->kyc_status);
         $this->assertEquals('active', $seller->status);
 
-        // Double rejection
-        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", ['reason' => 'Duplicate test reason'])->assertRedirect();
-        $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", ['reason' => 'Duplicate test reason 2'])->assertRedirect();
-        $seller->refresh();
-        $this->assertEquals('rejected', $seller->kyc_status);
-        $this->assertEquals('Duplicate test reason 2', $seller->kyc_feedback);
+        $this->post("/admin/kyc/{$seller->id}/reject", $payload + ['reason' => 'Cannot reverse an approved review.'])->assertConflict();
+
+        // A rejected submission retains its first decision and reason on identical retries.
+        $buyer = User::factory()->pendingKyc()->create(['role' => 'buyer']);
+        $rejection = $this->kycPayload($buyer) + ['reason' => 'Duplicate test reason'];
+        $this->post("/admin/kyc/{$buyer->id}/reject", $rejection)->assertSessionHas('success');
+        $this->post("/admin/kyc/{$buyer->id}/reject", $rejection)->assertSessionHas('success');
+        $this->post("/admin/kyc/{$buyer->id}/reject", array_replace($rejection, ['reason' => 'Duplicate test reason 2']))->assertConflict();
+        $this->assertEquals('rejected', $buyer->fresh()->kyc_status);
+        $this->assertEquals('Duplicate test reason', $buyer->fresh()->kyc_feedback);
+        $this->assertDatabaseCount('kyc_decisions', 2);
     }
 
     /*
@@ -749,6 +782,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -777,6 +811,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -809,6 +844,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'License image was cut off',

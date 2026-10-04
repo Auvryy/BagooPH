@@ -23,8 +23,9 @@ import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function Register() {
+export default function Register({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -77,11 +78,10 @@ export default function Register() {
 
     const calculateAge = (birthDateString: string) => {
         if (!birthDateString) return '';
-        const today = new Date();
-        const birthDate = new Date(birthDateString);
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        const [year, month, day] = birthDateString.split('-').map(Number);
+        const [todayYear, todayMonth, todayDay] = birthDateLimits.today.split('-').map(Number);
+        let age = todayYear - year;
+        if (todayMonth < month || (todayMonth === month && todayDay < day)) {
             age--;
         }
         return age >= 0 ? age : 0;
@@ -473,7 +473,7 @@ export default function Register() {
                                         id="birthday"
                                         type="date"
                                         name="birthday"
-                                        max={new Date().toISOString().split('T')[0]}
+                                        max={birthDateLimits.past_maximum}
                                         value={data.birthday}
                                         className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900"
                                         onChange={handleBirthdayChange}
@@ -497,7 +497,7 @@ export default function Register() {
                                     id="age"
                                     type="text"
                                     name="age"
-                                    value={data.age ? `${data.age} years old` : 'Select birthday'}
+                                    value={data.age !== '' ? `${data.age} years old` : 'Select birthday'}
                                     readOnly
                                     className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg text-slate-700 font-sans font-medium outline-hidden select-none cursor-default"
                                 />

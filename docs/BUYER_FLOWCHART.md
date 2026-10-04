@@ -6,7 +6,7 @@ This document defines buyer actions. Parcel custody, hub transfers, COD, and exc
 
 ```text
 Register and submit identity requirements
--> Admin approves account
+-> Platform Admin approves account
 -> Sign in
 -> Browse or search the 14 master categories
 -> Select product variants and quantity within stock
@@ -14,6 +14,10 @@ Register and submit identity requirements
 -> Review Shopping Bag and voucher
 -> Checkout
 ```
+
+Public catalogue browsing does not grant transactional buyer access. Pending or rejected applicants may sign in to their own approval/resubmission holding screen; checkout and the buyer transactional portal require an active approved account. Email verification and uploading an ID do not replace the review in [ADMIN_FLOW.md](ADMIN_FLOW.md).
+
+Suspension blocks new orders. Owned tracking and required receipt confirmation for existing orders remain available through the narrow authorized exception unless an explicit security review restricts them. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.
 
 Checkout requires the recipient, phone, serviceable road-based address, barangay, delivery type, and COD confirmation. Adding to the Shopping Bag does not reserve stock; checkout validates and decrements it atomically.
 
@@ -38,7 +42,7 @@ PLACED
 
 The buyer tracking page shows Mother-Hub and Bayan-Hub checkpoints beneath `AT_SORTING_CENTER`. The buyer cannot choose or assign riders.
 
-At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. After physical handover, the order is `DELIVERED`. Only the buyer's confirmation makes it `COMPLETED` and enables final settlement.
+At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. After physical handover, the order is `DELIVERED`. Only the buyer's confirmation makes it `COMPLETED`; final settlement also requires platform-level COD reconciliation.
 
 ## 3. Hub Self-Pickup
 

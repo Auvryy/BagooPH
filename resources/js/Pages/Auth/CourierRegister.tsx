@@ -26,8 +26,9 @@ import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function CourierRegister() {
+export default function CourierRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +50,7 @@ export default function CourierRegister() {
 
     const { data, setData, post, processing, errors, reset, transform } = useForm<{
         name: string;
+        birthday: string;
         email: string;
         phone: string;
         address: string;
@@ -68,6 +70,7 @@ export default function CourierRegister() {
         otp_token: string;
     }>({
         name: '',
+        birthday: '',
         email: '',
         phone: '',
         address: '',
@@ -153,6 +156,8 @@ export default function CourierRegister() {
     const validateStep1 = () => {
         const newErrors: Record<string, string> = {};
         if (!data.name.trim()) newErrors.name = 'Full legal name is required';
+        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
+        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
         if (!data.email.trim()) {
             newErrors.email = 'Email address is required';
         } else if (!/\S+@\S+\.\S+/.test(data.email)) {
@@ -202,6 +207,7 @@ export default function CourierRegister() {
 
         post(route('register'), {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -215,6 +221,7 @@ export default function CourierRegister() {
         }));
         post(route('register'), {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -328,6 +335,8 @@ export default function CourierRegister() {
                                 <InputError message={stepErrors.name || errors.name} className="mt-1" />
                             )}
                         </div>
+
+                        <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>

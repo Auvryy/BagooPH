@@ -230,13 +230,19 @@ class LogisticsOrderCustodyFlowTest extends TestCase
     public function test_assignment_rejects_unapproved_accounts_and_out_of_scope_legacy_riders(string $role, string $status, string $approval, bool $wrongHub): void
     {
         $operator = User::where('email', 'logistics@bagoo.test')->firstOrFail();
-        $rider = User::where('email', 'rider@bagoo.test')->firstOrFail();
-        $rider->update(['role' => $role, 'status' => $status, 'kyc_status' => $approval]);
+        $seededProfile = User::where('email', 'rider@bagoo.test')->firstOrFail()->courierProfile;
+        $rider = User::factory()->create(['role' => $role, 'status' => $status, 'kyc_status' => $approval]);
         $hub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
         $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
-        if ($wrongHub) {
-            $rider->courierProfile->update(['assigned_hub_id' => LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail()->id]);
-        }
+        CourierProfile::factory()->create([
+            'user_id' => $rider->id,
+            'logistics_company_id' => $seededProfile->logistics_company_id,
+            'assigned_hub_id' => $wrongHub ? LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail()->id : $seededProfile->assigned_hub_id,
+            'assigned_barangay' => $seededProfile->assigned_barangay,
+            'vehicle_id' => $seededProfile->vehicle_id,
+            'or_cr_status' => $seededProfile->or_cr_status,
+            'is_available' => $seededProfile->is_available,
+        ]);
         $order = $this->createOrder('sorted', 'Poblacion III');
         $delivery = Delivery::factory()->create([
             'order_id' => $order->id, 'logistics_company_id' => $company->id,

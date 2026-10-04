@@ -37,6 +37,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $canAccessHub = $user && $user->canAccessPortal() && ($user->isLogistics() || $user->isAdmin());
         $cartCount = 0;
         $unreadMessagesCount = 0;
 
@@ -86,13 +87,13 @@ class HandleInertiaRequests extends Middleware
                         ->orderByDesc('is_default')
                         ->get() : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
-                    'logisticsCompany' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                    'logisticsCompany' => $canAccessHub
                         ? ($user->logisticsCompany ?? ($user->isAdmin()
                             ? LogisticsCompany::where('is_active', true)->first()
                             : HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
                         : null,
-                    'canSwitchHubs' => $user->role === 'logistics' && (bool) $user->logisticsCompany,
-                    'activeHub' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                    'canSwitchHubs' => $canAccessHub && $user->isLogistics() && (bool) $user->logisticsCompany,
+                    'activeHub' => $canAccessHub
                         ? (function () use ($request, $user) {
                             $accessibleHubs = LogisticsHub::query()
                                 ->where('is_active', true)
@@ -124,7 +125,7 @@ class HandleInertiaRequests extends Middleware
                             return $accessibleHubs->first();
                         })()
                         : null,
-                    'allHubs' => ($user && ($user->role === 'logistics' || $user->role === 'admin'))
+                    'allHubs' => $canAccessHub
                         ? LogisticsHub::query()
                             ->where('is_active', true)
                             ->when(! $user->isAdmin(), function ($query) use ($user) {

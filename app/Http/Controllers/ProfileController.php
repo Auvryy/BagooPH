@@ -58,7 +58,9 @@ class ProfileController extends Controller
 
         if (! $user->canDeleteOwnAccount()) {
             throw ValidationException::withMessages([
-                'password' => 'Rider self-service deletion is unavailable. Account closure requires review of parcel custody and cash handover.',
+                'password' => $user->isCourier()
+                    ? 'Rider self-service deletion is unavailable. Account closure requires review of parcel custody and cash handover.'
+                    : 'Self-service deletion is unavailable for accounts with KYC review history. Account closure requires preserving that evidence.',
             ]);
         }
 

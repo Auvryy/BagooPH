@@ -19,9 +19,10 @@ class OrderHistoryController extends Controller
 
     public function show(Request $request, Order $order): Response
     {
-        if ($order->buyer_id !== $request->user()->id && ! $request->user()->isAdmin()) {
-            abort(403);
-        }
+        $user = $request->user();
+        $ownedBuyerOrder = $user->isBuyer() && $order->buyer_id === $user->id;
+        $adminOversight = $user->isAdmin() && $user->canAccessPortal();
+        abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
         $order->load(['items.product.shop', 'delivery.courier']);
 
@@ -32,7 +33,7 @@ class OrderHistoryController extends Controller
 
     public function confirmReceived(Request $request, Order $order): RedirectResponse
     {
-        if ($order->buyer_id !== $request->user()->id) {
+        if (! $request->user()->isBuyer() || $order->buyer_id !== $request->user()->id) {
             abort(403);
         }
 

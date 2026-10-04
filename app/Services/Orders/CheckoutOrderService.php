@@ -30,6 +30,10 @@ class CheckoutOrderService
      */
     public function place(User $buyer, Cart $cart, array $cartItemIds, array $data): Collection
     {
+        if (! $buyer->isBuyer()) {
+            throw new RuntimeException('Buyer access is required to place an order.');
+        }
+
         // Keep the invariant in the order service as well as the controller so
         // no future checkout entry point can place an order around the UI gate.
         if (! $buyer->canCompleteCheckout()) {

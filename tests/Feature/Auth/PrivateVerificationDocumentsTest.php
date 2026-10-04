@@ -24,12 +24,13 @@ class PrivateVerificationDocumentsTest extends TestCase
         Storage::fake('public');
     }
 
-    private function applicant(): User
+    private function applicant(string $role = 'courier'): User
     {
         Storage::disk('local')->put('kyc_documents/private-id.pdf', '%PDF-1.4 private evidence');
 
         return User::factory()->create([
-            'role' => 'courier', 'status' => 'pending_approval', 'kyc_status' => 'pending_approval',
+            'role' => $role, 'status' => 'pending_approval', 'kyc_status' => 'pending_approval',
+            'birthday' => '2000-01-01',
             'id_document_path' => 'kyc_documents/private-id.pdf',
         ]);
     }
@@ -80,20 +81,22 @@ class PrivateVerificationDocumentsTest extends TestCase
     {
         $owner = $this->applicant();
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'suspended']);
-        $this->actingAs($admin);
         foreach (['/admin/kyc', 'http://admin.localhost/kyc'] as $prefix) {
-            $this->get($prefix)->assertForbidden();
-            $this->post($prefix.'/'.$owner->id.'/approve')->assertForbidden();
-            $this->post($prefix.'/'.$owner->id.'/reject', ['reason' => 'Document needs review'])->assertForbidden();
+            $this->actingAs($admin)->get($prefix)->assertRedirect(route('login'));
+            $this->assertGuest();
+            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/approve')->assertRedirect(route('login'));
+            $this->assertGuest();
+            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/reject', ['reason' => 'Document needs review'])->assertRedirect(route('login'));
+            $this->assertGuest();
         }
         $this->assertSame('pending_approval', $owner->fresh()->kyc_status);
     }
 
     public function test_active_platform_reviewer_can_read_all_documents_and_private_accreditation(): void
     {
-        $owner = $this->applicant();
+        $owner = $this->applicant('logistics');
         $owner->update([
-            'role' => 'logistics', 'business_permit_path' => 'kyc_documents/private-id.pdf',
+            'business_permit_path' => 'kyc_documents/private-id.pdf',
             'driver_license_path' => 'kyc_documents/private-id.pdf', 'or_cr_path' => 'kyc_documents/private-id.pdf',
         ]);
         LogisticsCompany::create(['user_id' => $owner->id, 'name' => 'Bagoo Test Logistics', 'slug' => 'bagoo-test-logistics', 'code' => 'BTL', 'accreditation_details' => [
@@ -143,7 +146,7 @@ class PrivateVerificationDocumentsTest extends TestCase
 
     public function test_logistics_resubmission_updates_private_accreditation_without_serializing_paths(): void
     {
-        $owner = User::factory()->create(['role' => 'logistics', 'status' => 'pending_approval', 'kyc_status' => 'rejected']);
+        $owner = User::factory()->create(['role' => 'logistics', 'status' => 'pending_approval', 'kyc_status' => 'rejected', 'birthday' => '2000-01-01']);
         $company = LogisticsCompany::create([
             'user_id' => $owner->id, 'name' => 'Bagoo Resubmission Logistics', 'slug' => 'bagoo-resubmission-logistics', 'code' => 'BRL',
             'accreditation_details' => ['fleet_size' => 4],

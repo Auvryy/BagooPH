@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\User;
+use App\Rules\BirthDate;
+use App\Services\BirthDateEligibility;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,7 +73,7 @@ class BuyerProfileController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:30',
-            'birthday' => 'nullable|date',
+            'birthday' => ['nullable', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
             'gender' => 'nullable|string|in:male,female,other',
             'remove_avatar' => 'nullable|boolean',
         ];

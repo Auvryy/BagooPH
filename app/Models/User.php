@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
+use App\Services\BirthDateEligibility;
 use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\ValidationException;
 
 class User extends Authenticatable implements MustVerifyEmailContract
 {
@@ -58,6 +61,23 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'or_cr_path',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            $user->age = app(BirthDateEligibility::class)->age($user->birthday);
+        });
+        static::updating(function (User $user): void {
+            if ($user->isDirty('role')) {
+                throw ValidationException::withMessages([
+                    'role' => 'Account roles cannot be changed. Register a separate account for another role.',
+                ]);
+            }
+            if ($user->isDirty(['birthday', 'age'])) {
+                $user->age = app(BirthDateEligibility::class)->age($user->birthday);
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -105,7 +125,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function canDeleteOwnAccount(): bool
     {
         // Courier closure needs custody and cash handover before account removal.
-        return ! $this->isCourier();
+        return ! $this->isCourier() && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists();
     }
 
     public function isLogistics(): bool
@@ -120,13 +140,41 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function isEligibleCourier(): bool
     {
-        return $this->isCourier() && $this->status === 'active' && $this->isKycApproved();
+        return $this->isCourier() && $this->canAccessPortal();
+    }
+
+    /**
+     * Account eligibility only; each action must still authorize its resource scope.
+     */
+    public function canAccessPortal(): bool
+    {
+        return UserRole::tryFrom($this->role) !== null
+            && $this->status === 'active'
+            && $this->isKycApproved()
+            && $this->hasEligibleBirthDate();
+    }
+
+    public function hasEligibleBirthDate(): bool
+    {
+        // Reviewed legacy accounts without a birth date retain access pending a controlled audit.
+        if ($this->birthday === null) {
+            return true;
+        }
+        $birthDates = app(BirthDateEligibility::class);
+
+        return $birthDates->issue($this->birthday, $birthDates->requiresAdult($this->role)) === null;
     }
 
     public function scopeEligibleCouriers(Builder $query): Builder
     {
         return $query->where('role', 'courier')->where('status', 'active')
-            ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES);
+            ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
+            ->where(function (Builder $query) {
+                $query->whereNull('birthday')->orWhere(function (Builder $query) {
+                    $query->whereDate('birthday', '>=', '0001-01-01')
+                        ->whereDate('birthday', '<=', app(BirthDateEligibility::class)->limits()['adult_maximum']);
+                });
+            });
     }
 
     /**
@@ -138,7 +186,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function canCompleteCheckout(): bool
     {
-        return $this->isAdmin() || ($this->status === 'active' && $this->isKycApproved());
+        return $this->isBuyer() && $this->canAccessPortal();
     }
 
     public function isKycPending(): bool

@@ -30,8 +30,35 @@ import {
     FileCheck
 } from 'lucide-react';
 
+type DocumentKind = 'id' | 'permit' | 'license' | 'orcr' | 'franchise';
+
+interface KycApplicant extends User {
+    birthday?: string | null;
+    review_age: number | null;
+    logistics_company?: {
+        name: string;
+        contact_email?: string | null;
+        contact_phone?: string | null;
+        address?: string | null;
+        status: string;
+        is_active: boolean;
+    } | null;
+    review_token: string;
+    required_documents: DocumentKind[];
+    review_issues: string[];
+    decision_history: {
+        id: number;
+        decision: string;
+        reason: string | null;
+        reviewer: string;
+        reviewed_at: string;
+        account_status: string;
+        documents: Record<string, string | null>;
+    }[];
+}
+
 interface KycQueueProps {
-    applicants: PaginatedData<User>;
+    applicants: PaginatedData<KycApplicant>;
     filters: {
         status: string;
         role: string;
@@ -54,13 +81,17 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     const [selectedRole, setSelectedRole] = useState(filters.role || 'all');
 
     // Inspect Document Modal State
-    const [inspectingApplicant, setInspectingApplicant] = useState<User | null>(null);
+    const [inspectingApplicant, setInspectingApplicant] = useState<KycApplicant | null>(null);
     const [activeDocTab, setActiveDocTab] = useState<'id' | 'permit' | 'license' | 'orcr' | 'franchise'>('id');
+    const [evidenceConfirmed, setEvidenceConfirmed] = useState(false);
+    const [approvalProcessing, setApprovalProcessing] = useState(false);
+    const [reviewError, setReviewError] = useState('');
 
     // Reject Modal State
-    const [rejectingApplicant, setRejectingApplicant] = useState<User | null>(null);
+    const [rejectingApplicant, setRejectingApplicant] = useState<KycApplicant | null>(null);
     const { data: rejectData, setData: setRejectData, post: postReject, processing: rejectProcessing, reset: resetReject, errors: rejectErrors } = useForm({
         reason: '',
+        review_token: '',
     });
 
     // Scroll locking for open modals
@@ -100,26 +131,24 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
         handleFilterChange();
     };
 
-    const handleApprove = (applicant: User) => {
-        if (confirm(`Approve KYC verification for ${applicant.name} (${applicant.role})?`)) {
-            router.post(
-                route('admin.kyc.approve', applicant.id),
-                {},
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        if (inspectingApplicant?.id === applicant.id) {
-                            setInspectingApplicant(null);
-                        }
-                    },
-                }
-            );
-        }
+    const handleApprove = (applicant: KycApplicant) => {
+        if (approvalProcessing || !evidenceConfirmed) return;
+        setApprovalProcessing(true);
+        setReviewError('');
+        router.post(route('admin.kyc.approve', applicant.id), {
+            review_token: applicant.review_token,
+            evidence_confirmed: evidenceConfirmed,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setInspectingApplicant(null),
+            onError: (errors) => setReviewError(Object.values(errors).join(' ')),
+            onFinish: () => setApprovalProcessing(false),
+        });
     };
 
-    const openRejectModal = (applicant: User) => {
+    const openRejectModal = (applicant: KycApplicant) => {
         setRejectingApplicant(applicant);
-        setRejectData('reason', '');
+        setRejectData({ reason: '', review_token: applicant.review_token });
     };
 
     const handleRejectSubmit = (e: React.FormEvent) => {
@@ -142,28 +171,15 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
         setRejectData('reason', preset);
     };
 
-    const getAvailableDocs = (applicant: User) => {
-        const docs: { key: 'id' | 'permit' | 'license' | 'orcr' | 'franchise'; label: string; path: string | null | undefined }[] = [
+    const getAvailableDocs = (applicant: KycApplicant) => {
+        const docs: { key: DocumentKind; label: string; path: string | null | undefined }[] = [
             { key: 'id', label: 'Gov ID', path: applicant.id_document_path },
+            { key: 'permit', label: 'Business Permit', path: applicant.business_permit_path },
+            { key: 'license', label: "Driver's License", path: applicant.driver_license_path },
+            { key: 'orcr', label: 'Vehicle OR/CR', path: applicant.or_cr_path },
+            { key: 'franchise', label: 'Franchise Certificate', path: applicant.franchise_document_path },
         ];
-
-        if (applicant.role === 'seller' || applicant.business_permit_path) {
-            docs.push({ key: 'permit', label: 'Business Permit', path: applicant.business_permit_path });
-        }
-
-        if (applicant.role === 'courier' || applicant.driver_license_path) {
-            docs.push({ key: 'license', label: "Driver's License", path: applicant.driver_license_path });
-        }
-
-        if (applicant.role === 'courier' || applicant.or_cr_path) {
-            docs.push({ key: 'orcr', label: 'Vehicle OR/CR', path: applicant.or_cr_path });
-        }
-
-        if (applicant.role === 'logistics' || applicant.franchise_document_path) {
-            docs.push({ key: 'franchise', label: 'Franchise Certificate', path: applicant.franchise_document_path });
-        }
-
-        return docs;
+        return docs.filter(doc => applicant.required_documents.includes(doc.key) || doc.path);
     };
 
     const getDocPath = (applicant: User, type: 'id' | 'permit' | 'license' | 'orcr' | 'franchise') => {
@@ -186,7 +202,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
             );
         }
 
-        const isPdf = path.toLowerCase().endsWith('.pdf');
+        const isPdf = path.split('?')[0].toLowerCase().endsWith('.pdf');
 
         if (isPdf) {
             return (
@@ -503,7 +519,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
                                                 {/* Status */}
                                                 <td className="py-3.5 px-4 font-sans">
-                                                    {applicant.kyc_status === 'approved' ? (
+                                                    {['approved', 'verified'].includes(applicant.kyc_status || '') ? (
                                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                             APPROVED
                                                         </span>
@@ -531,7 +547,9 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                         <button
                                                             onClick={() => {
                                                                 setInspectingApplicant(applicant);
-                                                                setActiveDocTab('id');
+                                                                setActiveDocTab(applicant.required_documents[0] || 'id');
+                                                                setEvidenceConfirmed(false);
+                                                                setReviewError('');
                                                             }}
                                                             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md font-bold text-[11px] flex items-center gap-1 transition"
                                                             title="Inspect Submitted Documents"
@@ -540,18 +558,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                             <span className="hidden sm:inline">Inspect</span>
                                                         </button>
 
-                                                        {applicant.kyc_status !== 'approved' && (
-                                                            <button
-                                                                onClick={() => handleApprove(applicant)}
-                                                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-[11px] flex items-center gap-1 transition shadow-xs cursor-pointer"
-                                                                title="1-Click Approve Applicant"
-                                                            >
-                                                                <Check className="w-3.5 h-3.5" />
-                                                                <span className="hidden sm:inline">Approve</span>
-                                                            </button>
-                                                        )}
-
-                                                        {applicant.kyc_status !== 'rejected' && (
+                                                        {applicant.kyc_status === 'pending_approval' && (
                                                             <button
                                                                 onClick={() => openRejectModal(applicant)}
                                                                 className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
@@ -659,13 +666,64 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 </div>
                                 <div>
                                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Address / Hub</span>
-                                    <span className="font-semibold text-slate-900 truncate block">{inspectingApplicant.address || 'Metro Manila'}</span>
+                                    <span className="font-semibold text-slate-900 truncate block">{inspectingApplicant.address || 'Not provided'}</span>
                                 </div>
                                 <div>
                                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Current KYC Status</span>
                                     <span className="font-bold uppercase text-[#E00D42]">{inspectingApplicant.kyc_status}</span>
                                 </div>
                             </div>
+                            <p className="text-xs text-slate-600">Account activity: <strong>{inspectingApplicant.status}</strong>. Approval preserves separate account and profile restrictions and rider duty.</p>
+                            <p className="text-xs text-slate-600">Birth date: {inspectingApplicant.birthday?.slice(0, 10) || 'Not provided'} · Age: {inspectingApplicant.review_age ?? 'Not available'} · City: {inspectingApplicant.city || 'Not provided'}</p>
+                            {inspectingApplicant.shop && (
+                                <div className="space-y-1 rounded-xl border border-slate-300 bg-white p-3 text-xs">
+                                    <h4 className="font-semibold">Original shop: {inspectingApplicant.shop.name}</h4>
+                                    <p>{inspectingApplicant.shop.address || 'Address not provided'} · {inspectingApplicant.shop.city || 'City not provided'} · {inspectingApplicant.shop.phone || 'Phone not provided'}</p>
+                                    <p>Root category: {inspectingApplicant.shop.root_category?.name || 'Not provided'} · Shop activity: {inspectingApplicant.shop.status}</p>
+                                </div>
+                            )}
+                            {inspectingApplicant.courier_profile && (
+                                <div className="space-y-1 rounded-xl border border-slate-300 bg-white p-3 text-xs">
+                                    <h4 className="font-semibold">Courier application</h4>
+                                    <p>Vehicle: {inspectingApplicant.courier_profile.vehicle_type} · Plate: {inspectingApplicant.courier_profile.plate_number || 'Not provided'}</p>
+                                    <p>License number: {inspectingApplicant.courier_profile.license_number || 'Not provided'} · Duty: {inspectingApplicant.courier_profile.is_available ? 'Available' : 'Off duty'}</p>
+                                </div>
+                            )}
+                            {inspectingApplicant.logistics_company && (
+                                <div className="space-y-1 rounded-xl border border-slate-300 bg-white p-3 text-xs">
+                                    <h4 className="font-semibold">Company: {inspectingApplicant.logistics_company.name}</h4>
+                                    <p>{inspectingApplicant.logistics_company.address || 'Address not provided'} · {inspectingApplicant.logistics_company.contact_phone || 'Phone not provided'} · {inspectingApplicant.logistics_company.contact_email || 'Email not provided'}</p>
+                                    <p>Company activity: {inspectingApplicant.logistics_company.status} · {inspectingApplicant.logistics_company.is_active ? 'Enabled' : 'Restricted'}</p>
+                                </div>
+                            )}
+                            {inspectingApplicant.review_issues.length > 0 && inspectingApplicant.kyc_status === 'pending_approval' && (
+                                <ul className="list-disc space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-4 pl-7 text-xs text-amber-900">
+                                    {inspectingApplicant.review_issues.map(issue => <li key={issue}>{issue}</li>)}
+                                </ul>
+                            )}
+                            {inspectingApplicant.kyc_status === 'pending_approval' && (
+                                <label className="flex items-start gap-2 rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-700">
+                                    <input type="checkbox" checked={evidenceConfirmed} onChange={event => setEvidenceConfirmed(event.target.checked)} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />
+                                    <span>I opened every required document and inspected the evidence and application details. Approval records this submission only.</span>
+                                </label>
+                            )}
+                            {reviewError && <p role="alert" className="text-xs text-rose-700">{reviewError}</p>}
+                            <section className="space-y-2 text-xs">
+                                <h4 className="font-semibold text-slate-900">Decision history</h4>
+                                {inspectingApplicant.decision_history.length === 0 && <p className="text-slate-500">No recorded review decisions. Legacy approval does not create a historical review record.</p>}
+                                {inspectingApplicant.decision_history.map(decision => (
+                                    <div key={decision.id} className="space-y-2 rounded-xl border border-slate-300 bg-white p-3">
+                                        <p className="font-semibold">{decision.decision} by {decision.reviewer}</p>
+                                        <p className="text-slate-500">{new Date(decision.reviewed_at).toLocaleString('en-PH')} · Account activity: {decision.account_status}</p>
+                                        {decision.reason && <p>{decision.reason}</p>}
+                                        <div className="flex flex-wrap gap-3">
+                                            {Object.entries(decision.documents).filter(([, link]) => link).map(([field, link]) => (
+                                                <a key={field} href={link!} target="_blank" rel="noreferrer" className="font-medium text-[#E00D42] underline">Reviewed {field.replace('_document_path', '').replace('_path', '').replaceAll('_', ' ')}</a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
                         </div>
 
                         {/* Modal Footer Controls */}
@@ -678,7 +736,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 Close
                             </button>
 
-                            <div className="flex items-center gap-2">
+                            {inspectingApplicant.kyc_status === 'pending_approval' && <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => openRejectModal(inspectingApplicant)}
@@ -691,12 +749,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => handleApprove(inspectingApplicant)}
-                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                                    disabled={approvalProcessing || !evidenceConfirmed || inspectingApplicant.review_issues.length > 0}
+                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Check className="w-4 h-4" />
-                                    <span>Approve Account</span>
+                                    <span>{approvalProcessing ? 'Recording...' : 'Approve Submission'}</span>
                                 </button>
-                            </div>
+                            </div>}
                         </div>
                     </div>
                 </div>,
@@ -754,6 +813,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         </div>
 
                         <form onSubmit={handleRejectSubmit} className="space-y-3">
+                            {rejectErrors.review_token && <p role="alert" className="text-xs text-rose-700">{rejectErrors.review_token}</p>}
                             <div>
                                 <label className="block text-xs font-semibold text-slate-900 mb-1">
                                     Feedback & Instructions for Resubmission *

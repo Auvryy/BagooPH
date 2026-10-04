@@ -7,10 +7,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithKycReviews;
 use Tests\TestCase;
 
 class KycRegistrationTest extends TestCase
 {
+    use InteractsWithKycReviews;
     use RefreshDatabase;
 
     public function test_seller_registration_with_documents_creates_pending_user_and_shop(): void
@@ -29,6 +31,7 @@ class KycRegistrationTest extends TestCase
             'address' => 'Unit 102 Greenbelt Mall',
             'city' => 'Makati City',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'id_document' => $idFile,
@@ -71,6 +74,7 @@ class KycRegistrationTest extends TestCase
             'plate_number' => 'ABC-9876',
             'license_number' => 'N02-22-123456',
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'id_document' => $idFile,
@@ -161,6 +165,7 @@ class KycRegistrationTest extends TestCase
             'address' => 'Some address',
             'city' => 'Manila',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
@@ -187,6 +192,7 @@ class KycRegistrationTest extends TestCase
             'city' => 'Calamba City',
             'province' => 'Laguna',
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'franchise_number' => 'LTFRB-2026-SFX-9988',
             'fleet_size' => 45,
             'password' => 'password123',
@@ -222,6 +228,7 @@ class KycRegistrationTest extends TestCase
 
         $applicant = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -236,7 +243,9 @@ class KycRegistrationTest extends TestCase
             'is_active' => false,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $applicant));
+        $this->addKycEvidence($applicant);
+        $this->inspectKycEvidence($admin, $applicant);
+        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $applicant), $this->kycPayload($applicant));
         $response->assertSessionHas('success');
 
         $this->assertEquals('active', $applicant->fresh()->status);

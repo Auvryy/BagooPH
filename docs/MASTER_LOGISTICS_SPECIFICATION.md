@@ -1,5 +1,7 @@
 # BagooPH Master Architecture & Technical Specification
-## Multi-Tenant Road Logistics & Marketplace Ecosystem
+
+## Road Logistics and Marketplace Architecture
+
 *Platform Design, Entity Hierarchy & Highway Network Delimitation*
 
 > **Source:** Master Architecture Technical Specification & Teacher Brainstorming Notes (September 2026).
@@ -9,52 +11,45 @@
 
 ## 1. Executive Summary & Foundational Scope
 
-BagooPH couples a multi-vendor retail marketplace with a multi-tenant, land-based parcel network modeled after established hub-and-spoke e-commerce logistics. Rather than outsourcing shipping to an unmonitored external system, the platform integrates logistics into its core transactional lifecycle.
+BagooPH demonstrates a realistic multi-shop ecommerce transaction through a small, company-scoped road parcel network. A modest set of accounts, hubs, vehicles, and supported routes is sufficient. Thousands of users, national fleet operations, enterprise infrastructure, and purchasing warehouse equipment are not project requirements. Keep the existing application and the roadmap's core phases as the delivery boundary.
 
 ### Contiguous Land Delimitation
 - **100% Road-Based Freight:** All logistics operations are strictly delimited to domestic, contiguous land highway networks (e.g., Mainland Luzon and interconnected provincial roads).
-- **Exclusion of Maritime Shipping:** Inter-island sea freight, commercial port terminal manifests, roll-on/roll-off (RORO) ship tracking, and sea cargo containers are entirely excluded from system scope. This guarantees consistent transit tracking, avoids maritime schedule anomalies, and keeps the project defensible.
-- **Geographic Service Boundaries:** Delivery addresses outside contiguous road networks (such as remote island municipalities) are rejected at checkout by automated address validation rules.
+- **Excluded Transport:** Boats, inter-island sea freight, ports, RORO, sea cargo containers, and air freight are outside scope. A sea crossing cannot be treated as a road leg.
+- **Geographic Service Boundaries:** Checkout must reject destinations without supported contiguous road coverage and a complete facility route. A map pin or free-text province alone cannot prove serviceability. Current enforcement evidence belongs in the roadmap.
 
 ---
 
 ## 2. Multi-Tenant Logistics Structure & Entity Hierarchy
 
-The system operates across three administrative tiers, maintaining separation between marketplace governance, independent courier companies, local facilities, delivery fleets, merchants, and consumers.
+The system separates platform governance, logistics companies, and facility operations. This responsibility hierarchy does not grant one actor another actor's custody permissions.
 
 ```
-                  [Platform Super Admin]
-                             │
-       ┌─────────────────────┴─────────────────────┐
-       ▼                                           ▼
-[Marketplace Management]                 [Logistics Company Admin]
-├── Seller Profiles                      (BagooPH marketplace merchants)
-└── Buyer Accounts                                 │
-                                                   ▼
-                                        [Branch / Hub Network]
-                                        ├── Regional Mother Hubs (Sortation Centers)
-                                        └── Local Bayan Hubs (Delivery Stations)
-                                                   │
-                                      ┌────────────┴────────────┐
-                                      ▼                         ▼
-                                [Hub Handlers]          [Delivery Riders]
-                               (Mobile Scanners)       (Assigned per Barangay)
+[Platform Admin: account review and read oversight]
+├── Marketplace: buyer accounts and seller shops
+└── Logistics company review
+    └── Approved Logistics Company Admin: own network
+        ├── Mother Hubs and Bayan Hubs
+        │   └── Active facility-scoped Hub Handlers
+        └── Eligible couriers placed by hub and barangay
+            └── Pickup or delivery assignments
 ```
 
-### 1. Courier Partner Registration & Accreditation
-- **Application Workflow:** Independent logistics providers apply via a public courier registration portal, creating a master corporate account.
-- **KYC & Accreditation:** Platform Admins verify corporate legal requirements, such as business permits, tax registration, transport regulatory board accreditations, and fleet insurance.
-- **Independent Tenant Portal:** Approved couriers unlock a private Logistics Portal. Couriers cannot view competing logistics companies or marketplace transactions.
+### 1. Logistics Company Registration and Review
+- **Application Workflow:** Logistics providers use the logistics-company application, distinct from individual courier registration.
+- **Platform Review:** Active Platform Admin reviews the documented company details, business permit, and applicable franchise evidence. This reference adds no separate tax, insurance, or accreditation service.
+- **Company Scope:** An approved active company manages its own network and related shipments. It cannot view competing companies' private operations or unrelated marketplace transactions.
+- **Authority:** [ADMIN_FLOW.md](ADMIN_FLOW.md) defines marketplace approval and suspension. Company acceptance/placement of an already platform-approved courier cannot grant KYC approval or undo a global restriction.
 
 ### 2. Branch (Hub) Management
-Courier Admins register physical branches categorized into two functional tiers:
-- **Regional Mother Hub (Sortation Center):** High-throughput, central cross-docking facilities for inter-provincial sorting.
+Logistics Company Admins manage their own physical facilities in two tiers:
+- **Regional Mother Hub (Sortation Center):** Regional sorting and transfers between Bayan Hubs or road regions.
 - **Local Bayan Hub (Delivery Station):** Municipal-level branches responsible for seller drop-offs, local pickup consolidation, customer self-pickup counters, and morning rider dispatching.
-- Every branch is configured with its geographic location, exact GPS coordinates, physical capacity, and assigned coverage barangays.
+- Facilities need validated location, active company scope, and supported coverage. Stored coordinates and capacity may assist planning; they do not require live GPS or an automated warehouse.
 
 ### 3. Personnel Onboarding & Role Scoping
-- Hub Handlers: Scanners for inbound, binning, and outbound operations.
-- Delivery Riders: Dedicated per barangay with dynamic load balancing.
+- Hub Handlers: Eligible `logistics` accounts with active assigned-facility access for inbound, sorting, and outbound scans; no additional public staff role.
+- Couriers: Already platform-approved, active riders placed within an eligible company/hub and barangay. Assignments and configured capacity govern new work; automated load balancing is not a baseline requirement.
 
 ---
 
@@ -87,7 +82,7 @@ Courier Admins register physical branches categorized into two functional tiers:
 
 ### The Routing Engine: Facility-to-Facility Hops
 Parcels do not route via continuous street directions from the merchant's doorstep to the buyer's house. Instead, the routing engine models movement as a sequence of facility codes:
-- **Address Resolution:** The buyer’s pinned location identifies the destination Bayan Hub and target barangay.
+- **Address Resolution:** The validated textual destination, barangay, and configured service coverage identify the destination Bayan Hub. Valid stored coordinates may assist; they cannot replace address or company/facility authorization.
 - **Route Leg Generation:** The system determines the required transit hops:
   - Leg 1: Merchant → Origin Bayan Hub
   - Leg 2: Origin Bayan Hub → Regional Mother Hub
@@ -156,18 +151,18 @@ Every physical movement must correspond to an authenticated digital scan. Custod
 ## 5. Core Marketplace & Business Integrity Policies
 
 ### Strict Stock Allocation
-- **Add-to-Cart Isolation:** Adding an item to a shopping cart reserves zero stock.
-- **Input Clamping:** Product quantity pickers are locked to available inventory, preventing users from selecting higher quantities.
-- **Atomic Checkout Decrement:** Stock decreases in the database strictly and atomically upon order checkout confirmation. Canceled or expired unpaid orders release stock back to the active catalog immediately.
+- **Shopping Bag Isolation:** Adding an item to the Shopping Bag reserves zero stock.
+- **Quantity Validation:** Pickers may constrain quantities, but the server revalidates quantity and current stock.
+- **Atomic Checkout Decrement:** Checkout validates and decrements stock atomically. Authorized seller cancellation before pickup claim/custody restores stock once; no automatic unpaid-order expiry or restocking policy is added here.
 
 ### Seller Category Enclosure & Multi-Shop Toggling
-- **Single Licensed Root Category:** To reduce counterfeit items and streamline tax classification, each merchant profile can sell under only one root category.
+- **Approved Shop Root Category:** Each shop sells within its approved root category from the 14 master categories. Account approval does not automatically approve another shop or category.
 - **Multi-Store Switcher:** Merchants wishing to sell across multiple categories do not need separate logins. From their dashboard, a dropdown toggle switches operational context between distinct, approved shop profiles under their master account.
 
-### Address Intelligence & Verification
-- **OCR Onboarding:** Automated optical character recognition parses uploaded government IDs during registration to pre-populate text fields (Province, Bayan, Barangay).
-- **Mandatory Interactive Pin Drops:** Because provincial Philippine addresses frequently lack standard street numbers, buyers must drop an interactive map pin (Leaflet / OpenStreetMap). Couriers rely on coordinate verification (`lat`, `long`) alongside text landmarks.
-- **Admin Verification Queue:** Flagged address discrepancies (such as a text address not matching the map pin's administrative zone) are queued for Admin review.
+### Address Validation
+- Validate the required recipient, phone, textual address, barangay, postal code, and supported road route on the server.
+- Validate coordinate range when a pin is supplied. Missing optional coordinates must not replace the textual address with a guessed location.
+- Human document review remains the approval baseline. OCR, automated map/text discrepancy review, and compulsory pin capture are not introduced by this architectural reference.
 
 ---
 
@@ -186,83 +181,32 @@ The following ideas are not required for the complete baseline order and logisti
 ## 7. Teacher & Brainstorming Lecture Notes
 
 Recorded from foundational domain brainstorming:
+
+These notes provide context; the normative contracts and current roadmap determine requirements. Fleet examples do not require procuring or operating a national commercial fleet.
+
 - **Unified Terminology:** Sorting center, Logistics, and Hub refer to nodes within the same logistics facility hierarchy.
 - **Mobile-First Scanning:** Sorting center/hub handlers do not require heavy desktop terminals; operations are driven via mobile/responsive PWA camera barcode/QR waybill scanners.
-- **Rider Allocation:** Default baseline is 1 rider dedicated per barangay, with dynamic auxiliary assignment for heavy volume.
+- **Rider Allocation:** Barangay placement and one eligible assigned rider per parcel govern delivery. The earlier one-rider-per-barangay suggestion is an example configuration, not a volume target or an automated staffing requirement.
 - **Free Hub Pickup:** Buyers can choose free self-pickup at their local municipal Bayan Hub rather than doorstep delivery.
 - **Vehicle Hierarchy:** Explicit fleet registration including motorcycles/tricycles for first and last mile, closed vans for feeder shuttles, and closed wing trucks for inter-hub line-haul.
 - **Facility-Hop Dispatching:** Inter-bayan and inter-provincial routing occurs strictly via facility-to-facility hops (Bayan Hub → Mother Hub → Destination Mother Hub → Destination Bayan Hub → Rider/Counter).
 
 ---
 
-## 8. Optional Enterprise Company Admin Modules
+## 8. Company Administration Within the Core Project
 
-This section is architectural reference only. It must not be treated as implemented behavior or allowed to delay the core roadmap.
+Company administration supports the existing road flow with ordinary lists, scoped assignments, and recorded evidence. It does not require a corporate ERP or enterprise dashboard.
 
-### Architectural Module Reference
+| Core responsibility | Boundary |
+|---|---|
+| Network and personnel | Own active Mother/Bayan Hubs, facility-scoped handlers, and placement of already platform-approved riders |
+| Parcel operations | Expected-facility scans, ordered Mother-Hub transfers, manifests, and one current custodian |
+| Exceptions and self-pickup | Recorded attempts, hub return before retry, reverse checkpoints on the original waybill, seller return receipt, and secure counter release |
+| Operational COD | Recorded rider/counter collection, remittance, and discrepancies; Platform Admin owns platform reconciliation and seller settlement |
+| Overview | Real pending work and recorded totals; no sample success, invented analytics, or guessed cash balances |
 
-#### Baseline Module Concepts
-- **Overview:** Operational totals needed to supervise the core parcel flow without advanced analytics.
-- **Scan Station:** Responsive barcode or QR scanning for authenticated inbound and outbound custody.
-- **Facility Network:** Regional Mother Hub and Local Bayan Hub management.
-- **Fleet Management:** Motorcycles or tricycles, closed feeder vans, and closed line-haul trucks.
-- **Parcels and Waybills:** Customer lifecycle, internal checkpoints, and public tracking.
-- **Counter Self-Pickup:** Controlled release using claim, identity, expiry, facility, state, and COD checks.
+Platform review remains separate from company placement. Handler access uses the existing `logistics` role and facility assignments; it does not add `hub_staff` or `hub_handler` public account roles. Restrictions preserve existing custody and cash while blocking new work, as defined in the admin and validation contracts.
 
----
+Basic remittance, failure recovery, and self-pickup are required roadmap phases, not optional enterprise modules. Advanced rate matrices, density automation, AI dispatch, and analytics are deferred ideas requiring separate approval. They cannot appear as required navigation, silently allocate riders, or delay the baseline.
 
-### Critical Enterprise Modules for Corporate Logistics Admins
-
-The following are potential enterprise modules, not commitments in the core roadmap:
-
-#### 1. Personnel & Onboarding Management (Riders & Sorters)
-- **Rider Accreditation & KYC:** Dedicated compliance queue to review and approve driver's licenses, vehicle OR/CR, and NBI clearances submitted by riders applying to work across network hubs.
-- **Barangay Assignment Matrix:** Spatial matrix interface to assign verified riders to specific Local Bayan Hubs and dedicate them to specific barangays (baseline: 1 rider per barangay).
-- **Hub Staff / Sorter Accounts:** Creating and managing user logins (`hub_staff` / `hub_handler`) scoped strictly to individual physical facilities.
-
-#### 2. Cash-on-Delivery (COD) & Financial Remittance Ledger
-- **Rider COD Collection Ledger:** Real-time reconciliation of cash collected by last-mile riders upon successful doorstep delivery.
-- **Hub Counter Cash Reconciliation:** Logging and balancing COD payments collected at Bayan Hub customer self-pickup counters.
-- **Platform & Merchant Remittance:** Tracking shipping fee earnings, deducting marketplace commission, and remitting collected COD funds back to the escrow/merchant settlement accounts.
-
-#### 3. Shipping Rates & Service Zone Mapping
-- **Rate Matrix Configuration:** Calculation tiers based on declared package weight, size, and service zone.
-- **Service Coverage Matrix:** Interactive administrative toggles for provinces, bayans, and barangays actively serviced by the company, including unserviceable boundary rules and remote exclusions.
-
-#### 4. Exception & Return-to-Sender (RTS) Protocols
-- **Delivery Failure Queue:** Real-time monitor for parcels marked `DELIVERY_FAILED` (e.g., customer unreachable, bad weather, or invalid address).
-- **RTS Reverse Logistics:** Automated routing engine for packages hitting the 3-attempt failure threshold, generating reverse waybills to return stock back through the hub network to merchants.
-
-#### 5. Optional Density & Dispatch Load Balancing
-- **Morning Barangay Density Alert:** Automated 06:00 AM dispatch engine evaluating parcel volume per barangay. If a barangay exceeds threshold (e.g., >60 parcels), the system recommends and provisions auxiliary overflow riders.
-
----
-
-### Recommended Dashboard Menu Navigation Architecture
-
-To maintain zero UI clutter, navigation strictly separates **Global Corporate Management** from **Hub Station Floor Operations**:
-
-```
-Logistics Company Admin Portal
-│
-├── Corporate & Fleet Management
-│   ├── Overview / Global Analytics
-│   ├── Facility Network (Mother Hubs & Bayan Hubs)
-│   ├── Fleet Management (Trucks, Vans, Motorcycles)
-│   ├── Personnel & Riders (KYC Approvals, Barangay Assignments) [Roadmap]
-│   └── Service Coverage & Rates (Zone Mapping & Pricing) [Roadmap]
-│
-├── Parcel Operations & Logistics
-│   ├── Master Parcels & Waybill Telemetry
-│   ├── Exceptions & RTS (Delivery Failures & Discrepancies) [Roadmap]
-│   └── Morning Barangay Density Engine (AI Rider Load Balancing) [Roadmap]
-│
-├── Financials & Remittances
-│   ├── COD Cash Ledger (Rider & Counter Remittances) [Roadmap]
-│   └── Platform Payouts & Shipping Earnings [Roadmap]
-│
-└── Branch Switcher Context (Floor Operations UI)
-    └── [Dropdown: Select Specific Hub, e.g., "Santa Cruz Bayan Hub"]
-        ├── Mobile PWA / Camera Scan Station (Inbound/Outbound)
-        └── Counter Self-Pickup Terminal
-```
+For a company portal, group a small number of pages around overview, own facilities/personnel, parcels/manifests, exceptions/counter work, and remittance. Only an authorized handler with an active facility assignment can use floor scan actions; choosing a branch in a switcher does not confer that authority. See [ADMIN_FLOW.md](ADMIN_FLOW.md) for the authority matrix and [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md) for actual implementation status and phase order.

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\KycDecision;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -53,35 +54,45 @@ class VerificationDocumentService
         return $paths;
     }
 
-    public function links(User $owner): array
+    public function links(User $owner, ?KycDecision $decision = null): array
     {
         $links = [];
         foreach (self::FIELDS as $kind => $field) {
-            $path = $this->storedPath($owner, $kind);
+            $path = $decision ? ($decision->submission['documents'][$kind]['path'] ?? null) : $this->storedPath($owner, $kind);
             $extension = $path ? strtolower(pathinfo($path, PATHINFO_EXTENSION)) : null;
             $links[$field] = $extension && in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'pdf'], true)
-                ? route('verification-documents.show', ['user' => $owner->id, 'document' => "$kind.$extension"], false)
+                ? route('verification-documents.show', array_filter(['user' => $owner->id, 'document' => "$kind.$extension", 'decision' => $decision?->id]), false)
                 : null;
         }
 
         return $links;
     }
 
-    public function show(User $actor, User $owner, string $document): StreamedResponse
+    public function authorize(User $actor, User $owner): void
     {
+        $actor = User::findOrFail($actor->id);
         abort_unless(
             ($actor->id === $owner->id && in_array($actor->status, ['active', 'pending_approval'], true))
-            || ($actor->isAdmin() && $actor->status === 'active'),
+            || ($actor->isAdmin() && $actor->canAccessPortal()),
             403,
         );
+    }
+
+    public function show(User $actor, User $owner, string $document, ?KycDecision $decision = null): StreamedResponse
+    {
+        $this->authorize($actor, $owner);
         abort_unless(preg_match('/\A(id|permit|license|orcr|franchise)\.(jpg|jpeg|png|webp|pdf)\z/', $document, $matches) === 1, 404);
-        $path = $this->storedPath($owner, $matches[1]);
+        abort_if($decision && $decision->user_id !== $owner->id, 404);
+        $path = $decision ? ($decision->submission['documents'][$matches[1]]['path'] ?? null) : $this->storedPath($owner, $matches[1]);
         abort_unless(
             $path && preg_match('/\Akyc_documents\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp|pdf)\z/i', $path) === 1
             && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === $matches[2]
             && Storage::disk('local')->exists($path),
             404,
         );
+        if ($decision) {
+            abort_unless(hash_file('sha256', Storage::disk('local')->path($path)) === ($decision->submission['documents'][$matches[1]]['sha256'] ?? null), 409, 'The reviewed document is no longer intact.');
+        }
 
         return Storage::disk('local')->response($path, $document, [
             'Content-Type' => match ($matches[2]) {
@@ -94,6 +105,34 @@ class VerificationDocumentService
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
+    }
+
+    public function evidence(User $owner): array
+    {
+        $evidence = [];
+        foreach (self::FIELDS as $kind => $field) {
+            $path = $this->storedPath($owner, $kind);
+            $document = ['path' => $path, 'sha256' => null, 'mime' => null, 'valid' => false];
+            if ($path && preg_match('/\Akyc_documents\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp|pdf)\z/i', $path, $matches) === 1 && Storage::disk('local')->exists($path)) {
+                $localPath = Storage::disk('local')->path($path);
+                $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($localPath);
+                $expected = match (strtolower($matches[1])) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'webp' => 'image/webp',
+                    'pdf' => 'application/pdf',
+                };
+                $document = [
+                    'path' => $path,
+                    'sha256' => hash_file('sha256', $localPath),
+                    'mime' => $mime,
+                    'valid' => $mime === $expected && filesize($localPath) > 0 && filesize($localPath) <= 5120 * 1024,
+                ];
+            }
+            $evidence[$kind] = $document;
+        }
+
+        return $evidence;
     }
 
     private function storedPath(User $owner, string $kind): ?string

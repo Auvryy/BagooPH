@@ -29,8 +29,9 @@ import { getDomainUrl } from '@/utils/domain';
 import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function LogisticsRegister() {
+export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +48,7 @@ export default function LogisticsRegister() {
 
     const { data, setData, post, processing, errors, reset, transform } = useForm<{
         name: string;
+        birthday: string;
         company_name: string;
         company_code: string;
         email: string;
@@ -68,6 +70,7 @@ export default function LogisticsRegister() {
         otp_token: string;
     }>({
         name: '',
+        birthday: '',
         company_name: '',
         company_code: '',
         email: '',
@@ -145,6 +148,8 @@ export default function LogisticsRegister() {
         const newErrors: Record<string, string> = {};
         if (!data.company_name.trim()) newErrors.company_name = 'Company or fleet name is required';
         if (!data.name.trim()) newErrors.name = 'Authorised representative contact name is required';
+        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
+        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
         if (!data.email.trim()) {
             newErrors.email = 'Corporate email address is required';
         } else if (!/\S+@\S+\.\S+/.test(data.email)) {
@@ -217,6 +222,7 @@ export default function LogisticsRegister() {
 
         post('/register', {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -230,6 +236,7 @@ export default function LogisticsRegister() {
         }));
         post('/register', {
             forceFormData: true,
+            onError: errors => { if (errors.birthday) setCurrentStep(1); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -403,6 +410,8 @@ export default function LogisticsRegister() {
                                 <p className="text-xs text-[#E00D42]">{stepErrors.name || errors.name}</p>
                             )}
                         </div>
+
+                        <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
                         {/* Email & Phone */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

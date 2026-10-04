@@ -70,6 +70,7 @@ trait InteractsWithRoles
     {
         $user = User::factory()->pendingKyc()->create(array_merge([
             'role' => $role,
+            'birthday' => in_array($role, ['seller', 'courier', 'logistics'], true) ? '2000-01-01' : null,
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ], $attributes));

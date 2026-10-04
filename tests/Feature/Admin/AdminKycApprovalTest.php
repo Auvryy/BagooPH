@@ -8,10 +8,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithKycReviews;
 use Tests\TestCase;
 
 class AdminKycApprovalTest extends TestCase
 {
+    use InteractsWithKycReviews;
     use RefreshDatabase;
 
     public function test_admin_can_view_kyc_queue(): void
@@ -24,6 +26,7 @@ class AdminKycApprovalTest extends TestCase
 
         $pendingSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -36,6 +39,7 @@ class AdminKycApprovalTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -54,6 +58,7 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -65,7 +70,9 @@ class AdminKycApprovalTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $response = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve");
+        $this->addKycEvidence($seller);
+        $this->inspectKycEvidence($admin, $seller);
+        $response = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve", $this->kycPayload($seller));
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
@@ -89,6 +96,7 @@ class AdminKycApprovalTest extends TestCase
 
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -101,7 +109,9 @@ class AdminKycApprovalTest extends TestCase
             'is_available' => false,
         ]);
 
-        $response = $this->actingAs($admin)->post("/admin/kyc/{$courier->id}/approve");
+        $this->addKycEvidence($courier);
+        $this->inspectKycEvidence($admin, $courier);
+        $response = $this->actingAs($admin)->post("/admin/kyc/{$courier->id}/approve", $this->kycPayload($courier));
         $response->assertRedirect();
 
         $courier->refresh();
@@ -110,7 +120,7 @@ class AdminKycApprovalTest extends TestCase
 
         $courierProfile->refresh();
         $this->assertEquals('Verified & Registered', $courierProfile->or_cr_status);
-        $this->assertTrue($courierProfile->is_available);
+        $this->assertFalse($courierProfile->is_available);
     }
 
     public function test_admin_can_reject_applicant_with_feedback(): void
@@ -123,11 +133,12 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
 
-        $response = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", [
+        $response = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", $this->kycPayload($seller) + [
             'reason' => 'The uploaded business permit is expired. Please submit valid 2026 permit.',
         ]);
 
@@ -148,6 +159,7 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Permit is expired.',

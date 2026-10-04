@@ -117,6 +117,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -138,6 +139,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -159,6 +161,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -201,6 +204,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -240,6 +244,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('correct-password'),
@@ -267,6 +272,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -285,6 +291,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -303,6 +310,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $hubOperator = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'password' => bcrypt('password123'),
@@ -458,6 +466,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -471,6 +480,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -484,6 +494,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $logistics = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -516,6 +527,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -529,6 +541,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -643,6 +656,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -658,6 +672,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -716,6 +731,7 @@ class SubdomainIsolationTest extends TestCase
             'city' => 'Santa Rosa',
             'province' => 'Laguna',
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
             'business_permit' => $permit,
@@ -738,6 +754,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $user = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
             'password' => bcrypt('Password123!'),
@@ -756,6 +773,7 @@ class SubdomainIsolationTest extends TestCase
     {
         $user = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);

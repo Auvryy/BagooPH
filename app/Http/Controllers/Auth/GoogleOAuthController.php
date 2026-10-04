@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureApprovedAccount;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -78,8 +80,7 @@ class GoogleOAuthController extends Controller
             }
         }
 
-        // Verify account is active
-        if ($user->status !== 'active') {
+        if ($user->isBuyer() && $user->status !== 'active') {
             return redirect()->route('login')->withErrors([
                 'email' => 'Your account has been deactivated. Please contact support.',
             ]);
@@ -88,23 +89,19 @@ class GoogleOAuthController extends Controller
         Auth::login($user, true);
         request()->session()->regenerate();
 
-        // Redirect according to role
-        if ($user->role === 'seller') {
-            return redirect()->route('seller.dashboard')->with('success', 'Signed in with Google successfully.');
+        if ($user->isBuyer()) {
+            return redirect()->intended(route('buyer.index'))->with('success', 'Signed in with Google successfully.');
         }
 
-        if ($user->role === 'courier') {
-            return redirect()->route('courier.deliveries')->with('success', 'Signed in with Google successfully.');
-        }
+        return app(EnsureApprovedAccount::class)->handle(request(), function (Request $request): RedirectResponse {
+            $route = match ($request->user()->role) {
+                'seller' => 'seller.dashboard',
+                'courier' => 'courier.deliveries',
+                'logistics' => 'hub.index',
+                'admin' => 'admin.dashboard',
+            };
 
-        if ($user->role === 'hub') {
-            return redirect()->route('hub.dashboard')->with('success', 'Signed in with Google successfully.');
-        }
-
-        if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard')->with('success', 'Signed in with Google successfully.');
-        }
-
-        return redirect()->intended(route('buyer.index'))->with('success', 'Signed in with Google successfully.');
+            return redirect()->route($route)->with('success', 'Signed in with Google successfully.');
+        });
     }
 }
