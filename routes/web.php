@@ -194,7 +194,6 @@ $registerAdminRoutes = function () {
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
-        Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole']);
         Route::get('/kyc', [AdminKycController::class, 'index']);
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
@@ -426,7 +425,6 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
-    Route::patch('/users/{user}/role', [AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
     Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');

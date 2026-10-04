@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,7 +58,7 @@ class AdminDashboardController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -69,18 +68,6 @@ class AdminDashboardController extends Controller
             'users' => $users,
             'filters' => $request->only(['search', 'role']),
         ]);
-    }
-
-    public function updateUserRole(Request $request, User $user): RedirectResponse
-    {
-        $validated = $request->validate([
-            'role' => 'required|in:admin,seller,buyer,courier,logistics',
-            'status' => 'required|in:active,pending,suspended',
-        ]);
-
-        $user->update($validated);
-
-        return back()->with('success', "User {$user->name}'s role updated to {$validated['role']}.");
     }
 
     public function products(): Response

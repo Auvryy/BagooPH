@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\ValidationException;
 
 class User extends Authenticatable implements MustVerifyEmailContract
 {
@@ -58,6 +59,17 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'driver_license_path',
         'or_cr_path',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (User $user): void {
+            if ($user->isDirty('role')) {
+                throw ValidationException::withMessages([
+                    'role' => 'Account roles cannot be changed. Register a separate account for another role.',
+                ]);
+            }
+        });
+    }
 
     protected function casts(): array
     {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { PaginatedData, Role, User } from '@/types';
-import { Users, Search, ShieldCheck, Edit3, X, Check } from 'lucide-react';
+import { PaginatedData, User } from '@/types';
+import { Search } from 'lucide-react';
 
 interface Props {
     users: PaginatedData<User>;
@@ -14,9 +14,6 @@ interface Props {
 
 export default function AdminUsers({ users, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
-    const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [selectedRole, setSelectedRole] = useState<Role>('buyer');
-    const [selectedStatus, setSelectedStatus] = useState<string>('active');
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,30 +24,12 @@ export default function AdminUsers({ users, filters }: Props) {
         router.get(route('admin.users'), { search, role: role || undefined }, { preserveState: true });
     };
 
-    const openEditRole = (user: User) => {
-        setEditingUser(user);
-        setSelectedRole(user.role);
-        setSelectedStatus(user.status || 'active');
-    };
-
-    const handleSaveRole = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingUser) return;
-
-        router.patch(route('admin.users.updateRole', editingUser.id), {
-            role: selectedRole,
-            status: selectedStatus,
-        }, {
-            onSuccess: () => setEditingUser(null),
-        });
-    };
-
     return (
         <DashboardLayout
             title="User & Access Governance"
-            subtitle="Configure role permissions and account status"
+            subtitle="Review accounts by role and account status"
         >
-            <Head title="Users & Roles — Bagoo Admin" />
+            <Head title="Users — Bagoo Admin" />
 
             <div className="space-y-6">
                 {/* Search & Filter bar */}
@@ -83,6 +62,10 @@ export default function AdminUsers({ users, filters }: Props) {
                     </div>
                 </div>
 
+                <p className="text-sm text-slate-600">
+                    Account roles are fixed. Register a separate account for another role and complete its required approval.
+                </p>
+
                 {/* Users Table */}
                 <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
                     <div className="overflow-x-auto">
@@ -90,10 +73,9 @@ export default function AdminUsers({ users, filters }: Props) {
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                                 <tr>
                                     <th className="py-3.5 px-6">User Profile</th>
-                                    <th className="py-3.5 px-4">Current Role</th>
+                                    <th className="py-3.5 px-4">Registered Role</th>
                                     <th className="py-3.5 px-4">Contact Info</th>
                                     <th className="py-3.5 px-4">Account Status</th>
-                                    <th className="py-3.5 px-6 text-right">Edit Role / Access</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -131,15 +113,6 @@ export default function AdminUsers({ users, filters }: Props) {
                                                 {u.status || 'active'}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <button
-                                                onClick={() => openEditRole(u)}
-                                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition inline-flex items-center gap-1"
-                                            >
-                                                <Edit3 className="w-3.5 h-3.5" />
-                                                <span>Modify Role</span>
-                                            </button>
-                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -148,65 +121,6 @@ export default function AdminUsers({ users, filters }: Props) {
                 </div>
             </div>
 
-            {/* Edit Role Modal */}
-            {editingUser && (
-                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <h3 className="font-bold text-base text-slate-900">Modify Role: {editingUser.name}</h3>
-                            <button onClick={() => setEditingUser(null)} className="p-1 text-slate-400 hover:text-black">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveRole} className="space-y-4 text-xs">
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Assign User Role</label>
-                                <select
-                                    value={selectedRole}
-                                    onChange={(e) => setSelectedRole(e.target.value as Role)}
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-                                >
-                                    <option value="buyer">Buyer (Customer)</option>
-                                    <option value="seller">Seller (Merchant Storefront)</option>
-                                    <option value="courier">Courier (Rider & Delivery Task Board)</option>
-                                    <option value="logistics">Logistics Partner (Hub & Fleet Management)</option>
-                                    <option value="admin">Administrator (Full Platform Control)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Account Status</label>
-                                <select
-                                    value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="pending">Pending Approval</option>
-                                    <option value="suspended">Suspended / Restricted</option>
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingUser(null)}
-                                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl"
-                                >
-                                    Save Changes
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </DashboardLayout>
     );
 }

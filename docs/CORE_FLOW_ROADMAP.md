@@ -32,7 +32,7 @@ Scoped rider lifecycle lockdown review: October 3, 2026. This review updates ent
 
 | Area | State | Evidence and gap |
 |---|---|---|
-| Account roles and approval | Partial | The October 4 shared-governance audit confirms inconsistent non-courier root/subdomain gates, an admin suspension bypass, and unaudited review/profile changes. See the scoped review below; courier eligibility coverage remains intact. |
+| Account roles and approval | Partial | Shared root/subdomain account gates enforce approval and activity. Saved account roles are fixed, with admin conversion routes and controls removed. Required-evidence review, immutable decisions, restriction preservation, related resource eligibility, and buyer-entry alignment remain. See the October 4 implementation reviews below. |
 | Cross-cutting input and mutation safety | Partial | Many controllers use basic string validation, but canonical phone/postal/text rules, idempotency, stale-state conflicts, and adversarial authorization are not consistently enforced. |
 | Alternate lifecycle entry points | Implemented | Simulator advance/reset routes, public tracking actions, and direct Platform Admin parcel overrides are removed on root and applicable subdomain routes. Guest and all-role tests verify repeated requests cannot change assignment, custody, checkpoints, payment, or commission records. |
 | Secret and KYC protection | Implemented | Registration, resubmission, and buyer ID uploads use private storage. Document access requires the applicant or an active Platform Admin; raw paths are hidden from serialized data. Legacy public URLs are blocked, with a tested migration command for stored files and references. OTP, verification-link, and password-reset mail reject logging transports and logging fallbacks; failures log only safe identifiers and exception classes. Deployment must apply the web-server rules and legacy-file migration described in `VERIFICATION_DOCUMENT_SECURITY.md`. |
@@ -49,7 +49,7 @@ Scoped rider lifecycle lockdown review: October 3, 2026. This review updates ent
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
 | Buyer-only completion | Implemented | Only the owning buyer can advance a delivered order to `COMPLETED`; normal-flow coverage verifies delivery remains financially pending before reconciliation. |
-| Admin governance and audit | Partial | Platform logistics views remain read-only for parcel custody. Unsafe direct overrides and their UI are removed; replacement corrections require lifecycle validation and immutable audit records in Phase 5. The October 4 review identifies approval evidence/idempotency/audit gaps, unrestricted role/status editing, and guessed metrics. |
+| Admin governance and audit | Partial | Platform logistics views remain read-only for parcel custody. Unsafe direct overrides and account role/status shortcuts are removed. Saved account roles cannot change through normal model updates. Required-evidence approval/audit, reasoned restrictions, active-work deletion protections, and accurate metrics remain; custody corrections retain Phase 5. |
 | Cross-role presentation | Partial | Courier work is separated into company/hub-scoped pickup and final-mile queues with persistent duty state, delivery-linked messages, real profile data, real proof, and truthful trip history. Other portals still need canonical-status and unfinished-feature cleanup. |
 | Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
@@ -267,7 +267,7 @@ Verification: all 31 frontend helper/server-render checks and the TypeScript/Vit
 
 The validation contract now makes the suspended buyer's owned tracking/receipt-confirmation exception explicit at the mutation gate. It also separates off-duty completion of an existing courier assignment from new-work availability, and distinguishes required failed-delivery RTS from deferred post-delivery returns/disputes.
 
-Verified pre-implementation code gaps, rather than specification changes to match the bugs. The account-access closure is recorded in the subsequent implementation review below:
+Verified pre-implementation code gaps, rather than specification changes to match the bugs. The account-access and fixed-role closures are recorded in the subsequent implementation reviews below; this table describes the earlier code snapshot:
 
 | Priority | Gap | Evidence and required boundary |
 |---|---|---|
@@ -327,8 +327,27 @@ Work deliberately left for later:
 
 - **Next focused task: make KYC approval/rejection a reasoned, auditable decision.** Require private evidence and current submission state, lock/update the account and related profile atomically, retain reviewer/time/reason/history, preserve independent restrictions, and reject conflicting stale decisions while returning an identical retry's original result. The unchanged direct updates are at `app/Http/Controllers/Admin/AdminKycController.php:65` and `:96`; resubmission still resets activity at `app/Http/Controllers/Auth/RegisteredUserController.php:333`.
 - **Resource eligibility remains separate from account eligibility.** Static inspection shows the seller shop resolver selects owned/default shops without a positive shop-status check and creates an active fallback (`app/Http/Controllers/Seller/HasSellerShop.php:15`). The hub resolver filters active hubs/handlers but does not require parent-company eligibility (`app/Http/Controllers/Logistics/LogisticsHubWorkstationController.php:75`). A complete negative resource/facility matrix was not run in this task; do not treat the account tests as its acceptance evidence.
-- **Other Phase 0 gaps:** shared canonical input validators, buyer onboarding/holding and other buyer-only entry-point alignment, reasoned role/status changes, active-work deletion protections, and live sample-success removal. The tested owned-order exception does not certify every buyer endpoint. Suspended-buyer sign-in/recovery access still needs review separately from the preserved authenticated exception.
+- **Other Phase 0 gaps:** shared canonical input validators, buyer onboarding/holding and other buyer-only entry-point alignment, reasoned status changes, active-work deletion protections, and live sample-success removal. The tested owned-order exception does not certify every buyer endpoint. Suspended-buyer sign-in/recovery access still needs review separately from the preserved authenticated exception. The earlier role-change gap is closed by the fixed-role task below; account conversion is no longer a project requirement.
 - **Later phases:** durable manifests, custody recovery/retry/RTS and secure counter claims, basic in-app notifications, COD reconciliation/settlement, and finance/dashboard corrections. Existing operational/financial evidence must be preserved while these remain unavailable.
+
+### Fixed Account Roles: October 4, 2026
+
+**State: Focused role-conversion removal verified; Phase 0 remains partial.** At the user's direction, the admin, validation, and system contracts now keep every account's role fixed at creation, including pending accounts without transaction history. Another public role requires a separate registration and its normal evidence/approval. Account conversion and role migration are not project features. The five roles and the existing courier phases remain unchanged.
+
+Before this task, the admin Users modal could switch roles and activity together, including converting a buyer into a seller or admin and activating a restricted account. Both root and subdomain `PATCH /users/{user}/role` routes and their controller method are removed. `User::booted()` rejects changed roles on normal Eloquent updates before any account fields are persisted. The Users page keeps search, role filters, account details, and fixed role/status labels, with clear copy about separate registration. The coupled status selector is removed with the role modal; no replacement restriction or reactivation shortcut is introduced.
+
+Evidence: `app/Models/User.php:63`, `resources/js/Pages/Admin/Users.tsx:27`, `routes/web.php:194`, and `:425`. `tests/Feature/Admin/AccountRoleImmutabilityTest.php` covers every different pair of the five roles for active and pending accounts, old routes on both portals, status-only attempts against those routes, admin self-conversion, ordinary creation/profile updates, ignored profile role injection, and retained directory filters. Existing access tests now exercise real product moderation writes rather than the removed role route. Private-document and logistics fixtures create their intended role initially, preserving their authorization and facility-scope checks.
+
+| Scoped assessment | Before | After | Improvement and remaining limit |
+|---|---:|---:|---|
+| Account role immutability | 3/10 | 9/10 | Saved accounts cannot switch role through the admin UI/routes or normal model updates, even without history. This is application enforcement, not a database constraint; direct SQL and event-bypassing maintenance writes are not certified. |
+| Active-work deletion protection | 3/10 | 3/10 | Removing conversion prevents that shortcut, but non-courier deletion still needs the documented active-order/custody/cash checks. |
+| Approval/restriction decision governance | 3/10 | 3/10 | The combined role/status shortcut is closed. Required evidence, immutable decisions, safe review retries, independent suspension preservation, and recovery remain. |
+| Overall admin implementation readiness | 5/10 | 5/10 | One additional security boundary is verified; the remaining review, deletion, recovery, and financial flows are still incomplete. |
+
+Verification: all 59 new role tests passed with 186 assertions; 51 of these tests reproduced the flaw before implementation. The focused admin/auth/logistics/profile/seeded cross-role run passed 430 tests with 3,205 assertions. The TypeScript/Vite production build, Laravel Pint on all six changed PHP implementation/test files, and whitespace checks passed. A fresh full SQLite `:memory:` baseline ran 1,156 tests with 6,891 assertions; the final run ran 1,215 tests with 7,083 assertions. Both retained the exact same 58 failing tests and one error, with no new or resolved failing identities. The existing error remains `tests/Feature/ChallengerM1StressTest.php:180`. No browser/device or PostgreSQL concurrency checks were performed. Existing account data and any historical role conversions were not audited or repaired.
+
+Next focused work remains auditable KYC approval/rejection with required evidence, atomic account/profile/history updates, safe retries, and preservation of independent restrictions. Role conversion is removed from the backlog; active-work deletion and reasoned suspension/reactivation remain separate Phase 0 work.
 
 ## Delivery Phases
 
@@ -338,7 +357,7 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 ### Phase 0: Security and Lifecycle Entry-Point Lockdown
 
-**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain seller, courier, hub, and admin portals share positive account eligibility, including non-active admin denial and role/action boundaries. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Proxy-aware tracking throttling and consistent legacy courier approval checks are now implemented and tested. Private verification uploads, authorized document access, legacy-file migration, and secret-mail protections are also implemented. Shared validators, related shop/company eligibility, buyer-entry alignment, auditable approval/restriction decisions, and other live sample-success paths remain.
+**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain seller, courier, hub, and admin portals share positive account eligibility, including non-active admin denial and role/action boundaries. Account roles are fixed at creation; admin conversion controls/routes and their coupled status shortcut are removed. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Proxy-aware tracking throttling and consistent legacy courier approval checks are now implemented and tested. Private verification uploads, authorized document access, legacy-file migration, and secret-mail protections are also implemented. Shared validators, related shop/company eligibility, buyer-entry alignment, auditable approval/restriction decisions, and other live sample-success paths remain.
 
 - Keep simulator advance/reset routes removed in every environment; use real role flows in tests.
 - Keep public tracking read-only, masked, and rate-limited; authenticated actions belong in their authorized portal and lifecycle service.
@@ -349,7 +368,8 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 - Establish shared canonical validators for names, phones, postal codes, codes, plain text, files, and role-specific registration fields.
 - Keep shared positive root/subdomain account gates; complete related shop/company/facility eligibility and buyer-entry alignment while keeping holding and existing-order/recovery exceptions narrowly authorized.
 - Make approval/rejection and suspension/reactivation separate reasoned decisions with required private evidence, transaction/locking, immutable audit, and safe identical retries.
-- Block role changes/deletion that would lose transactional history; preserve active work and recovery responsibility during restrictions.
+- Keep account roles fixed at creation; do not add role conversion or migration. Another public role requires a separate account and its normal approval.
+- Block deletion that would lose active transactional history; preserve active work and recovery responsibility during restrictions.
 - Remove fake proof, sample dispute/message success, and seeded operational fallbacks from live paths.
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.

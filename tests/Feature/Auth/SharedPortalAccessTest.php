@@ -121,7 +121,6 @@ class SharedPortalAccessTest extends TestCase
         }
 
         foreach ([
-            ['PATCH', '/users/'.$applicant->id.'/role', ['role' => 'courier', 'status' => 'active']],
             ['PATCH', '/products/'.$product->id.'/toggle', []],
             ['POST', '/kyc/'.$applicant->id.'/approve', []],
             ['POST', '/kyc/'.$applicant->id.'/reject', ['reason' => 'Document is unreadable.']],
@@ -199,12 +198,13 @@ class SharedPortalAccessTest extends TestCase
         if ($portalRole === 'seller') {
             $this->patch($prefix.'/products/'.$product->id.'/stock', ['mode' => 'set', 'quantity' => 99])->assertForbidden();
         } elseif ($portalRole === 'admin') {
-            $this->patch($prefix.'/users/'.$seller->id.'/role', ['role' => 'courier', 'status' => 'active'])->assertForbidden();
+            $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertForbidden();
         } else {
             $hub = $this->companyHub(User::factory()->create(['role' => 'logistics']));
             $this->post($prefix.'/switch-hub', ['hub_id' => $hub->id])->assertForbidden();
         }
         $this->assertSame(7, $product->fresh()->stock);
+        $this->assertSame('active', $product->fresh()->status);
         $this->assertSame('seller', $seller->fresh()->role);
     }
 
@@ -212,10 +212,13 @@ class SharedPortalAccessTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'kyc_status' => 'none']);
         $applicant = User::factory()->create(['role' => 'seller', 'status' => 'pending_approval', 'kyc_status' => 'pending_approval']);
+        $product = $this->sellerProduct($applicant);
         foreach (self::portalPrefixes('admin') as $prefix) {
             $this->actingAs($admin)->get($prefix.'/dashboard')->assertOk();
             $this->get($prefix.'/kyc')->assertOk();
-            $this->patch($prefix.'/users/'.$applicant->id.'/role', ['role' => 'seller', 'status' => 'active'])->assertSessionHas('success');
+            $expectedStatus = $product->fresh()->status === 'active' ? 'draft' : 'active';
+            $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertSessionHas('success');
+            $this->assertSame($expectedStatus, $product->fresh()->status);
         }
         foreach (self::portalPrefixes('logistics') as $prefix) {
             $this->get($prefix.'/dashboard')->assertOk();
@@ -232,16 +235,18 @@ class SharedPortalAccessTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'kyc_status' => 'none']);
         $target = User::factory()->create(['role' => 'seller']);
+        $product = $this->sellerProduct($target);
+        $before = $product->fresh()->getAttributes();
         $this->post('http://localhost/login', ['email' => $admin->email, 'password' => 'password'])->assertRedirect();
         $this->get($prefix.'/dashboard')->assertOk();
 
         User::whereKey($admin->id)->update(['status' => $status]);
         Auth::forgetGuards();
 
-        $response = $this->patch($prefix.'/users/'.$target->id.'/role', ['role' => 'courier', 'status' => 'active'])->assertRedirect();
+        $response = $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertRedirect();
         $this->assertStringEndsWith('/login', $response->headers->get('Location'));
         $this->assertGuest();
-        $this->assertSame('seller', $target->fresh()->role);
+        $this->assertSame($before, $product->fresh()->getAttributes());
     }
 
     public function test_review_holding_and_guest_hub_login_remain_available(): void

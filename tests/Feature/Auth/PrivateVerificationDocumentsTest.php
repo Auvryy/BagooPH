@@ -24,12 +24,12 @@ class PrivateVerificationDocumentsTest extends TestCase
         Storage::fake('public');
     }
 
-    private function applicant(): User
+    private function applicant(string $role = 'courier'): User
     {
         Storage::disk('local')->put('kyc_documents/private-id.pdf', '%PDF-1.4 private evidence');
 
         return User::factory()->create([
-            'role' => 'courier', 'status' => 'pending_approval', 'kyc_status' => 'pending_approval',
+            'role' => $role, 'status' => 'pending_approval', 'kyc_status' => 'pending_approval',
             'id_document_path' => 'kyc_documents/private-id.pdf',
         ]);
     }
@@ -93,9 +93,9 @@ class PrivateVerificationDocumentsTest extends TestCase
 
     public function test_active_platform_reviewer_can_read_all_documents_and_private_accreditation(): void
     {
-        $owner = $this->applicant();
+        $owner = $this->applicant('logistics');
         $owner->update([
-            'role' => 'logistics', 'business_permit_path' => 'kyc_documents/private-id.pdf',
+            'business_permit_path' => 'kyc_documents/private-id.pdf',
             'driver_license_path' => 'kyc_documents/private-id.pdf', 'or_cr_path' => 'kyc_documents/private-id.pdf',
         ]);
         LogisticsCompany::create(['user_id' => $owner->id, 'name' => 'Bagoo Test Logistics', 'slug' => 'bagoo-test-logistics', 'code' => 'BTL', 'accreditation_details' => [
