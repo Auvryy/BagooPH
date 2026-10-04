@@ -80,7 +80,7 @@ class WorkerBirthDateEligibilityTest extends TestCase
         } elseif ($role === 'courier') {
             CourierProfile::factory()->create(['user_id' => $user->id, 'is_available' => false]);
         } else {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Application Logistics', 'slug' => 'birthday-logistics-'.$user->id, 'code' => 'BD'.$user->id, 'status' => 'pending', 'is_active' => false]);
+            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Application Logistics', 'slug' => 'birthday-logistics-'.$user->id, 'code' => 'BD'.$user->id, 'contact_email' => $user->email, 'contact_phone' => $user->phone, 'address' => $user->address, 'status' => 'pending', 'is_active' => false]);
         }
         $this->addKycEvidence($user);
 

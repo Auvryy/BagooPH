@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Rules\BirthDate;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,8 @@ class KycSubmissionService
 
     public function submit(User $subject, array $validated, bool $buyerUpload = false): void
     {
+        $applications = app(ApplicationValidationService::class);
+        $validated = $applications->normalize($validated, $subject->role);
         $paths = [];
         try {
             DB::transaction(function () use ($subject, $validated, $buyerUpload, &$paths) {
@@ -26,8 +29,10 @@ class KycSubmissionService
                 $adult = $birthDates->requiresAdult($user->role);
                 $birthdayProvided = array_key_exists('birthday', $validated);
                 $categoryProvided = array_key_exists('root_category_id', $validated);
+                $applications = app(ApplicationValidationService::class);
+                $provided = array_intersect_key($validated, array_flip($applications->fields($user->role)));
                 $pendingCorrection = ! $buyerUpload && $user->isKycPending()
-                    && (($adult && $birthdayProvided) || ($user->isSeller() && $categoryProvided));
+                    && (($adult && $birthdayProvided) || array_diff(array_keys($provided), ['birthday']));
                 $allowedStates = $buyerUpload ? ['none', 'rejected', 'pending_approval'] : ['rejected'];
                 if ($pendingCorrection) {
                     $allowedStates[] = 'pending_approval';
@@ -44,10 +49,11 @@ class KycSubmissionService
                 $categoryChanged = $categoryProvided && (int) $validated['root_category_id'] !== (int) $user->shop->root_category_id;
                 $birthday = $birthdayProvided ? $validated['birthday'] : $user->birthday?->toDateString();
                 Validator::make(['birthday' => $birthday], ['birthday' => [$adult ? 'required' : 'nullable', new BirthDate($adult)]])->validate();
-                $birthdayChanged = $birthdayProvided && $birthday !== $user->birthday?->toDateString();
-                if ($pendingCorrection && ! $birthdayChanged && ! $categoryChanged) {
-                    $field = $categoryProvided ? 'root_category_id' : 'birthday';
-                    throw ValidationException::withMessages([$field => 'Change your birth date or shop category to submit a correction.']);
+                $current = $applications->values($user);
+                $changes = array_filter($provided, fn ($value, $field) => $value !== ($current[$field] ?? null), ARRAY_FILTER_USE_BOTH);
+                if ($pendingCorrection && ! $changes) {
+                    $field = $categoryProvided ? 'root_category_id' : ($birthdayProvided ? 'birthday' : 'application');
+                    throw ValidationException::withMessages([$field => 'Change an application detail to submit a correction.']);
                 }
                 $allowedFiles = match ($user->role) {
                     'buyer' => ['id_document'],
@@ -56,25 +62,58 @@ class KycSubmissionService
                     'logistics' => ['business_permit', 'franchise_document'],
                 };
                 $uploads = array_filter(array_intersect_key($validated, array_flip($allowedFiles)), fn ($upload) => $upload instanceof UploadedFile);
-                if (! $uploads && ! $birthdayChanged && ! $categoryChanged) {
-                    throw ValidationException::withMessages(['documents' => 'Upload a corrected document or change your birth date or shop category.']);
+                if (! $uploads && ! $changes) {
+                    throw ValidationException::withMessages(['documents' => 'Upload a corrected document or change an application detail.']);
                 }
                 if ($user->isLogistics() && ! $user->logisticsCompany) {
                     throw ValidationException::withMessages(['documents' => 'The company application is missing. Contact support before resubmitting.']);
                 }
+                if ($user->isCourier() && ! $user->courierProfile) {
+                    throw ValidationException::withMessages(['documents' => 'The courier application is missing. Contact support before resubmitting.']);
+                }
+                Validator::make($applications->normalize(array_replace($current, $provided), $user->role), $applications->rules($user->role, $user))->validate();
                 $paths = $this->documents->storeUploads($uploads);
                 if ($categoryChanged) {
                     $user->shop->update(['root_category_id' => (int) $validated['root_category_id']]);
                 }
-                $updates = array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
+                if ($user->isSeller() && $user->shop) {
+                    $shopUpdates = [];
+                    foreach (['shop_name' => 'name', 'shop_phone' => 'phone', 'shop_address' => 'address', 'shop_city' => 'city'] as $field => $column) {
+                        if (array_key_exists($field, $changes)) {
+                            $shopUpdates[$column] = $changes[$field];
+                        }
+                    }
+                    if ($shopUpdates) {
+                        $user->shop->update($shopUpdates);
+                    }
+                }
+                if ($user->isCourier() && $user->courierProfile) {
+                    $user->courierProfile->update(array_intersect_key($changes, array_flip(['vehicle_type', 'plate_number', 'license_number'])));
+                }
+                $updates = array_intersect_key($changes, array_flip(ApplicationValidationService::ACCOUNT_FIELDS))
+                    + array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
+                if (isset($changes['email']) && strcasecmp($changes['email'], $user->email) !== 0) {
+                    $updates += ['email_verified_at' => null, 'google_id' => null];
+                }
                 if ($user->isLogistics()) {
                     $accreditation = $user->logisticsCompany->accreditation_details ?? [];
+                    $companyUpdates = [];
+                    foreach (['company_name' => 'name', 'company_code' => 'code', 'company_email' => 'contact_email', 'company_phone' => 'contact_phone', 'company_address' => 'address'] as $field => $column) {
+                        if (array_key_exists($field, $changes)) {
+                            $companyUpdates[$column] = $changes[$field];
+                        }
+                    }
+                    foreach (['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'] as $field) {
+                        if (array_key_exists($field, $changes)) {
+                            $accreditation[$field] = $changes[$field];
+                        }
+                    }
                     foreach (['business_permit_path', 'franchise_document_path'] as $field) {
                         if (isset($paths[$field])) {
                             $accreditation[$field] = $paths[$field];
                         }
                     }
-                    $user->logisticsCompany->update(['accreditation_details' => $accreditation]);
+                    $user->logisticsCompany->update($companyUpdates + ['accreditation_details' => $accreditation]);
                 }
                 $user->update($updates + [
                     'birthday' => $birthday, 'age' => $birthDates->age($birthday),
@@ -85,6 +124,15 @@ class KycSubmissionService
         } catch (Throwable $exception) {
             // Old reviewed files stay private; only files from this failed submission are removed.
             Storage::disk('local')->delete(array_values($paths));
+            if ($exception instanceof QueryException && in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
+                $detail = $exception->errorInfo[2] ?? '';
+                if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email')) {
+                    throw ValidationException::withMessages(['email' => 'This email address is already registered.']);
+                }
+                if (str_contains($detail, 'logistics_companies_code') || str_contains($detail, 'logistics_companies.code')) {
+                    throw ValidationException::withMessages(['company_code' => 'This company code is already registered.']);
+                }
+            }
             throw $exception;
         }
         $subject->refresh();

@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Models\User;
+use App\Services\ApplicationValidationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
@@ -40,7 +43,7 @@ class GoogleOAuthController extends Controller
         $email = $googleUser->getEmail();
         $googleId = $googleUser->getId();
 
-        if (empty($email) || empty($googleId)) {
+        if (! is_string($email) || ! is_string($googleId) || empty($email) || empty($googleId)) {
             return redirect()->route('login')->withErrors([
                 'email' => 'Unable to retrieve your Google account details. Please try again.',
             ]);
@@ -50,8 +53,8 @@ class GoogleOAuthController extends Controller
         $user = User::where('google_id', $googleId)->first();
 
         // 2. If not found by google_id, check if existing account has the same email
-        if (!$user) {
-            $user = User::where('email', $email)->first();
+        if (! $user) {
+            $user = User::whereRaw('LOWER(email) = LOWER(?)', [$email])->first();
 
             if ($user) {
                 // Link Google account to existing user
@@ -65,18 +68,33 @@ class GoogleOAuthController extends Controller
                 $user->save();
             } else {
                 // 3. Register as a new buyer
-                $user = User::create([
-                    'name' => $googleUser->getName() ?: 'Buyer',
-                    'email' => $email,
-                    'google_id' => $googleId,
-                    'avatar' => $googleUser->getAvatar(),
-                    'role' => 'buyer',
-                    'status' => 'active',
-                    'kyc_status' => 'none',
-                    'id_document_path' => null,
-                    'password' => Hash::make(Str::random(32)),
-                    'email_verified_at' => now(),
-                ]);
+                $applications = app(ApplicationValidationService::class);
+                $identity = $applications->normalize(['name' => $googleUser->getName() ?: 'Buyer', 'email' => $email], 'buyer');
+                $validator = Validator::make($identity, $applications->rules('buyer'));
+                if ($validator->fails()) {
+                    return redirect()->route('login')->withErrors(['email' => 'Your Google account details need correction. Please register with valid application details.']);
+                }
+                try {
+                    $user = User::create([
+                        'name' => $identity['name'],
+                        'email' => $identity['email'],
+                        'google_id' => $googleId,
+                        'avatar' => $googleUser->getAvatar(),
+                        'role' => 'buyer',
+                        'status' => 'active',
+                        'kyc_status' => 'none',
+                        'id_document_path' => null,
+                        'password' => Hash::make(Str::random(32)),
+                        'email_verified_at' => now(),
+                    ]);
+                } catch (QueryException $exception) {
+                    // The database also enforces email identity when registration races another request.
+                    if (! in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
+                        throw $exception;
+                    }
+
+                    return redirect()->route('login')->withErrors(['email' => 'An account already uses these details. Please sign in again.']);
+                }
             }
         }
 

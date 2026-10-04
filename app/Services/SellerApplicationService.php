@@ -23,7 +23,7 @@ class SellerApplicationService
                 'user_id' => $user->id,
                 'root_category_id' => $categoryId,
                 'name' => $shopName,
-                'slug' => Str::slug($shopName.'-'.$user->id),
+                'slug' => (Str::substr(Str::slug($shopName), 0, 220) ?: 'shop').'-'.$user->id,
                 'phone' => $user->phone,
                 'address' => $user->address,
                 'city' => $user->city,

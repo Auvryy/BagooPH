@@ -167,7 +167,7 @@ class ChallengerM1Test extends TestCase
             'address' => '789 Logistics Way',
             'city' => 'Pasig City',
             'postal_code' => '1600',
-            'vehicle_type' => 'Yamaha NMAX 155',
+            'vehicle_type' => 'Scooter',
             'plate_number' => 'ND-12345',
             'license_number' => 'N02-99-887766',
             'id_document' => $idDoc,
@@ -188,7 +188,7 @@ class ChallengerM1Test extends TestCase
         // Verify courier_profiles record
         $profile = CourierProfile::where('user_id', $courier->id)->first();
         $this->assertNotNull($profile, 'courier_profiles record must be created on registration');
-        $this->assertEquals('Yamaha NMAX 155', $profile->vehicle_type);
+        $this->assertEquals('Scooter', $profile->vehicle_type);
         $this->assertEquals('ND-12345', $profile->plate_number);
         $this->assertEquals('N02-99-887766', $profile->license_number);
         $this->assertEquals('Pending Verification', $profile->or_cr_status);
