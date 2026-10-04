@@ -7,10 +7,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithKycReviews;
 use Tests\TestCase;
 
 class KycRegistrationTest extends TestCase
 {
+    use InteractsWithKycReviews;
     use RefreshDatabase;
 
     public function test_seller_registration_with_documents_creates_pending_user_and_shop(): void
@@ -236,7 +238,9 @@ class KycRegistrationTest extends TestCase
             'is_active' => false,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $applicant));
+        $this->addKycEvidence($applicant);
+        $this->inspectKycEvidence($admin, $applicant);
+        $response = $this->actingAs($admin)->post(route('admin.kyc.approve', $applicant), $this->kycPayload($applicant));
         $response->assertSessionHas('success');
 
         $this->assertEquals('active', $applicant->fresh()->status);

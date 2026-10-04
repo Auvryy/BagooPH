@@ -7,9 +7,9 @@ use App\Models\Cart;
 use App\Models\LogisticsHub;
 use App\Models\Product;
 use App\Models\Voucher;
+use App\Services\KycSubmissionService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutOrderService;
-use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -120,14 +120,7 @@ class CheckoutController extends Controller
             'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ]);
 
-        $user = $request->user();
-        $idPath = app(VerificationDocumentService::class)->storeUploads($validated)['id_document_path'];
-
-        $user->update([
-            'id_document_path' => $idPath,
-            'kyc_status' => 'pending_approval',
-            'kyc_submitted_at' => now(),
-        ]);
+        app(KycSubmissionService::class)->submit($request->user(), $validated, buyerUpload: true);
 
         return back()->with('success', 'Valid ID uploaded successfully! Your verification is now under review.');
     }

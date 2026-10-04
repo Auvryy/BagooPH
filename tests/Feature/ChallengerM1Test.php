@@ -16,10 +16,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Tests\Concerns\InteractsWithKycReviews;
 
 class ChallengerM1Test extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithKycReviews;
 
     /**
      * 1. Test Seller KYC Full State Machine Lifecycle:
@@ -28,10 +30,11 @@ class ChallengerM1Test extends TestCase
     public function test_seller_kyc_full_lifecycle_state_machine(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         // Step 1: Registration
-        $idDoc = UploadedFile::fake()->create('seller_gov_id.pdf', 500, 'application/pdf');
-        $permitDoc = UploadedFile::fake()->create('dti_permit.pdf', 800, 'application/pdf');
+        $idDoc = UploadedFile::fake()->createWithContent('seller_gov_id.pdf', '%PDF-1.4 seller identity');
+        $permitDoc = UploadedFile::fake()->createWithContent('dti_permit.pdf', '%PDF-1.4 seller permit');
 
         $regResponse = $this->post('/register', [
             'role' => 'seller',
@@ -79,7 +82,7 @@ class ChallengerM1Test extends TestCase
         ]);
 
         $rejectionReason = 'The submitted DTI Business Permit appears expired or illegible. Please provide a valid 2026 renewal document.';
-        $rejectResponse = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", [
+        $rejectResponse = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/reject", $this->kycPayload($seller) + [
             'reason' => $rejectionReason,
         ]);
 
@@ -98,7 +101,7 @@ class ChallengerM1Test extends TestCase
         $rejectedGateResponse->assertRedirect(route('kyc.pending'));
 
         // Step 3: User Resubmission with New Documents
-        $newPermitDoc = UploadedFile::fake()->create('renewed_dti_permit_2026.pdf', 900, 'application/pdf');
+        $newPermitDoc = UploadedFile::fake()->createWithContent('renewed_dti_permit_2026.pdf', '%PDF-1.4 renewed permit');
         $resubmitResponse = $this->actingAs($seller)->post('/kyc/resubmit', [
             'business_permit' => $newPermitDoc,
         ]);
@@ -114,7 +117,8 @@ class ChallengerM1Test extends TestCase
         $this->assertStringContainsString('kyc_documents', $seller->business_permit_path);
 
         // Step 4: Admin Approval
-        $approveResponse = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve");
+        $this->inspectKycEvidence($admin, $seller);
+        $approveResponse = $this->actingAs($admin)->post("/admin/kyc/{$seller->id}/approve", $this->kycPayload($seller));
         $approveResponse->assertRedirect();
 
         $seller->refresh();
@@ -140,15 +144,16 @@ class ChallengerM1Test extends TestCase
     /**
      * 2. Test Courier KYC Lifecycle and Fleet Profile Creation & Activation:
      * Register -> Verify courier_profiles created with is_available=false, or_cr_status='Pending Verification'
-     * Admin Approve -> Verify is_available=true, or_cr_status='Verified & Registered'
+     * Admin Approve -> Preserve is_available=false, verify or_cr_status='Verified & Registered'
      */
     public function test_courier_fleet_profile_creation_and_activation(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
-        $idDoc = UploadedFile::fake()->create('courier_id.jpg', 600, 'image/jpeg');
-        $licenseDoc = UploadedFile::fake()->create('lto_license.jpg', 700, 'image/jpeg');
-        $orCrDoc = UploadedFile::fake()->create('vehicle_or_cr.pdf', 800, 'application/pdf');
+        $idDoc = UploadedFile::fake()->createWithContent('courier_id.pdf', '%PDF-1.4 courier identity');
+        $licenseDoc = UploadedFile::fake()->createWithContent('lto_license.pdf', '%PDF-1.4 courier license');
+        $orCrDoc = UploadedFile::fake()->createWithContent('vehicle_or_cr.pdf', '%PDF-1.4 courier registration');
 
         // Step 1: Courier Registration
         $regResponse = $this->post('/register', [
@@ -199,7 +204,8 @@ class ChallengerM1Test extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $approveResponse = $this->actingAs($admin)->post("/admin/kyc/{$courier->id}/approve");
+        $this->inspectKycEvidence($admin, $courier);
+        $approveResponse = $this->actingAs($admin)->post("/admin/kyc/{$courier->id}/approve", $this->kycPayload($courier));
         $approveResponse->assertRedirect();
 
         $courier->refresh();
@@ -208,7 +214,7 @@ class ChallengerM1Test extends TestCase
         $this->assertEquals('active', $courier->status);
         $this->assertEquals('approved', $courier->kyc_status);
         $this->assertEquals('Verified & Registered', $profile->or_cr_status);
-        $this->assertTrue((bool)$profile->is_available, 'Courier is_available must be true upon approval');
+        $this->assertFalse((bool)$profile->is_available, 'Approval must preserve rider duty');
 
         // Approved courier can access courier deliveries portal
         $courierDeliveriesResponse = $this->actingAs($courier)->get('/courier/deliveries');
@@ -474,20 +480,20 @@ class ChallengerM1Test extends TestCase
         $shortReject->assertSessionHasErrors(['reason']);
 
         // Valid rejection
-        $validReject = $this->actingAs($admin)->post("/admin/kyc/{$applicant->id}/reject", [
+        $validReject = $this->actingAs($admin)->post("/admin/kyc/{$applicant->id}/reject", $this->kycPayload($applicant) + [
             'reason' => 'Valid rejection reason exceeding minimum characters.',
         ]);
         $validReject->assertRedirect();
         $applicant->refresh();
         $this->assertEquals('rejected', $applicant->kyc_status);
 
-        // Resubmit without uploading new files: should still reset kyc_status to pending_approval and clear feedback
+        // Empty resubmission cannot erase the rejection or its feedback.
         $resubmitNoFiles = $this->actingAs($applicant)->post('/kyc/resubmit', []);
-        $resubmitNoFiles->assertRedirect();
+        $resubmitNoFiles->assertSessionHasErrors('documents');
 
         $applicant->refresh();
-        $this->assertEquals('pending_approval', $applicant->kyc_status);
-        $this->assertNull($applicant->kyc_feedback);
+        $this->assertEquals('rejected', $applicant->kyc_status);
+        $this->assertEquals('Valid rejection reason exceeding minimum characters.', $applicant->kyc_feedback);
         $this->assertEquals('/storage/kyc_documents/existing_id.pdf', $applicant->id_document_path);
     }
 }

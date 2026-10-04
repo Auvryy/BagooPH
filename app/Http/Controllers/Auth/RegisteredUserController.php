@@ -7,6 +7,7 @@ use App\Models\CourierProfile;
 use App\Models\LogisticsCompany;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\KycSubmissionService;
 use App\Services\OtpService;
 use App\Services\VerificationDocumentService;
 use Carbon\Carbon;
@@ -330,26 +331,7 @@ class RegisteredUserController extends Controller
 
         $validated = $request->validate($rules);
 
-        $updates = [
-            'kyc_status' => 'pending_approval',
-            'status' => 'pending_approval',
-            'kyc_feedback' => null,
-            'kyc_submitted_at' => now(),
-        ];
-
-        $paths = app(VerificationDocumentService::class)->storeUploads($validated);
-        $updates += array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
-        if ($user->isLogistics() && $user->logisticsCompany) {
-            $accreditation = $user->logisticsCompany->accreditation_details ?? [];
-            foreach (['business_permit_path', 'franchise_document_path'] as $field) {
-                if (isset($paths[$field])) {
-                    $accreditation[$field] = $paths[$field];
-                }
-            }
-            $user->logisticsCompany->update(['accreditation_details' => $accreditation]);
-        }
-
-        $user->update($updates);
+        app(KycSubmissionService::class)->submit($user, $validated);
 
         return back()->with('success', 'Your verification documents have been resubmitted successfully.');
     }

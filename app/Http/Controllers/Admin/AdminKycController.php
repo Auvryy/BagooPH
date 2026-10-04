@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\KycDecisionService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,10 +20,10 @@ class AdminKycController extends Controller
         $role = $request->input('role', 'all');
         $search = $request->input('search');
 
-        $query = User::with(['shop', 'courierProfile', 'logisticsCompany']);
+        $query = User::with(['shop' => fn ($query) => $query->orderBy('id')->with('rootCategory'), 'courierProfile', 'logisticsCompany'])->whereIn('role', ['buyer', 'seller', 'courier', 'logistics']);
 
         if ($status !== 'all') {
-            $query->where('kyc_status', $status);
+            $query->whereIn('kyc_status', $status === 'approved' ? User::APPROVED_KYC_STATUSES : [$status]);
         }
 
         if ($role !== 'all') {
@@ -38,13 +39,13 @@ class AdminKycController extends Controller
         }
 
         $applicants = $query->latest('kyc_submitted_at')->paginate(15)->withQueryString();
-        $applicants->through(fn (User $user) => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)]);
+        $applicants->through(fn (User $user) => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user), ...app(KycDecisionService::class)->presentation($user)]);
 
         $stats = [
-            'pending_count' => User::where('kyc_status', 'pending_approval')->count(),
-            'approved_count' => User::where('kyc_status', 'approved')->count(),
-            'rejected_count' => User::where('kyc_status', 'rejected')->count(),
-            'total_count' => User::count(),
+            'pending_count' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'pending_approval')->count(),
+            'approved_count' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->whereIn('kyc_status', User::APPROVED_KYC_STATUSES)->count(),
+            'rejected_count' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'rejected')->count(),
+            'total_count' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->count(),
             'pending_sellers' => User::where('role', 'seller')->where('kyc_status', 'pending_approval')->count(),
             'pending_couriers' => User::where('role', 'courier')->where('kyc_status', 'pending_approval')->count(),
             'pending_logistics' => User::where('role', 'logistics')->where('kyc_status', 'pending_approval')->count(),
@@ -65,64 +66,23 @@ class AdminKycController extends Controller
     public function approve(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
-        $user->update([
-            'kyc_status' => 'approved',
-            'status' => 'active',
-            'kyc_reviewed_at' => now(),
-            'kyc_feedback' => null,
+        $validated = $request->validate([
+            'review_token' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
+            'evidence_confirmed' => 'required|accepted',
         ]);
+        app(KycDecisionService::class)->decide($request, $user, 'approved', $validated);
 
-        if ($user->role === 'seller' && $user->shop) {
-            $user->shop->update(['status' => 'active']);
-        }
-
-        if ($user->role === 'courier' && $user->courierProfile) {
-            $user->courierProfile->update([
-                'or_cr_status' => 'Verified & Registered',
-                'is_available' => true,
-            ]);
-        }
-
-        if ($user->role === 'logistics' && $user->logisticsCompany) {
-            $user->logisticsCompany->update([
-                'status' => 'active',
-                'is_active' => true,
-            ]);
-        }
-
-        return back()->with('success', "Applicant {$user->name} ({$user->role}) has been approved successfully.");
+        return back()->with('success', 'Approval recorded. Independent account and profile restrictions remain in effect.');
     }
 
     public function reject(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
         $validated = $request->validate([
+            'review_token' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
             'reason' => 'required|string|min:5|max:1000',
         ]);
-
-        $user->update([
-            'kyc_status' => 'rejected',
-            'status' => 'pending_approval',
-            'kyc_feedback' => $validated['reason'],
-            'kyc_reviewed_at' => now(),
-        ]);
-
-        if ($user->role === 'seller' && $user->shop) {
-            $user->shop->update(['status' => 'pending']);
-        }
-
-        if ($user->role === 'courier' && $user->courierProfile) {
-            $user->courierProfile->update([
-                'is_available' => false,
-            ]);
-        }
-
-        if ($user->role === 'logistics' && $user->logisticsCompany) {
-            $user->logisticsCompany->update([
-                'status' => 'pending',
-                'is_active' => false,
-            ]);
-        }
+        app(KycDecisionService::class)->decide($request, $user, 'rejected', $validated);
 
         return back()->with('success', "Applicant {$user->name} has been rejected with feedback.");
     }

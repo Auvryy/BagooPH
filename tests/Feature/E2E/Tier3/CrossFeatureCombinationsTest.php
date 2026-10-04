@@ -20,10 +20,12 @@ use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
 use Tests\TestCase;
+use Tests\Concerns\InteractsWithKycReviews;
 
 class CrossFeatureCombinationsTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithKycReviews;
     use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     protected function setUp(): void
@@ -54,7 +56,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $this->prepareKycReview($admin, $pendingCourier));
         $pendingCourier->refresh();
 
         $response = $this->actingAs($pendingCourier)->portalGet('courier', '/deliveries');
@@ -336,7 +338,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.kyc.index'));
         $response->assertOk();
 
-        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id));
+        $this->actingAs($admin)->post(route('admin.kyc.approve', $pendingCourier->id), $this->prepareKycReview($admin, $pendingCourier));
         $this->assertEquals('approved', $pendingCourier->fresh()->kyc_status);
     }
 
@@ -352,7 +354,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $pendingCourier = $this->createPendingUser('courier');
         $admin = $this->createApprovedUser('admin');
 
-        $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), [
+        $this->actingAs($admin)->post(route('admin.kyc.reject', $pendingCourier->id), $this->kycPayload($pendingCourier) + [
             'reason' => 'Please upload a clearer copy of driver license',
         ]);
 

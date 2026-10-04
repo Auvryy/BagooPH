@@ -118,7 +118,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function canDeleteOwnAccount(): bool
     {
         // Courier closure needs custody and cash handover before account removal.
-        return ! $this->isCourier();
+        return ! $this->isCourier() && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists();
     }
 
     public function isLogistics(): bool
