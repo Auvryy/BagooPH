@@ -46,6 +46,7 @@ interface KycApplicant extends User {
     review_token: string;
     required_documents: DocumentKind[];
     review_issues: string[];
+    shop_category: { id: number; name: string; eligible: boolean; is_active: boolean; parent_id: number | null } | null;
     decision_history: {
         id: number;
         decision: string;
@@ -679,7 +680,8 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <div className="space-y-1 rounded-xl border border-slate-300 bg-white p-3 text-xs">
                                     <h4 className="font-semibold">Original shop: {inspectingApplicant.shop.name}</h4>
                                     <p>{inspectingApplicant.shop.address || 'Address not provided'} · {inspectingApplicant.shop.city || 'City not provided'} · {inspectingApplicant.shop.phone || 'Phone not provided'}</p>
-                                    <p>Root category: {inspectingApplicant.shop.root_category?.name || 'Not provided'} · Shop activity: {inspectingApplicant.shop.status}</p>
+                                    <p>Root category: {inspectingApplicant.shop_category?.name || 'Not provided'} · Shop activity: {inspectingApplicant.shop.status}</p>
+                                    <p className={inspectingApplicant.shop_category?.eligible ? 'text-emerald-700' : 'text-amber-800'}>{inspectingApplicant.shop_category?.eligible ? 'Valid active master category for this application.' : 'Category requires correction before a new approval.'}</p>
                                 </div>
                             )}
                             {inspectingApplicant.courier_profile && (
