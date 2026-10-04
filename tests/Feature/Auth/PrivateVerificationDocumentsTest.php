@@ -30,6 +30,7 @@ class PrivateVerificationDocumentsTest extends TestCase
 
         return User::factory()->create([
             'role' => $role, 'status' => 'pending_approval', 'kyc_status' => 'pending_approval',
+            'birthday' => '2000-01-01',
             'id_document_path' => 'kyc_documents/private-id.pdf',
         ]);
     }
@@ -145,7 +146,7 @@ class PrivateVerificationDocumentsTest extends TestCase
 
     public function test_logistics_resubmission_updates_private_accreditation_without_serializing_paths(): void
     {
-        $owner = User::factory()->create(['role' => 'logistics', 'status' => 'pending_approval', 'kyc_status' => 'rejected']);
+        $owner = User::factory()->create(['role' => 'logistics', 'status' => 'pending_approval', 'kyc_status' => 'rejected', 'birthday' => '2000-01-01']);
         $company = LogisticsCompany::create([
             'user_id' => $owner->id, 'name' => 'Bagoo Resubmission Logistics', 'slug' => 'bagoo-resubmission-logistics', 'code' => 'BRL',
             'accreditation_details' => ['fleet_size' => 4],

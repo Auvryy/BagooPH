@@ -27,6 +27,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -57,6 +58,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -86,6 +88,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid business permit submitted.',
@@ -105,6 +108,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'OR/CR is blurred.',
@@ -118,6 +122,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $pendingUser = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -127,6 +132,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $rejectedUser = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -145,6 +151,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $suspendedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'suspended',
             'kyc_status' => 'approved',
         ]);
@@ -222,6 +229,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -234,6 +242,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -270,6 +279,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -282,6 +292,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -294,6 +305,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $pendingUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -315,6 +327,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $rejectedUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -337,6 +350,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $pendingUser = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -373,6 +387,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $approvedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -388,6 +403,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid documents',
@@ -412,6 +428,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Invalid documents',
@@ -436,6 +453,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Permit is outdated.',
@@ -493,6 +511,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $rejectedSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
         ]);
@@ -529,6 +548,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -541,6 +561,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -575,6 +596,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             // Missing shop_name, phone, address, city, id_document, business_permit
         ]);
 
@@ -589,6 +611,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             // Missing vehicle_type, plate_number, id_document, driver_license, or_cr_document
         ]);
 
@@ -716,6 +739,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -758,6 +782,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -786,6 +811,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -818,6 +844,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'License image was cut off',

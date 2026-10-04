@@ -33,6 +33,7 @@ class KycDecisionGovernanceTest extends TestCase
     {
         $user = User::factory()->pendingKyc()->create([
             'role' => $role, 'status' => $status, 'kyc_status' => 'pending_approval',
+            'birthday' => '2000-01-01',
             'phone' => '+639171234567', 'address' => 'Bagoo Test Street', 'city' => 'Makati',
         ]);
         if ($role === 'seller') {

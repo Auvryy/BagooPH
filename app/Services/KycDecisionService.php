@@ -58,6 +58,11 @@ class KycDecisionService
     public function readiness(array $submission): array
     {
         $issues = [];
+        $birthDates = app(BirthDateEligibility::class);
+        $adult = $birthDates->requiresAdult($submission['role']);
+        if (($adult || $submission['account']['birthday'] !== null) && ($issue = $birthDates->issue($submission['account']['birthday'], $adult))) {
+            $issues[] = $issue;
+        }
         foreach ($this->requiredDocuments($submission) as $kind) {
             if (! $submission['documents'][$kind]['valid']) {
                 $issues[] = "A valid private {$kind} document is required.";
@@ -84,6 +89,7 @@ class KycDecisionService
 
         return [
             'review_token' => $this->token($submission),
+            'review_age' => app(BirthDateEligibility::class)->age($user->birthday),
             'required_documents' => $this->requiredDocuments($submission),
             'review_issues' => $this->readiness($submission),
             'decision_history' => KycDecision::where('user_id', $user->id)->orderByDesc('id')->get()->map(fn (KycDecision $decision) => [
@@ -127,7 +133,7 @@ class KycDecisionService
             $users = User::whereIn('id', [$request->user()->id, $subject->id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $actor = $users->get($request->user()->id);
             $user = $users->get($subject->id);
-            abort_unless($actor?->isAdmin() && $actor->status === 'active', 403);
+            abort_unless($actor?->isAdmin() && $actor->canAccessPortal(), 403);
             abort_unless($user && in_array($user->role, ['buyer', 'seller', 'courier', 'logistics'], true), 403);
             $this->lockProfile($user);
             $submission = $this->submission($user);
@@ -161,7 +167,11 @@ class KycDecisionService
             } elseif ($action === 'rejected' && in_array($status, ['active', 'pending_approval'], true)) {
                 $status = 'pending_approval';
             }
-            $user->update(['kyc_status' => $action, 'status' => $status, 'kyc_reviewed_at' => $reviewedAt, 'kyc_feedback' => $reason]);
+            $updates = ['kyc_status' => $action, 'status' => $status, 'kyc_reviewed_at' => $reviewedAt, 'kyc_feedback' => $reason];
+            if ($action === 'approved' && app(BirthDateEligibility::class)->requiresAdult($user->role)) {
+                $updates['age'] = app(BirthDateEligibility::class)->age($user->birthday);
+            }
+            $user->update($updates);
             if ($action === 'approved' && $status === 'active') {
                 if ($user->isSeller() && $user->shop?->status === 'pending') {
                     $user->shop->update(['status' => 'active']);
@@ -195,7 +205,7 @@ class KycDecisionService
     private function state(User $user): array
     {
         return [
-            'account' => $user->only(['id', 'role', 'status', 'kyc_status', 'kyc_feedback', 'kyc_reviewed_at']),
+            'account' => $user->only(['id', 'role', 'status', 'kyc_status', 'kyc_feedback', 'kyc_reviewed_at', 'birthday', 'age']),
             'shop' => $user->shop?->only(['id', 'status']),
             'courier' => $user->courierProfile?->only(['id', 'or_cr_status', 'is_available', 'logistics_company_id', 'assigned_hub_id', 'vehicle_id']),
             'company' => $user->logisticsCompany?->only(['id', 'status', 'is_active']),

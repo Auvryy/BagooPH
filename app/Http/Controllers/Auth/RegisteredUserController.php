@@ -7,10 +7,11 @@ use App\Models\CourierProfile;
 use App\Models\LogisticsCompany;
 use App\Models\Shop;
 use App\Models\User;
+use App\Rules\BirthDate;
+use App\Services\BirthDateEligibility;
 use App\Services\KycSubmissionService;
 use App\Services\OtpService;
 use App\Services\VerificationDocumentService;
-use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Auth/Register');
+        return Inertia::render('Auth/Register', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
     }
 
     /**
@@ -37,7 +38,7 @@ class RegisteredUserController extends Controller
      */
     public function createSeller(): Response
     {
-        return Inertia::render('Auth/SellerRegister');
+        return Inertia::render('Auth/SellerRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
     }
 
     /**
@@ -45,7 +46,7 @@ class RegisteredUserController extends Controller
      */
     public function createCourier(): Response
     {
-        return Inertia::render('Auth/CourierRegister');
+        return Inertia::render('Auth/CourierRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
     }
 
     /**
@@ -53,7 +54,7 @@ class RegisteredUserController extends Controller
      */
     public function createLogistics(): Response
     {
-        return Inertia::render('Auth/LogisticsRegister');
+        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
     }
 
     /**
@@ -62,6 +63,8 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $role = $request->input('role', 'buyer');
+        $birthDates = app(BirthDateEligibility::class);
+        $requiresAdult = $birthDates->requiresAdult($role);
 
         // Merge composite name if first_name or last_name is provided without a full name
         if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
@@ -80,8 +83,7 @@ class RegisteredUserController extends Controller
             'last_name' => 'nullable|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'sex' => 'nullable|string|max:50',
-            'birthday' => 'nullable|date',
-            'age' => 'nullable|integer|min:0|max:150',
+            'birthday' => [$requiresAdult ? 'required' : 'nullable', new BirthDate($requiresAdult)],
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
@@ -136,16 +138,8 @@ class RegisteredUserController extends Controller
 
         $isBuyer = ($role === 'buyer');
 
-        // Auto-calculate age from birthday if needed
         $birthday = $validated['birthday'] ?? null;
-        $age = $validated['age'] ?? null;
-        if ($birthday && ! $age) {
-            try {
-                $age = Carbon::parse($birthday)->age;
-            } catch (\Exception $e) {
-                $age = null;
-            }
-        }
+        $age = $birthDates->age($birthday);
 
         // Verify and burn OTP token if provided
         $otpToken = $request->input('otp_token');
@@ -311,17 +305,24 @@ class RegisteredUserController extends Controller
             'shop' => $user->shop,
             'courierProfile' => $user->courierProfile,
             'logisticsCompany' => $user->logisticsCompany,
+            'birthDate' => [
+                'value' => $user->birthday?->toDateString(),
+                'needs_correction' => app(BirthDateEligibility::class)->requiresAdult($user->role)
+                    && app(BirthDateEligibility::class)->issue($user->birthday, true) !== null,
+                'limits' => app(BirthDateEligibility::class)->limits(),
+            ],
         ]);
     }
 
     /**
-     * Handle KYC document re-submission for rejected applicants.
+     * Handle rejected evidence resubmission or an unreviewed worker birth-date correction.
      */
     public function resubmitKyc(Request $request): RedirectResponse
     {
         $user = $request->user();
 
         $rules = [
+            'birthday' => ['sometimes', 'required', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
             'business_permit' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
             'driver_license' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
@@ -333,6 +334,6 @@ class RegisteredUserController extends Controller
 
         app(KycSubmissionService::class)->submit($user, $validated);
 
-        return back()->with('success', 'Your verification documents have been resubmitted successfully.');
+        return back()->with('success', 'Your application details have been submitted for review.');
     }
 }

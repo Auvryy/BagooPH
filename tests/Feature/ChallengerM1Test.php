@@ -38,6 +38,7 @@ class ChallengerM1Test extends TestCase
 
         $regResponse = $this->post('/register', [
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'name' => 'Adversarial Seller',
             'email' => 'adv.seller@bagoo.test',
             'password' => 'SecurePass123!',
@@ -158,6 +159,7 @@ class ChallengerM1Test extends TestCase
         // Step 1: Courier Registration
         $regResponse = $this->post('/register', [
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'name' => 'Speedy Dave',
             'email' => 'speedy.dave@bagoo.test',
             'password' => 'RiderSecret2026!',
@@ -234,6 +236,7 @@ class ChallengerM1Test extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -370,6 +373,7 @@ class ChallengerM1Test extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
             'phone' => '09191112222',
@@ -462,6 +466,7 @@ class ChallengerM1Test extends TestCase
 
         $applicant = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
             'id_document_path' => '/storage/kyc_documents/existing_id.pdf',

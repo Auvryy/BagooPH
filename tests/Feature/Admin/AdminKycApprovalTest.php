@@ -26,6 +26,7 @@ class AdminKycApprovalTest extends TestCase
 
         $pendingSeller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -38,6 +39,7 @@ class AdminKycApprovalTest extends TestCase
     {
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
@@ -56,6 +58,7 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -93,6 +96,7 @@ class AdminKycApprovalTest extends TestCase
 
         $courier = User::factory()->create([
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -129,6 +133,7 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
@@ -154,6 +159,7 @@ class AdminKycApprovalTest extends TestCase
 
         $seller = User::factory()->create([
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Permit is expired.',

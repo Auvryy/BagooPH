@@ -73,7 +73,7 @@ class VerificationDocumentService
         $actor = User::findOrFail($actor->id);
         abort_unless(
             ($actor->id === $owner->id && in_array($actor->status, ['active', 'pending_approval'], true))
-            || ($actor->isAdmin() && $actor->status === 'active'),
+            || ($actor->isAdmin() && $actor->canAccessPortal()),
             403,
         );
     }

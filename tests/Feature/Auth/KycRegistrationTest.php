@@ -31,6 +31,7 @@ class KycRegistrationTest extends TestCase
             'address' => 'Unit 102 Greenbelt Mall',
             'city' => 'Makati City',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'id_document' => $idFile,
@@ -73,6 +74,7 @@ class KycRegistrationTest extends TestCase
             'plate_number' => 'ABC-9876',
             'license_number' => 'N02-22-123456',
             'role' => 'courier',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'id_document' => $idFile,
@@ -163,6 +165,7 @@ class KycRegistrationTest extends TestCase
             'address' => 'Some address',
             'city' => 'Manila',
             'role' => 'seller',
+            'birthday' => '2000-01-01',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
@@ -189,6 +192,7 @@ class KycRegistrationTest extends TestCase
             'city' => 'Calamba City',
             'province' => 'Laguna',
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'franchise_number' => 'LTFRB-2026-SFX-9988',
             'fleet_size' => 45,
             'password' => 'password123',
@@ -224,6 +228,7 @@ class KycRegistrationTest extends TestCase
 
         $applicant = User::factory()->create([
             'role' => 'logistics',
+            'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
         ]);
