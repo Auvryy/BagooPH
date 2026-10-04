@@ -34,6 +34,7 @@ type DocumentKind = 'id' | 'permit' | 'license' | 'orcr' | 'franchise';
 
 interface KycApplicant extends User {
     birthday?: string | null;
+    review_age: number | null;
     logistics_company?: {
         name: string;
         contact_email?: string | null;
@@ -673,7 +674,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 </div>
                             </div>
                             <p className="text-xs text-slate-600">Account activity: <strong>{inspectingApplicant.status}</strong>. Approval preserves separate account and profile restrictions and rider duty.</p>
-                            <p className="text-xs text-slate-600">Birth date: {inspectingApplicant.birthday?.slice(0, 10) || 'Not provided'} · City: {inspectingApplicant.city || 'Not provided'}</p>
+                            <p className="text-xs text-slate-600">Birth date: {inspectingApplicant.birthday?.slice(0, 10) || 'Not provided'} · Age: {inspectingApplicant.review_age ?? 'Not available'} · City: {inspectingApplicant.city || 'Not provided'}</p>
                             {inspectingApplicant.shop && (
                                 <div className="space-y-1 rounded-xl border border-slate-300 bg-white p-3 text-xs">
                                     <h4 className="font-semibold">Original shop: {inspectingApplicant.shop.name}</h4>
