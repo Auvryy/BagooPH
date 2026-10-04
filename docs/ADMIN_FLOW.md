@@ -37,6 +37,7 @@ Use the existing `pending_approval`, `approved`, and `rejected` KYC values. Exis
 | Reject an application | Review the current pending submission, record a meaningful reason, and keep transactional access blocked. Preserve any existing suspension. |
 | Resubmit after rejection | Applicant supplies corrected application details or evidence; the submission returns to pending review. Preserve the earlier decision and its evidence references. Resubmission never reactivates a suspended account. |
 | Reverse a reviewed decision | Explicit correction with reason, prior decision reference, and current evidence. Preserve history and apply the same active-work protections as suspension. |
+| Correct reviewed identity or shop scope | Review a versioned correction request against current evidence and canonical field/category rules. Record prior provenance and before/after values; preserve earlier decisions, independent restrictions, and affected-work obligations. |
 | Suspend or deactivate | Explicit reason and affected-work review; remove new-work eligibility while preserving orders, custody, cash, and evidence. |
 | Reactivate | Separate reasoned decision after valid approval and profile/company scope are checked. It cannot silently approve rejected KYC or reactivate unrelated shops, facilities, personnel, or vehicles. |
 
@@ -83,6 +84,8 @@ An account's role is assigned when it is created and remains fixed, including wh
 
 Someone needing another public role registers a separate account with its own required profile, evidence, and approval. Public registration cannot select the admin role. Existing orders, shops, parcel custody, cash, and review history remain attached to their original accounts. Role filters and read-only role labels are permitted; role selectors and conversion actions for saved accounts are not.
 
+Routine restriction, closure, or reviewed-identity correction cannot remove the last eligible Platform Admin. Re-evaluate eligibility under the privileged-access policy and serialize competing decisions; counting every account labelled admin is insufficient. When verified evidence would invalidate the final admin, require explicit controlled replacement/recovery rather than falsifying identity, converting a public account, or adding a hidden access bypass.
+
 Account deletion is blocked while orders, custody, COD, or settlement remain active. Later privacy handling may anonymize eligible personal fields while retaining transactional evidence.
 
 ## 5. Commission and Payout Governance
@@ -103,10 +106,19 @@ The core admin interface should support a small, understandable workflow:
 - Overview: real pending review counts and unresolved core exceptions, with links to the affected records.
 - Applications: role/status filters, authorized evidence, current review state, explicit decision, reason, and decision history.
 - Accounts: fixed registered role, approval, and activity shown separately, affected-work summary before suspension, and explicit reactivation checks. No role-conversion control.
+- Shops and companies: their own review state, category/parent scope, resource restrictions, and affected work; account approval does not imply approval of every dependent resource.
+- Products: explicit reasoned compliance removal/reinstatement, current source state, eligible seller/shop/category, and decision history. Preserve purchased-item snapshots; seller edits cannot silently clear a platform compliance restriction.
+- Governance history: read-only subject/actor/type/date filters and pagination across actual review, restriction, correction, closure, and moderation sources, with authorized evidence links.
 - Orders and parcels: read-only lifecycle, waybill, custody, proof, and exception evidence; no routine scan controls.
 - Finance: separate pending and reconciled amounts with references to original cash and settlement records when that phase is delivered.
 
 Empty queues show an empty state. Unavailable modules show unavailable. Do not substitute example disputes, invented trends, sample balances, or success responses for unimplemented actions. Ordinary searchable lists and pagination are sufficient; enterprise analytics and a redesign of every portal are outside this task's baseline.
+
+The account inspector distinguishes current state from historical decisions. Legacy records without recorded review provenance must be identified honestly; do not manufacture an old reviewer, decision time, birth date, or category approval. Controlled reviewed-identity corrections use a separate current request and evidence review, rather than silently rewriting approved fields through generic profile edits. An identical correction retry preserves its original outcome; stale competing requests conflict.
+
+Product reinstatement cannot approve a rejected seller, reactivate a restricted shop, or clear another eligibility gate. Referenced products are retained or safely archived under the actual schema; compliance actions cannot change historical order prices/quantities, transfer ownership, or erase evidence. Product decisions and their audit commit together.
+
+Audit search is read-only and applies current privileged eligibility and company/subject scope on every request. History links re-authorize private evidence access; no raw file paths, passwords, tokens, or plaintext self-pickup codes appear in results or exports. Different decision sources retain their own provenance rather than being presented as invented KYC events.
 
 Admin review may include account documents, order items, waybill and hub checkpoints, manifest history, rider assignment, delivery proof, failure reasons, COD custody records, buyer confirmation, and role messages.
 
@@ -129,6 +141,12 @@ The core baseline preserves evidence and may show dispute handling as unavailabl
 | Suspended buyer tracks or confirms an owned delivered order | Apply the narrow existing-order exception; reject new checkout, foreign orders, and premature completion. |
 | Admin attempts to change any saved account's role, including their own or a pending account with no history | No conversion action is available. Direct requests cannot change the role, activate the account, or transfer related records. |
 | Account deletion would lose active transactional history | Reject without changing related work or evidence. |
+| Two restrictions/closures/corrections would remove the last eligible admin | Serialize the current eligibility check and block the routine action that removes final oversight; controlled recovery remains explicit. |
+| Applicant edits reviewed identity through an ordinary profile request | No silent replacement; require the evidenced, versioned correction workflow and preserve prior decisions. |
+| Reviewed correction applies while the subject is independently suspended | Preserve restriction and active-work responsibility; a correction alone cannot reactivate the account. |
+| Product is reinstated under a restricted seller/shop or invalid category | Deny without changing product/audit; no eligibility bypass. |
+| Seller edits a platform-restricted product or admin retries moderation | Preserve compliance restriction; one recorded decision for an identical retry. |
+| Audit search or historical evidence link is used outside current scope | Deny without leaking private paths, secrets, or unrelated records; history cannot be edited. |
 | Admin attempts routine scan or direct financial/custody history edit | Deny; require the separately authorized correction workflow. |
 
 Use isolated SQLite `:memory:` tests for implemented behavior and the full adversarial acceptance gate in the validation contract. Simultaneous PostgreSQL locking needs a design review beyond SQLite tests.
@@ -138,3 +156,5 @@ Deliver approval/access/audit foundations in Phase 0. Manifests, delivery recove
 ## 8. Implementation Status
 
 Current admin and logistics-company gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.
+
+The bounded delivery breakdown is in [admin-plan/README.md](admin-plan/README.md). Its branch allocation does not replace these contracts or imply that the planned functions are implemented.

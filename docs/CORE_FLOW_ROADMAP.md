@@ -379,7 +379,7 @@ Verification: 143 focused KYC/auth/lifecycle checks passed with 991 assertions i
 
 **Remaining required validation, not waived by this foundation:** the birth-date gap is addressed in the scoped review below. Seller registration does not capture `root_category_id`, and the current seeder defines one demo category rather than populating the 14 master-category approval choices. The review service records existing application details but does not yet enforce the complete canonical name/phone/postal/shop/company/category contract. Franchise applicability still follows existing application data; generated accreditation defaults need their own validation cleanup. Existing approved accounts and legacy evidence have not been retroactively audited.
 
-The next focused work selected here is verified in the birth-date review below. Seller master-category setup and complete profile scope follow as the next prerequisite. Related resource/buyer-entry eligibility, active-work deletion, reasoned restrictions, and sample-success removal remain Phase 0 tasks. Notification/recovery/COD implementation retains its documented phase order. The broader implementation goal remains unfinished.
+The next focused work selected here is verified in the birth-date review below. Seller master-category setup and complete profile scope follow as the next prerequisite. Related resource/buyer-entry eligibility, active-work deletion, reasoned restrictions, and sample-success removal remain Phase 0 tasks. Notification/recovery/COD implementation retains its documented phase order. Broader admin implementation remains incomplete.
 
 ### Adult Worker Birth Dates: October 4, 2026
 
@@ -403,7 +403,39 @@ Implementation evidence: `app/Services/BirthDateEligibility.php`, `app/Rules/Bir
 
 Verification: 614 focused checks passed with 4,256 assertions in isolated SQLite `:memory:`, including 68 new birth-date checks with 482 assertions. Coverage includes all three worker registrations, forged/missing/invalid dates, exact eighteenth birthdays, leap years, Philippine midnight, buyer age derivation, root/subdomain eligibility, courier-query agreement, fresh privileged-actor checks, changed-submission inspection, immutable previous decisions, persisted before/after age, failed-correction rollback, and post-commit file retention. Existing registration/KYC fixtures now supply valid adult dates rather than bypassing the new rule. The full SQLite run increased from 1,287 tests/7,669 assertions to 1,355 tests/8,151 assertions and retained exactly the same 58 failing tests and one error, with no new or resolved failing identities; the error remains `tests/Feature/ChallengerM1StressTest.php:180`. The TypeScript/Vite production build, focused Laravel Pint, and whitespace checks passed. No browser/device or simultaneous PostgreSQL concurrency tests were performed.
 
-**Recommended next focused task:** seed and validate the 14 master root-category choices, collect the seller shop's `root_category_id` during registration, and require a valid shop category before KYC approval. Inspect existing category/shop migrations and services first; preserve products and legacy shop assignments. Complete canonical name/phone/postal/shop/company validation, controlled legacy birth-date auditing, reviewed identity correction, buyer profile/holding alignment, resource eligibility, reasoned restrictions, active-work deletion, and sample-success removal remain separate Phase 0 work. The broader implementation goal remains unfinished.
+**Recommended next focused task:** [B01: seller master-category and original-shop approval](admin-plan/01-seller-category-approval.md). Seed and validate the 14 master root-category choices, collect the seller shop's `root_category_id` during registration, and require a valid shop category before KYC approval. Inspect existing category/shop migrations and services first; preserve products and legacy shop assignments. Complete canonical name/phone/postal/shop/company validation, controlled legacy birth-date auditing, reviewed identity correction, buyer profile/holding alignment, resource eligibility, reasoned restrictions, active-work deletion, and sample-success removal remain separate Phase 0 work. Select one bounded branch rather than running the entire backlog as one goal.
+
+### Bounded Admin Branch Planning: October 4, 2026
+
+**State: Documentation delivery complete; no runtime feature added.** [admin-plan/README.md](admin-plan/README.md) allocates 18 future admin-focused branches after the existing `admin/governance-improvements` foundation: B01-B13 for governance and the Phase 0 gate, then B14-B18 for phase-gated exceptions, notifications, COD, settlement, and finance. This is 19 admin checkpoints including the foundation, not a count of every remaining project branch. Role-owned custody/recovery prerequisites and optional additions are explicitly outside that count.
+
+The folder contains 18 detailed branch documents plus an index, [Git/testing workflow](admin-plan/WORKFLOW.md), and [capability/role map](admin-plan/CAPABILITIES.md). Each branch defines dependencies, actual inspection targets, implementation sequence, decision rules, data/legacy handling, exclusions, acceptance cases, required verification, and a bounded prompt/stopping point. Its 186 acceptance scenarios are planned requirements, not newly executed tests. No future implementation branches are created by this documentation task.
+
+The admin and validation contracts now explicitly require protection of the last eligible admin, controlled reviewed-identity correction, reasoned product moderation/reinstatement, and read-only scoped governance history. These are target safeguards to implement, not new executable controls. Fixed roles, mandatory Mother-Hub custody, buyer-only completion, private evidence, 10%/90% product proceeds, and separate shipping accounting remain authoritative.
+
+Verified starting gaps and branch ownership:
+
+| Gap | Executable evidence | Planned owner |
+|---|---|---|
+| Seller original-shop category is not collected/enforced end to end | `RegisteredUserController`, `DatabaseSeeder`, and `KycDecisionService` require taxonomy/registration/readiness work. The seeder's legacy category is not the full master set; live database category rows were not queried. | B01, B02 |
+| Extra shops and fallback context can gain active eligibility without independent review | `SellerDashboardController::createShop()` and `HasSellerShop::getActiveShop()`; nullable root scope in seller product handling. | B03 |
+| Resource eligibility needs positive company/facility/assignment checks everywhere | `LogisticsHubWorkstationController`, logistics models, and routing/placement callers require a shared scope audit. An active child flag is insufficient. | B04, B07 |
+| Buyer holding/new-work and restricted existing-order entry points need full alignment | Buyer controllers, account middleware, authentication redirects, and own-document paths; the earlier tested tracking/receipt exception does not certify every endpoint. | B05 |
+| Reasoned activity decisions and final-admin protection are absent | `AdminDashboardController` exposes no suspension/reactivation decision workflow. Ordinary activity flags are not an immutable governance decision. | B06, B07 |
+| Reviewed/legacy identity repair and role-wide closure remain incomplete | Generic profile deletion uses `User::canDeleteOwnAccount()`; current reviewed identity cannot silently self-correct. Missing-date legacy compatibility is not an adulthood audit. | B08, B09 |
+| Product toggle lacks reason/source-state/audit and eligible-parent reinstatement | `AdminDashboardController::toggleProductStatus()` blindly switches active/draft. | B10, B11 |
+| Overview includes unsupported online/financial claims | `Admin/LogisticsHubController` supplies unconditional online status and count-based guessed fee totals; admin dashboard currency/basis needs alignment. | B12 |
+| Cross-role acceptance and later custody/notification/finance foundations remain required | The existing non-green suite and Phases 2-5 below remain the evidence/gate sources. | B13; role-owned prerequisites; B14-B18 |
+
+| Scoped assessment | Before | After | Evidence and limit |
+|---|---:|---:|---|
+| Admin branch execution planning | 4/10 | 9/10 | A phased roadmap now has 18 bounded scopes, ordered dependencies, migration/privacy rules, planned negative/retry/rollback cases, and stopping prompts. Estimates of effort and simultaneous PostgreSQL behavior remain unverified. |
+| Admin specification quality | 9/10 | 9/10 | More explicit continuity/correction/moderation/history safeguards improve actionability; no usability or runtime proof follows from Markdown. |
+| Overall Platform Admin readiness | 5/10 | 5/10 | Documentation does not close category, resource, restriction, closure, recovery, notification, or finance gaps. |
+
+Verification: local links and referenced repository files, 18 unique branch names, consecutive IDs, index/dependency agreement with no forward dependency, required scope/acceptance/stopping sections, Markdown headings/fences, and whitespace passed. Repository changes are Markdown only. PHP tests and the frontend build were not rerun for this task. The latest runtime evidence remains the birth-date task's 614 focused checks and full SQLite baseline of 1,355 tests/8,151 assertions with 58 failures and one error; these failures are not resolved by this plan. Browser/device and simultaneous PostgreSQL checks remain unperformed.
+
+**Publication recommendation:** publish the reviewed foundation with these planning docs for user-managed review. Keep the known full-suite failures and legacy/deployment limits visible; this is not whole-project release certification. Once the foundation is merged and local `main` is updated, create only `admin/seller-category-approval` and complete B01. Stop after its verification/report; do not automatically continue B02 or the entire admin plan.
 
 ## Delivery Phases
 
@@ -430,7 +462,7 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
 
-Next Phase 0 work: complete canonical application validation, starting with seller master-category scope; then related resource/buyer-entry eligibility, reasoned restrictions, active-work deletion protections, and removal of live sample-success paths. Preserve fixed roles, adult-worker validation, and the verified KYC decision foundations. Controlled legacy identity auditing remains separate work. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
+Next Phase 0 work: use [B01-B13 of the bounded admin plan](admin-plan/README.md), starting with seller master-category scope; then shared application validation, related shop/resource/buyer-entry eligibility, reasoned restrictions, controlled identity correction, active-work deletion protections, moderation/audit, and truthful overview data. Preserve fixed roles, adult-worker validation, and the verified KYC decision foundations. B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
 ### Phase 1: Normal Order and Seller Flow
 
@@ -471,7 +503,8 @@ Acceptance: custody always returns to the hub after failure; expired or invalid 
 **State: Missing.**
 
 - Persist unread/read notifications linked to orders, deliveries, and tasks.
-- Cover only meaningful order, custody, failure, pickup, completion, and RTS events.
+- Cover meaningful order, custody, failure, pickup, completion, and RTS events.
+- Connect recorded review, restriction, correction, and accountable recovery decisions through B15 after the persistent notification foundation; decision retries must not duplicate notices.
 - Keep rider boards and assignment queues as operational task notifications.
 
 Acceptance: each event produces one notification for the correct recipient without duplicates.
