@@ -1,114 +1,72 @@
-# BagooPH - Master Project Plan & System Architecture
+# BagooPH Project Plan
 
-> **Executive Overview:**
-> BagooPH ("Bag & Go") is an enterprise multi-role e-commerce and logistics ecosystem built for the Philippine market. It seamlessly interconnects Buyers, Sellers, Logistics Sorting Hubs / Couriers, and Platform Administrators in a single, high-performance architecture.
->
-> **Authority:** Strategic overview only. Use `docs/README.md` for the authority map and the normative flow documents for implementation decisions.
+BagooPH ("Bag & Go") is a practical ecommerce project for a small, supported Philippine road network. It demonstrates how buyers, sellers, couriers, logistics operators, and Platform Admin work together in a believable transaction. It does not require thousands of users, a nationwide commercial fleet, or enterprise infrastructure.
 
----
+> **Authority:** Supporting project overview. Use [README.md](README.md) for documentation authority, the normative role/flow contracts for required behavior, and [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md) for delivery phases and current gaps.
 
-## 1. Multi-Role Identity & Independent Onboarding
+## 1. Bounded Project Baseline
 
-```mermaid
-graph TD
-    A[Visitor Landing Page] --> B{Choose Registration Role}
-    B -->|Buyer| C[Buyer Onboarding: Personal Info + PSGC Address + Valid ID]
-    B -->|Seller| D[Seller Onboarding: Business Details + Category + Business Permit + ID]
-    B -->|Courier / Logistics| E[Courier Onboarding: Vehicle Specs + Plate No + Driver License + OR/CR]
-    
-    C --> F[Admin Review & KYC Approval]
-    D --> F
-    E --> F
-    
-    F -->|Approved| G[Smart Single Login /login -> Direct Role-Based Routing]
-    F -->|Pending / Rejected| H[Holding State with Status Notification]
+The core project covers account review, product discovery, Shopping Bag, validated multi-shop checkout, seller preparation, authenticated road/hub custody, delivery or self-pickup, failure recovery, basic in-app notifications, buyer confirmation, COD reconciliation, and seller settlement. A small set of demo accounts, products, facilities, and route examples is enough to prove these flows.
+
+Use the existing Laravel, React/TypeScript, Inertia, PostgreSQL, and Docker setup. Keep authorization, validation, stock, custody, and money decisions on the server even for a small demonstration. Avoid adding infrastructure or services merely to imitate a large commercial platform.
+
+Delivery is land-only on supported contiguous roads. Boats, ports, RORO, sea crossings, and air freight are excluded. Unsupported destinations must fail route/serviceability validation; they cannot skip the Mother Hub or acquire an invented transport leg.
+
+## 2. Independent Onboarding and Approval
+
+| Role | Review and access |
+|---|---|
+| Buyer | Identity/account review by Platform Admin before transactional access; public catalogue browsing grants no checkout permission |
+| Seller | Platform Admin reviews identity, business requirements, and shop/category scope |
+| Courier | Platform Admin reviews identity, license, vehicle, and OR/CR; an approved company separately places the eligible rider at its hub/barangay |
+| Logistics | Platform Admin reviews the company application; company and facility responsibilities stay scoped to that network |
+| Admin | Controlled existing admin access; no public registration and no inactive/suspended privilege bypass |
+
+Pending/rejected applicants may sign in to their own holding/resubmission screen. Email verification, document upload, company placement, and going on duty cannot substitute for platform approval. Active status and approval are separate gates. Suspension preserves affected orders, custody, and cash through the narrow recovery rules in [ADMIN_FLOW.md](ADMIN_FLOW.md).
+
+Pickup and delivery are phases of `courier`. Logistics Company Admin and Hub Handler are responsibilities within `logistics`; do not introduce extra public roles or conflate a company application with a rider application.
+
+## 3. Core Transaction and Physical Route
+
+```text
+Approved buyer checks out
+-> One order, parcel, waybill, shipping fee, and route per shop
+-> Seller confirms, prepares, and marks ready for pickup
+-> Assigned pickup rider scans at seller
+-> Origin Bayan Hub
+-> At least one Mother Hub
+-> Destination Bayan Hub
+-> Assigned delivery rider or authorized self-pickup counter
+-> Delivered with required evidence and COD collection
+-> Buyer confirms receipt: COMPLETED
+-> Platform COD reconciliation
+-> Seller settlement
 ```
 
-### Key Principles:
-1. **Independent Registration Paths:** Sellers can register and operate directly as verified merchants without needing an active buyer account first.
-2. **Mandatory KYC Verification:** All roles require administrator document verification before accessing transactional portals.
-3. **Unified Login (`/login`):** A single login gateway dynamically routes authenticated sessions to their respective cockpit (`/buyer`, `/seller/dashboard`, `/courier/deliveries`, or `/admin/dashboard`).
+Different regions may use origin and destination Mother Hubs; the same-region route still passes through one Mother Hub. Custody changes require authenticated scans and the expected company, facility, actor, and source state. Admin oversight cannot perform routine scans or impersonate those actors.
 
----
+Supported textual addresses and configured facility coverage determine serviceability. Valid saved coordinates may assist address/map display; they do not replace address validation, select an unauthorized hub, or require live GPS, OCR, or route optimization.
 
-## 2. Logistics, Sorting Center & GIS Fleet Architecture
+The canonical statuses, failure branch, and actor ownership remain in [SYSTEM_FLOW_AND_SPECIFICATIONS.md](SYSTEM_FLOW_AND_SPECIFICATIONS.md). Detailed manifests, retry/return, counter release, notifications, and COD custody follow [SORTING_CENTER_LOGISTICS_FLOW.md](SORTING_CENTER_LOGISTICS_FLOW.md).
 
-The detailed operational authority is `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. This overview must not be used to bypass its custody scans or Mother-Hub route.
+## 4. Money and Stock Rules
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Buyer
-    participant Seller
-    participant PickupRider as Pickup Rider
-    participant OriginHub as Origin Bayan Hub
-    participant MotherHub as Regional Mother Hub
-    participant DestinationHub as Destination Bayan Hub
-    participant DeliveryRider as Barangay Delivery Rider
+- Adding to the Shopping Bag reserves no stock. Checkout atomically validates and decrements current stock, applies eligible vouchers, and creates every selected shop order or rolls back the complete submission.
+- Authorized seller cancellation before pickup claim/custody restores stock once. No automatic expiry, cancellation, or restocking policy is introduced by this overview.
+- Platform commission is 10% of product subtotal; seller share is 90%. Shipping, handling, logistics revenue, and rider earnings stay separate. This plan sets no shipping revenue percentage.
+- COD collection, remittance, and platform reconciliation are distinct recorded events. Physical delivery alone cannot mark COD paid or seller proceeds settled.
+- Seller settlement requires both buyer `COMPLETED` and platform-level COD reconciliation. Corrections append traceable adjustments and retain the original evidence.
 
-    Buyer->>Seller: Places Order (COD)
-    Seller->>Seller: Packs Items & Prints Thermal Waybill
-    Seller->>PickupRider: Requests Dispatch Pickup
-    PickupRider->>OriginHub: Waybill scan and origin intake
-    OriginHub->>MotherHub: Feeder manifest transfer
-    MotherHub->>DestinationHub: Sort and destination feeder transfer
-    DestinationHub->>DestinationHub: Sort to barangay bin
-    DestinationHub->>DeliveryRider: Assign and scan parcel out
-    DeliveryRider->>Buyer: Last-Mile Delivery & COD Collection
-    DeliveryRider->>DestinationHub: Remits collected COD funds
-```
+## 5. Recovery and Deferred Work
 
-### Sorting Center & Rider Mechanics:
-1. **Hub-and-Spoke Delivery Chain:**
-   * **Stage 1 (First-Mile):** Pickup rider collects parcels from merchants and transports them to the assigned origin Bayan Hub.
-   * **Stage 2 (Regional Sort):** Every parcel passes through at least one Mother Hub before destination distribution.
-   * **Stage 3 (Destination Sort):** Destination Bayan Hub sorts parcels by barangay and assigns eligible delivery riders.
-   * **Stage 4 (Last-Mile):** Assigned rider scans out, delivers, and records COD custody and proof.
-2. **GIS / Proximity-Based Fleet Matching:**
-   * Parcels are routed to the nearest operational sorting facility based on geographic coordinates and PSGC address hierarchy.
-   * Ensures merchant dispatch connects to the optimal logistics hub in their territory.
+Failed deliveries return to the expected destination hub before retry assignment. The baseline permits three total attempts and requires reverse-hub custody plus seller receipt for `RETURNED`. Self-pickup requires the documented identity, one-time claim, expiry, facility, state, and COD checks, followed by buyer confirmation.
 
----
+Suspension is an access restriction with recovery responsibility, not an order cancellation or custody scan. Role changes/deletion cannot discard active orders, cash, settlement, or historical evidence. Approval and suspension acceptance checks are in the admin and validation contracts.
 
-## 3. Financial Architecture, Fees & Commission Ledger
+Complete post-delivery refunds, exchanges, and dispute processing remain separate future work. Live GPS, AI dispatch/density prediction, advanced rates/analytics, automated warehouses, and external order-notification services are outside the core baseline. Optional ideas need their own approved scope and cannot delay the required flow or appear as working placeholder actions.
 
-```
-+-------------------------------------------------------------------------------+
-|                             TOTAL TRANSACTION VALUE                           |
-+------------------------------------+------------------------------------------+
-|          PRODUCT SUB-TOTAL         |               SHIPPING FEE               |
-+------------------+-----------------+---------------------+--------------------+
-| Merchant Payout  | 10% Platform    | Logistics Sorting   | Last-Mile Courier  |
-| (90% of Items)   | Commission      | Hub Revenue Share   | Rider Revenue Share|
-+------------------+-----------------+---------------------+--------------------+
-```
+## 6. Delivery and Verification
 
-### Fee Calculations & Revenue Sharing:
-1. **Platform Commission:** Standard 10% commission automatically deducted from gross product sales and credited to the platform ledger.
-2. **Handling & Shipping Fees:**
-   * Current checkout uses the configured BagooPH delivery fee rules.
-   * Future rate matrices may use package size, weight, and service zone after those inputs are validated.
-3. **Shipping Revenue Split:**
-   * The collected shipping fee is divided between the Logistics Sorting Hub (operational facility fee) and the Assigned Rider (delivery compensation).
-4. **Payment Option:**
-   * **Cash on Delivery (COD):** Baseline supported method. Cash custody and reconciliation follow the logistics specification.
+Follow the existing roadmap phase order: shared safety and approval gates, normal commerce, manifests, delivery exceptions/self-pickup, notifications, COD/admin reconciliation, then cross-role cleanup. This overview adds no new implementation milestone.
 
----
-
-## 4. Returns, Defects & Issue Reporting Workflow
-
-```mermaid
-graph LR
-    A[Delivered Order] --> B{Buyer Discovers Issue?}
-    B -->|Yes| C[File Issue Report]
-    B -->|No| G[Order Complete]
-    C --> D[Upload Defect Photo & Description]
-    D --> E[Recorded in Dispute & Audit Ledger]
-    E --> F[Seller Review & Platform Mediation]
-    F -->|Approved Replacement/Correction| I[Dispatch Courier Exchange]
-    F -->|Dismissed| H[Case Closed with Findings Note]
-```
-
-### Issue Reporting Rules:
-1. **Evidence-Based Submission:** Buyers can file formal issue reports directly from their delivered order screen by uploading photos and a structured issue reason (wrong item, damaged packaging, defective unit).
-2. **Audit Ledger & Mediation:** All claims are stored in a dedicated dispute ledger accessible by merchants and platform admins to prevent review spam and unverified automated monetary chargebacks.
+Acceptance means the same order and parcel remain consistent across all five roles, including invalid actors, malformed input, stale decisions, retries, rollback, and financial gates. Automated tests use isolated SQLite `:memory:`; they never wipe PostgreSQL. Record implementation evidence and scoped ratings in the roadmap rather than treating this plan as a completion report.
