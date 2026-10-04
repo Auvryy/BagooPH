@@ -62,7 +62,7 @@ New routing or assignment requires an eligible account, company, hub, handler/ri
 
 Account approval does not automatically approve additional seller shops. Company approval does not authorize every future handler, rider placement, or facility assignment. Scope changes must be authorized and must preserve assignment and custody history. Service coverage stays within supported contiguous roads; no sea or air routing is permitted.
 
-## 4. Suspension, Role Changes, and Deletion
+## 4. Suspension, Account Roles, and Deletion
 
 Before suspension, identify affected orders, assignments, parcel custody, and unreconciled cash. Record the restriction and recovery responsibility together. The exception process must retain the original custodian until a valid handoff; an admin status edit cannot stand in for a scan.
 
@@ -77,7 +77,11 @@ Before suspension, identify affected orders, assignments, parcel custody, and un
 
 Recovery is a narrowly authorized action with evidence and audit, not unrestricted access for a suspended actor. Reinstatement must re-check eligibility and cannot silently resume a stale assignment or skipped lifecycle step.
 
-Approved transactional roles with order, custody, ledger, or audit history cannot be changed in place. A controlled migration or separate account is required. Account deletion is blocked while orders, custody, COD, or settlement remain active. Later privacy handling may anonymize eligible personal fields while retaining transactional evidence.
+An account's role is assigned when it is created and remains fixed, including while pending, rejected, inactive, or suspended and before it has any transaction history. Platform Admin cannot convert an existing buyer into a seller, courier, logistics account, or admin, or switch any other existing account to another role. The project has no role-conversion or role-migration workflow.
+
+Someone needing another public role registers a separate account with its own required profile, evidence, and approval. Public registration cannot select the admin role. Existing orders, shops, parcel custody, cash, and review history remain attached to their original accounts. Role filters and read-only role labels are permitted; role selectors and conversion actions for saved accounts are not.
+
+Account deletion is blocked while orders, custody, COD, or settlement remain active. Later privacy handling may anonymize eligible personal fields while retaining transactional evidence.
 
 ## 5. Commission and Payout Governance
 
@@ -96,7 +100,7 @@ The core admin interface should support a small, understandable workflow:
 
 - Overview: real pending review counts and unresolved core exceptions, with links to the affected records.
 - Applications: role/status filters, authorized evidence, current review state, explicit decision, reason, and decision history.
-- Accounts: approval and activity shown separately, affected-work summary before suspension, and explicit reactivation checks.
+- Accounts: fixed registered role, approval, and activity shown separately, affected-work summary before suspension, and explicit reactivation checks. No role-conversion control.
 - Orders and parcels: read-only lifecycle, waybill, custody, proof, and exception evidence; no routine scan controls.
 - Finance: separate pending and reconciled amounts with references to original cash and settlement records when that phase is delivered.
 
@@ -111,7 +115,7 @@ The core baseline preserves evidence and may show dispute handling as unavailabl
 | Scenario | Required result |
 |---|---|
 | Pending, rejected, inactive, suspended, or unknown-state account opens a protected portal directly | Deny transactional access on both root and subdomain URLs; allow only the explicitly documented holding/recovery actions. |
-| Inactive or suspended admin uses an existing session | Deny privileged reads and writes, including role/status edits and approval routes. |
+| Inactive or suspended admin uses an existing session | Deny privileged reads and writes, including approval and restriction decisions. |
 | Company Admin attempts platform approval or foreign-company assignment | Deny; no approval, assignment, or unrelated record changes. |
 | Reviewer approves missing or invalid evidence | Validation failure; account and related profile remain unchanged. |
 | Review is submitted twice | Return one recorded decision with unchanged reviewer/time/reason. |
@@ -120,7 +124,8 @@ The core baseline preserves evidence and may show dispute handling as unavailabl
 | Account is approved while separately suspended | Preserve the restriction; explicit reactivation is still required. |
 | Seller, courier, company, handler, hub, or vehicle is suspended during active work | Block new work, preserve custody/cash, and require the documented recovery path. |
 | Suspended buyer tracks or confirms an owned delivered order | Apply the narrow existing-order exception; reject new checkout, foreign orders, and premature completion. |
-| Role change or deletion would lose transactional history | Reject without changing related work or evidence. |
+| Admin attempts to change any saved account's role, including their own or a pending account with no history | No conversion action is available. Direct requests cannot change the role, activate the account, or transfer related records. |
+| Account deletion would lose active transactional history | Reject without changing related work or evidence. |
 | Admin attempts routine scan or direct financial/custody history edit | Deny; require the separately authorized correction workflow. |
 
 Use isolated SQLite `:memory:` tests for implemented behavior and the full adversarial acceptance gate in the validation contract. Simultaneous PostgreSQL locking needs a design review beyond SQLite tests.

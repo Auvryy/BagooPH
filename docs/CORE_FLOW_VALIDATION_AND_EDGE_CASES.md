@@ -251,7 +251,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Every override requires the current state, requested correction, reason, actor, timestamp, and before/after values in an immutable audit record.
 - Financial corrections are append-only adjustments. Admin cannot edit or delete original COD or commission entries.
 - Platform Admin cannot access a plaintext self-pickup claim code or user password.
-- Approved transactional roles are not changed in place when they have orders, custody, ledger, or audit history. A controlled migration or separate account is required.
+- Every saved account keeps the role assigned at creation, regardless of approval, activity, or transaction history. Admin and profile requests cannot convert accounts or grant a different role. Another public role requires a separate registration and its normal evidence/approval; existing records stay with the original account. There is no role-conversion or migration workflow in this project.
 - Account deletion is blocked while orders, parcel custody, COD, or settlement remain active. Later privacy handling anonymizes eligible personal fields without deleting transactional evidence.
 - Complete dispute/refund/exchange processing remains deferred. Placeholder pages must show unavailable and cannot return sample cases or fake success.
 

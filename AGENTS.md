@@ -22,6 +22,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 ## Domain Invariants
 
 - Roles: buyer, seller, courier, logistics/sorting hub, and admin. Pickup and delivery riders are courier phases, not separate account roles unless existing code says otherwise.
+- An account's role is fixed when created. Do not add role-conversion controls or mutate an existing account's role; another role requires a separate account and its documented approval.
 - Registration requires the documented approval authority before portal access.
 - Canonical order flow:
   `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> PICKED_UP -> AT_SORTING_CENTER -> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED`.
