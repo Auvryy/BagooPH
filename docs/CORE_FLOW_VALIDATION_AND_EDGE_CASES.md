@@ -70,7 +70,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - OTP resend has a 60-second cooldown and at most five requests per 15 minutes per email/purpose. A new OTP invalidates the previous active OTP.
 - OTPs, passwords, reset tokens, self-pickup claim codes, and verification tokens never appear in logs, URLs, analytics, notifications, or support screens.
 - If OTP delivery fails, the system reports that delivery failed and offers a safe retry; it must not claim success or log the secret code.
-- Birthday is a real past calendar date and age is calculated by the server; a client-submitted age never overrides birthday. Seller, courier, logistics, and admin actors must be adults. Buyer purchasing eligibility follows the approved KYC policy.
+- Birthday is a real calendar date in `YYYY-MM-DD` before the current Philippine (`Asia/Manila`) date. The server derives completed years from birthday; a client-submitted age never overrides it. Seller, courier, logistics, and controlled admin accounts require a valid birth date proving age 18 or older. Buyer purchasing eligibility follows the approved KYC policy; the worker adult minimum does not apply to a buyer birth date.
 - Sex, role, vehicle type, and other categorical registration inputs use explicit allowlists rather than arbitrary text.
 
 ### Operational Identifiers

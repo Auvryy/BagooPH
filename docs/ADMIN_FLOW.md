@@ -23,6 +23,8 @@ Registration, email verification, document upload, and company placement do not 
 
 Reviewers must inspect the required private evidence before deciding. Missing or invalid evidence prevents approval. Document access uses authorized private links as described in [VERIFICATION_DOCUMENT_SECURITY.md](VERIFICATION_DOCUMENT_SECURITY.md); files and raw storage paths must not be exposed through dashboards or audit exports.
 
+Worker approval also requires a valid birth date proving age 18 or older under the shared validation contract; the review uses server-calculated age. An unreviewed worker may correct a birth date while pending. Corrected details invalidate stale review and document-inspection confirmations, so the reviewer must inspect the current submission again. A completed review cannot be changed through applicant resubmission.
+
 ## 2. Approval and Account State
 
 KYC review, account activity, shop/company eligibility, facility assignment, and rider duty are distinct checks. A reviewed account may still be inactive or suspended. An active account without the required approval remains ineligible.
@@ -33,7 +35,7 @@ Use the existing `pending_approval`, `approved`, and `rejected` KYC values. Exis
 |---|---|
 | Approve an application | Review the current pending submission and required evidence. Record approval and activate the eligible application/profile together, without clearing an independent inactive or suspended restriction. |
 | Reject an application | Review the current pending submission, record a meaningful reason, and keep transactional access blocked. Preserve any existing suspension. |
-| Resubmit after rejection | Applicant supplies corrected evidence; the submission returns to pending review. Preserve the earlier decision and its evidence references. Resubmission never reactivates a suspended account. |
+| Resubmit after rejection | Applicant supplies corrected application details or evidence; the submission returns to pending review. Preserve the earlier decision and its evidence references. Resubmission never reactivates a suspended account. |
 | Reverse a reviewed decision | Explicit correction with reason, prior decision reference, and current evidence. Preserve history and apply the same active-work protections as suspension. |
 | Suspend or deactivate | Explicit reason and affected-work review; remove new-work eligibility while preserving orders, custody, cash, and evidence. |
 | Reactivate | Separate reasoned decision after valid approval and profile/company scope are checked. It cannot silently approve rejected KYC or reactivate unrelated shops, facilities, personnel, or vehicles. |
@@ -118,6 +120,7 @@ The core baseline preserves evidence and may show dispute handling as unavailabl
 | Inactive or suspended admin uses an existing session | Deny privileged reads and writes, including approval and restriction decisions. |
 | Company Admin attempts platform approval or foreign-company assignment | Deny; no approval, assignment, or unrelated record changes. |
 | Reviewer approves missing or invalid evidence | Validation failure; account and related profile remain unchanged. |
+| Worker application has a missing, invalid, future, or underage birth date, even with a claimed adult age | Reject registration or approval without changing eligibility; a pending correction requires a fresh review. |
 | Review is submitted twice | Return one recorded decision with unchanged reviewer/time/reason. |
 | Two reviewers submit conflicting decisions | One valid decision commits; the stale request conflicts without overwriting it. |
 | Related profile or audit write fails | Roll back the complete decision. |
