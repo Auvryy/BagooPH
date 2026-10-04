@@ -12,7 +12,7 @@ export const courierInput = 'mt-2 min-h-12 w-full rounded-[8px] border border-sl
 export const courierClasses = twMerge;
 
 export function CourierPanel({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-    return <section className={twMerge('courier-enter rounded-[8px] border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]', className)}>{children}</section>;
+    return <section className={twMerge('courier-panel courier-enter rounded-[8px] border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]', className)}>{children}</section>;
 }
 
 export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{ tone?: 'neutral' | 'brand' | 'waiting' | 'success' }>) {
@@ -21,7 +21,7 @@ export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{
 }
 
 export function CourierEmpty({ title, children, icon: Icon = Package }: PropsWithChildren<{ title: string; icon?: LucideIcon }>) {
-    return <CourierPanel className="px-5 py-10 text-center"><span className="mx-auto flex h-16 w-16 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Icon className="h-8 w-8" aria-hidden="true" /></span><h2 className="mt-4 text-xl font-bold text-slate-900">{title}</h2><div className="mx-auto mt-2 max-w-md text-base leading-relaxed text-slate-600">{children}</div></CourierPanel>;
+    return <CourierPanel className="px-5 py-10 text-center"><span className="courier-empty-icon mx-auto flex h-16 w-16 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Icon className="h-8 w-8" aria-hidden="true" /></span><h2 className="mt-4 text-xl font-bold text-slate-900">{title}</h2><div className="mx-auto mt-2 max-w-md text-base leading-relaxed text-slate-600">{children}</div></CourierPanel>;
 }
 
 export function CourierDialog({ open, title, children, onClose, busy = false }: PropsWithChildren<{ open: boolean; title: string; onClose: () => void; busy?: boolean }>) {

@@ -6,6 +6,25 @@
 }
 
 .courier-enter { animation: courier-enter 200ms ease-out both; }
+.courier-dashboard .courier-panel,
+.courier-dashboard .courier-dispatch-card {
+    border-color: transparent;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.025), 0 8px 24px rgba(15, 23, 42, 0.045);
+}
+.courier-dashboard .courier-dispatch-card,
+.courier-dashboard .courier-inset {
+    border-color: transparent;
+    background-color: #FFFAFB;
+}
+.courier-dashboard .courier-empty-icon {
+    border-color: transparent;
+    background-color: #FFF6F8;
+}
+.courier-dashboard .courier-map-surface,
+.courier-dashboard .courier-map-label {
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
 .courier-job-map .leaflet-container,
 .courier-job-map .leaflet-control,
 .courier-job-map .leaflet-tooltip { font-family: 'Plus Jakarta Sans', sans-serif; }
