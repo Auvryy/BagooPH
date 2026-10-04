@@ -135,6 +135,7 @@ class CheckoutController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
+        abort_unless($user->isBuyer(), 403, 'Buyer access is required to place an order.');
 
         // Enforce the purchase gate before any cart, stock, or order work.
         // This remains server-side protection even if a client skips Buy Now

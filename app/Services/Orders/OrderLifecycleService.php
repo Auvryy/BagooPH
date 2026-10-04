@@ -158,7 +158,7 @@ class OrderLifecycleService
     {
         return DB::transaction(function () use ($order, $buyer) {
             $lockedOrder = Order::with('delivery')->whereKey($order->id)->lockForUpdate()->firstOrFail();
-            if ($lockedOrder->buyer_id !== $buyer->id) {
+            if (! $buyer->isBuyer() || $lockedOrder->buyer_id !== $buyer->id) {
                 throw new RuntimeException('Only the buyer who placed this order may confirm receipt.');
             }
             if ($lockedOrder->status === 'completed') {

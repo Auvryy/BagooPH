@@ -203,7 +203,8 @@ class MarketplaceController extends Controller
             ->paginate(18);
 
         $currentUser = auth()->user();
-        $isOwner = $currentUser && ($currentUser->id === $shop->user_id || $currentUser->role === 'admin');
+        $isOwner = $currentUser && $currentUser->isSeller() && $currentUser->canAccessPortal()
+            && $currentUser->id === $shop->user_id;
         $isPreview = $request->has('preview') || (bool) $isOwner;
 
         return Inertia::render('Marketplace/ShopDetail', [
@@ -222,7 +223,7 @@ class MarketplaceController extends Controller
         }
 
         $shop = Shop::where('slug', $slug)->firstOrFail();
-        if ($user->id !== $shop->user_id && $user->role !== 'admin') {
+        if (! $user->isSeller() || ! $user->canAccessPortal() || $user->id !== $shop->user_id) {
             abort(403, 'Only the shop owner can update this storefront.');
         }
 
