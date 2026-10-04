@@ -36,7 +36,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [desktop, setDesktop] = useState(false);
-    const sidebarControl = useRef<HTMLDivElement>(null);
+    const [sidebarReady, setSidebarReady] = useState(false);
     const hub = scope?.hub || 'Hub not assigned';
     const hubCode = scope?.hubCode || scope?.hub_code;
     const initials = courierInitials(auth.user?.name);
@@ -80,16 +80,13 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
         resized();
         media.addEventListener('change', resized);
         try { setSidebarCollapsed(window.localStorage.getItem('bagoo.rider.sidebar-collapsed') === 'true'); } catch {}
-        return () => media.removeEventListener('change', resized);
+        const frame = requestAnimationFrame(() => setSidebarReady(true));
+        return () => { media.removeEventListener('change', resized); cancelAnimationFrame(frame); };
     }, []);
 
     const setCollapsed = (collapsed: boolean) => {
         setSidebarCollapsed(collapsed);
         try { window.localStorage.setItem('bagoo.rider.sidebar-collapsed', String(collapsed)); } catch {}
-    };
-    const collapseSidebar = () => {
-        setCollapsed(true);
-        sidebarControl.current?.querySelector('button')?.focus();
     };
     const toggleSidebar = () => {
         closeMenu();
@@ -110,15 +107,15 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     };
 
     return (
-        <div className={courierClasses('courier-portal min-h-dvh font-sans text-slate-900 antialiased', isDashboard ? 'courier-dashboard bg-[#FFFAFB]' : 'bg-[#FFF2F4]')}>
+        <div data-sidebar-collapsed={sidebarCollapsed} data-sidebar-ready={sidebarReady} className={courierClasses('courier-portal min-h-dvh font-sans text-slate-900 antialiased', isDashboard ? 'courier-dashboard bg-[#FFFAFB]' : 'bg-[#FFF2F4]')}>
             <a href="#rider-content" className="sr-only z-[90] bg-white p-4 text-base font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
-            <CourierSidebar component={component} hub={hub} company={scope?.company || 'Company not assigned'} name={auth.user?.name || 'Rider'} initials={initials} subtle={isDashboard} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen && !desktop} onCollapse={collapseSidebar} onCloseMobile={() => setMobileSidebarOpen(false)} />
+            <CourierSidebar component={component} hub={hub} company={scope?.company || 'Company not assigned'} name={auth.user?.name || 'Rider'} initials={initials} subtle={isDashboard} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen && !desktop} onCloseMobile={() => setMobileSidebarOpen(false)} />
 
-            <div className={courierClasses('min-w-0', sidebarCollapsed ? 'md:ml-0' : 'md:ml-60')}>
+            <div className="courier-content min-w-0">
                 <header className={courierClasses('relative z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-6', isDashboard && 'border-slate-100/80')}>
                     <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
                         <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
-                            <div ref={sidebarControl}><CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} /></div>
+                            <CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} />
                             <div className="min-w-0">
                                 <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
                                 <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>

@@ -1,6 +1,7 @@
-import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Link } from '@inertiajs/react';
 import { ArrowUpRight, History, LayoutDashboard, MapPin, Menu, MessageSquare, UserRound, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import BagooLogo from '@/Components/BagooLogo';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierPath } from '@/utils/courier';
@@ -34,9 +35,7 @@ function SidebarContent({ component, hub, company, name, initials, subtle, onClo
                 <BagooLogo className="h-8 w-8 shrink-0" rounded="rounded-[8px]" />
                 <span><span className="block text-lg font-bold tracking-tight">Bagoo<span className="text-[#E00D42]">PH</span></span><span className="block text-xs font-medium text-slate-500">Rider workspace</span></span>
             </Link>
-            <button type="button" onClick={onClose} aria-label={mobile ? 'Close sidebar' : 'Collapse sidebar'} className={courierClasses(courierButton, 'h-12 w-12 shrink-0 border-transparent p-0 hover:bg-slate-100')}>
-                {mobile ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
-            </button>
+            {mobile && <button type="button" onClick={onClose} aria-label="Close sidebar" className={courierClasses(courierButton, 'h-12 w-12 shrink-0 border-transparent p-0 hover:bg-slate-100')}><X className="h-5 w-5" aria-hidden="true" /></button>}
         </div>
         <nav aria-label="Rider sidebar navigation" className="shrink-0 space-y-1.5 px-3 py-4">
             <p className="mb-3 px-3 text-xs font-medium tracking-wide text-slate-500">Your workspace</p>
@@ -63,18 +62,22 @@ function SidebarContent({ component, hub, company, name, initials, subtle, onClo
 interface Props extends Omit<SidebarContentProps, 'onClose' | 'mobile'> {
     collapsed: boolean;
     mobileOpen: boolean;
-    onCollapse: () => void;
     onCloseMobile: () => void;
 }
 
-export default function CourierSidebar({ collapsed, mobileOpen, onCollapse, onCloseMobile, ...content }: Props) {
+export default function CourierSidebar({ collapsed, mobileOpen, onCloseMobile, ...content }: Props) {
+    const sidebar = useRef<HTMLElement>(null);
+    useEffect(() => {
+        if (sidebar.current) sidebar.current.inert = collapsed;
+    }, [collapsed]);
+
     return <>
-        <aside id="rider-sidebar" aria-label="Rider sidebar" className={courierClasses('fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-y-auto border-r border-slate-300 bg-white', collapsed ? 'md:hidden' : 'md:flex', content.subtle && 'border-transparent shadow-[2px_0_16px_rgba(15,23,42,0.035)]')}>
-            <SidebarContent {...content} onClose={onCollapse} />
+        <aside ref={sidebar} id="rider-sidebar" aria-label="Rider sidebar" aria-hidden={collapsed} data-collapsed={collapsed} className={courierClasses('courier-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-slate-300 bg-white md:flex', content.subtle && 'border-transparent shadow-[2px_0_16px_rgba(15,23,42,0.035)]')}>
+            <SidebarContent {...content} onClose={onCloseMobile} />
         </aside>
         <Dialog open={mobileOpen} onClose={onCloseMobile} className="relative z-[60] font-sans text-slate-900">
-            <div className="fixed inset-0 bg-slate-950/25" aria-hidden="true" />
-            <DialogPanel id="rider-mobile-sidebar" className={courierClasses('fixed inset-y-0 left-0 flex w-72 max-w-[calc(100vw-3rem)] flex-col overflow-y-auto bg-white shadow-xl', content.subtle && 'courier-dashboard')}>
+            <DialogBackdrop transition className="courier-sidebar-backdrop fixed inset-0 bg-slate-950/25" />
+            <DialogPanel transition id="rider-mobile-sidebar" className={courierClasses('courier-sidebar-drawer fixed inset-y-0 left-0 flex w-80 max-w-[calc(100vw-3rem)] flex-col overflow-y-auto bg-white shadow-xl', content.subtle && 'courier-dashboard')}>
                 <DialogTitle className="sr-only">Rider navigation</DialogTitle>
                 <SidebarContent {...content} mobile onClose={onCloseMobile} />
             </DialogPanel>

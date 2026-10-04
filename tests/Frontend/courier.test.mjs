@@ -102,6 +102,17 @@ test('portal navigation stays on the root or courier subdomain path', () => {
     assert.equal(ui.courierPath('messages', 'courier.localhost'), '/messages');
     assert.equal(ui.courierPath('/deliveries', 'localhost'), '/courier/deliveries');
 });
+test('dashboard renders one sidebar hamburger and keeps it outside the sliding sidebar', async () => {
+    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
+    const sidebar = html.match(/<aside\b[^]*?<\/aside>/)?.[0];
+    assert.ok(sidebar);
+    assert.equal([...html.matchAll(/class="[^"\n]*\blucide-menu\b/g)].length, 1);
+    assert.doesNotMatch(sidebar, /aria-label="(?:Open|Close|Collapse|Expand) sidebar"/);
+    assert.match(html.slice(html.indexOf('</aside>')), /aria-controls="rider-mobile-sidebar"/);
+    for (const page of ['deliveries', 'earnings', 'messages', 'profile']) {
+        assert.match(sidebar, new RegExp(`href="/courier/${page}"`));
+    }
+});
 test('directions reject absent or invalid coordinates without inventing a pin', () => {
     assert.equal(ui.directionsUrl({ name: 'Hub', code: 'BH-TEST' }), null);
     assert.equal(ui.directionsUrl({ latitude: null, longitude: null }), null);

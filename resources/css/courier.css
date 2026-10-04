@@ -6,6 +6,29 @@
 }
 
 .courier-enter { animation: courier-enter 200ms ease-out both; }
+.courier-portal { --courier-sidebar-width: 17.5rem; }
+.courier-sidebar {
+    width: var(--courier-sidebar-width);
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 260ms;
+}
+.courier-sidebar[data-collapsed="true"] {
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
+}
+.courier-sidebar-drawer { transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+.courier-sidebar-drawer[data-closed] { transform: translateX(-100%); }
+.courier-sidebar-backdrop { transition: opacity 200ms ease-out; }
+.courier-sidebar-backdrop[data-closed] { opacity: 0; }
+@media (min-width: 768px) {
+    .courier-content { transition: margin-left 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .courier-portal[data-sidebar-collapsed="false"] > .courier-content { margin-left: var(--courier-sidebar-width); }
+    .courier-portal[data-sidebar-collapsed="true"] > .courier-content { margin-left: 0; }
+}
+.courier-portal[data-sidebar-ready="false"] .courier-sidebar,
+.courier-portal[data-sidebar-ready="false"] > .courier-content { transition: none; }
 .courier-dashboard .courier-panel,
 .courier-dashboard .courier-dispatch-card {
     border-color: transparent;
@@ -45,6 +68,10 @@
 
 @media (prefers-reduced-motion: reduce) {
     .courier-enter { animation: none; }
+    .courier-sidebar,
+    .courier-content,
+    .courier-sidebar-drawer,
+    .courier-sidebar-backdrop { transition: none; }
     .courier-job-map .leaflet-zoom-animated,
     .courier-job-map .leaflet-fade-anim .leaflet-tile { transition: none; }
 }
