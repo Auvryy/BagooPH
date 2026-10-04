@@ -243,7 +243,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                 <div className="w-4 h-4 rounded-full border-2 border-black/30 flex items-center justify-center shrink-0 text-[9px] font-bold">
                                     •
                                 </div>
-                                <span>Platform Admin One-Click Final Signature</span>
+                                <span>Platform Admin Evidence Review</span>
                             </div>
                         </div>
                     </div>
@@ -252,6 +252,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 {/* Resubmission Form (Rejected Mode) */}
                 {isRejected && (
                     <form onSubmit={handleResubmit} className="p-4 bg-white border-2 border-[#E00D42]/30 rounded-xl space-y-4">
+                        <InputError message={(errors as { documents?: string }).documents} />
                         <div className="flex items-center gap-2 border-b border-black/10 pb-2">
                             <Upload className="w-4 h-4 text-[#E00D42]" />
                             <span className="font-bold text-xs uppercase tracking-wider">
