@@ -65,6 +65,7 @@ class AdminKycApprovalTest extends TestCase
 
         $shop = Shop::create([
             'user_id' => $seller->id,
+            'root_category_id' => $this->validMasterCategory()->id,
             'name' => 'Pending Shop',
             'slug' => 'pending-shop',
             'status' => 'pending',

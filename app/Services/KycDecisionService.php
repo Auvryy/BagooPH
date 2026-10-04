@@ -15,7 +15,7 @@ class KycDecisionService
 {
     public function __construct(private VerificationDocumentService $documents) {}
 
-    public function submission(User $user): array
+    public function submission(User $user, bool $lockCategory = false): array
     {
         $user->loadMissing(['shop' => fn ($query) => $query->orderBy('id'), 'courierProfile', 'logisticsCompany']);
 
@@ -24,6 +24,7 @@ class KycDecisionService
             'role' => $user->role,
             'account' => $user->only(['name', 'email', 'phone', 'address', 'city', 'birthday']),
             'shop' => $user->shop?->only(['id', 'name', 'phone', 'address', 'city', 'root_category_id']),
+            'shop_category' => $user->isSeller() ? app(MasterCategoryService::class)->snapshot($user->shop?->root_category_id, $lockCategory) : null,
             'courier' => $user->courierProfile?->only(['id', 'vehicle_type', 'plate_number', 'license_number']),
             'company' => $user->logisticsCompany?->only(['id', 'name', 'contact_email', 'contact_phone', 'address']),
             'franchise_number' => $user->logisticsCompany?->accreditation_details['franchise_number'] ?? null,
@@ -74,6 +75,9 @@ class KycDecisionService
         if ($profile && ! $submission[$profile]) {
             $issues[] = 'The original application profile is missing.';
         }
+        if ($submission['role'] === 'seller' && $submission['shop'] && ! ($submission['shop_category']['eligible'] ?? false)) {
+            $issues[] = MasterCategoryService::ISSUE;
+        }
         if ($submission['role'] === 'courier' && $submission['courier'] && (
             empty($submission['courier']['vehicle_type']) || empty($submission['courier']['plate_number'])
         )) {
@@ -92,6 +96,7 @@ class KycDecisionService
             'review_age' => app(BirthDateEligibility::class)->age($user->birthday),
             'required_documents' => $this->requiredDocuments($submission),
             'review_issues' => $this->readiness($submission),
+            'shop_category' => $submission['shop_category'],
             'decision_history' => KycDecision::where('user_id', $user->id)->orderByDesc('id')->get()->map(fn (KycDecision $decision) => [
                 'id' => $decision->id,
                 'decision' => $decision->decision,
@@ -129,23 +134,28 @@ class KycDecisionService
         abort_unless(in_array($action, ['approved', 'rejected'], true), 400);
 
         return DB::transaction(function () use ($request, $subject, $action, $validated) {
-            // Lock users by ID, then the original application profile; submissions use the same order.
+            // Lock users by ID, then the original profile and selected category; submissions use the same order.
             $users = User::whereIn('id', [$request->user()->id, $subject->id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $actor = $users->get($request->user()->id);
             $user = $users->get($subject->id);
             abort_unless($actor?->isAdmin() && $actor->canAccessPortal(), 403);
             abort_unless($user && in_array($user->role, ['buyer', 'seller', 'courier', 'logistics'], true), 403);
             $this->lockProfile($user);
-            $submission = $this->submission($user);
+            $submission = $this->submission($user, lockCategory: true);
             $token = $this->token($submission);
-            abort_unless(hash_equals($token, $validated['review_token']), 409, 'This application changed. Reload the queue and review its current evidence.');
             $reason = $action === 'rejected' ? trim($validated['reason']) : null;
-            $existing = KycDecision::where('user_id', $user->id)->where('submission_token', $token)->first();
+            $existing = KycDecision::where('user_id', $user->id)->where('submission_token', $validated['review_token'])->first();
             if ($existing) {
+                // Taxonomy activity may change after review; an identical retry cannot reactivate a shop.
+                $currentApplication = $submission;
+                $reviewedApplication = $existing->submission;
+                unset($currentApplication['shop_category'], $reviewedApplication['shop_category']);
+                abort_unless(hash_equals($this->token($currentApplication), $this->token($reviewedApplication)), 409, 'This application changed. Reload the queue and review its current evidence.');
                 abort_unless($existing->decision === $action && $existing->reason === $reason && $existing->reviewer_id === $actor->id, 409, 'This submission has already been reviewed. Reload the queue.');
 
                 return $existing;
             }
+            abort_unless(hash_equals($token, $validated['review_token']), 409, 'This application changed. Reload the queue and review its current evidence.');
             abort_unless($user->isKycPending(), 409, 'Only a current pending application can be reviewed.');
             if ($action === 'approved') {
                 $issues = $this->readiness($submission);

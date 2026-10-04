@@ -2,9 +2,7 @@
 
 namespace Tests\Feature\E2E\Tier1;
 
-use App\Models\CourierProfile;
-use App\Models\Shop;
-use App\Models\User;
+use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,13 +16,13 @@ use Tests\TestCase;
 
 class F01_to_F06_SubdomainAuthTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $tempDir = sys_get_temp_dir() . '/bagoo_testing_disks_' . getmypid() . '/public';
+        $tempDir = sys_get_temp_dir().'/bagoo_testing_disks_'.getmypid().'/public';
         if (! is_dir($tempDir)) {
             mkdir($tempDir, 0777, true);
         }
@@ -222,6 +220,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'role' => 'seller',
             'birthday' => '2000-01-01',
             'shop_name' => 'Artisan Craft Hub',
+            'root_category_id' => Category::factory()->create(['name' => 'Pet Supplies', 'parent_id' => null])->id,
             'phone' => '+63 917 111 0002',
             'address' => '456 Merchant Blvd',
             'city' => 'Cebu City',

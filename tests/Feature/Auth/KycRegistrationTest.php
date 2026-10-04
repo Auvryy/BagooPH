@@ -26,6 +26,7 @@ class KycRegistrationTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Sarah Store Owner',
             'shop_name' => 'Sarah Prime Boutique',
+            'root_category_id' => $this->validMasterCategory()->id,
             'email' => 'sarah.store@example.com',
             'phone' => '+63 917 111 2222',
             'address' => 'Unit 102 Greenbelt Mall',

@@ -2,6 +2,7 @@
 
 namespace Tests\Concerns;
 
+use App\Models\Category;
 use App\Models\User;
 use App\Services\KycDecisionService;
 use App\Services\VerificationDocumentService;
@@ -10,6 +11,11 @@ use Illuminate\Support\Facades\Storage;
 trait InteractsWithKycReviews
 {
     private bool $kycStorageInitialized = false;
+
+    protected function validMasterCategory(): Category
+    {
+        return Category::firstOrCreate(['name' => 'Pet Supplies', 'parent_id' => null], ['slug' => 'pet-supplies', 'is_active' => true]);
+    }
 
     protected function addKycEvidence(User $user): void
     {

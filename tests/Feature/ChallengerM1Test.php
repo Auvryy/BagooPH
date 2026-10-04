@@ -3,25 +3,23 @@
 namespace Tests\Feature;
 
 use App\Models\Cart;
-use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Tests\TestCase;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\TestCase;
 
 class ChallengerM1Test extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithKycReviews;
+    use RefreshDatabase;
 
     /**
      * 1. Test Seller KYC Full State Machine Lifecycle:
@@ -44,6 +42,7 @@ class ChallengerM1Test extends TestCase
             'password' => 'SecurePass123!',
             'password_confirmation' => 'SecurePass123!',
             'shop_name' => 'Adversarial Artisan Crafts',
+            'root_category_id' => $this->validMasterCategory()->id,
             'phone' => '09170001111',
             'address' => '456 Crafts Street',
             'city' => 'Cebu City',
@@ -193,7 +192,7 @@ class ChallengerM1Test extends TestCase
         $this->assertEquals('ND-12345', $profile->plate_number);
         $this->assertEquals('N02-99-887766', $profile->license_number);
         $this->assertEquals('Pending Verification', $profile->or_cr_status);
-        $this->assertFalse((bool)$profile->is_available, 'Courier should not be available before approval');
+        $this->assertFalse((bool) $profile->is_available, 'Courier should not be available before approval');
 
         // Courier cannot access courier portal
         $gateResponse = $this->actingAs($courier)->get('/courier/deliveries');
@@ -216,7 +215,7 @@ class ChallengerM1Test extends TestCase
         $this->assertEquals('active', $courier->status);
         $this->assertEquals('approved', $courier->kyc_status);
         $this->assertEquals('Verified & Registered', $profile->or_cr_status);
-        $this->assertFalse((bool)$profile->is_available, 'Approval must preserve rider duty');
+        $this->assertFalse((bool) $profile->is_available, 'Approval must preserve rider duty');
 
         // Approved courier can access courier deliveries portal
         $courierDeliveriesResponse = $this->actingAs($courier)->get('/courier/deliveries');
@@ -337,7 +336,7 @@ class ChallengerM1Test extends TestCase
         $this->assertNotNull($order);
         $this->assertEquals('Maria Clara', $order->recipient_name);
         $this->assertEquals('09171234567', $order->recipient_phone);
-        $this->assertEquals(3000.00, (float)$order->subtotal); // 3 * 750 + 1 * 750 = 3000
+        $this->assertEquals(3000.00, (float) $order->subtotal); // 3 * 750 + 1 * 750 = 3000
 
         // Verify Order Items
         $this->assertEquals(2, $order->items()->count());
@@ -346,16 +345,16 @@ class ChallengerM1Test extends TestCase
         $this->assertNotNull($orderItem1);
         $this->assertEquals('XL', $orderItem1->size);
         $this->assertEquals(3, $orderItem1->quantity);
-        $this->assertEquals(750.00, (float)$orderItem1->unit_price);
-        $this->assertEquals(2250.00, (float)$orderItem1->subtotal);
+        $this->assertEquals(750.00, (float) $orderItem1->unit_price);
+        $this->assertEquals(2250.00, (float) $orderItem1->subtotal);
         $this->assertEquals('LINEN-SHIRT-001-Crimson Red-XL', $orderItem1->sku_snapshot);
 
         $orderItem2 = $order->items()->where('color', 'Navy Blue')->first();
         $this->assertNotNull($orderItem2);
         $this->assertEquals('M', $orderItem2->size);
         $this->assertEquals(1, $orderItem2->quantity);
-        $this->assertEquals(750.00, (float)$orderItem2->unit_price);
-        $this->assertEquals(750.00, (float)$orderItem2->subtotal);
+        $this->assertEquals(750.00, (float) $orderItem2->unit_price);
+        $this->assertEquals(750.00, (float) $orderItem2->subtotal);
         $this->assertEquals('LINEN-SHIRT-001-Navy Blue-M', $orderItem2->sku_snapshot);
 
         // Verify stock decremented properly (100 - 4 = 96)

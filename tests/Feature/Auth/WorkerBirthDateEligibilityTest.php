@@ -54,6 +54,7 @@ class WorkerBirthDateEligibilityTest extends TestCase
         ];
         if ($role === 'seller') {
             $data['shop_name'] = 'Bagoo Application Shop';
+            $data['root_category_id'] = $this->validMasterCategory()->id;
         } elseif ($role === 'courier') {
             $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'TEST-123', 'license_number' => 'TEST-LICENSE'];
         } elseif ($role === 'logistics') {
@@ -75,7 +76,7 @@ class WorkerBirthDateEligibilityTest extends TestCase
     {
         $user = User::factory()->pendingKyc()->create(['role' => $role, 'status' => $status, 'birthday' => $birthday]);
         if ($role === 'seller') {
-            Shop::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
+            Shop::factory()->create(['user_id' => $user->id, 'root_category_id' => $this->validMasterCategory()->id, 'status' => 'pending']);
         } elseif ($role === 'courier') {
             CourierProfile::factory()->create(['user_id' => $user->id, 'is_available' => false]);
         } else {
