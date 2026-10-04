@@ -5,18 +5,20 @@ interface Props {
     email: string;
     verifiedAt?: string | null;
     className?: string;
+    comfortable?: boolean;
 }
 
 export default function EmailVerificationStatus({
     email,
     verifiedAt,
     className = '',
+    comfortable = false,
 }: Props) {
     const verificationForm = useForm({ email });
 
     if (verifiedAt) {
         return (
-            <div className={`flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 ${className}`}>
+            <div className={`flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 ${comfortable ? '!rounded-[18px] [&_p]:text-sm' : ''} ${className}`}>
                 <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
                 <div>
                     <p className="text-xs font-bold text-emerald-900">Email verified</p>
@@ -33,7 +35,7 @@ export default function EmailVerificationStatus({
     };
 
     return (
-        <div className={`rounded-md border border-amber-300 bg-amber-50 px-4 py-3 ${className}`}>
+        <div className={`rounded-md border border-amber-300 bg-amber-50 px-4 py-3 ${comfortable ? '!rounded-[18px] [&_p]:text-sm [&_button]:min-h-12 [&_button]:rounded-[14px] [&_button]:text-sm' : ''} ${className}`}>
             <div className="flex items-start gap-3">
                 <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                 <div className="min-w-0 flex-1">

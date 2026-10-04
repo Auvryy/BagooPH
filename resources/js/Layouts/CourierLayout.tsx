@@ -1,513 +1,164 @@
-import React, { useRef, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import {
-    CheckCircle2,
-    ChevronDown,
-    ClipboardList,
-    ExternalLink,
-    History,
-    LogOut,
-    Menu,
-    MessageSquare,
-    Power,
-    Truck,
-    UserRound,
-    X,
-} from 'lucide-react';
+import '../../css/courier.css';
+import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { ArrowUpRight, CalendarDays, ChevronRight, History, LayoutDashboard, LogOut, MapPin, MessageSquare, RefreshCw, UserRound } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
-import { useCourierDutyControl } from '@/Components/CourierDutyControl';
-import { getDomainUrl } from '@/utils/domain';
+import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
+import { courierButton, courierClasses } from '@/Components/CourierUI';
+import { courierDayKey, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
-
-interface Scope {
-    company?: string | null;
-    hub?: string | null;
-    hubCode?: string | null;
-    hub_code?: string | null;
-    barangay?: string | null;
-    isAssigned?: boolean;
-    isOperational?: boolean;
-}
+import useCourierRequestError from '@/hooks/useCourierRequestError';
 
 interface Props {
-    children: React.ReactNode;
     title: string;
-    subtitle?: React.ReactNode;
+    subtitle?: ReactNode;
     isOnline?: boolean;
-    actions?: React.ReactNode;
-    scope?: Scope;
+    actions?: ReactNode;
+    scope?: CourierScope;
+    pageLabel?: string;
 }
 
-export default function CourierLayout({
-    children,
-    title,
-    subtitle,
-    isOnline = false,
-    actions,
-    scope,
-}: Props) {
+export default function CourierLayout({ children, title, subtitle, isOnline = false, actions, scope, pageLabel }: PropsWithChildren<Props>) {
     const { auth, flash } = usePage<PageProps>().props;
-    const { url, component } = usePage();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const userMenuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const user = auth?.user;
-    const { confirmationDialog, dutyLoading, requestDutyChange } = useCourierDutyControl(isOnline);
-
-    const isDeliveriesActive =
-        component === 'Courier/Deliveries' ||
-        url === '/deliveries' ||
-        url.startsWith('/deliveries') ||
-        url.includes('/courier/deliveries') ||
-        url === '/courier';
-
-    const isEarningsActive =
-        component === 'Courier/Earnings' ||
-        url === '/earnings' ||
-        url.startsWith('/earnings') ||
-        url.includes('/courier/earnings');
-
-    const isMessagesActive =
-        component === 'Courier/Messages' ||
-        url === '/messages' ||
-        url.startsWith('/messages') ||
-        url.includes('/courier/messages');
-
-    const isProfileActive =
-        component === 'Courier/Profile' ||
-        url === '/profile' ||
-        url.startsWith('/profile') ||
-        url.includes('/courier/profile');
-
+    const { component } = usePage();
+    const { confirmationDialog, dutyLoading, dutyError, requestDutyChange } = useCourierDutyControl(isOnline);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [refreshResult, setRefreshResult] = useState('');
+    const menu = useRef<HTMLDivElement>(null);
+    const menuButton = useRef<HTMLButtonElement>(null);
+    const menuTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const menuClicked = useRef(false);
+    const refreshPending = useRef(false);
+    useCourierRequestError(refreshPending, setRefreshResult);
     const navItems = [
-        {
-            name: 'Dispatch board',
-            href: route('courier.deliveries'),
-            icon: ClipboardList,
-            current: isDeliveriesActive,
-        },
-        {
-            name: 'Completed trips',
-            href: route('courier.earnings'),
-            icon: History,
-            current: isEarningsActive,
-        },
-        {
-            name: 'Messages',
-            href: route('courier.messages'),
-            icon: MessageSquare,
-            current: isMessagesActive,
-        },
-        {
-            name: 'Rider profile',
-            href: route('courier.profile'),
-            icon: UserRound,
-            current: isProfileActive,
-        },
+        { name: 'Dashboard', path: '/deliveries', page: 'Courier/Deliveries', icon: LayoutDashboard },
+        { name: 'Trips', path: '/earnings', page: 'Courier/Earnings', icon: History },
+        { name: 'Messages', path: '/messages', page: 'Courier/Messages', icon: MessageSquare },
+        { name: 'Profile', path: '/profile', page: 'Courier/Profile', icon: UserRound },
     ];
-
-    const openUserMenu = () => {
-        if (userMenuTimeout.current) {
-            clearTimeout(userMenuTimeout.current);
-        }
-        setUserMenuOpen(true);
+    const hub = scope?.hub || 'Hub not assigned';
+    const hubCode = scope?.hubCode || scope?.hub_code;
+    const initials = courierInitials(auth.user?.name);
+    const today = new Date();
+    const dateLabel = new Intl.DateTimeFormat('en-PH', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(today);
+    const currentPage = pageLabel || navItems.find((item) => item.page === component)?.name || title;
+    const clearMenuTimeout = () => {
+        if (menuTimeout.current) clearTimeout(menuTimeout.current);
+    };
+    const openMenu = () => { clearMenuTimeout(); setMenuOpen(true); };
+    const closeMenu = () => { menuClicked.current = false; setMenuOpen(false); };
+    const scheduleClose = () => {
+        clearMenuTimeout();
+        menuTimeout.current = setTimeout(() => {
+            if (!menu.current?.contains(document.activeElement)) closeMenu();
+        }, 250);
     };
 
-    const closeUserMenu = () => {
-        userMenuTimeout.current = setTimeout(() => setUserMenuOpen(false), 200);
-    };
+    useEffect(() => {
+        const dismiss = (event: PointerEvent) => {
+            if (!menu.current?.contains(event.target as Node)) closeMenu();
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && menuOpen) { closeMenu(); menuButton.current?.focus(); }
+        };
+        document.addEventListener('pointerdown', dismiss);
+        document.addEventListener('keydown', escape);
+        return () => {
+            document.removeEventListener('pointerdown', dismiss);
+            document.removeEventListener('keydown', escape);
+            clearMenuTimeout();
+        };
+    }, [menuOpen]);
 
-    const hubCode = scope?.hubCode || scope?.hub_code || 'BH-LBN';
-    const hubName = scope?.hub || 'Bayan Hub';
+    const refresh = () => {
+        if (refreshPending.current) return;
+        refreshPending.current = true;
+        setRefreshing(true);
+        setRefreshResult('');
+        router.reload({
+            onSuccess: () => setRefreshResult('Latest records loaded.'),
+            onError: () => setRefreshResult('Could not refresh. Try again.'),
+            onFinish: () => { refreshPending.current = false; setRefreshing(false); },
+        });
+    };
 
     return (
-        <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
-            {/* Backdrop for mobile drawer */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 lg:hidden transition-opacity"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar (Permanently Fixed on Desktop, Drawer on Mobile) */}
-            <aside
-                className={`
-                    fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 
-                    flex flex-col transition-transform duration-200 ease-in-out
-                    ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-                    lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
-                `}
-            >
-                {/* Brand Header */}
-                <div className="p-4 border-b border-slate-100 shrink-0 bg-white">
-                    <div className="flex items-center justify-between">
-                        <Link href={route('courier.deliveries')} className="flex items-center gap-2.5">
-                            <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
-                            <div>
-                                <span className="text-base font-black tracking-tight text-slate-900">
-                                    Bagoo<span className="text-[#E00D42]">PH</span>
-                                </span>
-                                <span className="block text-[9px] uppercase font-bold tracking-widest text-slate-500 -mt-0.5 font-sans">
-                                    Courier Operations
-                                </span>
-                            </div>
-                        </Link>
-                        <button
-                            type="button"
-                            onClick={() => setSidebarOpen(false)}
-                            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Rider Fleet Profile Card */}
-                <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
-                            <Truck className="w-3 h-3 text-[#E00D42]" /> Rider Fleet
-                        </span>
-                        <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs border uppercase font-sans ${
-                                isOnline
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-rose-50 text-rose-700 border-rose-200'
-                            }`}
-                        >
-                            {isOnline ? 'On Duty' : 'Off Duty'}
-                        </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate">{user?.name || 'Courier Rider'}</p>
-                            <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                Station: <span className="font-semibold text-slate-700">{hubCode}</span> • {hubName}
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={requestDutyChange}
-                            disabled={dutyLoading}
-                            className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
-                                isOnline
-                                    ? 'border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
-                                    : 'border border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700'
-                            }`}
-                        >
-                            <Power className={`w-3.5 h-3.5 ${isOnline ? 'text-[#E00D42]' : 'text-white'}`} />
-                            <span>
-                                {dutyLoading
-                                    ? 'Updating...'
-                                    : isOnline
-                                      ? 'Go Off Duty'
-                                      : 'Go On Duty'}
-                            </span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Navigation Menu */}
-                <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
-                    <div className="space-y-1">
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
-                            Menu
-                        </p>
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                onClick={() => setSidebarOpen(false)}
-                                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition group cursor-pointer ${
-                                    item.current
-                                        ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <item.icon
-                                        className={`w-4 h-4 shrink-0 ${
-                                            item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'
-                                        }`}
-                                    />
-                                    <span>{item.name}</span>
-                                </div>
-                                {item.current && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
-                                )}
-                            </Link>
-                        ))}
-                    </div>
-
-                    {/* Quick Links */}
-                    <div className="pt-2 border-t border-slate-100 space-y-1">
-                        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
-                            Quick Links
-                        </p>
-                        <a
-                            href={getDomainUrl('buyer', '/track')}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition group"
-                        >
-                            <div className="flex items-center gap-2.5">
-                                <Truck className="w-4 h-4 text-slate-400 group-hover:text-[#E00D42] transition" />
-                                <span>Track Waybill</span>
-                            </div>
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                        </a>
-                    </div>
+        <div className="courier-portal min-h-dvh bg-[#FFF2F4] font-sans text-slate-900 antialiased">
+            <a href="#rider-content" className="sr-only z-[90] bg-white p-4 text-base font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
+            <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-slate-300 bg-white md:flex">
+                <Link href={courierPath('/deliveries')} className="flex min-h-[76px] shrink-0 items-center gap-2 px-4 focus-visible:outline-[#E00D42]">
+                    <BagooLogo className="h-8 w-8" rounded="rounded-[10px]" />
+                    <span className="text-lg font-bold tracking-tight">Bagoo<span className="text-[#E00D42]">PH</span></span>
+                    <span className="ml-auto rounded-[8px] bg-[#FCE7EA] px-2 py-1 text-xs font-semibold text-[#A1052B]">Rider</span>
+                </Link>
+                <nav aria-label="Rider navigation" className="shrink-0 space-y-1.5 px-3 py-4">
+                    <p className="mb-3 px-3 text-xs font-medium tracking-wide text-slate-500">Your workspace</p>
+                    {navItems.map(({ name, path, page, icon: Icon }) => (
+                        <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-12 items-center gap-3 rounded-[12px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none ${component === page ? 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{name}</Link>
+                    ))}
                 </nav>
-
-                {/* Sidebar Bottom: Sign Out */}
-                <div className="p-3 border-t border-slate-100 bg-white shrink-0 mt-auto">
-                    <Link
-                        href={route('logout')}
-                        method="post"
-                        as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-rose-600 hover:bg-rose-50 transition border border-slate-200 hover:border-rose-200 uppercase tracking-wider shadow-2xs cursor-pointer font-sans"
-                    >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Sign Out</span>
+                <div className="mt-auto shrink-0 px-3 pb-4 pt-8">
+                    <div className="rounded-[16px] border border-rose-200 bg-[#FFF2F4] p-4">
+                        <MapPin className="h-5 w-5 text-[#E00D42]" aria-hidden="true" />
+                        <p className="mt-3 text-sm font-semibold">Your dispatch point</p>
+                        <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{hub}</p>
+                        <Link href={courierPath('/profile')} className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View profile<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
+                    </div>
+                    <p className="px-2 py-4 text-xs leading-relaxed text-slate-600">A clear handoff, every step of the way. Use the portal while safely stopped.</p>
+                    <Link href={courierPath('/profile')} className="flex min-h-14 items-center gap-3 rounded-[12px] border border-transparent px-2 py-2 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E00D42] text-sm font-semibold text-white" aria-hidden="true">{initials}</span>
+                        <span className="min-w-0"><span className="block truncate text-sm font-semibold">{auth.user?.name}</span><span className="block truncate text-xs text-slate-600">{scope?.company || 'Company not assigned'}</span></span>
                     </Link>
                 </div>
             </aside>
 
-            {/* Main Content Column */}
-            <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-                {/* Topbar */}
-                <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-2xs z-20">
-                    <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
-                        <button
-                            type="button"
-                            onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0"
-                            aria-label="Open sidebar"
-                        >
-                            <Menu className="w-5 h-5" />
-                        </button>
-                        <div className="min-w-0">
-                            <h1 className="text-base font-black text-slate-900 tracking-tight truncate">
-                                {title}
-                            </h1>
-                            {subtitle && (
-                                <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">
-                                    {subtitle}
-                                </div>
-                            )}
+            <div className="min-w-0 md:ml-52">
+                <header className="relative z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-6">
+                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+                        <div className="w-full min-w-0 sm:w-auto sm:flex-1">
+                            <Link href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold md:hidden">Bagoo<span className="text-[#E00D42]">PH</span></Link>
+                            <p className="hidden items-center gap-2 text-sm text-slate-600 md:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
+                            <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
                         </div>
-                    </div>
-
-                    {/* Topbar Actions & User Avatar */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                        {actions}
-
-                        {/* On-Duty Switch Button */}
-                        <button
-                            type="button"
-                            onClick={requestDutyChange}
-                            disabled={dutyLoading}
-                            className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs cursor-pointer disabled:cursor-wait disabled:opacity-60 ${
-                                isOnline
-                                    ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/80'
-                                    : 'bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100'
-                            }`}
-                        >
-                            <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${
-                                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-[#E00D42]'
-                                }`}
-                            />
-                            <span className="hidden xs:inline">{isOnline ? 'On Duty' : 'Off Duty'}</span>
-                            <span className="xs:hidden">{isOnline ? 'ON' : 'OFF'}</span>
-                        </button>
-
-                        {/* Rider User Avatar Interactive Dropdown */}
-                        <div
-                            className="relative"
-                            onMouseEnter={openUserMenu}
-                            onMouseLeave={closeUserMenu}
-                        >
-                            <button
-                                type="button"
-                                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                                className="flex items-center gap-2 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300 cursor-pointer"
-                            >
-                                {user?.avatar ? (
-                                    <img
-                                        src={user.avatar}
-                                        alt={user.name}
-                                        className="w-8 h-8 rounded-xs object-cover border border-slate-200 shrink-0"
-                                    />
-                                ) : (
-                                    <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-sans">
-                                        {user?.name?.charAt(0).toUpperCase() || 'C'}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} onChange={requestDutyChange} />
+                            <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'h-12 w-12 border-transparent p-0 hover:border-slate-300')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
+                            <div ref={menu} className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleClose(); }}>
+                                <button ref={menuButton} type="button" aria-label="Account options" aria-expanded={menuOpen} aria-controls="rider-account-options" onClick={() => { clearMenuTimeout(); if (menuOpen && menuClicked.current) closeMenu(); else { menuClicked.current = true; setMenuOpen(true); } }} className={courierClasses(courierButton, 'h-12 w-12 rounded-full border-[#E00D42] bg-[#E00D42] p-0 text-white hover:bg-[#C20836]')}><span aria-hidden="true">{initials}</span></button>
+                                {menuOpen && (
+                                    <div id="rider-account-options" className="courier-enter absolute right-0 top-[calc(100%-2px)] w-[min(18rem,calc(100vw-2rem))] pt-2" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
+                                        <div className="rounded-[16px] border border-slate-300 bg-white p-2 shadow-xl">
+                                            <p className="break-words px-3 py-2 text-sm font-semibold">{auth.user?.name}<span className="mt-1 block break-all font-normal text-slate-600">{auth.user?.email}</span></p>
+                                            <Link href={courierPath('/profile')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account settings</Link>
+                                            <Link href="/logout" method="post" as="button" className={`${courierButton} w-full justify-start border-transparent`}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</Link>
+                                        </div>
                                     </div>
                                 )}
-                                <div className="hidden sm:block text-left font-sans">
-                                    <div className="flex items-center gap-1">
-                                        <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-[#E00D42] transition truncate max-w-[130px]">
-                                            {user?.name || 'Courier'}
-                                        </p>
-                                        <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition shrink-0" />
-                                    </div>
-                                    <span className="text-[10px] text-slate-400 font-sans block leading-tight">
-                                        Courier Account
-                                    </span>
-                                </div>
-                            </button>
-
-                            {userMenuOpen && (
-                                <div
-                                    className="absolute right-0 top-full pt-1.5 w-56 z-50 animate-in fade-in zoom-in-95 duration-75"
-                                    onMouseEnter={openUserMenu}
-                                    onMouseLeave={closeUserMenu}
-                                >
-                                    <div className="bg-white rounded-lg shadow-xl border border-slate-200 py-1 font-sans text-slate-800">
-                                        <div className="px-3.5 py-2.5 border-b border-slate-100">
-                                            <p className="text-xs font-bold text-slate-900 truncate">{user?.name || 'Courier'}</p>
-                                            <p className="text-[11px] text-slate-500 truncate">{user?.email || ''}</p>
-                                            <div className="mt-1 flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                <span className="text-[10px] font-semibold text-slate-500">
-                                                    Hub: {hubCode}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="py-1">
-                                            <Link
-                                                href={route('courier.profile')}
-                                                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                                            >
-                                                <UserRound className="w-3.5 h-3.5 text-slate-400" />
-                                                <span>Rider Profile</span>
-                                            </Link>
-                                            <Link
-                                                href={route('courier.earnings')}
-                                                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                                            >
-                                                <History className="w-3.5 h-3.5 text-slate-400" />
-                                                <span>Completed Trips</span>
-                                            </Link>
-                                            <Link
-                                                href={route('courier.messages')}
-                                                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                                            >
-                                                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                                                <span>Messages</span>
-                                            </Link>
-                                        </div>
-                                        <div className="border-t border-slate-100 pt-1">
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                                className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 font-bold transition text-left cursor-pointer"
-                                            >
-                                                <LogOut className="w-3.5 h-3.5" />
-                                                <span>Sign Out</span>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Flash Messages */}
-                {flash?.success && (
-                    <div className="flex shrink-0 items-center gap-2 border-b border-emerald-700 bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white sm:px-6">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        {flash.success}
+                <main id="rider-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-none sm:px-6 md:pb-8">
+                    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1"><h1 className="break-words text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{subtitle && <div className="mt-2 max-w-2xl break-words text-sm leading-relaxed text-slate-600">{subtitle}</div>}</div>
+                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[12px] border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
                     </div>
-                )}
-                {flash?.error && (
-                    <div className="shrink-0 border-b border-rose-800 bg-[#E00D42] px-4 py-2.5 text-sm font-medium text-white sm:px-6">
-                        {flash.error}
-                    </div>
-                )}
-
-                {/* Main Content Area (padding-bottom pb-24 on mobile so content is clear of bottom nav) */}
-                <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-24 lg:pb-8">
-                    <div className="mx-auto max-w-7xl">{children}</div>
+                    <p role="status" className={refreshResult ? 'mb-3 text-sm text-slate-600' : 'sr-only'}>{refreshResult}</p>
+                    {flash?.success && <p role="status" className="mb-4 rounded-[16px] border border-emerald-300 bg-[#ECFDF5] p-4 text-base text-[#047857]">{flash.success}</p>}
+                    {(flash?.error || dutyError) && <p role="alert" className="mb-4 rounded-[16px] border border-rose-300 bg-[#FDF2F4] p-4 text-base text-rose-800">{dutyError || flash.error}</p>}
+                    {children}
+                    <footer className="mt-7 flex flex-wrap justify-between gap-2 text-xs leading-relaxed text-slate-600"><span>One parcel at a time. Every handoff matters.</span><span className="break-words">{scope?.company || 'Assignment pending'}</span></footer>
                 </main>
-
-                {/* Mobile Bottom Navigation Bar (Tailored for Riders on Mobile) */}
-                <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-lg">
-                    <Link
-                        href={route('courier.deliveries')}
-                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
-                            isDeliveriesActive
-                                ? 'text-[#E00D42] font-black'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <div className="relative">
-                            <ClipboardList className={`w-5 h-5 ${isDeliveriesActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
-                            {isDeliveriesActive && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
-                            )}
-                        </div>
-                        <span className="mt-1">Dispatch</span>
-                    </Link>
-
-                    <Link
-                        href={route('courier.earnings')}
-                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
-                            isEarningsActive
-                                ? 'text-[#E00D42] font-black'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <div className="relative">
-                            <History className={`w-5 h-5 ${isEarningsActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
-                            {isEarningsActive && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
-                            )}
-                        </div>
-                        <span className="mt-1">Trips</span>
-                    </Link>
-
-                    <Link
-                        href={route('courier.messages')}
-                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
-                            isMessagesActive
-                                ? 'text-[#E00D42] font-black'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <div className="relative">
-                            <MessageSquare className={`w-5 h-5 ${isMessagesActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
-                            {isMessagesActive && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
-                            )}
-                        </div>
-                        <span className="mt-1">Messages</span>
-                    </Link>
-
-                    <Link
-                        href={route('courier.profile')}
-                        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
-                            isProfileActive
-                                ? 'text-[#E00D42] font-black'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <div className="relative">
-                            <UserRound className={`w-5 h-5 ${isProfileActive ? 'text-[#E00D42]' : 'text-slate-500'}`} />
-                            {isProfileActive && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E00D42]" />
-                            )}
-                        </div>
-                        <span className="mt-1">Profile</span>
-                    </Link>
-                </nav>
-                {confirmationDialog}
             </div>
+
+            <nav aria-label="Rider navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-300 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
+                {navItems.map(({ name, path, page, icon: Icon }) => (
+                    <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[12px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
+                ))}
+            </nav>
+            {confirmationDialog}
         </div>
     );
 }

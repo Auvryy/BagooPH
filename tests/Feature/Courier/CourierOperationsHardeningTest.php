@@ -5,6 +5,7 @@ namespace Tests\Feature\Courier;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\Message;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Courier\CourierMessagingService;
@@ -12,6 +13,8 @@ use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\RouteCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -49,6 +52,237 @@ class CourierOperationsHardeningTest extends TestCase
             ['/courier', 'approved'], ['/courier', 'verified'],
             ['http://courier.localhost', 'approved'], ['http://courier.localhost', 'verified'],
         ];
+    }
+
+    public static function courierPortals(): array
+    {
+        return [['/courier'], ['http://courier.localhost']];
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_contact_and_password_updates_stay_in_the_current_portal(string $prefix): void
+    {
+        $before = $this->rider->courierProfile->fresh()->getAttributes();
+        $this->actingAs($this->rider)->from($prefix.'/profile')
+            ->patch($prefix.'/profile/account', [
+                'name' => 'Ana Rider', 'phone' => '0917 123 4567',
+                'assigned_hub_id' => $this->destinationHub->id,
+                'logistics_company_id' => 999999, 'role' => 'admin',
+            ])->assertRedirect($prefix.'/profile')->assertSessionHas('success');
+        $this->assertSame('Ana Rider', $this->rider->fresh()->name);
+        $this->assertSame('+639171234567', $this->rider->fresh()->phone);
+        $this->assertSame('courier', $this->rider->fresh()->role);
+        $this->assertSame($before, $this->rider->courierProfile->fresh()->getAttributes());
+        $courierRoutes = new RouteCollection;
+        foreach (app('router')->getRoutes() as $route) {
+            if (str_starts_with((string) $route->getName(), 'courier.')) {
+                $courierRoutes->add($route);
+            }
+        }
+        $compiled = $courierRoutes->compile();
+        $this->assertArrayHasKey('courier.profile.update', $compiled['attributes']);
+        $this->assertArrayHasKey('courier.profile.password.update', $compiled['attributes']);
+
+        $this->put($prefix.'/profile/password', [
+            'current_password' => 'password', 'password' => 'UpdatedRiderPassword!',
+            'password_confirmation' => 'UpdatedRiderPassword!',
+        ])->assertRedirect($prefix.'/profile')->assertSessionHasNoErrors();
+        $this->assertTrue(Hash::check('UpdatedRiderPassword!', $this->rider->fresh()->password));
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_invalid_contact_and_password_changes_leave_the_account_intact(string $prefix): void
+    {
+        $before = $this->rider->getAttributes();
+        $this->actingAs($this->rider)->from($prefix.'/profile')
+            ->patch($prefix.'/profile/account', ['name' => '1', 'phone' => '123'])
+            ->assertSessionHasErrors(['name', 'phone']);
+        $this->put($prefix.'/profile/password', [
+            'current_password' => 'incorrect', 'password' => 'short', 'password_confirmation' => 'different',
+        ])->assertSessionHasErrors(['current_password', 'password']);
+        $this->assertSame($before, $this->rider->fresh()->getAttributes());
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_each_portal_requires_verified_email_to_change_password(string $prefix): void
+    {
+        $this->rider->update(['email_verified_at' => null]);
+        $this->actingAs($this->rider)->from($prefix.'/profile')->put($prefix.'/profile/password', [
+            'current_password' => 'password', 'password' => 'UpdatedRiderPassword!',
+            'password_confirmation' => 'UpdatedRiderPassword!',
+        ])->assertSessionHasErrors('email');
+        $this->assertTrue(Hash::check('password', $this->rider->fresh()->password));
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_rider_directions_use_authorized_hubs_and_the_saved_checkout_destination(string $prefix): void
+    {
+        $this->originHub->update(['latitude' => 14.1, 'longitude' => 121.2]);
+        $pickup = $this->createDelivery('picked_up', $this->rider);
+        $this->actingAs($this->rider)->get($prefix.'/deliveries')->assertInertia(fn (Assert $page) => $page
+            ->where('queues.pickupTasks.0.originHub.address', $this->originHub->address)
+            ->where('queues.pickupTasks.0.originHub.latitude', 14.1)
+            ->where('queues.pickupTasks.0.originHub.longitude', 121.2)
+            ->where('queues.pickupTasks.0.nextAction', 'await_origin_hub_scan')
+            ->missing('queues.pickupTasks.0.recipient')
+            ->missing('queues.pickupTasks.0.payment'));
+
+        $this->rider->courierProfile->update(['assigned_hub_id' => $this->destinationHub->id]);
+        $this->destinationHub->update(['latitude' => 14.3, 'longitude' => 121.4]);
+        $finalMile = $this->createDelivery('assigned_to_rider', $this->rider);
+        $finalMile->order->update(['destination_latitude' => 14.5, 'destination_longitude' => 121.6]);
+        $this->buyer->update(['address' => 'Changed default address', 'city' => 'Changed city']);
+        $address = $this->buyer->addresses()->create([
+            'recipient_name' => 'Changed recipient', 'phone' => '09170000000',
+            'street' => 'Changed saved street', 'city' => 'Santa Cruz', 'province' => 'Laguna',
+            'latitude' => 14.7, 'longitude' => 121.8, 'is_default' => true,
+        ]);
+        $address->update(['latitude' => 14.9, 'longitude' => 121.9]);
+
+        $this->get($prefix.'/deliveries')->assertInertia(fn (Assert $page) => $page
+            ->has('queues.pickupTasks', 0)
+            ->has('queues.finalMileTasks', 1)
+            ->where('queues.finalMileTasks.0.destinationHub.address', $this->destinationHub->address)
+            ->where('queues.finalMileTasks.0.destinationHub.latitude', 14.3)
+            ->where('queues.finalMileTasks.0.destinationHub.longitude', 121.4)
+            ->where('queues.finalMileTasks.0.recipient.address', $finalMile->delivery_address)
+            ->where('queues.finalMileTasks.0.recipient.latitude', 14.5)
+            ->where('queues.finalMileTasks.0.recipient.longitude', 121.6)
+            ->where('queues.finalMileTasks.0.payment.codAmount', fn ($amount) => (float) $amount === (float) $finalMile->order->total_amount));
+        $this->assertSame('picked_up', $pickup->fresh()->status);
+    }
+
+    public function test_missing_saved_locations_are_returned_without_an_invented_pin(): void
+    {
+        $this->rider->courierProfile->update(['assigned_hub_id' => $this->destinationHub->id]);
+        $delivery = $this->createDelivery('out_for_delivery', $this->rider);
+        $delivery->order->update(['destination_latitude' => null, 'destination_longitude' => null]);
+        $this->actingAs($this->rider)->get('/courier/deliveries')->assertInertia(fn (Assert $page) => $page
+            ->where('queues.finalMileTasks.0.recipient.latitude', null)
+            ->where('queues.finalMileTasks.0.recipient.longitude', null)
+            ->where('queues.finalMileTasks.0.destinationHub.latitude', null)
+            ->where('queues.finalMileTasks.0.destinationHub.longitude', null));
+    }
+
+    public function test_today_counts_use_the_philippine_day_shown_to_the_rider(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-03T12:00:00Z'));
+        $this->rider->courierProfile->update(['assigned_hub_id' => $this->destinationHub->id]);
+        foreach (['2026-10-02 15:59:59', '2026-10-02 16:00:00', '2026-10-03 16:00:00'] as $deliveredAt) {
+            $this->createDelivery('delivered', $this->rider, ['delivered_at' => $deliveredAt]);
+        }
+        $this->actingAs($this->rider)->get('/courier/deliveries')
+            ->assertInertia(fn (Assert $page) => $page->where('stats.completedToday', 1));
+        $this->get('/courier/earnings')
+            ->assertInertia(fn (Assert $page) => $page->where('summary.completedToday', 1)->where('summary.completedDeliveries', 3));
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_only_the_viewed_messages_in_one_thread_are_acknowledged(string $prefix): void
+    {
+        $first = $this->createDelivery('assigned_pickup', $this->rider);
+        $second = $this->createDelivery('assigned_pickup', $this->rider);
+        $viewed = $this->incomingMessage($first, $this->seller);
+        $unopened = $this->incomingMessage($second, $this->seller);
+        $newArrival = $this->incomingMessage($first, $this->seller);
+
+        $this->actingAs($this->rider)->get($prefix.'/messages')->assertInertia(fn (Assert $page) => $page
+            ->where('scope.hub', $this->originHub->name)->has('conversations', 2));
+        foreach ([$viewed, $unopened, $newArrival] as $message) {
+            $this->assertFalse($message->fresh()->is_read);
+        }
+        $this->postJson($prefix.'/messages/read', [
+            'delivery_id' => $first->id, 'phase' => 'pickup', 'through_message_id' => $viewed->id,
+        ])->assertOk()->assertJson(['acknowledged' => true]);
+        $this->assertTrue($viewed->fresh()->is_read);
+        $this->assertFalse($unopened->fresh()->is_read);
+        $this->assertFalse($newArrival->fresh()->is_read);
+        $this->postJson($prefix.'/messages/read', [
+            'delivery_id' => $first->id, 'phase' => 'pickup', 'through_message_id' => $viewed->id,
+        ])->assertOk();
+        $this->assertFalse($newArrival->fresh()->is_read);
+    }
+
+    public function test_message_acknowledgement_rejects_foreign_assignment_phase_and_message_ids(): void
+    {
+        $owned = $this->createDelivery('assigned_pickup', $this->rider);
+        $otherRider = $this->createScopedRider($this->originHub);
+        $foreign = $this->createDelivery('assigned_pickup', $otherRider);
+        $ownedMessage = $this->incomingMessage($owned, $this->seller);
+        $foreignMessage = $this->incomingMessage($foreign, $this->seller, $otherRider);
+        $this->actingAs($this->rider);
+        foreach ([
+            [$foreign->id, 'pickup', $foreignMessage->id],
+            [$owned->id, 'final_mile', $ownedMessage->id],
+            [$owned->id, 'pickup', $foreignMessage->id],
+        ] as [$delivery, $phase, $message]) {
+            $this->postJson('/courier/messages/read', [
+                'delivery_id' => $delivery, 'phase' => $phase, 'through_message_id' => $message,
+            ])->assertForbidden();
+        }
+        $this->rider->courierProfile->update(['assigned_hub_id' => $this->destinationHub->id]);
+        $this->postJson('/courier/messages/read', [
+            'delivery_id' => $owned->id, 'phase' => 'pickup', 'through_message_id' => $ownedMessage->id,
+        ])->assertForbidden();
+        $this->assertFalse($ownedMessage->fresh()->is_read);
+        $this->assertFalse($foreignMessage->fresh()->is_read);
+    }
+
+    public function test_same_parcel_pickup_and_final_mile_threads_have_separate_read_acknowledgements(): void
+    {
+        $delivery = $this->createDelivery('out_for_delivery', $this->rider, ['destination_bayan_hub_id' => $this->originHub->id]);
+        $sellerMessage = $this->incomingMessage($delivery, $this->seller);
+        $buyerMessage = $this->incomingMessage($delivery, $this->buyer);
+        $this->actingAs($this->rider)->postJson('/courier/messages/read', [
+            'delivery_id' => $delivery->id, 'phase' => 'final_mile', 'through_message_id' => $buyerMessage->id,
+        ])->assertOk();
+        $this->assertTrue($buyerMessage->fresh()->is_read);
+        $this->assertFalse($sellerMessage->fresh()->is_read);
+    }
+
+    public function test_message_order_is_stable_when_timestamps_match(): void
+    {
+        $delivery = $this->createDelivery('assigned_pickup', $this->rider);
+        $this->freezeTime();
+        $first = $this->incomingMessage($delivery, $this->seller);
+        $second = $this->incomingMessage($delivery, $this->seller);
+        $this->actingAs($this->rider)->get('/courier/messages')->assertInertia(fn (Assert $page) => $page
+            ->where('conversations.0.messages.0.id', $first->id)
+            ->where('conversations.0.messages.1.id', $second->id)
+            ->where('conversations.0.last_message', $second->message));
+    }
+
+    #[DataProvider('courierPortals')]
+    public function test_a_stale_pickup_conversation_cannot_send_its_draft_to_the_buyer(string $prefix): void
+    {
+        $delivery = $this->createDelivery('out_for_delivery', $this->rider, [
+            'destination_bayan_hub_id' => $this->originHub->id,
+        ]);
+        $this->actingAs($this->rider)->post($prefix.'/messages/send', [
+            'delivery_id' => $delivery->id, 'phase' => 'pickup', 'message' => 'I am at the seller pickup point.',
+        ])->assertSessionHas('error');
+        $this->assertDatabaseCount('messages', 0);
+        $this->post($prefix.'/messages/send', [
+            'delivery_id' => $delivery->id, 'phase' => 'shipping', 'message' => 'Invalid phase.',
+        ])->assertSessionHasErrors('phase');
+        $this->assertDatabaseCount('messages', 0);
+        $this->post($prefix.'/messages/send', [
+            'delivery_id' => $delivery->id, 'phase' => 'final_mile', 'message' => 'I am approaching your delivery address.',
+        ])->assertSessionHas('success');
+        $this->assertDatabaseCount('messages', 1);
+        $this->assertDatabaseHas('messages', [
+            'receiver_id' => $this->buyer->id, 'sender_id' => $this->rider->id,
+            'order_id' => $delivery->order_id, 'message' => 'I am approaching your delivery address.',
+        ]);
+    }
+
+    private function incomingMessage(Delivery $delivery, User $sender, ?User $receiver = null): Message
+    {
+        return Message::create([
+            'sender_id' => $sender->id, 'receiver_id' => ($receiver ?? $this->rider)->id,
+            'order_id' => $delivery->order_id, 'shop_id' => $sender->isSeller() ? $this->shop->id : null,
+            'message' => 'Parcel update '.Str::random(8), 'is_read' => false,
+        ]);
     }
 
     #[DataProvider('approvedCourierPortals')]

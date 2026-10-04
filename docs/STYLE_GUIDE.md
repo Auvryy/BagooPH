@@ -1,225 +1,166 @@
-# BagooPH Unified Design System & UI Architecture Guide
+# BagooPH Style Guide
 
-> **CORE DESIGN DIRECTIVE FOR ALL AGENTS & DEVELOPERS:**
-> This document defines the permanent, immutable design tokens, layout patterns, and styling rules for BagooPH across all 5 portals (Landing, Buyer, Seller, Courier, Admin).
-> Follow these exact patterns to maintain visual harmony, razor-sharp precision, and eye-friendly ergonomics. Do NOT deviate or hallucinate alternative design styles.
+## Purpose and Authority
 
----
+BagooPH should feel warm, playful, and dependable. Use generous rounded corners, a calm ivory canvas, soft raised surfaces, and small parcel-inspired details around the original crimson identity. Riders should be able to find their next stop and action quickly on a phone.
 
-## 1. Design Philosophy: "Architectural Precision & Soft Ergonomics"
+This guide defines presentation across BagooPH. `RIDER_UI_DESIGN.md` applies it to the courier portal. Business permissions, commercial states, custody, and money remain governed by the system, role, and validation specifications. Implementation status and delivery order belong only in `CORE_FLOW_ROADMAP.md`.
 
-BagooPH avoids generic, bloated "AI bubble slop" (overly rounded pill shapes, washed-out invisible borders, and jarring high-saturation contrasts). 
-Instead, BagooPH adopts an architectural precision software aesthetic:
-- **Crisp 2px Corner Geometry:** Buttons, inputs, and tags feel precise, sharp, and purposeful.
-- **High-Visibility Structural Borders:** Sections, cards, tables, and bento grids are clearly demarcated with visible slate boundaries for maximum visual accessibility.
-- **Soft Eye-Friendly Typography:** Soft Slate-800 body text with negative tracking (`-0.008em`) and generous line-height (`1.55`) ensures long hours of comfortable usage.
-- **Instant Seamless Navigation:** Dropdowns overlap the trigger with zero 1-pixel gaps, zero navbar height shifts, and 250ms grace timeouts.
+Design evolves through user feedback; tokens and interaction patterns are deliberate shared choices. Read `AGENTS.md` alongside this guide. Keep existing dependencies and components, the BagooPH name, PHP/₱ amounts, and Plus Jakarta Sans. Authentication retains its split-screen layout and restrained surfaces.
 
----
+## 1. Experience Principles
 
-## 2. Color Palette & Accessibility Tokens
+These are BagooPH applications of established design principles, rather than claims that one visual treatment works for everyone.
 
-The Crimson Red (`#E00D42`) is the sole primary accent color across all roles, paired with structured slate neutrals.
+| Principle | BagooPH rule | Rider example |
+|---|---|---|
+| Discoverability and feedback | Label actions with their outcome and acknowledge the server result. | “Confirm pickup” changes to a confirmed collection state only after acceptance. |
+| Recognition over recall | Keep the destination, parcel, cash amount, and next step together. | A rider does not have to remember an address from another tab. |
+| Grouping and hierarchy | Group related information; give the current task the strongest emphasis. | Contact actions sit beside the stop they concern. |
+| Progressive disclosure | Show operational essentials first; reveal supporting history and notes on demand. | A parcel card expands into details without a wall of summary panels. |
+| Error prevention | Distinguish navigation, communication, and custody-changing actions. | “Directions” cannot confirm collection; a photo upload can be corrected before submission. |
+| Emotional confidence | Combine welcoming surfaces with honest, predictable behavior. | A small parcel illustration welcomes an empty queue; failures retain clear, serious instructions. |
 
-### Brand Accent Tokens:
-| Token | Hex Code | Tailwind / CSS | Purpose |
-|---|---|---|---|
-| `brand-50` | `#FDF2F4` | `bg-[#FDF2F4]` | Active menu highlights, subtle tag backgrounds |
-| `brand-100` | `#FCE7EA` | `bg-[#FCE7EA]` | Soft alert badges, notification containers |
-| `brand-500` / `brand` | `#E00D42` | `bg-[#E00D42] text-[#E00D42]` | Primary CTA buttons, active tabs, brand logo, key metrics |
-| `brand-600` | `#C20836` | `hover:bg-[#C20836]` | Button hover state |
-| `brand-700` | `#A1052B` | `active:bg-[#A1052B]` | Button pressed / active state |
+The emphasis on visible actions, mapping, and feedback draws on Don Norman's [The Design of Everyday Things](https://jnd.org/books/the-design-of-everyday-things-revised-and-expanded-edition/). The focus on clear web and mobile navigation follows Steve Krug's [Don't Make Me Think, Revisited](https://sensible.com/dont-make-me-think/). The concrete BagooPH sizing and layout rules below are product decisions to evaluate with riders.
 
-### Neutrals & Structural Contrast:
-| Element | Light Theme | Dark / Terminal Theme | Rule / Purpose |
-|---|---|---|---|
-| **Canvas Background** | `#F8FAFC` (`bg-slate-50`) / `#F4F3EF` | `#0A0D14` / `#111319` | Warm, neutral foundation |
-| **Card / Panel Background** | `#FFFFFF` (`bg-white`) | `#111319` / `#1E222D` | Clean container surface |
-| **Headings (H1-H6)** | `#0F172A` (`text-slate-900`) | `#FFFFFF` (`text-white`) | Bold, authoritative title hierarchy |
-| **Body Text** | `#1E293B` (`text-slate-800`) | `#E2E8F0` (`text-slate-200`) | Soft on the eyes; never use harsh #000 for body |
-| **Muted Labels / Meta** | `#64748B` (`text-slate-500`) | `#94A3B8` (`text-slate-400`) | Captions, dates, subtitles |
-| **Structural Borders** | `#CBD5E1` (`border-slate-300`) | `#334155` (`border-slate-700`) | **Mandatory high-visibility borders** |
-| **Section Dividers** | `rgba(0, 0, 0, 0.22)` | `rgba(255, 255, 255, 0.15)` | Clear layout partition |
+## 2. Visual Direction: Warmth, Depth, and Personality
 
-> [!IMPORTANT]
-> **STRICT BAN ON INVISIBLE BORDERS:**
-> Never use faint borders (`border-slate-100` or `border-black/5`) for cards and tables. Low-contrast borders make sections blend together and cause eye strain. Always use **`border-slate-300`** in light mode and **`border-slate-700` / `border-slate-800`** in dark mode.
+Use a warm ivory canvas, white working surfaces, soft rose accents, and dark readable text. Place the primary task on a lightly raised card. Quiet secondary sections sit on the canvas or a tinted inset surface. This gives the screen a visible foreground and background.
 
----
+Create personality through:
 
-## 3. Permanent Corner Radius Scale (2px Buttons)
+- A restrained parcel, bag, route, or waypoint motif using existing icons or small local vector artwork.
+- A red edge marker, a softly tinted icon tile, or a short connected journey to identify the current task.
+- Asymmetric desktop composition where the work queue dominates; a simple ordered stack on phones.
+- Brief pressed and success feedback, and friendly empty-state language.
+- Warm spacing and varied surface levels, with one decorative moment in a header or empty state.
+- Rounded working cards and controls, with circular icon tiles and short pill badges that remain clearly labelled.
 
-All corner radii are strictly standardized via `tailwind.config.js`:
+Reference material includes the [Awwwards mobile award collection](https://www.awwwards.com/annual-awards-2021/mobile-site-of-the-year) and its [mobile performance publication](https://www.awwwards.com/brainfood-mobile-performance-vol3.pdf). Use these to review responsive personality and motion costs. The BagooPH corner sizes, palette, and working-screen hierarchy below are product choices; the references do not establish operational usability or justify copying another site's identity.
 
-```javascript
-// tailwind.config.js
-borderRadius: {
-    xs: '2px',       // Primary & Secondary Buttons, Badges, Search Inputs
-    sm: '2px',       // Form Selects, Small Action Controls
-    DEFAULT: '2px',  // Standard UI Elements
-    md: '4px',       // Inner Sub-Cards, Floating Tooltips
-    lg: '4px',       // Standard Content Cards, Bento Panels
-    xl: '6px',       // Modals, Flyout Drawers, Dialogs
-    '2xl': '8px',    // Hero Showcase Banners
-}
-```
+Decorative details must not resemble an actual credential, barcode, verification seal, map pin, scan result, or financial balance. Keep them outside addresses, amounts, and action groups. Hide decorative artwork from assistive technology. Do not add large illustrations above mobile work queues, confetti, racing timers, background video, or continuous effects.
 
-### Component Radius Directory:
-| UI Component | Required Tailwind Class | Radius (px) | Visual Standard |
-|---|---|---|---|
-| **Buttons (All CTAs, Links, Icons)** | `rounded-xs` or `rounded-sm` | **2px** | Sharp, architectural, precision software look |
-| **Inputs, Textareas & Search Bars** | `rounded-xs` or `rounded-sm` | **2px** | Crisp rectangular form field |
-| **Status Badges, Chips & Tags** | `rounded-xs` | **2px** | Sharp rectangular indicators (**NO round pill bubbles**) |
-| **Bento Cards & Data Tables** | `rounded-md` or `rounded-lg` | **4px - 6px** | Distinctly framed modular cards |
-| **Modals, Dialogs & Drawers** | `rounded-lg` or `rounded-xl` | **6px - 8px** | Focused overlay panels |
-| **Brand Logo Box** | `rounded-xs` or `rounded-sm` | **2px - 4px** | Iconic square-proportioned emblem |
+## 3. Color System and Meaning
 
----
+Crimson `#E00D42` remains the primary accent. Use it for the main action, active navigation, and selected task. Rose tints carry brand warmth; sand, mint, and sky support relevant informational or semantic states.
 
-## 4. Navigation Dropdown Architecture (Zero-Shift Overlap Pattern)
+Red does not have a universal psychological meaning. Context, wording, culture, and the task affect interpretation. Make the interface reassuring through reliable feedback and readable hierarchy. Do not use color to manufacture urgency or imply verification.
 
-All navigation dropdowns (User Profile, Quick Settings, Filter Menus) must adhere to the Zero-Shift Instant Overlap Standard:
+| Role | Color | Application |
+|---|---|---|
+| Primary accent | `#E00D42` | Main action on white; white label on solid red |
+| Strong accent | `#C20836` | Hover state; small brand text on rose surfaces |
+| Pressed accent | `#A1052B` | Pressed action state |
+| Rose surface | `#FDF2F4` | Selected region, brand icon tile, quiet welcome detail |
+| Rose inset | `#FCE7EA` | Small secondary brand surface; verify its foreground contrast |
+| Warm canvas | `#F8F6F2` | Page background |
+| Working surface | `#FFFFFF` | Task cards, forms, dialogs |
+| Sand surface / text | `#FFF4DF` / `#92400E` | Relevant waiting instruction or warning |
+| Mint surface / text | `#ECFDF5` / `#047857` | Server-confirmed success |
+| Heading | `#0F172A` | Titles and key destinations |
+| Body | `#1E293B` | Addresses, amounts, instructions |
+| Supporting text | `#475569` | Times, scope, secondary labels |
+| Structural border | `#CBD5E1` | Card separation; normally `border-slate-300` |
+| Control boundary | `#64748B` | Input or outline boundary when needed to identify the control |
+| Error text | `#BE123C` | Labelled validation and failure states |
 
-```tsx
-/*
- * 1. Parent container must be `relative`
- * 2. Dropdown wrapper must be `absolute right-0 top-full -mt-0.5 pt-1 z-50`
- * 3. Incorporate 250ms mouse-leave grace timeout via useRef<NodeJS.Timeout>
- */
-<div 
-    className="relative"
-    onMouseEnter={handleMenuEnter}
-    onMouseLeave={handleMenuLeave}
->
-    {/* Trigger Button */}
-    <button
-        type="button"
-        onClick={() => setMenuOpen(!menuOpen)}
-        className="flex items-center gap-2 p-1.5 rounded-xs hover:bg-slate-100 transition border border-transparent hover:border-slate-300"
-    >
-        {/* Avatar / Content */}
-    </button>
+Accessibility rules:
 
-    {/* Dropdown Menu Overlay */}
-    {menuOpen && (
-        <div 
-            className="absolute right-0 top-full -mt-0.5 pt-1 w-60 z-50 animate-scale-in"
-            onMouseEnter={handleMenuEnter}
-            onMouseLeave={handleMenuLeave}
-        >
-            <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
-                {/* Menu items */}
-            </div>
-        </div>
-    )}
-</div>
-```
+- Normal text needs at least 4.5:1 contrast; qualifying large text needs at least 3:1. See [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+- Meaningful control boundaries, icons, and state indicators need at least 3:1 against adjacent colors where required. A pale card divider is not sufficient as the only way to identify a control. See [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
+- Pair status color with a label and, where useful, an icon. See [use of color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html).
+- White on the primary red is approximately 4.88:1. Primary red on the rose surface is approximately 4.46:1, so use the stronger accent for small text there. Supporting text on the warm canvas is approximately 7.02:1. These are solid-color calculations, not a conformance claim for a rendered screen.
+- Check every actual combination, including opacity, hover, focus, imagery, and dark surfaces. Do not put important text in pale gray or over decoration.
 
-### Key Principles:
-1. **Zero Navbar Height Expansion:** The dropdown is strictly `absolute`, having zero footprint in the navbar flex layout.
-2. **Instant Mouse-In Overlap (`-mt-0.5 pt-1`):** The wrapper begins 0.5px inside the button boundary, so the cursor is instantly within the hover zone before exiting the button.
-3. **250ms Grace Period:** Allows slow or diagonal cursor movements without flickering or vanishing.
+Dark interfaces retain visible slate-700/800 borders, light text, and labelled semantic states. Introduce dark-mode behavior only with an explicit product scope and complete contrast verification.
 
----
+## 4. Geometry, Typography, and Spacing
 
-## 5. Typography & Spacing System
+Use explicit local radii for the soft rider direction. Do not rely on the existing theme's small `rounded-lg` value or change global tokens to restyle unrelated pages. Other portals adopt the direction when their work is in scope.
 
-- **Single Typeface:** `'Plus Jakarta Sans', system-ui, sans-serif` across all pages, portals, components, charts, emails, prices, order IDs, telemetry, and badges.
-- **Forbidden Alternatives:** Do not use `font-mono`, JetBrains Mono, Inter, monospace, or another display/body font.
-- **Body Rhythm:** `letter-spacing: -0.008em; line-height: 1.55;`
-- **Heading Rhythm:** `letter-spacing: -0.018em; font-weight: 800 or 900;`
-- **Spacious Layouts:** Maintain clean, breathable white space (`gap-4` to `gap-6`, `p-5` to `p-8`). Never crowd buttons or stack text tightly.
+| Element | Class / actual current value | Rule |
+|---|---|---|
+| Buttons, fields, tabs | `rounded-[14px]` / `rounded-[16px]`, 12–16px | Comfortable outline, labelled action, 48px minimum touch area |
+| Cards | `rounded-[24px]`, 24px | Visible border, airy padding, restrained depth |
+| Inset surfaces and map frames | `rounded-[18px]`, 18px | Quiet grouping within the card |
+| Dialogs and sheets | `rounded-[28px]`, 28px | Bounded height with readable, scrollable contents |
+| Short badges and icon controls | `rounded-full` | Clear text or accessible name; never rely on shape alone |
+| Decorative illustration frame | 18–24px or circular | Small and outside operational values |
 
----
+Use Plus Jakarta Sans everywhere, including tracking numbers, prices, charts, and email. For aligned numbers use tabular numerals within the same family. Do not introduce another font or apply `font-mono`.
 
-## 6. Dashboard Composition Pattern
+| Text role | Suggested mobile size | Weight / behavior |
+|---|---:|---|
+| Page title | 24–28px | 700–800; short and allowed to wrap |
+| Stop / section title | 18–20px | 700; ahead of secondary labels |
+| Address, instructions, editable input | 16px | 400–600; comfortable line height |
+| Button / tab / navigation label | 14–16px | 600–700 |
+| Supporting time or parcel metadata | 14px | 400–600; strong supporting color |
+| Incidental compact label | At least 12px | Never the only address, amount, action, or failure instruction |
 
-The Seller Dashboard establishes the preferred composition for role dashboards. Reuse its information rhythm across seller, logistics, courier, buyer, and admin pages without copying fabricated metrics, oversized radii, or decorative effects.
+Use a 4px spacing rhythm: 4, 8, 12, 16, 24, and 32px. Phone gutters start at 16px; wider screens can use 20–24px. Cards use 16–20px padding. Separate major sections by 24px and related fields by 12–16px. Avoid uppercase paragraphs and heavily spaced labels. Preserve browser zoom and text enlargement.
 
-### Required Page Rhythm
+## 5. Surface and Interaction Recipes
 
-1. **Header and Primary Action:** Use one clear page title, optional scope context, one primary action, and at most one secondary action.
-2. **Four KPI Cards:** Each card contains a short sentence-case label, one prominent real value, a restrained icon or status, and one useful supporting fact.
-3. **Primary Bento Row:** Use an 8/4 or 7/5 grid. The larger panel contains one meaningful visual or operational list; the smaller panel contains tasks requiring action.
-4. **Operational Detail Row:** Follow with recent records, ranked items, facilities, orders, or exceptions. Prefer tables and compact lists over more KPI cards.
-5. **Truthful Empty State:** When data is absent, show a calm empty state. Never generate sample values to make a dashboard appear active.
+| Surface | Recipe | Intended effect |
+|---|---|---|
+| Primary task | White, slate-300 border, quiet two-layer shadow, small brand marker | Clear foreground for the work to do |
+| Secondary information | White or warm canvas, structural border, little or no shadow | Lower emphasis without faint text |
+| Selected task or tab | Rose tint, stronger red label, visible marker, semantic selected state | Selection is obvious without recoloring the entire screen |
+| Waiting instruction | Sand inset with dark text and a short reason | Explains the next responsible actor |
+| Confirmed result | Mint inset, dark text, explicit event/time when supplied | Communicates a recorded outcome |
 
-### Visual Hierarchy
+A suitable primary-card shadow is `0 2px 0 rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)`. Shadows support borders; they do not identify buttons or create a new surface around every row. Keep layers predictable and scrolling inexpensive.
 
-- Use `text-2xl` or `text-3xl` for KPI values, `text-sm` for panel titles, and at least `text-xs` for supporting text.
-- Use sentence case for navigation, labels, and headings. Reserve uppercase for short status badges only.
-- Use one soft icon tile per KPI or action. Icons support the label and must not become decoration.
-- Use the BagooPH crimson only for the primary action, active navigation, selected data, or a critical highlight.
-- Use semantic rose, amber, emerald, and sky colors only when the underlying state justifies them.
-- Keep cards at `rounded-md` or `rounded-lg`, with `border-slate-300`, white surfaces, and subtle shadows.
+Motion should explain an interaction: 120–180ms for a press or selection, up to 200ms for a card or sheet entering with a small fade and 6px movement. Use short, finite effects; avoid staggered queues and endless bouncing. A small press displacement can make an action feel tactile. No hover-only affordance or hover-dependent information. Respect `prefers-reduced-motion`; remove nonessential movement and preserve immediate feedback. Never animate a map marker to imply live location without live data.
 
-### Charts and Flow Visuals
+Reuse the existing icon set and dialog/form primitives. New variants belong in shared components rather than repeated page-specific styling. Avoid additional UI libraries, external asset services, or decorative dependencies.
 
-- Charts must use real chronological data and label their time range. Every timeframe control must change the returned dataset.
-- Never inject fallback revenue, parcel, order, or performance values into an empty series.
-- Avoid gradients. Prefer a crisp line, bar, segmented progress, connected journey, or table depending on the relationship being shown.
-- Use connected nodes for lifecycle stages. A branch such as counter pickup or return-to-sender must visually branch from the correct stage rather than appear as another unrelated sequential box.
-- Make operational stages link to their filtered record list when that filter exists.
+## 6. Mobile Interaction Contract
 
-### Operational Commerce Reference
+Design the rider portal at 360–430 CSS pixels first and support reflow at 320px. Layout must tolerate large text, long names, full addresses, and the on-screen keyboard. Necessary addresses wrap; tracking identifiers can wrap or be copied, rather than losing their distinguishing characters.
 
-Use the interaction principles common to large Southeast Asian commerce operations tools without copying their branding:
+- Use at least 48×48px touch areas for standalone actions; primary submission actions can be 52px tall. Keep at least 8px between adjacent targets. This is BagooPH's field-use target, above the [44px enhanced accessibility criterion](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced/); it is not the 24px minimum AA criterion.
+- Keep frequently used actions within a comfortable lower-screen area when the rider is stopped. Do not require precision gestures, dragging, or swiping to complete work.
+- Preserve the labelled mobile bottom navigation. Include safe-area padding and reserve its complete height in page content.
+- Choose one bottom action arrangement per screen. A task action, bottom navigation, keyboard, and dialog must not cover one another or hide focused content.
+- Use single-column tasks on phones. Keep important controls visible without horizontal scrolling. Put supplementary detail behind labelled disclosure controls.
+- Forms use 16px editable text, correct input types, persistent labels, and inline errors. Preserve entered notes and selected evidence after validation failure where possible.
+- Sheets/dialogs have bounded viewport height, independently scrollable content, visible close/cancel actions, managed focus, and appropriate dialog semantics. Support Escape and return focus to the opening control.
+- Mobile information architecture remains clear at 200% text enlargement and [320px reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html). Actual support requires rendered verification during the implementation stage.
 
-- Put status counts and work queues ahead of generic analytics.
-- Keep search, scope, facility, date, and status filters close to the records they affect.
-- Surface overdue or failed work with the required next action.
-- Keep fulfillment stages scan-friendly and easy to compare at a glance.
-- Do not add advanced analytics, SLA claims, countdowns, or performance targets unless the backend owns and verifies those values.
+## 7. Page Composition
 
----
+Role dashboards share typography, surfaces, navigation behavior, and truthful states. Their content hierarchy follows the user's task rather than a mandatory four-KPI layout.
 
-## 7. Standard Code Snippets
+For riders: compact identity/duty context, work filters, the first task, a bounded selected-stop map, then remaining tasks and secondary history. On desktop, place the map beside the first task. The map follows an explicit job selection and saved location; addresses and custody actions remain outside it. Put the work queue before statistics. Do not repeat the same counts in cards, tabs, a custody panel, and another preview.
 
-### Primary Action Button (2px Radius):
-```tsx
-<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition duration-150">
-    <Plus className="w-3.5 h-3.5" />
-    <span>New Listing</span>
-</button>
-```
+For broader operational dashboards: a concise title and primary action, only useful real metrics, a dominant work list, and secondary detail. An 8/4 desktop split is appropriate when supporting information helps the work. Phone layouts place actions before charts and decoration.
 
-### Secondary / Outline Button (2px Radius):
-```tsx
-<button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold font-sans rounded-xs transition duration-150">
-    <Filter className="w-3.5 h-3.5 text-slate-500" />
-    <span>Filters</span>
-</button>
-```
+Charts use real chronological data, labelled periods, and functioning controls. Journey diagrams reflect actual custody and correctly branch for return or counter collection. They never invent progress, ETA, performance, or sample activity. Authentication keeps split-screen login/registration with readable forms and minimal decoration; no gradients or ornamental clutter there.
 
-### High-Visibility Bento Card:
-```tsx
-<div className="bg-white border border-slate-300 rounded-md shadow-xs p-5 hover:border-slate-400 transition-colors">
-    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-        <h3 className="text-sm font-black text-slate-900 tracking-tight">Active Deliveries</h3>
-        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xs text-[10px] font-bold font-sans uppercase">
-            Live
-        </span>
-    </div>
-    <div className="pt-3">
-        {/* Content */}
-    </div>
-</div>
-```
+Floating menus remain absolute, preserve the existing overlap and 250ms pointer grace period, and never shift layout. They also support click/tap, keyboard use, dismissal, and focus management.
 
-### Status Badge (2px Radius):
-```tsx
-<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[10px] font-bold font-sans uppercase bg-slate-100 text-slate-700 border border-slate-300">
-    Processing
-</span>
-```
+## 8. Language, Feedback, and Trust
 
----
+Use sentence case, familiar words, and explicit outcomes. Customer shopping language remains “Bag,” “Shopping Bag,” and “Add to Bag.” Operational language can use “Parcel,” “Pickup,” “Assigned hub,” and “Completed trips.” No emojis in UI, comments, code, or repository documentation.
 
-## 8. Forbidden Anti-Patterns (Do NOT Introduce)
+Prefer “Pickup address” to “Merchant location endpoint,” “Assigned hub” to “Territory sector,” and “Delivery history” to “Custody audit ledger.” Friendly copy should be brief: “Your tasks are up to date” only after a successful refresh, or “No pickup jobs available” with a truthful next step.
 
-1. **No `rounded-full` or `rounded-3xl` on buttons and cards:** Keep buttons strictly at 2px (`rounded-xs`/`rounded-sm`).
-2. **No faint or washed-out borders (`border-slate-100`):** Always use `border-slate-300` for clear visual distinction.
-3. **No pure `#000000` body text:** Use soft, eye-friendly `#1E293B` (`text-slate-800`).
-4. **No continuous GPU animations on scroll:** Avoid heavy SVG `feTurbulence` grain filters or full-screen mouse spotlight canvas overlays.
-5. **No non-absolute dropdowns:** Floating menus must never shift or push navbar elements.
-6. **No fabricated dashboard activity:** Never substitute generated values, hard-coded success rates, or sample operational records when real data is zero.
+Every mutation distinguishes idle, submitting, rejected, and server-confirmed states. Prevent repeated submission while processing. Render field errors beside the field, announce the result accessibly, and keep a useful recovery action. A successful upload is not a successful delivery until the server records that outcome.
+
+Missing values use “Not provided,” “Not assigned,” or an explicit unavailable explanation. Do not substitute fictitious facilities, operating hours, credentials, perfect success rates, balances, scan results, or success messages. Keep addresses, cash, proof, and authorization factual even when surrounding artwork is playful.
+
+## 9. Implementation Review
+
+Review changed screens for:
+
+- Clear current task, destination, scope, cash amount, and next permitted action.
+- Bagoo red, one typeface, correct geometry, visible boundaries, and actual contrast.
+- Phone reflow, text enlargement, long content, keyboard interaction, safe areas, and touch target size.
+- Labelled controls, logical headings, visible focus, modal behavior, and announced validation/results.
+- Honest loading, empty, missing-data, error, offline, and terminal states.
+- Reduced motion and no continuous heavy effects.
+- Existing permission and custody rules; visuals cannot add operational authority.
+
+Use focused automated checks and the production frontend build for implementation changes. Browser automation and screenshots require the user's explicit request under `AGENTS.md`. A document, static check, or successful build alone does not prove mobile usability. Record implementation evidence and limits in `CORE_FLOW_ROADMAP.md`.

@@ -15,6 +15,7 @@ Use this map before reading or changing project documentation. A document's auth
 | Platform Admin, Logistics Company Admin, Hub Handler governance | `ADMIN_FLOW.md` |
 | Product categories | `CATEGORIES.md` |
 | UI and product language | `STYLE_GUIDE.md` |
+| Rider screen hierarchy, mobile interactions, and presentation acceptance | `RIDER_UI_DESIGN.md` (under the style and courier contracts) |
 
 ## Planning and Current Gaps
 

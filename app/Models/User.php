@@ -102,6 +102,12 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->role === 'courier';
     }
 
+    public function canDeleteOwnAccount(): bool
+    {
+        // Courier closure needs custody and cash handover before account removal.
+        return ! $this->isCourier();
+    }
+
     public function isLogistics(): bool
     {
         return $this->role === 'logistics';

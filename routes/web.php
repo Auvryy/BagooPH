@@ -135,9 +135,10 @@ $registerCourierRoutes = function () {
         Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
         Route::get('/messages', [CourierDeliveryController::class, 'messages']);
         Route::post('/messages/send', [CourierDeliveryController::class, 'sendMessage']);
+        Route::post('/messages/read', [CourierDeliveryController::class, 'acknowledgeMessages']);
         Route::get('/profile', [CourierDeliveryController::class, 'profile']);
-        Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('courier.profile.update');
-        Route::put('/profile/password', [PasswordController::class, 'update'])->name('courier.profile.password.update');
+        Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile']);
+        Route::put('/profile/password', [PasswordController::class, 'update']);
         Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
         Route::get('/dashboard', fn () => redirect('/deliveries'));
         Route::get('/courier/deliveries', fn () => redirect('/deliveries'));
@@ -414,7 +415,10 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
     Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
     Route::get('/messages', [CourierDeliveryController::class, 'messages'])->name('messages');
     Route::post('/messages/send', [CourierDeliveryController::class, 'sendMessage'])->name('messages.send');
+    Route::post('/messages/read', [CourierDeliveryController::class, 'acknowledgeMessages'])->name('messages.read');
     Route::get('/profile', [CourierDeliveryController::class, 'profile'])->name('profile');
+    Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
     Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
 });
 
