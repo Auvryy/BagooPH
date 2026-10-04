@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } f
 import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowUpRight, CalendarDays, ChevronRight, History, LayoutDashboard, LogOut, MapPin, MessageSquare, RefreshCw, UserRound } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
-import { useCourierDutyControl } from '@/Components/CourierDutyControl';
+import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierDayKey, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
@@ -95,18 +95,18 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                 <nav aria-label="Rider navigation" className="shrink-0 space-y-1.5 px-3 py-4">
                     <p className="mb-3 px-3 text-xs font-medium tracking-wide text-slate-500">Your workspace</p>
                     {navItems.map(({ name, path, page, icon: Icon }) => (
-                        <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-12 items-center gap-3 rounded-[14px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none ${component === page ? 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{name}</Link>
+                        <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-12 items-center gap-3 rounded-[12px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none ${component === page ? 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{name}</Link>
                     ))}
                 </nav>
                 <div className="mt-auto shrink-0 px-3 pb-4 pt-8">
-                    <div className="rounded-[20px] border border-rose-200 bg-[#FFF2F4] p-4">
+                    <div className="rounded-[16px] border border-rose-200 bg-[#FFF2F4] p-4">
                         <MapPin className="h-5 w-5 text-[#E00D42]" aria-hidden="true" />
                         <p className="mt-3 text-sm font-semibold">Your dispatch point</p>
                         <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{hub}</p>
                         <Link href={courierPath('/profile')} className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View profile<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
                     </div>
                     <p className="px-2 py-4 text-xs leading-relaxed text-slate-600">A clear handoff, every step of the way. Use the portal while safely stopped.</p>
-                    <Link href={courierPath('/profile')} className="flex min-h-14 items-center gap-3 rounded-[14px] border border-transparent px-2 py-2 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                    <Link href={courierPath('/profile')} className="flex min-h-14 items-center gap-3 rounded-[12px] border border-transparent px-2 py-2 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E00D42] text-sm font-semibold text-white" aria-hidden="true">{initials}</span>
                         <span className="min-w-0"><span className="block truncate text-sm font-semibold">{auth.user?.name}</span><span className="block truncate text-xs text-slate-600">{scope?.company || 'Company not assigned'}</span></span>
                     </Link>
@@ -122,13 +122,13 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                             <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={requestDutyChange} disabled={dutyLoading} aria-label={isOnline ? 'On duty. Go off duty' : 'Off duty. Go on duty'} className={courierClasses(courierButton, 'gap-2 border-transparent px-2 font-medium hover:border-slate-300')}><span className={`h-2 w-2 rounded-full ${isOnline ? 'bg-emerald-600' : 'bg-slate-500'}`} aria-hidden="true" /><span>{dutyLoading ? 'Updating…' : isOnline ? 'On duty' : 'Off duty'}</span><span className={`relative ml-1 h-5 w-9 shrink-0 rounded-full ${isOnline ? 'bg-[#E00D42]' : 'bg-slate-400'}`} aria-hidden="true"><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform motion-reduce:transition-none ${isOnline ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></span></button>
+                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} onChange={requestDutyChange} />
                             <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'h-12 w-12 border-transparent p-0 hover:border-slate-300')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
                             <div ref={menu} className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleClose(); }}>
                                 <button ref={menuButton} type="button" aria-label="Account options" aria-expanded={menuOpen} aria-controls="rider-account-options" onClick={() => { clearMenuTimeout(); if (menuOpen && menuClicked.current) closeMenu(); else { menuClicked.current = true; setMenuOpen(true); } }} className={courierClasses(courierButton, 'h-12 w-12 rounded-full border-[#E00D42] bg-[#E00D42] p-0 text-white hover:bg-[#C20836]')}><span aria-hidden="true">{initials}</span></button>
                                 {menuOpen && (
                                     <div id="rider-account-options" className="courier-enter absolute right-0 top-[calc(100%-2px)] w-[min(18rem,calc(100vw-2rem))] pt-2" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
-                                        <div className="rounded-[18px] border border-slate-300 bg-white p-2 shadow-xl">
+                                        <div className="rounded-[16px] border border-slate-300 bg-white p-2 shadow-xl">
                                             <p className="break-words px-3 py-2 text-sm font-semibold">{auth.user?.name}<span className="mt-1 block break-all font-normal text-slate-600">{auth.user?.email}</span></p>
                                             <Link href={courierPath('/profile')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account settings</Link>
                                             <Link href="/logout" method="post" as="button" className={`${courierButton} w-full justify-start border-transparent`}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</Link>
@@ -143,11 +143,11 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                 <main id="rider-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-none sm:px-6 md:pb-8">
                     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1"><h1 className="break-words text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{subtitle && <div className="mt-2 max-w-2xl break-words text-sm leading-relaxed text-slate-600">{subtitle}</div>}</div>
-                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
+                        <div className="flex flex-wrap items-center gap-2">{actions}<time dateTime={courierDayKey(today)} className="inline-flex min-h-12 items-center gap-2 rounded-[12px] border border-[#E00D42] px-4 py-2 text-sm font-medium text-[#C20836]"><CalendarDays className="h-4 w-4" aria-hidden="true" />{dateLabel}</time></div>
                     </div>
                     <p role="status" className={refreshResult ? 'mb-3 text-sm text-slate-600' : 'sr-only'}>{refreshResult}</p>
-                    {flash?.success && <p role="status" className="mb-4 rounded-[18px] border border-emerald-300 bg-[#ECFDF5] p-4 text-base text-[#047857]">{flash.success}</p>}
-                    {(flash?.error || dutyError) && <p role="alert" className="mb-4 rounded-[18px] border border-rose-300 bg-[#FDF2F4] p-4 text-base text-rose-800">{dutyError || flash.error}</p>}
+                    {flash?.success && <p role="status" className="mb-4 rounded-[16px] border border-emerald-300 bg-[#ECFDF5] p-4 text-base text-[#047857]">{flash.success}</p>}
+                    {(flash?.error || dutyError) && <p role="alert" className="mb-4 rounded-[16px] border border-rose-300 bg-[#FDF2F4] p-4 text-base text-rose-800">{dutyError || flash.error}</p>}
                     {children}
                     <footer className="mt-7 flex flex-wrap justify-between gap-2 text-xs leading-relaxed text-slate-600"><span>One parcel at a time. Every handoff matters.</span><span className="break-words">{scope?.company || 'Assignment pending'}</span></footer>
                 </main>
@@ -155,7 +155,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
 
             <nav aria-label="Rider navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-300 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
                 {navItems.map(({ name, path, page, icon: Icon }) => (
-                    <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
+                    <Link key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[12px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-[#FDF2F4] text-[#C20836]' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></Link>
                 ))}
             </nav>
             {confirmationDialog}

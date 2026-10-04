@@ -16,7 +16,8 @@ const bundle = buildSync({
             export { default as Deliveries } from '@/Pages/Courier/Deliveries';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
-            export { default as Messages } from '@/Pages/Courier/Messages';`,
+            export { default as Messages } from '@/Pages/Courier/Messages';
+            export { CourierDutySwitch } from '@/Components/CourierDutyControl';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx',
     },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -53,6 +54,28 @@ const finalMile = {
     destinationHub: { name: 'Destination Bayan Hub', address: 'Destination hub road', latitude: 14.3, longitude: 121.4 },
     payment: { method: 'COD', codAmount: 950.12 }, assignedAt: null, nextAction: 'start_delivery', canMessage: true,
 };
+
+test('duty switch exposes the saved state and keeps its white thumb inside the track', () => {
+    for (const isOnline of [false, true]) {
+        const html = renderToStaticMarkup(createElement(ui.CourierDutySwitch, { isOnline, onChange() {} }));
+        assert.match(html, /role="switch" aria-label="Rider duty"/);
+        assert.match(html, new RegExp(`aria-checked="${isOnline}"`));
+        assert.match(html, isOnline ? />On duty</ : />Off duty</);
+        assert.doesNotMatch(html, /disabled=""/);
+        const viewport = html.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+        const thumb = html.match(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)" fill="#FFFFFF"/);
+        assert.ok(viewport && thumb, 'The track must contain a visible white thumb');
+        const [, width, height] = viewport.map(Number);
+        const [, x, y, radius] = thumb.map(Number);
+        assert.ok(radius > 0 && x - radius >= 0 && x + radius <= width && y - radius >= 0 && y + radius <= height);
+        assert.equal(x > width / 2, isOnline, 'The thumb must agree with the saved duty state');
+    }
+});
+test('pending duty updates disable the switch while preserving the saved state', () => {
+    const html = renderToStaticMarkup(createElement(ui.CourierDutySwitch, { isOnline: true, busy: true, onChange() {} }));
+    assert.match(html, /aria-checked="true" aria-busy="true" disabled=""/);
+    assert.match(html, />Updating…</);
+});
 
 test('portal navigation stays on the root or courier subdomain path', () => {
     assert.equal(ui.courierPath('/profile/account', 'bagoo.test'), '/courier/profile/account');
@@ -168,6 +191,7 @@ test('missing COD amount remains missing and prepaid jobs do not show a cash amo
 });
 test('claimed pickup shows seller directions and collection action', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
+    assert.match(html, /role="switch" aria-label="Rider duty" aria-checked="true"/);
     assert.deepEqual(directionDestinations(html), ['Seller road, Laguna']);
     assert.match(html, /Confirm pickup/);
     assert.match(html, /No usable saved pin/);
