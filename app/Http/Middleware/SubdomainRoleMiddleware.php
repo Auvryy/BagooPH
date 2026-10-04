@@ -8,6 +8,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SubdomainRoleMiddleware
 {
+    public function __construct(private readonly EnsureApprovedAccount $approval) {}
+
     /**
      * Handle an incoming request on an isolated subdomain.
      */
@@ -45,6 +47,6 @@ class SubdomainRoleMiddleware
             abort(403, 'Unauthorized access for your account role (' . $user->role . ').');
         }
 
-        return $next($request);
+        return $this->approval->handle($request, $next);
     }
 }

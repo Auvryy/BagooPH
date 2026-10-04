@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,51 +85,31 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->status === 'suspended') {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors([
-                'email' => 'Your account has been suspended by platform administration.',
-            ]);
-        }
-
-        // Buyers are never blocked from entering the marketplace upon login.
-        // Their KYC verification is enforced at checkout when attempting to purchase.
-        if ($user->isBuyer()) {
+        // Public marketplace entry grants no purchase or worker-portal permission.
+        if ($user->isBuyer() && $user->status !== 'suspended') {
             return redirect()->intended(route('buyer.index', absolute: false));
         }
 
-        if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect('/pending-approval');
-        }
+        return app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {
+            $host = $request->getHost();
 
-        $host = $request->getHost();
+            if (str_starts_with($host, 'courier.')) {
+                return redirect()->intended('/deliveries');
+            }
+            if (str_starts_with($host, 'seller.') || str_starts_with($host, 'hub.') || str_starts_with($host, 'admin.')) {
+                return redirect()->intended('/dashboard');
+            }
 
-        // Subdomain-specific landing redirection
-        if (str_starts_with($host, 'seller.')) {
-            return redirect()->intended('/dashboard');
-        }
-        if (str_starts_with($host, 'courier.')) {
-            return redirect()->intended('/deliveries');
-        }
-        if (str_starts_with($host, 'hub.')) {
-            return redirect()->intended('/dashboard');
-        }
-        if (str_starts_with($host, 'admin.')) {
-            return redirect()->intended('/dashboard');
-        }
+            $targetRoute = match ($request->user()->role) {
+                'admin' => route('admin.dashboard', absolute: false),
+                'seller' => route('seller.dashboard', absolute: false),
+                'courier' => route('courier.deliveries', absolute: false),
+                'logistics' => route('hub.index', absolute: false),
+                default => route('buyer.index', absolute: false),
+            };
 
-        $targetRoute = match($user->role) {
-            'admin' => route('admin.dashboard', absolute: false),
-            'seller' => route('seller.dashboard', absolute: false),
-            'courier' => route('courier.deliveries', absolute: false),
-            'logistics' => route('hub.index', absolute: false),
-            default => route('buyer.index', absolute: false),
-        };
-
-        return redirect()->intended($targetRoute);
+            return redirect()->intended($targetRoute);
+        });
     }
 
     /**

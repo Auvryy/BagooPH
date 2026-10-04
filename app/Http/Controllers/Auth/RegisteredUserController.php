@@ -286,7 +286,7 @@ class RegisteredUserController extends Controller
         }
 
         // If user is already active and approved, redirect to their role dashboard
-        if ($user->kyc_status === 'approved' && $user->status === 'active') {
+        if ($user->canAccessPortal()) {
             return redirect()->route('dashboard');
         }
 

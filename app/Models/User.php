@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -120,7 +121,17 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function isEligibleCourier(): bool
     {
-        return $this->isCourier() && $this->status === 'active' && $this->isKycApproved();
+        return $this->isCourier() && $this->canAccessPortal();
+    }
+
+    /**
+     * Account eligibility only; each action must still authorize its resource scope.
+     */
+    public function canAccessPortal(): bool
+    {
+        return UserRole::tryFrom($this->role) !== null
+            && $this->status === 'active'
+            && $this->isKycApproved();
     }
 
     public function scopeEligibleCouriers(Builder $query): Builder
@@ -138,7 +149,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function canCompleteCheckout(): bool
     {
-        return $this->isAdmin() || ($this->status === 'active' && $this->isKycApproved());
+        return $this->isBuyer() && $this->canAccessPortal();
     }
 
     public function isKycPending(): bool

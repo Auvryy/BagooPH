@@ -310,7 +310,7 @@ Route::get('/products', [BuyerProductController::class, 'search'])->name('produc
 Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
-Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware('auth')->name('shop.updateBranding');
+Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware(['auth', 'role:seller'])->name('shop.updateBranding');
 
 // Cart (Accessible to guests and logged in users)
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -330,10 +330,6 @@ Route::middleware('auth')->group(function () {
         if (! $user) {
             return redirect()->route('login');
         }
-        if (! $user->isAdmin() && ($user->kyc_status === 'pending_approval' || $user->status === 'pending_approval' || $user->kyc_status === 'rejected')) {
-            return redirect('/pending-approval');
-        }
-
         return redirect()->intended(match ($user->role) {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
@@ -341,7 +337,7 @@ Route::middleware('auth')->group(function () {
             'logistics' => route('hub.index'),
             default => route('buyer.index'),
         });
-    })->name('dashboard');
+    })->middleware('account.approved')->name('dashboard');
 
     // Profile Settings
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -448,14 +444,11 @@ Route::prefix('hub')->name('hub.')->group(function () {
     Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
-            if ($user->status === 'pending_approval' || $user->kyc_status === 'pending_approval' || $user->kyc_status === 'rejected') {
-                return redirect()->route('kyc.pending');
-            }
-            if (! $user->isLogistics() && ! $user->isAdmin()) {
-                abort(403, 'Unauthorized access for your account role ('.$user->role.').');
-            }
-
-            return app(LogisticsHubWorkstationController::class)->index($request);
+            return app(\App\Http\Middleware\RoleMiddleware::class)->handle(
+                $request,
+                fn (Request $request) => app(LogisticsHubWorkstationController::class)->index($request)->toResponse($request),
+                'logistics', 'admin',
+            );
         }
 
         return app(AuthenticatedSessionController::class)->createHub();
