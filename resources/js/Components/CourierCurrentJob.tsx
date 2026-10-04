@@ -26,7 +26,7 @@ export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel
         </header>
         <div className="grid items-start gap-5 min-[860px]:grid-cols-2">
             <div className="min-w-0">
-                <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-rose-200 bg-[#FFF2F4] text-[#C20836]"><Package className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h3 className="break-words text-base font-medium">{messagePhase === 'pickup' ? stops[0].place.name || 'Seller pickup' : stops[1].place.name || 'Assigned recipient'}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{parcelLabel}</p></div></div>
+                <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-rose-200 bg-[#FFF2F4] text-[#C20836]"><Package className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h3 className="break-words text-base font-medium">{messagePhase === 'pickup' ? stops[0].place.name || 'Seller pickup' : stops[1].place.name || 'Assigned recipient'}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{parcelLabel}</p></div></div>
                 <ol aria-label={messagePhase === 'pickup' ? 'Pickup leg stops' : 'Delivery leg stops'} className="my-5">
                     {stops.map((stop, index) => {
                         const reached = !job.preview && index < currentStop;
