@@ -40,12 +40,8 @@ return new class extends Migration
             $table->timestampTz('decided_at', 6);
         });
         Schema::table('shop_review_decisions', fn (Blueprint $table) => $table->foreignId('identity_correction_request_id')->nullable()->constrained('identity_correction_requests')->restrictOnDelete());
-        // SQLite rebuilds a table when adding a foreign key and drops its existing triggers.
-        if (DB::getDriverName() === 'sqlite') {
-            foreach (['UPDATE', 'DELETE'] as $operation) {
-                DB::unprepared('CREATE TRIGGER IF NOT EXISTS shop_reviews_no_'.strtolower($operation)." BEFORE {$operation} ON shop_review_decisions BEGIN SELECT RAISE(ABORT, 'Shop review decisions are immutable.'); END");
-            }
-        }
+        // SQLite rebuilds a table when changing a foreign key and drops its existing triggers.
+        $this->restoreShopReviewGuards();
         foreach (['identity_correction_requests', 'identity_correction_decisions'] as $table) {
             if (DB::getDriverName() === 'sqlite') {
                 foreach (['UPDATE', 'DELETE'] as $operation) {
@@ -57,12 +53,25 @@ return new class extends Migration
         }
     }
 
+    private function restoreShopReviewGuards(): void
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            foreach (['UPDATE', 'DELETE'] as $operation) {
+                DB::unprepared('CREATE TRIGGER IF NOT EXISTS shop_reviews_no_'.strtolower($operation)." BEFORE {$operation} ON shop_review_decisions BEGIN SELECT RAISE(ABORT, 'Shop review decisions are immutable.'); END");
+            }
+        }
+    }
+
     public function down(): void
     {
         if (DB::table('identity_correction_requests')->exists()) {
             throw new LogicException('Identity correction evidence must be retained.');
         }
+        if (DB::getDriverName() === 'sqlite' && DB::table('shop_review_decisions')->exists()) {
+            throw new LogicException('Recorded shop reviews must be retained; SQLite cannot rebuild their referenced table during rollback.');
+        }
         Schema::table('shop_review_decisions', fn (Blueprint $table) => $table->dropConstrainedForeignId('identity_correction_request_id'));
+        $this->restoreShopReviewGuards();
         Schema::dropIfExists('identity_correction_decisions');
         Schema::dropIfExists('identity_correction_requests');
         Schema::table('users', fn (Blueprint $table) => $table->dropColumn('identity_version'));
