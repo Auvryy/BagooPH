@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use App\Services\BirthDateEligibility;
+use App\Services\ResourceRestrictionService;
 use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -53,6 +54,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     ];
 
     protected $hidden = [
+        'restriction_version',
         'password',
         'remember_token',
         'id_document_path',
@@ -87,6 +89,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'age' => 'integer',
             'kyc_submitted_at' => 'datetime',
             'kyc_reviewed_at' => 'datetime',
+            'restriction_version' => 'integer',
         ];
     }
 
@@ -125,7 +128,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function canDeleteOwnAccount(): bool
     {
         // Courier closure needs custody and cash handover before account removal.
-        return ! $this->isCourier() && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists();
+        return ! $this->isCourier()
+            && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists()
+            && ! RestrictionDecision::where('actor_id', $this->id)->orWhere(fn ($query) => $query->where('subject_type', 'account')->where('subject_id', $this->id))->exists()
+            && ! RestrictionAffectedWork::where('responsible_user_id', $this->id)->exists()
+            && ! app(ResourceRestrictionService::class)->ownerHasHistory($this);
     }
 
     public function isLogistics(): bool

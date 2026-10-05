@@ -84,6 +84,8 @@ class HandleInertiaRequests extends Middleware
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile?->attributesToArray() : null,
                     'logisticsCompany' => $activeHub?->company,
                     'canSwitchHubs' => $activeHub && $eligibility->isCompanyAdministrator($user),
+                    'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyAdministrator($user)),
+                    'resourceGovernanceUrl' => $request->route()?->getDomain() ? '/resources' : ($user->isAdmin() ? '/admin/resources' : '/hub/resources'),
                     'activeHub' => $activeHub,
                     'allHubs' => $hubs->map(fn ($hub) => $hub->only(['id', 'name', 'code', 'tier', 'city_municipality'])),
                 ] : null,

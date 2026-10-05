@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, User } from '@/types';
 import { Search } from 'lucide-react';
 
 interface Props {
     users: PaginatedData<User>;
+    activityBaseUrl: string;
     filters: {
         search?: string;
         role?: string;
     };
 }
 
-export default function AdminUsers({ users, filters }: Props) {
+export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
     const [search, setSearch] = useState(filters.search || '');
 
     const handleSearch = (e: React.FormEvent) => {
@@ -76,6 +77,7 @@ export default function AdminUsers({ users, filters }: Props) {
                                     <th className="py-3.5 px-4">Registered Role</th>
                                     <th className="py-3.5 px-4">Contact Info</th>
                                     <th className="py-3.5 px-4">Account Status</th>
+                                    <th className="py-3.5 px-4">Activity review</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -110,9 +112,10 @@ export default function AdminUsers({ users, filters }: Props) {
                                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
                                                 u.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                                             }`}>
-                                                {u.status || 'active'}
+                                                {u.status || 'Unknown'}
                                             </span>
                                         </td>
+                                        <td className="py-4 px-4"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link></td>
                                     </tr>
                                 ))}
                             </tbody>

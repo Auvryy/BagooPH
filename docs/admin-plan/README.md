@@ -6,7 +6,7 @@ These documents are execution plans. They do not declare features implemented, c
 
 ## Branch count and the checkpoint before starting
 
-Plan for **18 future admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. That is **19 admin delivery checkpoints including the existing foundation**. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
+Plan for **18 bounded admin tasks on 17 admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. B06 and B07 share `admin/governance-restrictions`, giving **18 Git delivery branches including the foundation**. Each task retains its own acceptance checks. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
 
 This is an initial branch allocation, not a count of every remaining branch in the whole project. Role-owned manifest, rider scan, retry, return, and self-pickup work has its own roadmap prerequisites. A later admin branch cannot substitute for those workflows. If evidence requires splitting a branch, update this index and the roadmap explicitly before adding another task.
 
@@ -29,6 +29,8 @@ These are calendar targets, not reduced effort estimates or a readiness claim. R
 
 Work serially by default. The dependency column records the minimum prerequisites; the recommended execution order is the numbered order. Merge a finished branch before creating the next branch from `main`.
 
+The authorized B06+B07 batch is one bounded exception to the task-to-branch mapping. Verify B06's account-decision and continuity checks before implementing B07 on the same branch. Keep separate task records, focused acceptance checks, and logical commits; then run the combined regression checks and frontend build. B08 waits for review and merge of the complete batch. This does not combine any later tasks or waive a phase gate.
+
 | ID | Git branch | Focus and plan | Minimum dependency | Delivery phase |
 |---|---|---|---|---|
 | B01 | `admin/seller-category-approval` | [14 master categories, registration, correction, and original-shop KYC](01-seller-category-approval.md) | Foundation merged | 0 |
@@ -36,8 +38,8 @@ Work serially by default. The dependency column records the minimum prerequisite
 | B03 | `admin/shop-approval-eligibility` | [Separate shop review and eligible shop context](03-shop-approval-eligibility.md) | B01, B02 | 0 |
 | B04 | `admin/logistics-resource-eligibility` | [Company, facility, handler, rider, and fleet scope](04-logistics-resource-eligibility.md) | B02 | 0 |
 | B05 | `admin/buyer-access-alignment` | [Buyer holding, approval, and existing-order exceptions](05-buyer-access-alignment.md) | B02 | 0 |
-| B06 | `admin/account-restrictions` | [Reasoned account suspension/reactivation and last-admin protection](06-account-restrictions.md) | B03, B04, B05 | 0 |
-| B07 | `admin/resource-restrictions` | [Independent shop/company/facility restrictions](07-resource-restrictions.md) | B03, B04, B06 | 0 |
+| B06 | `admin/governance-restrictions` | [Reasoned account suspension/reactivation and last-admin protection](06-account-restrictions.md) | B03, B04, B05 | 0 |
+| B07 | `admin/governance-restrictions` | [Independent shop/company/facility restrictions](07-resource-restrictions.md) | B03, B04, B06 verified within the batch | 0 |
 | B08 | `admin/reviewed-identity-corrections` | [Controlled identity corrections and legacy review](08-reviewed-identity-corrections.md) | B01, B02, B06, B07 | 0 |
 | B09 | `admin/account-closure-safety` | [Active-work and evidence safeguards for closure](09-account-closure-safety.md) | B06, B07, B08 | 0 |
 | B10 | `admin/product-moderation` | [Reasoned product compliance decisions](10-product-moderation.md) | B02, B03, B06, B07 | 0 |
@@ -92,4 +94,4 @@ Stop after this branch's verification and report; do not start B02.
 Do not push, merge, or launch a broad automatic admin implementation goal.
 ```
 
-Replace the ID and document path together when selecting another branch. A request to read or edit this plan is a documentation task, not a request to implement all 18 branches.
+Replace the ID and document path together when selecting another branch. A request to read or edit this plan is a documentation task, not a request to implement all 18 tasks.

@@ -82,6 +82,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || route().current('admin.users*') || url.startsWith('/admin/users') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
+                ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component.startsWith('Governance/') }] : []),
             ];
         }
 
@@ -424,6 +425,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Company
                                 </p>
+                                {user?.canManageResources && user.resourceGovernanceUrl && <Link
+                                    href={user.resourceGovernanceUrl}
+                                    className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component.startsWith('Governance/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                ><ShieldAlert className="h-4 w-4 shrink-0" /><span>Resource activity</span></Link>}
                                 <Link
                                     href={route('hub.dashboard')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${

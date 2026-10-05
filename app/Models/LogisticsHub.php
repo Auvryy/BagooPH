@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RetainsRestrictionHistory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LogisticsHub extends Model
 {
     use HasFactory;
+    use RetainsRestrictionHistory;
 
     protected $fillable = [
         'logistics_company_id',

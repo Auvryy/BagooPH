@@ -56,6 +56,8 @@ export interface User {
     sellerShops?: Shop[];
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
+    canManageResources?: boolean;
+    resourceGovernanceUrl?: string;
 }
 
 export interface Shop {

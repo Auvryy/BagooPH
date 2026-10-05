@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RetainsRestrictionHistory;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Shop extends Model
 {
     use HasFactory;
+    use RetainsRestrictionHistory;
 
     protected $fillable = [
         'user_id',

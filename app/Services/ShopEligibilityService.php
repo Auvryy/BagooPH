@@ -21,11 +21,17 @@ class ShopEligibilityService
 
     public function eligibleShops(Builder $query): Builder
     {
-        return $query->where('shops.status', 'active')->where('shops.review_status', 'approved')
+        return $this->reviewedShops($query->where('shops.status', 'active')
             ->whereHas('user', fn (Builder $owner) => $owner->where('role', 'seller')->where('status', 'active')
                 ->whereIn('kyc_status', User::APPROVED_KYC_STATUSES)
                 ->where(fn ($age) => $age->whereNull('birthday')->orWhere(fn ($date) => $date
-                    ->whereDate('birthday', '>=', '0001-01-01')->whereDate('birthday', '<=', app(BirthDateEligibility::class)->limits()['adult_maximum']))))
+                    ->whereDate('birthday', '>=', '0001-01-01')->whereDate('birthday', '<=', app(BirthDateEligibility::class)->limits()['adult_maximum'])))));
+    }
+
+    public function reviewedShops(Builder $query): Builder
+    {
+        // Reviewed identity/category scope is distinct from account and shop activity.
+        return $query->where('shops.review_status', 'approved')
             ->whereIn('shops.root_category_id', app(MasterCategoryService::class)->activeRoots()->select('categories.id'))
             ->whereHas('currentReview', function (Builder $review) {
                 $review->where('decision', 'approved')->where('reviewer_role', 'admin')

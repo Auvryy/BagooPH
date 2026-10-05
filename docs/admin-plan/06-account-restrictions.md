@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/account-restrictions` |
+| Git branch | `admin/governance-restrictions` (B06+B07 batch) |
 | Phase | 0 |
 | Minimum prerequisites | [B03](03-shop-approval-eligibility.md), [B04](04-logistics-resource-eligibility.md), [B05](05-buyer-access-alignment.md) |
 | Result | Account restriction/reactivation is audited, safe during work, and cannot remove all eligible admins. |
@@ -91,11 +91,12 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 
 ## Stopping point and bounded prompt
 
-Stop when reasoned account decisions and their active-work/continuity safeguards pass the scoped gate. Resource restrictions and operational recovery remain separately bounded tasks.
+Verify reasoned account decisions and their active-work/continuity safeguards before continuing to the separately bounded B07 resource task on the same authorized batch branch. Operational recovery remains later work. The batch stops after both tasks and their combined checks.
 
 ```text
-Implement only B06 from docs/admin-plan/06-account-restrictions.md on admin/account-restrictions.
+Implement B06 from docs/admin-plan/06-account-restrictions.md on admin/governance-restrictions.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
-Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.
+Preserve unrelated changes. Verify B06 before the authorized B07 batch task; do not start B08 or another branch.
+Do not push or merge. Report blockers without expanding scope.
 ```
