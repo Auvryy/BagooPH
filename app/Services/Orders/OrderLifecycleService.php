@@ -2,11 +2,13 @@
 
 namespace App\Services\Orders;
 
+use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -157,10 +159,14 @@ class OrderLifecycleService
     public function buyerComplete(Order $order, User $buyer): Order
     {
         return DB::transaction(function () use ($order, $buyer) {
-            $lockedOrder = Order::with('delivery')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            // Keep the same order, parcel, then account lock order as parcel mutations.
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $lockedOrder->setRelation('delivery', Delivery::where('order_id', $lockedOrder->id)->lockForUpdate()->first());
+            $buyer = app(BuyerAccessService::class)->current($buyer, lock: true);
             if (! $buyer->isBuyer() || $lockedOrder->buyer_id !== $buyer->id) {
                 throw new RuntimeException('Only the buyer who placed this order may confirm receipt.');
             }
+            app(BuyerAccessService::class)->requireExistingOrders($buyer, $lockedOrder);
             if ($lockedOrder->status === 'completed') {
                 return $lockedOrder;
             }

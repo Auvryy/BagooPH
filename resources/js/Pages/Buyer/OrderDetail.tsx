@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
-import BuyerLayout from '@/Layouts/BuyerLayout';
-import { Order } from '@/types';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
+import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
+import { Order, PageProps } from '@/types';
 import { 
     Package, 
     Truck, 
@@ -25,9 +25,13 @@ import {
 
 interface Props {
     order: Order;
+    canUsePortal: boolean;
+    canConfirmReceipt: boolean;
 }
 
-export default function BuyerOrderDetail({ order }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceipt }: Props) {
+    const { auth } = usePage<PageProps>().props;
+    const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(order.items?.[0]?.product_id || null);
@@ -159,7 +163,7 @@ export default function BuyerOrderDetail({ order }: Props) {
     };
 
     return (
-        <BuyerLayout>
+        <BuyerOrderAccessLayout canUsePortal={canUsePortal}>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
 
             <div className="w-full space-y-6">
@@ -167,9 +171,9 @@ export default function BuyerOrderDetail({ order }: Props) {
                 {/* Header & Back Link */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
                     <div className="min-w-0">
-                        <Link href={route('buyer.orders.index')} className="text-xs text-slate-500 hover:text-[#E00D42] flex items-center gap-1.5 mb-1 font-semibold transition">
+                        <Link href={route(adminOversight ? 'admin.dashboard' : 'buyer.orders.index')} className="text-xs text-slate-500 hover:text-[#E00D42] flex items-center gap-1.5 mb-1 font-semibold transition">
                             <ArrowLeft className="w-4 h-4" />
-                            <span>Back to My Purchases</span>
+                            <span>{adminOversight ? 'Back to Admin' : 'Back to My Purchases'}</span>
                         </Link>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">
                             Order #{order.order_number}
@@ -180,7 +184,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 font-sans text-xs w-full sm:w-auto">
-                        {order.status === 'delivered' && (
+                        {canConfirmReceipt && (
                             <button
                                 type="button"
                                 onClick={() => {
@@ -194,7 +198,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                                 <span>Confirm Order Received</span>
                             </button>
                         )}
-                        {(order.status === 'delivered' || order.status === 'completed') && (
+                        {canUsePortal && order.status === 'completed' && (
                             <button
                                 type="button"
                                 onClick={() => setReviewModalOpen(true)}
@@ -392,7 +396,7 @@ export default function BuyerOrderDetail({ order }: Props) {
                 </div>
 
                 {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
-                {reviewModalOpen && (
+                {canUsePortal && reviewModalOpen && (
                     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -522,6 +526,6 @@ export default function BuyerOrderDetail({ order }: Props) {
                 )}
 
             </div>
-        </BuyerLayout>
+        </BuyerOrderAccessLayout>
     );
 }

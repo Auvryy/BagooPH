@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\ShopEligibilityService;
@@ -31,6 +32,7 @@ class CheckoutOrderService
      */
     public function place(User $buyer, Cart $cart, array $cartItemIds, array $data): Collection
     {
+        $buyer = app(BuyerAccessService::class)->current($buyer);
         if (! $buyer->isBuyer()) {
             throw new RuntimeException('Buyer access is required to place an order.');
         }

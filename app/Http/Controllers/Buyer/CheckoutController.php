@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\LogisticsHub;
 use App\Models\Product;
 use App\Models\Voucher;
+use App\Services\BuyerAccessService;
 use App\Services\KycSubmissionService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutOrderService;
@@ -20,7 +21,7 @@ class CheckoutController extends Controller
 {
     public function index(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 
         if (! $cart || $cart->items->isEmpty()) {
@@ -116,38 +117,20 @@ class CheckoutController extends Controller
 
     public function uploadKycDocument(Request $request): RedirectResponse
     {
+        $user = app(BuyerAccessService::class)->current($request->user());
+        app(BuyerAccessService::class)->requireApplication($user);
         $validated = $request->validate([
             'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ]);
 
-        app(KycSubmissionService::class)->submit($request->user(), $validated, buyerUpload: true);
+        app(KycSubmissionService::class)->submit($user, $validated, buyerUpload: true);
 
         return back()->with('success', 'Valid ID uploaded successfully! Your verification is now under review.');
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $user = $request->user();
-        abort_unless($user->isBuyer(), 403, 'Buyer access is required to place an order.');
-
-        // Enforce the purchase gate before any cart, stock, or order work.
-        // This remains server-side protection even if a client skips Buy Now
-        // or submits the checkout request directly.
-        if (! $user->canCompleteCheckout()) {
-            if ($user->status !== 'active') {
-                return redirect()->route('buyer.checkout')->with('error', 'Your account is not active and cannot place an order.');
-            }
-
-            if ($user->isKycPending()) {
-                return redirect()->route('buyer.checkout')->with('error', 'Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
-            }
-
-            if ($user->isKycRejected()) {
-                return redirect()->route('buyer.checkout')->with('error', 'Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
-            }
-
-            return redirect()->route('buyer.checkout')->with('error', 'Identity verification is required before placing an order. Please upload a valid ID to proceed.');
-        }
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 

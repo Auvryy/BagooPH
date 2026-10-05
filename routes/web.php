@@ -291,27 +291,29 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
-    Route::get('/cart', [CartController::class, 'index'])->name('cart');
+    Route::get('/cart', [CartController::class, 'index'])->middleware('buyer.approved:optional')->name('cart');
 
     Route::middleware('auth')->group(function () {
-        Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
-        Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
-        Route::post('/addresses', [BuyerProfileController::class, 'storeAddress'])->name('addresses.store');
-        Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->name('addresses.default');
-        Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->name('addresses.destroy');
-        Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
-        Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
-        Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
-        Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+        Route::middleware('buyer.approved')->group(function () {
+            Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
+            Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
+            Route::post('/addresses', [BuyerProfileController::class, 'storeAddress'])->name('addresses.store');
+            Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->name('addresses.default');
+            Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->name('addresses.destroy');
+            Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
+            Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
+            Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
+            Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+            Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
+            Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
+            Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
+                ->middleware('throttle:20,1')
+                ->name('support.assistant');
+        });
         Route::post('/kyc/upload', [CheckoutController::class, 'uploadKycDocument'])->name('kyc.upload');
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
-        Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
-        Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
-        Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
-            ->middleware('throttle:20,1')
-            ->name('support.assistant');
     });
 });
 
@@ -323,10 +325,12 @@ Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.s
 Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware(['auth', 'role:seller'])->name('shop.updateBranding');
 
 // Cart (Accessible to guests and logged in users)
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+Route::middleware('buyer.approved:optional')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -356,14 +360,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Buyer Checkout & Orders
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/checkout', [CheckoutController::class, 'index'])->middleware('buyer.approved')->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('buyer.approved')->name('checkout.store');
     Route::post('/checkout/kyc/upload', [CheckoutController::class, 'uploadKycDocument'])->name('checkout.kyc.upload');
     Route::get('/my-orders', [OrderHistoryController::class, 'index'])->name('orders.index');
     Route::get('/my-orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
 
     // Live Chat / Messaging Endpoints
-    Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
+    Route::get('/messages', [ChatController::class, 'buyerInbox'])->middleware('buyer.approved')->name('messages');
     Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 });

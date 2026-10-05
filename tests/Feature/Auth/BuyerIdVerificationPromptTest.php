@@ -48,7 +48,7 @@ class BuyerIdVerificationPromptTest extends TestCase
 
         $response = $this->get(route('auth.google.callback'));
 
-        $response->assertRedirect(route('buyer.index'));
+        $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();
 
         $buyer = User::where('email', 'googlebuyer@example.com')->first();
@@ -109,7 +109,7 @@ class BuyerIdVerificationPromptTest extends TestCase
         $this->assertEquals('none', $buyer->kyc_status);
     }
 
-    public function test_buyer_profile_renders_with_kyc_details(): void
+    public function test_unreviewed_buyer_profile_redirects_to_own_holding(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -119,6 +119,6 @@ class BuyerIdVerificationPromptTest extends TestCase
 
         $response = $this->actingAs($buyer)->get(route('buyer.profile', ['tab' => 'account']));
 
-        $response->assertStatus(200);
+        $response->assertRedirect(route('kyc.pending'));
     }
 }

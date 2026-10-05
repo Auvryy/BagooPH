@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\BuyerAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class ChatController extends Controller
 {
     public function getMessages(Request $request, int $receiverId): JsonResponse
     {
+        $this->requireBuyerEligibility($request);
         abort_unless($request->user()->isBuyer() || $request->user()->isSeller(), 403);
 
         $userId = $request->user()->id;
@@ -46,6 +48,7 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request): JsonResponse|RedirectResponse
     {
+        $this->requireBuyerEligibility($request);
         abort_unless(
             $request->user()->isBuyer() || $request->user()->isSeller(),
             403,
@@ -173,6 +176,7 @@ class ChatController extends Controller
 
     public function buyerInbox(Request $request): Response
     {
+        $this->requireBuyerEligibility($request);
         $user = $request->user();
         abort_unless($user->isBuyer(), 403);
 
@@ -204,6 +208,15 @@ class ChatController extends Controller
         return Inertia::render('Buyer/Messages', [
             'conversations' => $conversations,
         ]);
+    }
+
+    private function requireBuyerEligibility(Request $request): void
+    {
+        $user = app(BuyerAccessService::class)->current($request->user());
+        $request->setUserResolver(fn () => $user);
+        if ($user->isBuyer()) {
+            app(BuyerAccessService::class)->requirePortal($user);
+        }
     }
 
     private function authorizeCourierReply(User $sender, User $courier, mixed $orderId): void

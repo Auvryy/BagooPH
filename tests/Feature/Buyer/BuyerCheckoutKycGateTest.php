@@ -69,7 +69,7 @@ class BuyerCheckoutKycGateTest extends TestCase
         return [$seller, $shop, $product, $cart];
     }
 
-    public function test_unverified_buyer_sees_none_kyc_status_on_checkout_and_cannot_place_order(): void
+    public function test_unverified_buyer_uses_holding_and_cannot_open_checkout_or_place_an_order(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -80,11 +80,9 @@ class BuyerCheckoutKycGateTest extends TestCase
         $this->createCartWithProduct($buyer);
 
         $response = $this->actingAs($buyer)->get('/checkout');
-        $response->assertStatus(200);
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Checkout/Index')
-            ->where('kycStatus', 'none')
-        );
+        $response->assertRedirect(route('kyc.pending'));
+        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/BuyerApproval')->where('user.kyc_status', 'none'));
 
         $postResponse = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Unverified Buyer',
@@ -95,7 +93,8 @@ class BuyerCheckoutKycGateTest extends TestCase
         ]);
 
         $postResponse->assertRedirect();
-        $postResponse->assertSessionHas('error', 'Identity verification is required before placing an order. Please upload a valid ID to proceed.');
+        $postResponse->assertRedirect(route('kyc.pending'));
+        $postResponse->assertSessionHas('error', 'Identity verification is required before placing an order. Submit your application for review.');
         $this->assertEquals(0, Order::count());
     }
 
@@ -138,11 +137,9 @@ class BuyerCheckoutKycGateTest extends TestCase
         $this->createCartWithProduct($buyer);
 
         $response = $this->actingAs($buyer)->get('/checkout');
-        $response->assertStatus(200);
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Checkout/Index')
-            ->where('kycStatus', 'pending_approval')
-        );
+        $response->assertRedirect(route('kyc.pending'));
+        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/BuyerApproval')->where('user.kyc_status', 'pending_approval'));
 
         $postResponse = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Pending Buyer',

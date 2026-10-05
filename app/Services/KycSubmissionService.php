@@ -37,6 +37,10 @@ class KycSubmissionService
                 if ($pendingCorrection) {
                     $allowedStates[] = 'pending_approval';
                 }
+                if ($user->isBuyer()) {
+                    app(BuyerAccessService::class)->requireApplication($user);
+                    $allowedStates = ['none', 'pending_approval', 'rejected'];
+                }
                 abort_unless(in_array($user->kyc_status, $allowedStates, true) && (! $buyerUpload || $user->isBuyer()), 409, 'Only an unreviewed buyer ID, pending application correction, or rejected application can be submitted.');
                 $this->decisions->lockProfile($user);
                 if ($categoryProvided) {
@@ -51,7 +55,7 @@ class KycSubmissionService
                 Validator::make(['birthday' => $birthday], ['birthday' => [$adult ? 'required' : 'nullable', new BirthDate($adult)]])->validate();
                 $current = $applications->values($user);
                 $changes = array_filter($provided, fn ($value, $field) => $value !== ($current[$field] ?? null), ARRAY_FILTER_USE_BOTH);
-                if ($pendingCorrection && ! $changes) {
+                if ($pendingCorrection && ! $changes && ! $user->isBuyer()) {
                     $field = $categoryProvided ? 'root_category_id' : ($birthdayProvided ? 'birthday' : 'application');
                     throw ValidationException::withMessages([$field => 'Change an application detail to submit a correction.']);
                 }

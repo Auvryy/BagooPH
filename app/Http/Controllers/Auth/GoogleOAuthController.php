@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Models\User;
 use App\Services\ApplicationValidationService;
+use App\Services\BuyerAccessService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,17 +99,11 @@ class GoogleOAuthController extends Controller
             }
         }
 
-        if ($user->isBuyer() && $user->status !== 'active') {
-            return redirect()->route('login')->withErrors([
-                'email' => 'Your account has been deactivated. Please contact support.',
-            ]);
-        }
-
         Auth::login($user, true);
         request()->session()->regenerate();
 
         if ($user->isBuyer()) {
-            return redirect()->intended(route('buyer.index'))->with('success', 'Signed in with Google successfully.');
+            return app(BuyerAccessService::class)->signInDestination(request());
         }
 
         return app(EnsureApprovedAccount::class)->handle(request(), function (Request $request): RedirectResponse {

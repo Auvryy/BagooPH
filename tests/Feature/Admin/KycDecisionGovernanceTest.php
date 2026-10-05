@@ -298,7 +298,13 @@ class KycDecisionGovernanceTest extends TestCase
         $user->update(['kyc_status' => 'rejected']);
         $this->actingAs($user)->post('/kyc/resubmit')->assertSessionHasErrors('documents');
         $this->assertSame('rejected', $user->fresh()->kyc_status);
-        foreach (['pending_approval', 'approved', 'verified'] as $state) {
+        $user->update(['kyc_status' => 'pending_approval']);
+        $oldPath = $user->id_document_path;
+        $this->post('/kyc/resubmit', ['id_document' => UploadedFile::fake()->createWithContent('replacement.pdf', '%PDF-1.4 replacement')])->assertSessionHas('success');
+        $this->assertSame('pending_approval', $user->fresh()->kyc_status);
+        $this->assertNotSame($oldPath, $user->fresh()->id_document_path);
+        Storage::disk('local')->assertExists($oldPath);
+        foreach (['approved', 'verified'] as $state) {
             $user->update(['kyc_status' => $state]);
             $this->post('/kyc/resubmit', ['id_document' => UploadedFile::fake()->createWithContent('replacement.pdf', '%PDF-1.4 replacement')])->assertConflict();
             $this->assertSame($state, $user->fresh()->kyc_status);

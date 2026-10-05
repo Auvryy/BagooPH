@@ -145,7 +145,7 @@ class ApplicationValidationService
         }
 
         return ['values' => $this->values($user), 'fields' => $fields, 'errors' => $this->errors($user),
-            'can_correct' => in_array($user->kyc_status, ['pending_approval', 'rejected'], true) && match ($user->role) {
+            'can_correct' => in_array($user->kyc_status, ['pending_approval', 'rejected', ...($user->isBuyer() ? ['none'] : [])], true) && match ($user->role) {
                 'seller' => $user->shop !== null, 'courier' => $user->courierProfile !== null, 'logistics' => $user->logisticsCompany !== null, default => true,
             }];
     }

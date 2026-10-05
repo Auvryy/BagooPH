@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\BuyerAccessService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,9 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response|RedirectResponse
     {
+        if ($request->user()->isBuyer()) {
+            app(BuyerAccessService::class)->requirePortal($request->user());
+        }
         if ($request->user()->isCourier()) {
             return Redirect::route('courier.profile');
         }
@@ -34,6 +38,9 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        if ($request->user()->isBuyer()) {
+            app(BuyerAccessService::class)->requirePortal($request->user());
+        }
         $request->user()->fill($request->validated());
 
         if ($request->user()->isDirty('email')) {
@@ -50,6 +57,9 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        if ($request->user()->isBuyer()) {
+            app(BuyerAccessService::class)->requirePortal($request->user());
+        }
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ApplicationRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
+use App\Services\BuyerAccessService;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
 use App\Services\OtpService;
@@ -198,7 +199,7 @@ class RegisteredUserController extends Controller
             if ($emailVerifiedAt) {
                 Auth::login($user);
 
-                return redirect()->route('buyer.index')->with('success', 'Registration successful! Welcome to BagooPH.');
+                return app(BuyerAccessService::class)->signInDestination($request)->with('success', 'Your account was created. Submit your identity application for review.');
             }
 
             return redirect()->route('login')->with('status', 'Registration successful! Please sign in to your new account.');
@@ -214,11 +215,21 @@ class RegisteredUserController extends Controller
      */
     public function pendingApproval(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
-
-        // Buyers are never held at the pending approval screen
+        $user = app(BuyerAccessService::class)->current($request->user());
         if ($user->isBuyer()) {
-            return redirect()->route('buyer.index');
+            $access = app(BuyerAccessService::class);
+            abort_unless($access->canViewHolding($user), 403);
+            if ($user->canAccessPortal()) {
+                return redirect()->route('buyer.index');
+            }
+
+            return Inertia::render('Auth/BuyerApproval', [
+                'user' => $user->only(['id', 'name', 'email', 'status', 'kyc_status', 'kyc_feedback', 'kyc_submitted_at', 'kyc_reviewed_at']),
+                'application' => app(ApplicationValidationService::class)->form($user),
+                'identityDocumentUrl' => $access->canManageApplication($user) ? app(VerificationDocumentService::class)->links($user)['id_document_path'] : null,
+                'birthDateLimits' => app(BirthDateEligibility::class)->limits(),
+                'canViewOrders' => $access->canAccessExistingOrders($user),
+            ]);
         }
 
         // If user is already active and approved, redirect to their role dashboard
@@ -272,7 +283,10 @@ class RegisteredUserController extends Controller
      */
     public function resubmitKyc(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->current($request->user());
+        if ($user->isBuyer()) {
+            app(BuyerAccessService::class)->requireApplication($user);
+        }
 
         $applications = app(ApplicationValidationService::class);
         $request->merge($applications->normalize($request->all(), $user->role));

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,9 @@ class CartController extends Controller
 {
     private function getCart(Request $request): Cart
     {
+        if ($request->user()) {
+            app(BuyerAccessService::class)->requirePortal($request->user());
+        }
         $userId = $request->user()?->id;
         $sessionId = $request->session()->getId();
 
@@ -71,12 +75,15 @@ class CartController extends Controller
         $color = $this->normalizeOption($validated['color'] ?? null);
         $size = $this->normalizeOption($validated['size'] ?? null);
 
-        $product = DB::transaction(function () use ($cart, $validated, $quantity, $color, $size, $inventory) {
+        $product = DB::transaction(function () use ($request, $cart, $validated, $quantity, $color, $size, $inventory) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             try {
-                $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']])->get($validated['product_id']);
+                $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']], $request->user() ? [$request->user()->id] : [])->get($validated['product_id']);
             } catch (\RuntimeException $exception) {
                 throw ValidationException::withMessages(['product_id' => $exception->getMessage()]);
+            }
+            if ($request->user()) {
+                app(BuyerAccessService::class)->requirePortal($request->user());
             }
             if (! $product) {
                 throw ValidationException::withMessages(['product_id' => 'This product is no longer available.']);
@@ -158,7 +165,7 @@ class CartController extends Controller
 
         $quantity = (int) $request->input('quantity');
 
-        DB::transaction(function () use ($cart, $cartItem, $quantity, $inventory) {
+        DB::transaction(function () use ($request, $cart, $cartItem, $quantity, $inventory) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             $lockedItem = CartItem::query()
                 ->whereKey($cartItem->id)
@@ -166,9 +173,12 @@ class CartController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
             try {
-                $product = app(ShopEligibilityService::class)->lockSaleProducts([$lockedItem->product_id])->get($lockedItem->product_id);
+                $product = app(ShopEligibilityService::class)->lockSaleProducts([$lockedItem->product_id], $request->user() ? [$request->user()->id] : [])->get($lockedItem->product_id);
             } catch (\RuntimeException $exception) {
                 throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
+            }
+            if ($request->user()) {
+                app(BuyerAccessService::class)->requirePortal($request->user());
             }
             if (! $product) {
                 throw ValidationException::withMessages(['quantity' => 'This product is no longer available.']);
@@ -215,7 +225,13 @@ class CartController extends Controller
             abort(403, 'Unauthorized cart modification.');
         }
 
-        $cartItem->delete();
+        DB::transaction(function () use ($request, $cart, $cartItem) {
+            Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            if ($request->user()) {
+                app(BuyerAccessService::class)->requirePortal($request->user(), lock: true);
+            }
+            CartItem::whereKey($cartItem->id)->where('cart_id', $cart->id)->lockForUpdate()->firstOrFail()->delete();
+        });
 
         return back()->with('success', 'Item removed from shopping bag.');
     }

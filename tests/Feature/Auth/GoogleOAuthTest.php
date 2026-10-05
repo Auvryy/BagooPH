@@ -42,7 +42,7 @@ class GoogleOAuthTest extends TestCase
 
         $response = $this->get(route('auth.google.callback'));
 
-        $response->assertRedirect(route('buyer.index'));
+        $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();
 
         $user = User::where('email', 'newuser@gmail.com')->first();

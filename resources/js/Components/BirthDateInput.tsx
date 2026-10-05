@@ -17,7 +17,7 @@ interface BirthDateInputProps {
 export default function BirthDateInput({ value, maximum, onChange, error, adult = true }: BirthDateInputProps) {
     return (
         <div className="space-y-1 font-sans">
-            <label htmlFor="birthday" className="block text-xs font-semibold uppercase tracking-wider text-slate-800">Date of birth *</label>
+            <label htmlFor="birthday" className="block text-xs font-semibold uppercase tracking-wider text-slate-800">Date of birth {adult ? '*' : '(optional)'}</label>
             <input
                 id="birthday"
                 name="birthday"
@@ -25,7 +25,7 @@ export default function BirthDateInput({ value, maximum, onChange, error, adult 
                 autoComplete="bday"
                 value={value}
                 max={maximum}
-                required
+                required={adult}
                 aria-invalid={Boolean(error)}
                 aria-describedby={error ? 'birthday-help birthday-error' : 'birthday-help'}
                 onChange={event => onChange(event.target.value)}

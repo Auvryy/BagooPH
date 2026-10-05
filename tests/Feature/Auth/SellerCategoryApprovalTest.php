@@ -266,7 +266,7 @@ class SellerCategoryApprovalTest extends TestCase
         $this->actingAs($owner)->post('/kyc/resubmit', ['root_category_id' => $new->id, 'shop_id' => $foreign->shop->id])->assertSessionHasErrors('shop_id');
         $this->assertSame($old->id, $owner->shop->fresh()->root_category_id);
         $this->assertSame($old->id, $foreign->shop->fresh()->root_category_id);
-        $buyer = User::factory()->create(['role' => 'buyer']);
+        $buyer = User::factory()->create(['role' => 'buyer', 'kyc_status' => 'none']);
         $this->actingAs($buyer)->post('/kyc/resubmit', ['root_category_id' => $new->id])->assertSessionHasErrors('root_category_id');
     }
 
