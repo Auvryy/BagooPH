@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,22 @@ class CourierProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeOperational(Builder $query): Builder
+    {
+        return $query->whereHas('user', fn (Builder $user) => $user->eligibleCouriers())
+            ->whereHas('company', fn (Builder $company) => $company->eligible())
+            ->whereHas('hub', fn (Builder $hub) => $hub->eligible()
+                ->whereColumn('logistics_hubs.logistics_company_id', 'courier_profiles.logistics_company_id'))
+            ->where(function (Builder $vehicle) {
+                // A personal vehicle has no fleet ID. Linked fleet vehicles must agree in both directions.
+                $vehicle->whereNull('courier_profiles.vehicle_id')
+                    ->orWhereHas('vehicle', fn (Builder $fleet) => $fleet->ready()
+                        ->whereColumn('logistics_fleet.logistics_company_id', 'courier_profiles.logistics_company_id')
+                        ->whereColumn('logistics_fleet.hub_id', 'courier_profiles.assigned_hub_id')
+                        ->whereColumn('logistics_fleet.assigned_driver_id', 'courier_profiles.user_id'));
+            });
     }
 
     public function company(): BelongsTo

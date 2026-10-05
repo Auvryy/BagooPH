@@ -7,12 +7,15 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class CourierOperationsService
 {
+    public function __construct(private readonly LogisticsEligibilityService $eligibility) {}
+
     public function claimPickup(User $rider, Delivery $delivery): Delivery
     {
         return DB::transaction(function () use ($rider, $delivery) {
@@ -21,18 +24,24 @@ class CourierOperationsService
             $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
             $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
             $lockedDelivery->setRelation('order', $lockedOrder);
+            $this->eligibility->lockNetwork((int) $lockedDelivery->logistics_company_id, [$rider->id], [$lockedDelivery->origin_bayan_hub_id]);
+            $this->eligibility->assertBayanHub((int) $lockedDelivery->origin_bayan_hub_id);
+            $rider = User::findOrFail($rider->id);
             $profile = CourierProfile::with(['company', 'hub'])
                 ->where('user_id', $rider->id)
                 ->lockForUpdate()
                 ->first();
 
             $this->assertEligibleRider($rider, $profile);
-            $this->assertOperationalScope($profile);
+            $this->eligibility->assertCourierScope($profile, (int) $lockedDelivery->logistics_company_id, (int) $lockedDelivery->origin_bayan_hub_id, newWork: true);
 
             if (Delivery::activePickupCount($rider->id) >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) {
                 throw new DomainException(
                     'Pickup capacity reached. Complete or hand over one of your active pickups before claiming another.'
                 );
+            }
+            if (! $this->eligibility->canReceivePickups($profile)) {
+                throw new DomainException('Complete your active final-mile work before claiming a new pickup.');
             }
 
             if ($lockedDelivery->courier_id !== null || $lockedDelivery->status !== 'unassigned') {
@@ -71,6 +80,13 @@ class CourierOperationsService
     public function setAvailability(User $rider, bool $isAvailable): CourierProfile
     {
         return DB::transaction(function () use ($rider, $isAvailable) {
+            $scope = CourierProfile::where('user_id', $rider->id)->first();
+            if ($isAvailable) {
+                $this->eligibility->lockNetwork((int) $scope?->logistics_company_id, [$rider->id], [$scope?->assigned_hub_id]);
+            } else {
+                User::whereKey($rider->id)->lockForUpdate()->firstOrFail();
+            }
+            $rider = User::findOrFail($rider->id);
             $profile = CourierProfile::with(['company', 'hub'])
                 ->where('user_id', $rider->id)
                 ->lockForUpdate()
@@ -78,7 +94,7 @@ class CourierOperationsService
             $this->assertEligibleRider($rider, $profile, requireAvailability: false);
 
             if ($isAvailable) {
-                $this->assertOperationalScope($profile);
+                $this->eligibility->assertCourierScope($profile, (int) $scope?->logistics_company_id, (int) $scope?->assigned_hub_id);
             }
 
             $profile->update(['is_available' => $isAvailable]);
@@ -102,17 +118,6 @@ class CourierOperationsService
 
         if ($requireAvailability && ! $profile->is_available) {
             throw new DomainException('Go on duty before claiming a pickup job.');
-        }
-    }
-
-    private function assertOperationalScope(CourierProfile $profile): void
-    {
-        if (! $profile->logistics_company_id || ! $profile->assigned_hub_id) {
-            throw new DomainException('A logistics company and working hub must be assigned before going on duty.');
-        }
-
-        if (! $profile->company?->is_active || $profile->company->status !== 'active' || ! $profile->hub?->is_active) {
-            throw new DomainException('Your assigned logistics company or working hub is not active.');
         }
     }
 }

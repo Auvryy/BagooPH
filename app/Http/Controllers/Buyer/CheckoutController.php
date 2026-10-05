@@ -94,8 +94,7 @@ class CheckoutController extends Controller
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
         $defaultAddress = $user->defaultAddress();
 
-        $pickupHubs = LogisticsHub::where('tier', 'local_bayan_hub')
-            ->where('is_active', true)
+        $pickupHubs = LogisticsHub::eligible()->where('tier', 'local_bayan_hub')
             ->where('allows_self_pickup', true)
             ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province']);
 

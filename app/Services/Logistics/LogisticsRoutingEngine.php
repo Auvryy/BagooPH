@@ -7,7 +7,9 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Shop;
+use DomainException;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LogisticsRoutingEngine
@@ -56,8 +58,7 @@ class LogisticsRoutingEngine
      */
     public function resolveOriginBayanHub(Shop $shop, ?LogisticsCompany $company = null): ?LogisticsHub
     {
-        $query = LogisticsHub::where('tier', 'local_bayan_hub')
-            ->where('is_active', true);
+        $query = LogisticsHub::eligible()->where('tier', 'local_bayan_hub');
 
         if ($company) {
             $query->where('logistics_company_id', $company->id);
@@ -81,8 +82,7 @@ class LogisticsRoutingEngine
      */
     public function resolveDestinationBayanHub(string $province, string $city, ?string $barangay = null, ?LogisticsCompany $company = null): ?LogisticsHub
     {
-        $query = LogisticsHub::where('tier', 'local_bayan_hub')
-            ->where('is_active', true);
+        $query = LogisticsHub::eligible()->where('tier', 'local_bayan_hub');
 
         if ($company) {
             $query->where('logistics_company_id', $company->id);
@@ -117,9 +117,13 @@ class LogisticsRoutingEngine
      */
     public function resolveMotherHubForBayanHub(LogisticsHub $bayanHub): ?LogisticsHub
     {
+        $bayanHub = LogisticsHub::eligible()->whereKey($bayanHub->id)->where('tier', 'local_bayan_hub')->first();
+        if (! $bayanHub) {
+            return null;
+        }
         $province = $this->normalizePlace((string) $bayanHub->province);
 
-        return LogisticsHub::where('logistics_company_id', $bayanHub->logistics_company_id)
+        return LogisticsHub::eligible()->where('logistics_company_id', $bayanHub->logistics_company_id)
             ->where('tier', 'regional_mother_hub')
             ->where('is_active', true)
             ->get()
@@ -131,74 +135,70 @@ class LogisticsRoutingEngine
      */
     public function planDeliveryRoute(Delivery $delivery, Order $order, Shop $shop): Delivery
     {
-        $company = $delivery->company ?? $this->resolveCompanyForRoute($order, $shop);
+        return DB::transaction(function () use ($delivery, $order, $shop) {
+            $order = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $parcel = Delivery::whereKey($delivery->id)->where('order_id', $order->id)->lockForUpdate()->firstOrFail();
+            $shop = Shop::findOrFail($shop->id);
+            if ($parcel->status !== 'unassigned' || $parcel->courier_id || $parcel->assigned_rider_id
+                || $parcel->current_hub_id || $parcel->checkpoints()->exists()) {
+                throw new DomainException('An assigned parcel route requires controlled recovery before changing facilities.');
+            }
+            $company = $parcel->logistics_company_id
+                ? LogisticsCompany::eligible()->find($parcel->logistics_company_id)
+                : $this->resolveCompanyForRoute($order, $shop);
+            if (! $company) {
+                throw new DomainException('The selected logistics company is not eligible for routing.');
+            }
+            $origin = $this->resolveOriginBayanHub($shop, $company);
+            $destination = $order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id
+                ? LogisticsHub::eligible()->whereKey($order->pickup_hub_id)->where('logistics_company_id', $company->id)
+                    ->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->first()
+                : $this->resolveDestinationBayanHub($order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $company);
+            $originMother = $origin ? $this->resolveMotherHubForBayanHub($origin) : null;
+            $destinationMother = $destination ? $this->resolveMotherHubForBayanHub($destination) : null;
+            if (! $origin || ! $destination || ! $originMother || ! $destinationMother) {
+                throw new DomainException('No complete eligible Bayan and Mother Hub route serves this parcel.');
+            }
+            if (! $this->isContiguousRoadServiceable($origin->province, $origin->city_municipality)
+                || ! $this->isContiguousRoadServiceable($destination->province, $destination->city_municipality)) {
+                throw new DomainException('The selected facilities are outside the supported road network.');
+            }
+            app(LogisticsEligibilityService::class)->lockNetwork($company->id, hubIds: [
+                $origin->id, $originMother->id, $destinationMother->id, $destination->id,
+            ]);
+            $bayanIds = collect([$origin->id, $destination->id])->unique();
+            $motherIds = collect([$originMother->id, $destinationMother->id])->unique();
+            if (LogisticsHub::eligible()->whereIn('id', $bayanIds)->where('tier', 'local_bayan_hub')->count() !== $bayanIds->count()
+                || LogisticsHub::eligible()->whereIn('id', $motherIds)->where('tier', 'regional_mother_hub')->count() !== $motherIds->count()
+                || ($order->delivery_type === 'hub_self_pickup' && ! LogisticsHub::eligible()->whereKey($destination->id)->where('allows_self_pickup', true)->exists())) {
+                throw new DomainException('The selected facility capabilities changed. Check the route again.');
+            }
+            $barangay = $order->destination_barangay ?? 'GENERAL';
+            $parcel->fill([
+                'logistics_company_id' => $company->id, 'logistics_partner' => $company->name,
+                'origin_bayan_hub_id' => $origin->id, 'origin_mother_hub_id' => $originMother->id,
+                'destination_mother_hub_id' => $destinationMother->id, 'destination_bayan_hub_id' => $destination->id,
+                'current_hub_id' => null,
+                'destination_bin' => $order->delivery_type === 'hub_self_pickup'
+                    ? 'STAGE: SELF-PICKUP-SHELF' : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay)),
+            ])->save();
+            $delivery->setRawAttributes($parcel->getAttributes(), true)->unsetRelations();
 
-        $delivery->logistics_company_id = $company->id;
-        $delivery->logistics_partner = $company->name;
-
-        // Origin Legs
-        $originBayan = $this->resolveOriginBayanHub($shop, $company);
-        if (! $originBayan) {
-            throw new Exception('No origin Bayan Hub serves the seller location.');
-        }
-        $delivery->origin_bayan_hub_id = $originBayan->id;
-        $delivery->current_hub_id = null;
-
-        $originMother = $this->resolveMotherHubForBayanHub($originBayan);
-        if (! $originMother) {
-            throw new Exception('No active Mother Hub serves the seller origin hub.');
-        }
-        $delivery->origin_mother_hub_id = $originMother->id;
-
-        // Destination Legs
-        if ($order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id) {
-            $destBayan = LogisticsHub::whereKey($order->pickup_hub_id)
-                ->where('logistics_company_id', $company->id)
-                ->where('tier', 'local_bayan_hub')
-                ->where('is_active', true)
-                ->first();
-        } else {
-            $destBayan = $this->resolveDestinationBayanHub(
-                $order->shipping_province ?? '',
-                $order->shipping_city ?? '',
-                $order->destination_barangay,
-                $company
-            );
-        }
-
-        if (! $destBayan) {
-            throw new Exception('No destination Bayan Hub serves the buyer address.');
-        }
-
-        $delivery->destination_bayan_hub_id = $destBayan->id;
-        $destMother = $this->resolveMotherHubForBayanHub($destBayan);
-        if (! $destMother) {
-            throw new Exception('No active Mother Hub serves the buyer destination hub.');
-        }
-        $delivery->destination_mother_hub_id = $destMother->id;
-
-        // Set destination sorting bin code
-        $targetBarangay = $order->destination_barangay ?? 'GENERAL';
-        $delivery->destination_bin = $order->delivery_type === 'hub_self_pickup'
-            ? 'STAGE: SELF-PICKUP-SHELF'
-            : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $targetBarangay));
-
-        $delivery->save();
-
-        return $delivery;
+            return $delivery;
+        });
     }
 
     private function resolveCompanyForRoute(Order $order, Shop $shop): LogisticsCompany
     {
-        $companies = LogisticsCompany::where('is_active', true)->where('status', 'active')->get();
+        $companies = LogisticsCompany::eligible()->orderBy('id')->get();
 
         foreach ($companies as $company) {
             $origin = $this->resolveOriginBayanHub($shop, $company);
             $destination = $order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id
-                ? LogisticsHub::whereKey($order->pickup_hub_id)
+                ? LogisticsHub::eligible()->whereKey($order->pickup_hub_id)
                     ->where('logistics_company_id', $company->id)
                     ->where('tier', 'local_bayan_hub')
-                    ->where('is_active', true)
+                    ->where('allows_self_pickup', true)
                     ->first()
                 : $this->resolveDestinationBayanHub(
                     $order->shipping_province ?? '',

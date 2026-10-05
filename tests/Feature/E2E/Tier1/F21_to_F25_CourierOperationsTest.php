@@ -145,7 +145,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $this->scopeRiderForDelivery($courierA, $delivery);
         $response = $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
 
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response->assertSessionHas('success');
         $this->assertEquals($courierA->id, $delivery->fresh()->courier_id);
     }
 
@@ -159,7 +159,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
 
         $courierA = $this->createApprovedUser('courier');
         $this->scopeRiderForDelivery($courierA, $delivery);
-        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
+        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id))->assertSessionHas('success');
 
         $this->assertNotNull($delivery->fresh()->courier_id);
         $this->assertNotEquals('unassigned', $delivery->fresh()->status);
@@ -175,7 +175,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
 
         $courierA = $this->createApprovedUser('courier');
         $this->scopeRiderForDelivery($courierA, $delivery);
-        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
+        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id))->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertTrue(in_array($delivery->status, ['assigned', 'assigned_pickup']));
@@ -340,6 +340,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
     {
         $suffix = Str::lower(Str::random(8));
         $company = LogisticsCompany::create([
+            'user_id' => $this->createApprovedUser('logistics')->id,
             'name' => "E2E Dispatch {$suffix}",
             'slug' => "e2e-dispatch-{$suffix}",
             'code' => 'E2E-'.Str::upper($suffix),

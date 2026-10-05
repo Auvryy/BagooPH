@@ -172,8 +172,8 @@ class LogisticsHubSuiteTest extends TestCase
             hub: $foreignHub,
         );
 
-        $response = $this->actingAs($this->logisticsUser)
-            ->get(route('hub.dashboard', ['hub_id' => $foreignHub->id]));
+        $this->actingAs($this->logisticsUser)->get(route('hub.dashboard', ['hub_id' => $foreignHub->id]))->assertForbidden();
+        $response = $this->get(route('hub.dashboard'));
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
@@ -242,8 +242,8 @@ class LogisticsHubSuiteTest extends TestCase
             'status' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
         ]);
 
-        $response = $this->actingAs($handler)
-            ->get(route('hub.dashboard', ['hub_id' => $this->motherHub->id]));
+        $this->actingAs($handler)->get(route('hub.dashboard', ['hub_id' => $this->motherHub->id]))->assertForbidden();
+        $response = $this->get(route('hub.dashboard'));
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
@@ -383,8 +383,8 @@ class LogisticsHubSuiteTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($handler)
-            ->get(route('hub.network', ['hub_id' => $this->motherHub->id]));
+        $this->actingAs($handler)->get(route('hub.network', ['hub_id' => $this->motherHub->id]))->assertForbidden();
+        $response = $this->get(route('hub.network'));
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
@@ -493,7 +493,7 @@ class LogisticsHubSuiteTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($handler)
+        $response = $this->actingAs($handler)->withSession(['active_hub_id' => $this->bayanHub->id])
             ->post(route('hub.switchHub'), ['hub_id' => $this->motherHub->id]);
 
         $response->assertForbidden();
@@ -515,6 +515,7 @@ class LogisticsHubSuiteTest extends TestCase
 
     public function test_counter_pickup_release_successfully_hands_over_parcel(): void
     {
+        HubHandler::create(['user_id' => $this->logisticsUser->id, 'hub_id' => $this->bayanHub->id, 'is_active' => true]);
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active']);
         $shop = Shop::create([
             'user_id' => $seller->id,

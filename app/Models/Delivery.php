@@ -24,6 +24,7 @@ class Delivery extends Model
         'assigned_to_rider',
         'out_for_delivery',
         'delivery_failed',
+        'return_to_sender',
     ];
 
     /**

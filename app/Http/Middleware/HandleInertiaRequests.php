@@ -3,11 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Models\Cart;
-use App\Models\HubHandler;
-use App\Models\LogisticsCompany;
-use App\Models\LogisticsHub;
 use App\Models\Message;
 use App\Models\Shop;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\ShopEligibilityService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\Request;
@@ -39,6 +37,8 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $canAccessHub = $user && $user->canAccessPortal() && ($user->isLogistics() || $user->isAdmin());
+        $eligibility = app(LogisticsEligibilityService::class);
+        [$activeHub, $hubs] = $canAccessHub ? $eligibility->hubContext($request) : [null, collect()];
         $cartCount = 0;
         $unreadMessagesCount = 0;
 
@@ -80,61 +80,11 @@ class HandleInertiaRequests extends Middleware
                     'sellerShops' => $user->isSeller() ? Shop::with('rootCategory:id,name,slug')
                         ->where('user_id', $user->id)->orderByDesc('is_default')->orderBy('id')->get()
                         ->map(fn ($shop) => [...$shop->toArray(), 'eligible' => app(ShopEligibilityService::class)->isEligible($shop)]) : [],
-                    'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
-                    'logisticsCompany' => $canAccessHub
-                        ? ($user->logisticsCompany ?? ($user->isAdmin()
-                            ? LogisticsCompany::where('is_active', true)->first()
-                            : HubHandler::where('user_id', $user->id)->where('is_active', true)->first()?->hub?->company))
-                        : null,
-                    'canSwitchHubs' => $canAccessHub && $user->isLogistics() && (bool) $user->logisticsCompany,
-                    'activeHub' => $canAccessHub
-                        ? (function () use ($request, $user) {
-                            $accessibleHubs = LogisticsHub::query()
-                                ->where('is_active', true)
-                                ->when(! $user->isAdmin(), function ($query) use ($user) {
-                                    $companyId = $user->logisticsCompany?->id;
-                                    if ($companyId) {
-                                        $query->where('logistics_company_id', $companyId);
-                                    } else {
-                                        $query->whereIn('id', HubHandler::where('user_id', $user->id)
-                                            ->where('is_active', true)
-                                            ->pluck('hub_id'));
-                                    }
-                                });
-                            $hubId = $request->session()->get('active_hub_id');
-                            if ($hubId) {
-                                $h = (clone $accessibleHubs)->find($hubId);
-                                if ($h) {
-                                    return $h;
-                                }
-                            }
-                            $handler = HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
-                            if ($handler) {
-                                $handlerHub = (clone $accessibleHubs)->find($handler->hub_id);
-                                if ($handlerHub) {
-                                    return $handlerHub;
-                                }
-                            }
-
-                            return $accessibleHubs->first();
-                        })()
-                        : null,
-                    'allHubs' => $canAccessHub
-                        ? LogisticsHub::query()
-                            ->where('is_active', true)
-                            ->when(! $user->isAdmin(), function ($query) use ($user) {
-                                $companyId = $user->logisticsCompany?->id;
-                                if ($companyId) {
-                                    $query->where('logistics_company_id', $companyId);
-                                } else {
-                                    $query->whereIn('id', HubHandler::where('user_id', $user->id)
-                                        ->where('is_active', true)
-                                        ->pluck('hub_id'));
-                                }
-                            })
-                            ->orderBy('tier')
-                            ->get(['id', 'name', 'code', 'tier', 'city_municipality'])
-                        : [],
+                    'courier_profile' => $user->role === 'courier' ? $user->courierProfile?->attributesToArray() : null,
+                    'logisticsCompany' => $activeHub?->company,
+                    'canSwitchHubs' => $activeHub && $eligibility->isCompanyAdministrator($user),
+                    'activeHub' => $activeHub,
+                    'allHubs' => $hubs->map(fn ($hub) => $hub->only(['id', 'name', 'code', 'tier', 'city_municipality'])),
                 ] : null,
             ],
             'cartCount' => $cartCount,

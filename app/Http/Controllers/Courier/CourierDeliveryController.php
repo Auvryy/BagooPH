@@ -8,6 +8,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -43,13 +44,7 @@ class CourierDeliveryController extends Controller
         $completedToday = 0;
         $todayStart = today('Asia/Manila')->utc();
         $todayEnd = $todayStart->copy()->addDay();
-        $canReceiveNewWork = (bool) (
-            $profile?->logistics_company_id
-            && $profile?->assigned_hub_id
-            && $profile?->company?->is_active
-            && $profile?->company?->status === 'active'
-            && $profile?->hub?->is_active
-        );
+        $canReceiveNewWork = app(LogisticsEligibilityService::class)->canReceivePickups($profile);
 
         if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
             if ($canReceiveNewWork && $profile->is_available) {
@@ -440,17 +435,18 @@ class CourierDeliveryController extends Controller
 
     private function scopePayload($profile): array
     {
+        $hub = $profile?->hub;
+        if ($hub?->logistics_company_id !== $profile?->logistics_company_id) {
+            $hub = null;
+        }
+
         return [
             'company' => $profile?->company?->name,
-            'hub' => $profile?->hub?->name,
-            'hubCode' => $profile?->hub?->code,
+            'hub' => $hub?->name,
+            'hubCode' => $hub?->code,
             'barangay' => $profile?->assigned_barangay,
             'isAssigned' => (bool) ($profile?->logistics_company_id && $profile?->assigned_hub_id),
-            'isOperational' => (bool) (
-                $profile?->company?->is_active
-                && $profile?->company?->status === 'active'
-                && $profile?->hub?->is_active
-            ),
+            'isOperational' => app(LogisticsEligibilityService::class)->isOperational($profile),
         ];
     }
 
