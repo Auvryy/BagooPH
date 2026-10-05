@@ -6,9 +6,9 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/resource-restrictions` |
+| Git branch | `admin/governance-restrictions` (B06+B07 batch) |
 | Phase | 0 |
-| Minimum prerequisites | [B03](03-shop-approval-eligibility.md), [B04](04-logistics-resource-eligibility.md), [B06](06-account-restrictions.md) |
+| Minimum prerequisites | Merged [B03](03-shop-approval-eligibility.md) and [B04](04-logistics-resource-eligibility.md); [B06](06-account-restrictions.md) focused gate verified on the shared branch |
 | Result | A resource restriction has its own reason/history and cannot bypass or silently clear its parent. |
 
 ## Purpose
@@ -91,7 +91,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop after each resource's reasoned decision and effective parent eligibility are verified. Do not use this branch to implement custody recovery or reactivate all dependents.
 
 ```text
-Implement only B07 from docs/admin-plan/07-resource-restrictions.md on admin/resource-restrictions.
+Implement B07 from docs/admin-plan/07-resource-restrictions.md on admin/governance-restrictions after B06 verification.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.

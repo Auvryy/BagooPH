@@ -732,6 +732,8 @@ Acceptance: direct URLs, stale pages, alternate portals, simulators, and malform
 
 Next Phase 0 work: B01-B05 are implemented; continue with B06-B13 of [the bounded admin plan](admin-plan/README.md) after B05 publication/review, starting with reasoned restrictions, then controlled identity correction, active-work deletion protections, moderation/audit, and truthful overview data. Preserve fixed roles, adult-worker validation, and the verified KYC/shop/resource foundations. B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
+B06 and B07 are selected as one bounded delivery on `admin/governance-restrictions`, with B06's focused acceptance gate before B07 implementation. Their task records, acceptance requirements, and logical commits remain separate; combined regression/build checks precede user review and merge. This allocation does not complete either feature or waive B13 and later phase gates.
+
 ### Phase 1: Normal Order and Seller Flow
 
 **State: Implemented and covered by focused tests.**

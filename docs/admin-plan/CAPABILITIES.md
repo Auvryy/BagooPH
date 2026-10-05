@@ -54,7 +54,7 @@ Permissions use the existing roles, ownership, company, facility, assignment, an
 | Controlled account security recovery notices | Make verified recovery actions visible to the affected account | Auth/session design review; no admin view of plaintext passwords, reset tokens, or OTPs. |
 | Small redacted report downloads | Share an authorized audit view when a real user need exists | Privacy/retention/filter review after B11/B18; no bulk private-document or secret export. |
 
-These optional ideas have no allocated branch and are not required to complete the 18-branch admin plan. Selecting one requires updating the plan and its branch count explicitly.
+These optional ideas have no allocated branch and are not required to complete the 18-task admin plan. Selecting one requires updating the plan and its branch count explicitly.
 
 ## Excluded functions
 
