@@ -56,9 +56,10 @@ class SellerProfileTest extends TestCase
         Storage::fake('public');
 
         $file = UploadedFile::fake()->image('merchant_avatar.png', 300, 300)->size(500);
+        $originalName = $this->seller->name;
 
         $response = $this->actingAs($this->seller)->post(route('seller.profile.update'), [
-            'name' => 'Updated Merchant Name',
+            'name' => $this->seller->name,
             'email' => $this->seller->email,
             'phone' => '+63 912 345 6789',
             'avatar' => $file,
@@ -68,7 +69,7 @@ class SellerProfileTest extends TestCase
         $response->assertSessionHas('success');
 
         $this->seller->refresh();
-        $this->assertSame('Updated Merchant Name', $this->seller->name);
+        $this->assertSame($originalName, $this->seller->name);
         $this->assertSame('+63 912 345 6789', $this->seller->phone);
         $this->assertNotNull($this->seller->avatar);
         $this->assertStringStartsWith('/storage/avatars/', $this->seller->avatar);
@@ -230,14 +231,16 @@ class SellerProfileTest extends TestCase
 
         $response->assertSessionHasErrors(['email']);
 
+        $originalName = $this->seller->name;
+
         // Keeping same email should succeed
         $successResponse = $this->actingAs($this->seller)->post(route('seller.profile.update'), [
-            'name' => 'Same Email Seller',
+            'name' => $this->seller->name,
             'email' => $this->seller->email,
         ]);
 
         $successResponse->assertSessionHasNoErrors();
         $this->seller->refresh();
-        $this->assertSame('Same Email Seller', $this->seller->name);
+        $this->assertSame($originalName, $this->seller->name);
     }
 }

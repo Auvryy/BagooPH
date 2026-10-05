@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\BuyerAccessService;
+use App\Services\IdentityCorrectionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,18 +39,21 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        if ($request->user()->isBuyer()) {
-            app(BuyerAccessService::class)->requirePortal($request->user());
-        }
-        $request->user()->fill($request->validated());
+        return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
+            if ($request->user()->isBuyer()) {
+                app(BuyerAccessService::class)->requirePortal($request->user());
+            }
+            app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $request->validated());
+            $request->user()->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
+            if ($request->user()->isDirty('email')) {
+                $request->user()->email_verified_at = null;
+            }
 
-        $request->user()->save();
+            $request->user()->save();
 
-        return Redirect::route('profile.edit');
+            return Redirect::route('profile.edit');
+        });
     }
 
     /**

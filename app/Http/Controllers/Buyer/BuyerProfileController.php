@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Rules\BirthDate;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
+use App\Services\IdentityCorrectionService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,54 +70,58 @@ class BuyerProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $user = app(BuyerAccessService::class)->requirePortal($request->user());
+        return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
+            $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
-        $rules = [
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:30',
-            'birthday' => ['nullable', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
-            'gender' => 'nullable|string|in:male,female,other',
-            'remove_avatar' => 'nullable|boolean',
-        ];
+            $rules = [
+                'name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:30',
+                'birthday' => ['nullable', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
+                'gender' => 'nullable|string|in:male,female,other',
+                'remove_avatar' => 'nullable|boolean',
+            ];
 
-        if ($request->file('avatar') !== null) {
-            $rules['avatar'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
-        } elseif ($request->file('avatar_file') !== null) {
-            $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
-        }
-
-        $validated = $request->validate($rules);
-
-        if ($request->boolean('remove_avatar')) {
-            if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $user->avatar);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
+            if ($request->file('avatar') !== null) {
+                $rules['avatar'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+            } elseif ($request->file('avatar_file') !== null) {
+                $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
             }
-            $user->avatar = null;
-        } else {
-            $uploadedFile = $request->file('avatar') ?? $request->file('avatar_file');
 
-            if ($uploadedFile) {
-                // If replacing an existing custom avatar stored in public storage, delete the old file
+            $validated = $request->validate($rules);
+
+            app(IdentityCorrectionService::class)->protectReviewedIdentity($user, $validated);
+
+            if ($request->boolean('remove_avatar')) {
                 if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
                     $oldPath = str_replace('/storage/', '', $user->avatar);
                     if (Storage::disk('public')->exists($oldPath)) {
                         Storage::disk('public')->delete($oldPath);
                     }
                 }
+                $user->avatar = null;
+            } else {
+                $uploadedFile = $request->file('avatar') ?? $request->file('avatar_file');
 
-                $path = $uploadedFile->store('avatars', 'public');
-                $user->avatar = '/storage/'.$path;
+                if ($uploadedFile) {
+                    // If replacing an existing custom avatar stored in public storage, delete the old file
+                    if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                        $oldPath = str_replace('/storage/', '', $user->avatar);
+                        if (Storage::disk('public')->exists($oldPath)) {
+                            Storage::disk('public')->delete($oldPath);
+                        }
+                    }
+
+                    $path = $uploadedFile->store('avatars', 'public');
+                    $user->avatar = '/storage/'.$path;
+                }
             }
-        }
 
-        $user->name = $validated['name'];
-        $user->phone = $validated['phone'] ?? null;
-        $user->save();
+            $user->name = $validated['name'];
+            $user->phone = $validated['phone'] ?? null;
+            $user->save();
 
-        return back()->with('success', 'Profile updated successfully.');
+            return back()->with('success', 'Profile updated successfully.');
+        });
     }
 
     public function storeAddress(Request $request): RedirectResponse

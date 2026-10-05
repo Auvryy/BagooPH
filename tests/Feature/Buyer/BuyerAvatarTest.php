@@ -26,7 +26,7 @@ class BuyerAvatarTest extends TestCase
         $file = UploadedFile::fake()->image('my_avatar.png', 300, 300)->size(500);
 
         $response = $this->actingAs($buyer)->post(route('buyer.profile.update'), [
-            'name' => 'Avatar Tester',
+            'name' => $buyer->name,
             'phone' => '+63 912 345 6789',
             'avatar' => $file,
         ]);
@@ -55,7 +55,7 @@ class BuyerAvatarTest extends TestCase
         $file = UploadedFile::fake()->image('custom_photo.jpg', 400, 400)->size(600);
 
         $response = $this->actingAs($buyer)->post(route('buyer.profile.update'), [
-            'name' => 'File Key User',
+            'name' => $buyer->name,
             'avatar_file' => $file,
         ]);
 

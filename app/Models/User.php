@@ -21,6 +21,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public const APPROVED_KYC_STATUSES = ['approved', 'verified'];
 
+    protected $attributes = ['identity_version' => 0];
+
     protected $fillable = [
         'name',
         'email_verified_at',
@@ -54,6 +56,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     ];
 
     protected $hidden = [
+        'identity_version',
         'restriction_version',
         'password',
         'remember_token',
@@ -90,6 +93,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'kyc_submitted_at' => 'datetime',
             'kyc_reviewed_at' => 'datetime',
             'restriction_version' => 'integer',
+            'identity_version' => 'integer',
         ];
     }
 
@@ -164,10 +168,10 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function hasEligibleBirthDate(): bool
     {
         // Reviewed legacy accounts without a birth date retain access pending a controlled audit.
-        if ($this->birthday === null) {
-            return true;
-        }
         $birthDates = app(BirthDateEligibility::class);
+        if ($this->birthday === null) {
+            return ! $birthDates->requiresAdult($this->role) || $this->identity_version === 0;
+        }
 
         return $birthDates->issue($this->birthday, $birthDates->requiresAdult($this->role)) === null;
     }
@@ -187,7 +191,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $query->where('role', $role)->where('status', 'active')
             ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
             ->where(function (Builder $query) {
-                $query->whereNull('birthday')->orWhere(function (Builder $query) {
+                $query->where(fn ($legacy) => $legacy->whereNull('birthday')->where('identity_version', 0))->orWhere(function (Builder $query) {
                     $query->whereDate('birthday', '>=', '0001-01-01')
                         ->whereDate('birthday', '<=', app(BirthDateEligibility::class)->limits()['adult_maximum']);
                 });
