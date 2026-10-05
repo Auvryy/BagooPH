@@ -67,6 +67,7 @@ class AdminDashboardController extends Controller
         return Inertia::render('Admin/Users', [
             'users' => $users,
             'filters' => $request->only(['search', 'role']),
+            'activityBaseUrl' => $request->getPathInfo(),
         ]);
     }
 

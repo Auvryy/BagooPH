@@ -38,6 +38,10 @@ class EnsureApprovedAccount
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your account is not eligible for this protected action.'], 403);
+            }
+
             return redirect()->route('login')->withErrors([
                 'email' => $user->status === 'suspended'
                     ? 'Your account has been suspended by platform administration.'

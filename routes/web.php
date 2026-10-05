@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
@@ -202,6 +203,8 @@ $registerAdminRoutes = function () {
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show']);
+        Route::post('/users/{user}/activity', [AccountRestrictionController::class, 'store']);
         Route::get('/shops', [AdminShopReviewController::class, 'index']);
         Route::post('/shops/{shop}/approve', [AdminShopReviewController::class, 'approve']);
         Route::post('/shops/{shop}/reject', [AdminShopReviewController::class, 'reject']);
@@ -443,6 +446,8 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show'])->name('users.activity');
+    Route::post('/users/{user}/activity', [AccountRestrictionController::class, 'store'])->name('users.activity.store');
     Route::get('/shops', [AdminShopReviewController::class, 'index'])->name('shops.index');
     Route::post('/shops/{shop}/approve', [AdminShopReviewController::class, 'approve'])->name('shops.approve');
     Route::post('/shops/{shop}/reject', [AdminShopReviewController::class, 'reject'])->name('shops.reject');

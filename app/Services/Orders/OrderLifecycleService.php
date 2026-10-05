@@ -191,6 +191,10 @@ class OrderLifecycleService
 
     private function assertSellerOwnsCompleteOrder(Order $order, Shop $shop, User $seller): void
     {
+        $seller = User::whereKey($seller->id)->lockForUpdate()->first();
+        if (! $seller?->isSeller() || ! $seller->canAccessPortal()) {
+            throw new AuthorizationException('Only a currently approved and active seller can fulfill an order.');
+        }
         if ($shop->user_id !== $seller->id) {
             throw new AuthorizationException('The selected shop does not belong to this seller.');
         }
