@@ -24,7 +24,7 @@ class BuyerCartSelectionTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Bagoo Hub',
             'slug' => 'artisan-bagoo-hub',
@@ -35,6 +35,7 @@ class BuyerCartSelectionTest extends TestCase
             'name' => 'Leather Goods',
             'slug' => 'leather-goods',
             'is_active' => true,
+            'parent_id' => $shop->root_category_id,
         ]);
 
         $productA = Product::create([

@@ -17,7 +17,7 @@ class BuyerProductController extends Controller
      */
     public function search(Request $request): Response
     {
-        $query = Product::with(['shop', 'category'])
+        $query = Product::with(['shop', 'category'])->availableForSale()
             ->where('status', 'active');
 
         // Search Query (Name, Description, SKU, Category, and Shop Name)
@@ -93,7 +93,7 @@ class BuyerProductController extends Controller
 
         // Related / Recommended Products
         $matchedIds = $products->pluck('id')->toArray();
-        $relatedQuery = Product::with(['shop', 'category'])
+        $relatedQuery = Product::with(['shop', 'category'])->availableForSale()
             ->where('status', 'active')
             ->whereNotIn('id', $matchedIds);
 
@@ -125,7 +125,7 @@ class BuyerProductController extends Controller
 
     public function show(Request $request, string $slug): Response
     {
-        $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])
+        $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])->availableForSale()
             ->where('status', 'active')
             ->where(function ($q) use ($slug) {
                 $q->where('slug', $slug);
@@ -137,7 +137,7 @@ class BuyerProductController extends Controller
 
         // Support slug format with appended ID (e.g. {slug}-{id} or {slug}-i.{id})
         if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
-            $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])
+            $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])->availableForSale()
                 ->where('status', 'active')
                 ->where('id', (int) $matches[1])
                 ->first();
@@ -147,7 +147,7 @@ class BuyerProductController extends Controller
             abort(404, 'Product not found.');
         }
 
-        $relatedProducts = Product::with(['shop', 'category'])
+        $relatedProducts = Product::with(['shop', 'category'])->availableForSale()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->where('status', 'active')
@@ -163,7 +163,7 @@ class BuyerProductController extends Controller
         // Store performance metrics
         $shopStats = [
             'rating' => $product->shop?->rating ?? 4.9,
-            'products_count' => $product->shop ? Product::where('shop_id', $product->shop_id)->count() : 12,
+            'products_count' => $product->shop ? Product::where('shop_id', $product->shop_id)->availableForSale()->count() : 12,
             'response_rate' => '99%',
             'response_time' => 'within hours',
             'joined' => '1 year ago',

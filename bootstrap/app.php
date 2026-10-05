@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*')
-            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject'))]);
+            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops', 'seller/shops/*/resubmit', 'shops', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject'))]);
 
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
 

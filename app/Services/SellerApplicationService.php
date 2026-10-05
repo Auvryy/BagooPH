@@ -28,6 +28,8 @@ class SellerApplicationService
                 'address' => $user->address,
                 'city' => $user->city,
                 'status' => 'pending',
+                'review_status' => 'pending_approval',
+                'review_submitted_at' => now(),
             ]);
 
             return $user;

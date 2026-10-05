@@ -29,7 +29,7 @@ class SellerProfileTest extends TestCase
             'avatar' => null,
         ]);
 
-        $this->shop = Shop::create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $this->seller->id,
             'name' => 'Apex Artisan Store',
             'slug' => 'apex-artisan-store',

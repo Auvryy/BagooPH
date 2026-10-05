@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\ShopEligibilityService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,6 +54,10 @@ class CheckoutOrderService
         }
 
         return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data) {
+            // Serialize the owned Bag before lines and the seller/shop/category/product locks.
+            if (! Cart::whereKey($cart->id)->where('user_id', $buyer->id)->lockForUpdate()->first()) {
+                throw new RuntimeException('This Shopping Bag is unavailable to your account.');
+            }
             $selectedIds = array_values(array_unique(array_map('intval', $cartItemIds)));
             if ($selectedIds === [] || count($selectedIds) !== count($cartItemIds)) {
                 throw new RuntimeException('Select one or more unique Shopping Bag items.');
@@ -69,13 +74,12 @@ class CheckoutOrderService
                 throw new RuntimeException('One or more selected Shopping Bag items are unavailable.');
             }
 
-            $products = Product::query()
-                ->whereIn('id', $items->pluck('product_id')->unique())
-                ->with('shop')
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
+            $products = app(ShopEligibilityService::class)->lockSaleProducts(
+                $items->pluck('product_id')->unique()->all(), [$buyer->id]
+            );
+            if (! $buyer->fresh()->canCompleteCheckout()) {
+                throw new RuntimeException('Your account is no longer eligible to place an order.');
+            }
 
             foreach ($items as $item) {
                 $product = $products->get($item->product_id);

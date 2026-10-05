@@ -18,7 +18,7 @@ class SellerProductCatalogTest extends TestCase
     public function test_catalog_is_paginated_and_searches_products_outside_the_current_page(): void
     {
         $seller = User::factory()->seller()->create();
-        $shop = Shop::factory()->create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'is_default' => true,
         ]);
@@ -68,8 +68,8 @@ class SellerProductCatalogTest extends TestCase
     public function test_seller_search_is_scoped_to_the_active_shop(): void
     {
         $seller = User::factory()->seller()->create();
-        $shop = Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
-        $otherShop = Shop::factory()->create();
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $otherShop = Shop::factory()->approved()->create();
         Product::factory()->create([
             'shop_id' => $shop->id,
             'name' => 'Owned Search Result',
@@ -91,7 +91,7 @@ class SellerProductCatalogTest extends TestCase
     public function test_seller_can_set_and_add_available_stock_from_the_catalog(): void
     {
         $seller = User::factory()->seller()->create();
-        $shop = Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'is_default' => true]);
         $product = Product::factory()->create([
             'shop_id' => $shop->id,
             'stock' => 0,
@@ -125,7 +125,7 @@ class SellerProductCatalogTest extends TestCase
     public function test_stock_update_validates_quantity_and_rejects_a_foreign_product(): void
     {
         $seller = User::factory()->seller()->create();
-        Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        Shop::factory()->approved()->create(['user_id' => $seller->id, 'is_default' => true]);
         $foreignProduct = Product::factory()->create(['stock' => 10]);
 
         $this->actingAs($seller)
@@ -148,7 +148,7 @@ class SellerProductCatalogTest extends TestCase
     public function test_product_removal_deletes_unused_listings_but_archives_order_history(): void
     {
         $seller = User::factory()->seller()->create();
-        $shop = Shop::factory()->create(['user_id' => $seller->id, 'is_default' => true]);
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'is_default' => true]);
         $unusedProduct = Product::factory()->create(['shop_id' => $shop->id]);
         $orderedProduct = Product::factory()->create([
             'shop_id' => $shop->id,

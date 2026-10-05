@@ -33,7 +33,7 @@ class BuyerCheckoutKycGateTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Kyc Test Shop',
             'slug' => 'kyc-test-shop',
@@ -46,6 +46,7 @@ class BuyerCheckoutKycGateTest extends TestCase
             'name' => 'General',
             'slug' => 'general',
             'is_active' => true,
+            'parent_id' => $shop->root_category_id,
         ]);
 
         $product = Product::create([

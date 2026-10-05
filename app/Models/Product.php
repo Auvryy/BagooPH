@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\ShopEligibilityService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,7 +25,7 @@ class Product extends Model
         });
 
         static::updating(function (Product $product) {
-            if ($product->isDirty('name') && !$product->isDirty('slug')) {
+            if ($product->isDirty('name') && ! $product->isDirty('slug')) {
                 $product->slug = static::generateUniqueSlug($product->name, $product->id);
             } elseif ($product->isDirty('slug')) {
                 $product->slug = static::makeSlugUnique($product->slug, $product->id);
@@ -45,7 +47,7 @@ class Product extends Model
             $suffix = Str::lower(Str::random(6));
             $candidate = "{$base}-{$suffix}";
             $exists = static::where('slug', $candidate)
-                ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
                 ->exists();
         } while ($exists);
 
@@ -65,7 +67,7 @@ class Product extends Model
         $candidate = $base;
         $count = 1;
 
-        while (static::where('slug', $candidate)->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))->exists()) {
+        while (static::where('slug', $candidate)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
             $count++;
             $candidate = "{$base}-{$count}";
         }
@@ -104,6 +106,11 @@ class Product extends Model
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    public function scopeAvailableForSale(Builder $query): Builder
+    {
+        return app(ShopEligibilityService::class)->availableProducts($query);
     }
 
     public function category(): BelongsTo

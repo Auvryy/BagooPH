@@ -275,7 +275,7 @@ class SharedPortalAccessTest extends TestCase
 
     private function sellerProduct(User $seller): Product
     {
-        $shop = Shop::factory()->create(['user_id' => $seller->id, 'status' => 'active', 'is_default' => true]);
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'status' => 'active', 'is_default' => true]);
 
         return Product::factory()->create(['shop_id' => $shop->id, 'stock' => 7, 'status' => 'active']);
     }

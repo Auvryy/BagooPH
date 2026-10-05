@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Cart;
-use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
@@ -13,8 +12,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ChallengerM1StressTest extends TestCase
@@ -28,13 +26,13 @@ class ChallengerM1StressTest extends TestCase
     public function test_multi_user_concurrent_cart_and_variant_isolation(): void
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active', 'kyc_status' => 'approved']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Mega Boutique',
             'slug' => 'mega-boutique',
             'status' => 'active',
         ]);
-        $category = Category::create(['name' => 'Footwear', 'slug' => 'footwear']);
+        $category = Category::create(['name' => 'Footwear', 'slug' => 'footwear', 'parent_id' => $shop->root_category_id]);
 
         $productA = Product::create([
             'shop_id' => $shop->id,
@@ -139,8 +137,8 @@ class ChallengerM1StressTest extends TestCase
     public function test_standard_product_without_variants(): void
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active', 'kyc_status' => 'approved']);
-        $shop = Shop::create(['user_id' => $seller->id, 'name' => 'Book Shop', 'slug' => 'book-shop', 'status' => 'active']);
-        $category = Category::create(['name' => 'Books', 'slug' => 'books']);
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'name' => 'Book Shop', 'slug' => 'book-shop', 'status' => 'active']);
+        $category = Category::create(['name' => 'Books', 'slug' => 'books', 'parent_id' => $shop->root_category_id]);
 
         $product = Product::create([
             'shop_id' => $shop->id,
@@ -213,7 +211,7 @@ class ChallengerM1StressTest extends TestCase
     public function test_delivery_phone_format_preservation(): void
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active', 'kyc_status' => 'approved']);
-        $shop = Shop::create(['user_id' => $seller->id, 'name' => 'Gadgets', 'slug' => 'gadgets', 'status' => 'active']);
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'name' => 'Gadgets', 'slug' => 'gadgets', 'status' => 'active']);
         $category = Category::create(['name' => 'Electronics', 'slug' => 'electronics']);
 
         $product = Product::create([
@@ -242,7 +240,7 @@ class ChallengerM1StressTest extends TestCase
 
         foreach ($phoneFormats as $phone) {
             $order = Order::create([
-                'order_number' => 'BGO-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'order_number' => 'BGO-'.strtoupper(Str::random(8)),
                 'buyer_id' => $buyer->id,
                 'subtotal' => 199.00,
                 'shipping_fee' => 50.00,

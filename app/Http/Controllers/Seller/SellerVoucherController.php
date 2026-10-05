@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
 use App\Models\Voucher;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -34,6 +35,11 @@ class SellerVoucherController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->storeInShop($request));
+    }
+
+    private function storeInShop(Request $request): RedirectResponse
+    {
         $shop = $this->getShop($request);
 
         $validated = $request->validate([
@@ -61,6 +67,11 @@ class SellerVoucherController extends Controller
 
     public function toggle(Request $request, Voucher $voucher): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->toggleInShop($request, $voucher));
+    }
+
+    private function toggleInShop(Request $request, Voucher $voucher): RedirectResponse
+    {
         $shop = $this->getShop($request);
 
         if ($voucher->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
@@ -72,10 +83,16 @@ class SellerVoucherController extends Controller
         ]);
 
         $status = $voucher->is_active ? 'activated' : 'deactivated';
+
         return back()->with('success', "Voucher '{$voucher->code}' has been {$status}.");
     }
 
     public function destroy(Request $request, Voucher $voucher): RedirectResponse
+    {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->destroyInShop($request, $voucher));
+    }
+
+    private function destroyInShop(Request $request, Voucher $voucher): RedirectResponse
     {
         $shop = $this->getShop($request);
 
@@ -84,6 +101,7 @@ class SellerVoucherController extends Controller
         }
 
         $voucher->delete();
+
         return back()->with('success', "Voucher '{$voucher->code}' removed.");
     }
 }

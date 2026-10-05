@@ -187,6 +187,7 @@ class KycDecisionService
                 }
             }
             $before = $this->state($user);
+            $shopBefore = $user->shop?->only(['status', 'review_status', 'reviewed_at', 'review_feedback']);
             $reviewedAt = now();
             $status = $user->status;
             if ($action === 'approved' && $status === 'pending_approval') {
@@ -211,13 +212,18 @@ class KycDecisionService
                 $user->courierProfile->update(['or_cr_status' => 'Verified & Registered']);
             }
 
-            return KycDecision::create([
+            $decision = KycDecision::create([
                 'user_id' => $user->id, 'reviewer_id' => $actor->id,
                 'reviewer_role' => $actor->role, 'reviewer_name' => $actor->name,
                 'subject_role' => $user->role, 'submission_token' => $token,
                 'decision' => $action, 'reason' => $reason, 'submission' => $submission,
                 'before_state' => $before, 'after_state' => $this->state($user), 'reviewed_at' => $reviewedAt,
             ]);
+            if ($user->isSeller() && $user->shop) {
+                app(ShopReviewService::class)->recordOriginal($user->shop, $user, $actor, $decision, $shopBefore);
+            }
+
+            return $decision;
         }, 3);
     }
 

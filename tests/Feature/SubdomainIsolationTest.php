@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SubdomainIsolationTest extends TestCase
@@ -471,6 +473,8 @@ class SubdomainIsolationTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
+        Shop::factory()->approved()->create(['user_id' => $seller->id]);
+
         $response = $this->actingAs($seller)->get('http://seller.bagooph.shop/dashboard');
 
         $response->assertStatus(200);
@@ -531,6 +535,8 @@ class SubdomainIsolationTest extends TestCase
             'status' => 'active',
             'kyc_status' => 'approved',
         ]);
+
+        Shop::factory()->approved()->create(['user_id' => $seller->id]);
 
         $response = $this->actingAs($seller)->get('/seller/dashboard');
 
@@ -717,9 +723,9 @@ class SubdomainIsolationTest extends TestCase
 
     public function test_logistics_registration_on_subdomain_redirects_to_pending_approval(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
-        $permit = \Illuminate\Http\UploadedFile::fake()->create('permit.pdf', 500, 'application/pdf');
-        $franchise = \Illuminate\Http\UploadedFile::fake()->create('franchise.pdf', 500, 'application/pdf');
+        Storage::fake('public');
+        $permit = UploadedFile::fake()->create('permit.pdf', 500, 'application/pdf');
+        $franchise = UploadedFile::fake()->create('franchise.pdf', 500, 'application/pdf');
 
         $response = $this->post('http://hub.localhost/register', [
             'name' => 'FastLog Partner',

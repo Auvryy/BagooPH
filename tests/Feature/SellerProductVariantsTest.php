@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SellerProductVariantsTest extends TestCase
@@ -14,7 +16,9 @@ class SellerProductVariantsTest extends TestCase
     use RefreshDatabase;
 
     private User $seller;
+
     private Shop $shop;
+
     private Category $category;
 
     protected function setUp(): void
@@ -27,7 +31,7 @@ class SellerProductVariantsTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->shop = Shop::create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $this->seller->id,
             'name' => 'Artisan Craft Workshop',
             'slug' => 'artisan-craft-workshop',
@@ -38,6 +42,7 @@ class SellerProductVariantsTest extends TestCase
             'name' => 'Handmade Leather Goods',
             'slug' => 'handmade-leather-goods',
             'is_active' => true,
+            'parent_id' => $this->shop->root_category_id,
         ]);
     }
 
@@ -246,10 +251,10 @@ class SellerProductVariantsTest extends TestCase
 
     public function test_seller_can_create_product_with_variant_photo_linked_from_gallery(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
 
-        $file1 = \Illuminate\Http\UploadedFile::fake()->image('duffle_olive.jpg');
-        $file2 = \Illuminate\Http\UploadedFile::fake()->image('duffle_espresso.jpg');
+        $file1 = UploadedFile::fake()->image('duffle_olive.jpg');
+        $file2 = UploadedFile::fake()->image('duffle_espresso.jpg');
 
         $manifest = [
             ['type' => 'file', 'file_index' => 0],

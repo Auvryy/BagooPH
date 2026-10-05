@@ -8,13 +8,12 @@ use App\Models\CommissionLedger;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\Shop;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\ShopEligibilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -93,50 +92,6 @@ class SellerDashboardController extends Controller
         ]);
     }
 
-    public function switchShop(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'shop_id' => 'required|exists:shops,id',
-        ]);
-
-        $shop = Shop::where('id', $validated['shop_id'])
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
-
-        $request->session()->put('active_seller_shop_id', $shop->id);
-
-        return back()->with('success', "Switched active store profile to {$shop->name}.");
-    }
-
-    public function createShop(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'root_category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string|max:1000',
-        ]);
-
-        $slug = Str::slug($validated['name'].'-'.$request->user()->id.'-'.Str::random(4));
-
-        $shop = Shop::create([
-            'user_id' => $request->user()->id,
-            'root_category_id' => $validated['root_category_id'],
-            'name' => $validated['name'],
-            'slug' => $slug,
-            'description' => $validated['description'] ?? 'Verified specialty shop on BagooPH.',
-            'phone' => $request->user()->phone ?? '+63 912 345 6789',
-            'address' => $request->user()->address ?? 'Warehouse 4B, Industrial Park',
-            'city' => $request->user()->city ?? 'Metro Manila',
-            'status' => 'active',
-            'rating' => 5.00,
-            'is_default' => false,
-        ]);
-
-        $request->session()->put('active_seller_shop_id', $shop->id);
-
-        return back()->with('success', "Shop '{$shop->name}' created successfully with dedicated root category enclosure.");
-    }
-
     public function reports(Request $request): Response
     {
         $shop = $this->getActiveShop($request);
@@ -206,14 +161,15 @@ class SellerDashboardController extends Controller
 
     public function updateSettings(Request $request): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->updateSettingsInShop($request));
+    }
+
+    private function updateSettingsInShop(Request $request): RedirectResponse
+    {
         $shop = $this->getActiveShop($request);
 
         $rules = [
-            'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:100',
         ];
 
         if ($request->hasFile('logo')) {
@@ -233,6 +189,7 @@ class SellerDashboardController extends Controller
         }
 
         $validated = $request->validate($rules);
+        app(ShopEligibilityService::class)->protectReviewedDetails($shop, $request->all());
 
         if ($request->hasFile('logo') || $request->hasFile('logo_file')) {
             $file = $request->file('logo') ?? $request->file('logo_file');
