@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use App\Services\BirthDateEligibility;
+use App\Services\ResourceRestrictionService;
 use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -130,7 +131,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return ! $this->isCourier()
             && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists()
             && ! RestrictionDecision::where('actor_id', $this->id)->orWhere(fn ($query) => $query->where('subject_type', 'account')->where('subject_id', $this->id))->exists()
-            && ! RestrictionAffectedWork::where('responsible_user_id', $this->id)->exists();
+            && ! RestrictionAffectedWork::where('responsible_user_id', $this->id)->exists()
+            && ! app(ResourceRestrictionService::class)->ownerHasHistory($this);
     }
 
     public function isLogistics(): bool

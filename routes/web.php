@@ -20,6 +20,7 @@ use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
@@ -50,6 +51,14 @@ $baseDomains = array_unique(array_filter([
     'bagooph.shop',
     'localhost',
 ]));
+
+$registerResourceRestrictionRoutes = function () {
+    Route::get('/resources', [ResourceRestrictionController::class, 'index'])->name('resources.index');
+    Route::get('/resources/{type}/{resource}', [ResourceRestrictionController::class, 'show'])
+        ->where('type', 'shop|company|hub|handler|fleet')->whereNumber('resource')->name('resources.show');
+    Route::post('/resources/{type}/{resource}', [ResourceRestrictionController::class, 'store'])
+        ->where('type', 'shop|company|hub|handler|fleet')->whereNumber('resource')->name('resources.store');
+};
 
 Route::middleware('auth')->get('/verification-documents/{user}/{document}', [VerificationDocumentController::class, 'show'])
     ->name('verification-documents.show');
@@ -153,7 +162,7 @@ $registerCourierRoutes = function () {
     });
 };
 
-$registerHubRoutes = function () {
+$registerHubRoutes = function () use ($registerResourceRestrictionRoutes) {
     Route::get('/', function () {
         if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
             return redirect('/dashboard');
@@ -170,7 +179,8 @@ $registerHubRoutes = function () {
     Route::get('/hub/login', fn () => redirect('/login'));
     Route::get('/hub/register', fn () => redirect('/register'));
 
-    Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () {
+    Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () use ($registerResourceRestrictionRoutes) {
+        $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
@@ -188,7 +198,7 @@ $registerHubRoutes = function () {
     });
 };
 
-$registerAdminRoutes = function () {
+$registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
     Route::get('/', function () {
         if (auth()->check() && auth()->user()->isAdmin()) {
             return redirect('/dashboard');
@@ -200,7 +210,8 @@ $registerAdminRoutes = function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
     Route::get('/admin/login', fn () => redirect('/login'));
 
-    Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
+    Route::middleware(['auth', 'subdomain.role:admin'])->group(function () use ($registerResourceRestrictionRoutes) {
+        $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
         Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show']);
@@ -443,7 +454,8 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
 | Admin Control Center Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () use ($registerResourceRestrictionRoutes) {
+    $registerResourceRestrictionRoutes();
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
     Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show'])->name('users.activity');
@@ -464,7 +476,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 | Logistics Hub Workstation Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('hub')->name('hub.')->group(function () {
+Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRestrictionRoutes) {
     Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
@@ -478,7 +490,8 @@ Route::prefix('hub')->name('hub.')->group(function () {
         return app(AuthenticatedSessionController::class)->createHub();
     })->name('index');
 
-    Route::middleware(['auth', 'role:logistics,admin'])->group(function () {
+    Route::middleware(['auth', 'role:logistics,admin'])->group(function () use ($registerResourceRestrictionRoutes) {
+        $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');

@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -195,9 +196,12 @@ class OrderLifecycleService
         if (! $seller?->isSeller() || ! $seller->canAccessPortal()) {
             throw new AuthorizationException('Only a currently approved and active seller can fulfill an order.');
         }
-        if ($shop->user_id !== $seller->id) {
+        $shop = Shop::whereKey($shop->id)->lockForUpdate()->first();
+        if (! $shop || $shop->user_id !== $seller->id) {
             throw new AuthorizationException('The selected shop does not belong to this seller.');
         }
+        app(ShopEligibilityService::class)->lockCategories();
+        app(ShopEligibilityService::class)->assertEligible($shop);
 
         $shopIds = $order->items->pluck('shop_id')->unique();
         if ($shopIds->count() !== 1 || (int) $shopIds->first() !== $shop->id) {
