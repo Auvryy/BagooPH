@@ -3,8 +3,8 @@ import { router } from '@inertiajs/react';
 import axios from 'axios';
 
 type Work = {
-    order_id: number; order_number: string; order_status: string;
-    parcel: { id: number; status: string; courier_id: number | null; assigned_rider_id: number | null; current_hub_id: number | null } | null;
+    order_id: number; order_number: string; order_status: string | null;
+    parcel: { id: number; status: string | null; courier_id: number | null; assigned_rider_id: number | null; current_hub_id: number | null } | null;
     cash: { method: string; expected_amount: string; evidence: string };
 };
 
@@ -12,6 +12,7 @@ export type RestrictionSubject = {
     type: string; id: number; name: string; role?: string; status: string; approval?: string;
     source_token: string; actions: string[]; affected_work: Work[]; legacy_activity: boolean; cash_note: string;
     parents?: { label: string; name: string; status: string; eligible: boolean }[];
+    reactivation_status?: string; reactivation_mode_recorded?: boolean; work_note?: string | null;
     state?: { courier?: { is_available: boolean; assigned_hub_id: number | null; vehicle_id: number | null } | null };
     history: { id: number; action: string; reason: string; actor: string; decided_at: string; before_status: string; after_status: string; affected_work_count: number }[];
 };
@@ -35,7 +36,7 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
             if (axios.isAxiosError(error)) {
                 setErrors(error.response?.data?.errors ?? {});
                 setConflict(error.response?.status === 409);
-                setMessage(error.response?.data?.message ?? 'The decision could not be saved. Review the current account and try again.');
+                setMessage(error.response?.data?.message ?? 'The decision could not be saved. Review the current activity and try again.');
             } else setMessage('The decision could not be saved. Please try again.');
         } finally { setProcessing(false); }
     };
@@ -55,12 +56,13 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
 
         <section className="rounded-xl border border-slate-300 bg-white p-5">
             <h2 className="font-semibold">Work requiring attention ({subject.affected_work.length})</h2>
-            <p className="mt-2 text-sm text-slate-600">A restriction preserves each order, parcel assignment and recorded handover. The reviewer remains accountable for arranging authorized recovery; this action does not move a parcel or money.</p>
+            <p className="mt-2 text-sm text-slate-600">A restriction preserves each order, parcel assignment and recorded handover. The decision records who is responsible for arranging authorized recovery; this action does not move a parcel or money.</p>
             <p className="mt-2 text-sm text-amber-800">{subject.cash_note}</p>
+            {subject.work_note && <p className="mt-2 text-sm text-slate-600">{subject.work_note}</p>}
             {subject.affected_work.length === 0 ? <p className="mt-4 text-sm text-slate-500">No affected work was found in the available records.</p> : <div className="mt-4 max-h-96 space-y-3 overflow-y-auto">
                 {subject.affected_work.map(work => <article key={work.order_id} className="rounded-lg border border-slate-300 p-3 text-sm">
-                    <p className="font-semibold">{work.order_number} <span className="font-normal capitalize text-slate-600">— {work.order_status.replaceAll('_', ' ')}</span></p>
-                    <p className="mt-1 text-slate-600">{work.parcel ? `Parcel #${work.parcel.id}: ${work.parcel.status.replaceAll('_', ' ')}. Pickup rider: ${work.parcel.courier_id ?? 'Unassigned'}; delivery rider: ${work.parcel.assigned_rider_id ?? 'Unassigned'}; current hub: ${work.parcel.current_hub_id ?? 'Not recorded'}.` : 'No parcel record exists.'}</p>
+                    <p className="font-semibold">{work.order_number} <span className="font-normal capitalize text-slate-600">— {work.order_status?.replaceAll('_', ' ') || 'Unknown'}</span></p>
+                    <p className="mt-1 text-slate-600">{work.parcel ? `Parcel #${work.parcel.id}: ${work.parcel.status?.replaceAll('_', ' ') || 'Unknown'}. Pickup rider: ${work.parcel.courier_id ?? 'Unassigned'}; delivery rider: ${work.parcel.assigned_rider_id ?? 'Unassigned'}; current hub: ${work.parcel.current_hub_id ?? 'Not recorded'}.` : 'No parcel record exists.'}</p>
                     {work.cash.method === 'cod' && <p className="mt-1 text-amber-800">Expected COD: ₱{Number(work.cash.expected_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Cash holder and reconciliation require evidence.</p>}
                 </article>)}
             </div>}
@@ -69,6 +71,7 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
         <form onSubmit={submit} className="rounded-xl border border-slate-300 bg-white p-5">
             <h2 className="font-semibold">Record a separate activity decision</h2>
             <p className="mt-2 text-sm text-slate-600">Suspension and deactivation stop new work. Reactivation checks approval and current scope, and preserves separate restrictions, custody, stock and account roles.</p>
+            {subject.type === 'fleet' && <p className="mt-2 text-sm text-slate-600">{subject.reactivation_mode_recorded ? `A valid reactivation restores the recorded ${subject.reactivation_status} state.` : 'No prior operating state was recorded. A valid, separate reactivation sets the vehicle active.'} Maintenance and idle vehicles remain unavailable for new work.</p>}
             {subject.actions.length === 0 ? <p className="mt-4 text-sm text-amber-800">This activity state needs controlled review before a routine decision is available.</p> : <>
                 <label htmlFor="restriction-action" className="mt-4 block text-sm font-medium">Action</label>
                 <select id="restriction-action" value={action} onChange={event => setAction(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
