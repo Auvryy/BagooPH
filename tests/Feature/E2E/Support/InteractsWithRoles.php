@@ -11,30 +11,35 @@ trait InteractsWithRoles
     public function actingAsBuyer(?User $user = null): static
     {
         $user = $user ?? $this->createApprovedUser('buyer');
+
         return $this->actingAs($user);
     }
 
     public function actingAsSeller(?User $user = null): static
     {
         $user = $user ?? $this->createApprovedUser('seller');
+
         return $this->actingAs($user);
     }
 
     public function actingAsCourier(?User $user = null): static
     {
         $user = $user ?? $this->createApprovedUser('courier');
+
         return $this->actingAs($user);
     }
 
     public function actingAsLogistics(?User $user = null): static
     {
         $user = $user ?? $this->createApprovedUser('logistics');
+
         return $this->actingAs($user);
     }
 
     public function actingAsAdmin(?User $user = null): static
     {
         $user = $user ?? $this->createApprovedUser('admin');
+
         return $this->actingAs($user);
     }
 
@@ -48,9 +53,9 @@ trait InteractsWithRoles
         ], $attributes));
 
         if ($role === 'seller' && ! $user->shop) {
-            Shop::factory()->create([
+            Shop::factory()->approved()->create([
                 'user_id' => $user->id,
-                'name' => $user->name . "'s Store",
+                'name' => $user->name."'s Store",
                 'status' => 'active',
             ]);
         }
@@ -78,7 +83,7 @@ trait InteractsWithRoles
         if ($role === 'seller' && ! $user->shop) {
             Shop::factory()->create([
                 'user_id' => $user->id,
-                'name' => $user->name . "'s Store",
+                'name' => $user->name."'s Store",
                 'status' => 'pending',
             ]);
         }
@@ -106,7 +111,7 @@ trait InteractsWithRoles
         if ($role === 'seller' && ! $user->shop) {
             Shop::factory()->create([
                 'user_id' => $user->id,
-                'name' => $user->name . "'s Store",
+                'name' => $user->name."'s Store",
                 'status' => 'pending',
             ]);
         }

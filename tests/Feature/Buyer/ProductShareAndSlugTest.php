@@ -28,7 +28,7 @@ class ProductShareAndSlugTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->shop = Shop::factory()->create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Metro Flagship Store',
             'status' => 'active',
@@ -37,6 +37,7 @@ class ProductShareAndSlugTest extends TestCase
         $this->category = Category::factory()->create([
             'name' => 'Apparel',
             'is_active' => true,
+            'parent_id' => $this->shop->root_category_id,
         ]);
     }
 

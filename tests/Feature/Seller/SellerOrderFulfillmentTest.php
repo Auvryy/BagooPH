@@ -47,7 +47,7 @@ class SellerOrderFulfillmentTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->shop = Shop::create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $this->seller->id,
             'name' => 'Artisan Craft Store',
             'slug' => 'artisan-craft-store',
@@ -275,7 +275,7 @@ class SellerOrderFulfillmentTest extends TestCase
     public function test_seller_cannot_modify_orders_of_other_merchants(): void
     {
         $otherSeller = User::factory()->create(['role' => 'seller', 'status' => 'active']);
-        $otherShop = Shop::create([
+        $otherShop = Shop::factory()->approved()->create([
             'user_id' => $otherSeller->id,
             'name' => 'Other Merchant',
             'slug' => 'other-merchant',

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
+use App\Http\Controllers\Admin\AdminShopReviewController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
@@ -28,7 +29,9 @@ use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
+use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
+use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 /*
@@ -36,6 +39,7 @@ use App\Http\Controllers\VerificationDocumentController;
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -50,6 +54,7 @@ Route::middleware('auth')->get('/verification-documents/{user}/{document}', [Ver
     ->name('verification-documents.show');
 
 Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
+Route::middleware('auth')->get('/shop-verification-documents/{shop}/{document}', [ShopVerificationDocumentController::class, 'show'])->name('shop-verification-documents.show');
 
 $registerSellerRoutes = function () {
     Route::get('/', function () {
@@ -98,8 +103,10 @@ $registerSellerRoutes = function () {
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
         Route::get('/profile', [SellerDashboardController::class, 'profile']);
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
-        Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
-        Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
+        Route::post('/shops/switch', [SellerShopController::class, 'switchShop'])->name('shops.switch');
+        Route::get('/shops', [SellerShopController::class, 'index']);
+        Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit']);
+        Route::post('/shops', [SellerShopController::class, 'store'])->name('shops.create');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', function (Request $request) {
@@ -194,6 +201,9 @@ $registerAdminRoutes = function () {
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/shops', [AdminShopReviewController::class, 'index']);
+        Route::post('/shops/{shop}/approve', [AdminShopReviewController::class, 'approve']);
+        Route::post('/shops/{shop}/reject', [AdminShopReviewController::class, 'reject']);
         Route::get('/kyc', [AdminKycController::class, 'index']);
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
@@ -329,6 +339,7 @@ Route::middleware('auth')->group(function () {
         if (! $user) {
             return redirect()->route('login');
         }
+
         return redirect()->intended(match ($user->role) {
             'admin' => route('admin.dashboard'),
             'seller' => route('seller.dashboard'),
@@ -393,8 +404,10 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');
     Route::get('/profile', [SellerDashboardController::class, 'profile'])->name('profile');
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
-    Route::post('/shops/switch', [SellerDashboardController::class, 'switchShop'])->name('shops.switch');
-    Route::post('/shops', [SellerDashboardController::class, 'createShop'])->name('shops.create');
+    Route::post('/shops/switch', [SellerShopController::class, 'switchShop'])->name('shops.switch');
+    Route::get('/shops', [SellerShopController::class, 'index'])->name('shops.index');
+    Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit'])->name('shops.resubmit');
+    Route::post('/shops', [SellerShopController::class, 'store'])->name('shops.create');
     Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
@@ -425,6 +438,9 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/shops', [AdminShopReviewController::class, 'index'])->name('shops.index');
+    Route::post('/shops/{shop}/approve', [AdminShopReviewController::class, 'approve'])->name('shops.approve');
+    Route::post('/shops/{shop}/reject', [AdminShopReviewController::class, 'reject'])->name('shops.reject');
     Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
@@ -442,7 +458,7 @@ Route::prefix('hub')->name('hub.')->group(function () {
     Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
-            return app(\App\Http\Middleware\RoleMiddleware::class)->handle(
+            return app(RoleMiddleware::class)->handle(
                 $request,
                 fn (Request $request) => app(LogisticsHubWorkstationController::class)->index($request)->toResponse($request),
                 'logistics', 'admin',

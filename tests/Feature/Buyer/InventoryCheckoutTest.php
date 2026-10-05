@@ -3,9 +3,12 @@
 namespace Tests\Feature\Buyer;
 
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Shop;
 use App\Models\User;
+use Database\Factories\ShopFactory;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,6 +21,13 @@ class InventoryCheckoutTest extends TestCase
     {
         parent::setUp();
         $this->seed(DatabaseSeeder::class);
+        $shop = Shop::whereHas('user', fn ($owner) => $owner->where('email', 'seller@bagoo.test'))->firstOrFail();
+        $root = Category::where('name', "Men's Apparel")->whereNull('parent_id')->firstOrFail();
+        $shop->update(['root_category_id' => $root->id]);
+        foreach ($shop->products()->with('category')->get() as $product) {
+            $product->category->update(['parent_id' => $root->id]);
+        }
+        ShopFactory::recordApprovalFixture($shop);
     }
 
     public function test_stock_is_decremented_at_checkout_not_when_added_to_the_bag_and_restored_once_on_cancellation(): void

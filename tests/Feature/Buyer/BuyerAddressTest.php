@@ -25,7 +25,7 @@ class BuyerAddressTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Sample Store',
             'slug' => 'sample-store',
@@ -36,6 +36,7 @@ class BuyerAddressTest extends TestCase
             'name' => 'General',
             'slug' => 'general',
             'is_active' => true,
+            'parent_id' => $shop->root_category_id,
         ]);
 
         $product = Product::create([

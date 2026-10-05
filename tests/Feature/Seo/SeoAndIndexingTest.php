@@ -32,7 +32,7 @@ class SeoAndIndexingTest extends TestCase
     public function test_sitemap_xml_returns_valid_xml_with_core_pages_and_active_products(): void
     {
         $seller = User::factory()->create(['role' => 'seller']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Seo Test Merchant',
             'slug' => 'seo-test-merchant',
@@ -41,6 +41,7 @@ class SeoAndIndexingTest extends TestCase
 
         $category = Category::create([
             'name' => 'Seo Category',
+            'parent_id' => $shop->root_category_id,
             'slug' => 'seo-category',
             'is_active' => true,
         ]);
@@ -77,12 +78,12 @@ class SeoAndIndexingTest extends TestCase
         $response->assertSee('/track');
 
         // Dynamic entities
-        $response->assertSee('buyer/product/' . $activeProduct->slug);
-        $response->assertSee('buyer/catalog?category=' . $category->slug);
-        $response->assertSee('shop/' . $shop->slug);
+        $response->assertSee('buyer/product/'.$activeProduct->slug);
+        $response->assertSee('buyer/catalog?category='.$category->slug);
+        $response->assertSee('shop/'.$shop->slug);
 
         // Inactive product should NOT be in sitemap
-        $response->assertDontSee('buyer/product/' . $inactiveProduct->slug);
+        $response->assertDontSee('buyer/product/'.$inactiveProduct->slug);
     }
 
     public function test_app_blade_renders_default_seo_tags_and_structured_data(): void

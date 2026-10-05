@@ -145,7 +145,7 @@ class BuyerCartQuantityTest extends TestCase
     {
         $buyer = User::factory()->buyer()->create();
         $seller = User::factory()->seller()->create();
-        $shop = Shop::factory()->create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'status' => 'active',
         ]);

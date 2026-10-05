@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import PhoneInput from '@/Components/PhoneInput';
 import { PaginatedData, Product, Shop } from '@/types';
 import { getDomainUrl } from '@/utils/domain';
 import { 
@@ -638,6 +637,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                 </div>
                             </div>
 
+                            <p className="text-sm text-slate-600">Branding can change your description and images. Reviewed shop identity and contact details need a separate correction review.</p>
                             {/* Store Name */}
                             <div className="space-y-1">
                                 <label className="block text-xs font-sans font-bold uppercase text-slate-700">
@@ -645,6 +645,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                 </label>
                                 <input
                                     type="text"
+                                    readOnly
                                     value={editData.name}
                                     onChange={(e) => setEditData('name', e.target.value)}
                                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] font-sans"
@@ -686,7 +687,8 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                     </label>
                                     <input
                                         type="text"
-                                        value={editData.city}
+                                        readOnly
+                                    value={editData.city}
                                         onChange={(e) => setEditData('city', e.target.value)}
                                         placeholder="e.g. Quezon City, Cebu City"
                                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] font-sans"
@@ -700,13 +702,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                     <label className="block text-xs font-sans font-bold uppercase text-slate-700">
                                         Store Contact Phone
                                     </label>
-                                    <PhoneInput
-                                        value={editData.phone}
-                                        onChange={(val) => setEditData('phone', val)}
-                                        placeholder="917 123 4567"
-                                        accentColor="primary"
-                                        helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                    />
+                                    <input readOnly value={shop.phone ?? ''} aria-label="Reviewed shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm" />
                                     {editErrors.phone && (
                                         <p className="text-xs text-rose-600 font-sans">{editErrors.phone}</p>
                                     )}

@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Services\Commerce\InventoryService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,16 +73,13 @@ class CartController extends Controller
 
         $product = DB::transaction(function () use ($cart, $validated, $quantity, $color, $size, $inventory) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
-            $product = Product::query()
-                ->whereKey($validated['product_id'])
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $product || ! $product->shop || $product->shop->status !== 'active') {
-                throw ValidationException::withMessages([
-                    'product_id' => 'This product or its shop is no longer available.',
-                ]);
+            try {
+                $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']])->get($validated['product_id']);
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages(['product_id' => $exception->getMessage()]);
+            }
+            if (! $product) {
+                throw ValidationException::withMessages(['product_id' => 'This product is no longer available.']);
             }
 
             if ($product->stock <= 0) {
@@ -167,11 +165,13 @@ class CartController extends Controller
                 ->where('cart_id', $cart->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            $product = Product::whereKey($lockedItem->product_id)->lockForUpdate()->firstOrFail();
-            if ($product->status !== 'active' || ! $product->shop || $product->shop->status !== 'active') {
-                throw ValidationException::withMessages([
-                    'quantity' => 'This product or its shop is no longer available.',
-                ]);
+            try {
+                $product = app(ShopEligibilityService::class)->lockSaleProducts([$lockedItem->product_id])->get($lockedItem->product_id);
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
+            }
+            if (! $product) {
+                throw ValidationException::withMessages(['quantity' => 'This product is no longer available.']);
             }
             $productItems = CartItem::query()
                 ->where('cart_id', $cart->id)

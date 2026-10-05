@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,15 +47,7 @@ class SellerProductController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        // Enforce root category enclosure on product listing filter / category choices
-        $categoriesQuery = Category::where('is_active', true);
-        if ($shop->root_category_id) {
-            $categoriesQuery->where(function ($q) use ($shop) {
-                $q->where('id', $shop->root_category_id)
-                    ->orWhere('parent_id', $shop->root_category_id);
-            });
-        }
-        $categories = $categoriesQuery->get();
+        $categories = Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get();
 
         return Inertia::render('Seller/Products', [
             'products' => $products,
@@ -67,6 +61,11 @@ class SellerProductController extends Controller
     }
 
     public function store(Request $request): RedirectResponse
+    {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->storeInShop($request));
+    }
+
+    private function storeInShop(Request $request): RedirectResponse
     {
         $shop = $this->getActiveShop($request);
 
@@ -90,21 +89,7 @@ class SellerProductController extends Controller
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
-        // Enforce single root category enclosure
-        if ($shop->root_category_id) {
-            $allowedCategoryIds = Category::where('id', $shop->root_category_id)
-                ->orWhere('parent_id', $shop->root_category_id)
-                ->pluck('id')
-                ->all();
-
-            $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
-            if (! in_array((int) $chosenCategoryId, $allowedCategoryIds)) {
-                return back()->withErrors([
-                    'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
-                ]);
-            }
-            $validated['category_id'] = $chosenCategoryId;
-        }
+        $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
 
         $defaultFallback = '/storage/products/placeholder.webp';
         $slug = Product::generateUniqueSlug($validated['name']);
@@ -134,8 +119,14 @@ class SellerProductController extends Controller
 
     public function update(Request $request, Product $product): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->updateInShop($request, $product));
+    }
+
+    private function updateInShop(Request $request, Product $product): RedirectResponse
+    {
         $shop = $this->getActiveShop($request);
-        if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+        $product = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+        if ($product->shop_id !== $shop->id) {
             abort(403, 'Unauthorized product modification.');
         }
 
@@ -160,21 +151,7 @@ class SellerProductController extends Controller
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
-        // Enforce single root category enclosure
-        if ($shop->root_category_id) {
-            $allowedCategoryIds = Category::where('id', $shop->root_category_id)
-                ->orWhere('parent_id', $shop->root_category_id)
-                ->pluck('id')
-                ->all();
-
-            $chosenCategoryId = $validated['category_id'] ?? $shop->root_category_id;
-            if (! in_array((int) $chosenCategoryId, $allowedCategoryIds)) {
-                return back()->withErrors([
-                    'category_id' => "This shop profile is restricted to the '{$shop->rootCategory?->name}' category enclosure. Switch store profiles to list items under other categories.",
-                ]);
-            }
-            $validated['category_id'] = $chosenCategoryId;
-        }
+        $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
 
         // Auto-generate SKU if left blank or reset
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
@@ -197,6 +174,11 @@ class SellerProductController extends Controller
 
     public function updateStock(Request $request, Product $product): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->updateStockInShop($request, $product));
+    }
+
+    private function updateStockInShop(Request $request, Product $product): RedirectResponse
+    {
         $shop = $this->getActiveShop($request);
         $validated = $request->validate([
             'mode' => 'required|in:set,add',
@@ -209,13 +191,17 @@ class SellerProductController extends Controller
             ]);
         }
 
-        $newStock = DB::transaction(function () use ($product, $shop, $request, $validated): int {
+        $newStock = DB::transaction(function () use ($product, $shop, $validated): int {
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
 
-            if ($lockedProduct->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+            if ($lockedProduct->shop_id !== $shop->id) {
                 abort(403, 'Unauthorized stock modification.');
             }
 
+            if ($lockedProduct->category_id === null) {
+                throw ValidationException::withMessages(['category_id' => 'This product needs an approved category before stock can be changed.']);
+            }
+            app(ShopEligibilityService::class)->categoryFor($shop, $lockedProduct->category_id);
             $newStock = $validated['mode'] === 'add'
                 ? $lockedProduct->stock + (int) $validated['quantity']
                 : (int) $validated['quantity'];
@@ -392,15 +378,21 @@ class SellerProductController extends Controller
 
     public function destroy(Request $request, Product $product): RedirectResponse
     {
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->destroyInShop($request, $product));
+    }
+
+    private function destroyInShop(Request $request, Product $product): RedirectResponse
+    {
         $shop = $this->getActiveShop($request);
-        if ($product->shop_id && $product->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
+        $product = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+        if ($product->shop_id !== $shop->id) {
             abort(403, 'Unauthorized product deletion.');
         }
 
-        if ($product->orderItems()->exists()) {
+        if ($product->orderItems()->exists() || $product->reviews()->exists() || CartItem::where('product_id', $product->id)->exists()) {
             $product->update(['status' => 'archived']);
 
-            return back()->with('success', 'Product archived to preserve its order history.');
+            return back()->with('success', 'Product archived to preserve its references and history.');
         }
 
         $product->delete();

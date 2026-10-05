@@ -20,7 +20,7 @@ class SellerSalesMetricsTest extends TestCase
     {
         $seller = User::factory()->seller()->create();
         $buyer = User::factory()->buyer()->create();
-        $shop = Shop::factory()->create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'is_default' => true,
         ]);
@@ -35,7 +35,7 @@ class SellerSalesMetricsTest extends TestCase
         $this->createOrderItem($buyer, $shop, $product, 'cancelled', 4, 400);
 
         $foreignSeller = User::factory()->seller()->create();
-        $foreignShop = Shop::factory()->create(['user_id' => $foreignSeller->id]);
+        $foreignShop = Shop::factory()->approved()->create(['user_id' => $foreignSeller->id]);
         $foreignProduct = Product::factory()->create(['shop_id' => $foreignShop->id]);
         $this->createOrderItem($buyer, $foreignShop, $foreignProduct, 'completed', 9, 900);
 
@@ -92,7 +92,7 @@ class SellerSalesMetricsTest extends TestCase
     {
         $seller = User::factory()->seller()->create();
         $buyer = User::factory()->buyer()->create();
-        $shop = Shop::factory()->create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'is_default' => true,
         ]);

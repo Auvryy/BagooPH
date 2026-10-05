@@ -50,7 +50,7 @@ class RoleMiddlewareGateTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        Shop::create([
+        Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Active Boutique',
             'slug' => 'active-boutique',

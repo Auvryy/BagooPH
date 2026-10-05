@@ -4,13 +4,16 @@ namespace Tests\Feature\Flows;
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Category;
 use App\Models\CommissionLedger;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Shop;
 use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
+use Database\Factories\ShopFactory;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +28,13 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
     {
         parent::setUp();
         $this->seed(DatabaseSeeder::class);
+        $shop = Shop::whereHas('user', fn ($owner) => $owner->where('email', 'seller@bagoo.test'))->firstOrFail();
+        $root = Category::where('name', "Men's Apparel")->whereNull('parent_id')->firstOrFail();
+        $shop->update(['root_category_id' => $root->id]);
+        foreach ($shop->products()->with('category')->get() as $product) {
+            $product->category->update(['parent_id' => $root->id]);
+        }
+        ShopFactory::recordApprovalFixture($shop);
     }
 
     public function test_seeded_roles_complete_the_real_los_banos_to_santa_cruz_delivery_flow(): void

@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\Voucher;
+use Database\Factories\ShopFactory;
 use Illuminate\Support\Str;
 
 trait CreatesE2EOrders
@@ -18,12 +19,16 @@ trait CreatesE2EOrders
     {
         if ($seller->shop) {
             $seller->shop->update($attributes);
+            if ($attributes !== []) {
+                ShopFactory::recordApprovalFixture($seller->shop);
+            }
+
             return $seller->shop->fresh();
         }
 
-        return Shop::factory()->create(array_merge([
+        return Shop::factory()->approved()->create(array_merge([
             'user_id' => $seller->id,
-            'name' => $seller->name . "'s Artisan Boutique",
+            'name' => $seller->name."'s Artisan Boutique",
             'status' => 'active',
         ], $attributes));
     }
@@ -86,7 +91,7 @@ trait CreatesE2EOrders
         $totalAmount = $subtotal + $shippingFee;
 
         $order = Order::factory()->create([
-            'order_number' => 'BGO-' . strtoupper(Str::random(8)),
+            'order_number' => 'BGO-'.strtoupper(Str::random(8)),
             'buyer_id' => $buyer->id,
             'subtotal' => $subtotal,
             'shipping_fee' => $shippingFee,
@@ -126,14 +131,14 @@ trait CreatesE2EOrders
             'order_id' => $order->id,
             'courier_id' => $courier?->id,
             'assigned_rider_id' => in_array($status, ['assigned_to_rider', 'out_for_delivery', 'delivered', 'delivery_failed'], true) ? $courier?->id : null,
-            'tracking_number' => 'BGO-TRK-' . strtoupper(Str::random(8)),
+            'tracking_number' => 'BGO-TRK-'.strtoupper(Str::random(8)),
             'logistics_partner' => 'Bagoo Express Dispatch Fleet',
             'status' => $status,
             'pickup_store_name' => $shop?->name ?? 'Merchant Store',
-            'pickup_address' => ($shop?->address ?? 'Merchant Street') . ', ' . ($shop?->city ?? 'Manila'),
+            'pickup_address' => ($shop?->address ?? 'Merchant Street').', '.($shop?->city ?? 'Manila'),
             'pickup_phone' => $shop?->phone ?? '+63 917 000 0000',
             'delivery_recipient_name' => $order->recipient_name,
-            'delivery_address' => $order->shipping_address . ', ' . $order->shipping_city,
+            'delivery_address' => $order->shipping_address.', '.$order->shipping_city,
             'delivery_phone' => $order->recipient_phone,
             'assigned_at' => in_array($status, ['assigned', 'assigned_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(4) : null,
             'picked_up_at' => in_array($status, ['picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(3) : null,
@@ -146,7 +151,7 @@ trait CreatesE2EOrders
     {
         return Voucher::factory()->create(array_merge([
             'shop_id' => $shop->id,
-            'code' => 'DISC' . strtoupper(Str::random(4)),
+            'code' => 'DISC'.strtoupper(Str::random(4)),
             'discount_type' => 'fixed',
             'discount_value' => 50.00,
             'min_spend' => 300.00,

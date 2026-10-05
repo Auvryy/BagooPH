@@ -10,6 +10,7 @@ use App\Models\Voucher;
 use App\Services\KycSubmissionService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutOrderService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -54,7 +55,7 @@ class CheckoutController extends Controller
         $subtotal = 0;
         foreach ($checkoutItems as $item) {
             $currentProduct = Product::find($item->product_id);
-            if (! $currentProduct || $currentProduct->status !== 'active') {
+            if (! $currentProduct || ! app(ShopEligibilityService::class)->productIsEligible($currentProduct)) {
                 return redirect()->route('buyer.cart')->with('error', 'One or more items in your bag are currently unavailable.');
             }
             $subtotal += $currentProduct->price * $item->quantity;

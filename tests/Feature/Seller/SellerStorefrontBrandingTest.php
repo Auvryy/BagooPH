@@ -16,12 +16,11 @@ class SellerStorefrontBrandingTest extends TestCase
     public function test_shop_owner_can_access_shop_detail_with_ownership_flag(): void
     {
         $seller = User::factory()->create(['role' => 'seller']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
             'description' => 'Original handcrafted items',
-            'is_approved' => true,
         ]);
 
         $response = $this->actingAs($seller)->get(route('shop.show', $shop->slug));
@@ -38,12 +37,11 @@ class SellerStorefrontBrandingTest extends TestCase
     {
         $seller = User::factory()->create(['role' => 'seller']);
         $buyer = User::factory()->create(['role' => 'buyer']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
             'description' => 'Original handcrafted items',
-            'is_approved' => true,
         ]);
 
         $guestResponse = $this->get(route('shop.show', $shop->slug));
@@ -66,12 +64,11 @@ class SellerStorefrontBrandingTest extends TestCase
     public function test_seller_can_access_dedicated_preview_route(): void
     {
         $seller = User::factory()->create(['role' => 'seller']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
             'description' => 'Original handcrafted items',
-            'is_approved' => true,
         ]);
 
         $response = $this->actingAs($seller)->get(route('seller.preview'));
@@ -87,12 +84,11 @@ class SellerStorefrontBrandingTest extends TestCase
 
     public function test_accessing_shop_with_preview_query_parameter_enables_preview_flag(): void
     {
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => User::factory()->create(['role' => 'seller'])->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
             'description' => 'Original handcrafted items',
-            'is_approved' => true,
         ]);
 
         $response = $this->get(route('shop.show', ['slug' => $shop->slug, 'preview' => 'true']));
@@ -109,23 +105,18 @@ class SellerStorefrontBrandingTest extends TestCase
         Storage::fake('public');
 
         $seller = User::factory()->create(['role' => 'seller']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
             'description' => 'Original handcrafted items',
-            'is_approved' => true,
         ]);
 
         $logoFile = UploadedFile::fake()->image('store_logo.png', 400, 400);
         $bannerFile = UploadedFile::fake()->image('store_banner.jpg', 1200, 400);
 
         $response = $this->actingAs($seller)->post(route('shop.updateBranding', $shop->slug), [
-            'name' => 'Artisan Craft Flagship',
             'description' => 'Updated store biography and heritage story.',
-            'city' => 'Makati City',
-            'address' => '789 Ayala Avenue',
-            'phone' => '09170001122',
             'logo' => $logoFile,
             'banner' => $bannerFile,
         ]);
@@ -134,11 +125,8 @@ class SellerStorefrontBrandingTest extends TestCase
         $response->assertSessionHas('message', 'Storefront branding and bio updated successfully.');
 
         $shop->refresh();
-        $this->assertEquals('Artisan Craft Flagship', $shop->name);
+        $this->assertEquals('Artisan Craft Hub', $shop->name);
         $this->assertEquals('Updated store biography and heritage story.', $shop->description);
-        $this->assertEquals('Makati City', $shop->city);
-        $this->assertEquals('789 Ayala Avenue', $shop->address);
-        $this->assertEquals('09170001122', $shop->phone);
 
         $this->assertNotNull($shop->logo);
         $this->assertNotNull($shop->banner);
@@ -154,11 +142,10 @@ class SellerStorefrontBrandingTest extends TestCase
     {
         $seller = User::factory()->create(['role' => 'seller']);
         $otherSeller = User::factory()->create(['role' => 'seller']);
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Craft Hub',
             'slug' => 'artisan-craft-hub',
-            'is_approved' => true,
         ]);
 
         $response = $this->actingAs($otherSeller)->post(route('shop.updateBranding', $shop->slug), [

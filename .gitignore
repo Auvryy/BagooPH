@@ -30,3 +30,6 @@ Thumbs.db
 # AI conversation and scratch files
 ORIGINAL_REQUEST.md
 TEST_READY.md
+
+# Machine-local task management guide
+/docs/Task Management.md

@@ -56,7 +56,7 @@ class SharedPrivilegedAccessTest extends TestCase
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => $status, 'kyc_status' => $kyc]);
         $shop = Shop::factory()->create(['user_id' => $seller->id, 'name' => 'Original Shop', 'status' => 'active']);
-        $this->actingAs($seller)->get('http://localhost/shop/'.$shop->slug)->assertOk()->assertInertia(fn (Assert $page) => $page->where('isOwner', false));
+        $this->actingAs($seller)->get('http://localhost/shop/'.$shop->slug)->assertNotFound();
         $this->post('http://localhost/shop/'.$shop->slug.'/update-branding', ['name' => 'Unauthorized Change'])->assertRedirect();
         $this->assertSame('Original Shop', $shop->fresh()->name);
     }
@@ -65,7 +65,7 @@ class SharedPrivilegedAccessTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'kyc_status' => 'none']);
         $order = Order::factory()->create(['status' => 'delivered']);
-        $shop = Shop::factory()->create(['name' => 'Original Shop', 'status' => 'active']);
+        $shop = Shop::factory()->approved()->create(['name' => 'Original Shop', 'status' => 'active']);
         $this->actingAs($admin);
         foreach (['/my-orders/', '/buyer/orders/'] as $prefix) {
             $this->get('http://localhost'.$prefix.$order->id)->assertOk();

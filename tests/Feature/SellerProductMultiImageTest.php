@@ -17,7 +17,9 @@ class SellerProductMultiImageTest extends TestCase
     use RefreshDatabase;
 
     private User $seller;
+
     private Shop $shop;
+
     private Category $category;
 
     protected function setUp(): void
@@ -30,7 +32,7 @@ class SellerProductMultiImageTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->shop = Shop::create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $this->seller->id,
             'name' => 'Apex Artisan Store',
             'slug' => 'apex-artisan-store',
@@ -41,6 +43,7 @@ class SellerProductMultiImageTest extends TestCase
             'name' => 'Leather Bags',
             'slug' => 'leather-bags',
             'is_active' => true,
+            'parent_id' => $this->shop->root_category_id,
         ]);
     }
 

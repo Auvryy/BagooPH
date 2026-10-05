@@ -8,6 +8,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Message;
 use App\Models\Shop;
+use App\Services\ShopEligibilityService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -69,23 +70,16 @@ class HandleInertiaRequests extends Middleware
                     'kyc_submitted_at' => $user->kyc_submitted_at ? $user->kyc_submitted_at->toIso8601String() : null,
                     'kyc_reviewed_at' => $user->kyc_reviewed_at ? $user->kyc_reviewed_at->toIso8601String() : null,
                     ...app(VerificationDocumentService::class)->links($user),
-                    'shop' => ($user && $user->role === 'seller') ? (function () use ($user, $request) {
+                    'shop' => $user->isSeller() ? (function () use ($user, $request) {
                         $activeId = $request->session()->get('active_seller_shop_id');
-                        $shop = null;
-                        if ($activeId) {
-                            $shop = Shop::with('rootCategory')->where('id', $activeId)->where('user_id', $user->id)->first();
-                        }
-                        if (! $shop) {
-                            $shop = Shop::with('rootCategory')->where('user_id', $user->id)->where('is_default', true)->first()
-                                ?? Shop::with('rootCategory')->where('user_id', $user->id)->first();
-                        }
+                        $query = Shop::with('rootCategory')->where('user_id', $user->id)->eligible();
 
-                        return $shop;
+                        return $activeId !== null ? $query->whereKey(is_scalar($activeId) ? $activeId : 0)->first()
+                            : $query->orderByDesc('is_default')->orderBy('id')->first();
                     })() : null,
-                    'sellerShops' => ($user && $user->role === 'seller') ? Shop::with('rootCategory:id,name,slug')
-                        ->where('user_id', $user->id)
-                        ->orderByDesc('is_default')
-                        ->get() : [],
+                    'sellerShops' => $user->isSeller() ? Shop::with('rootCategory:id,name,slug')
+                        ->where('user_id', $user->id)->orderByDesc('is_default')->orderBy('id')->get()
+                        ->map(fn ($shop) => [...$shop->toArray(), 'eligible' => app(ShopEligibilityService::class)->isEligible($shop)]) : [],
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile : null,
                     'logisticsCompany' => $canAccessHub
                         ? ($user->logisticsCompany ?? ($user->isAdmin()

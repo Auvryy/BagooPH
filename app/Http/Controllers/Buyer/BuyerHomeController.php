@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Buyer;
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
-use App\Models\Cart;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -25,24 +24,28 @@ class BuyerHomeController extends Controller
             if ($user && $user->isSeller()) {
                 return redirect('/dashboard');
             }
+
             return Inertia::render('Seller/Landing');
         }
         if (str_starts_with($host, 'courier.')) {
             if ($user && $user->isCourier()) {
                 return redirect('/deliveries');
             }
+
             return app(AuthenticatedSessionController::class)->createCourier();
         }
         if (str_starts_with($host, 'hub.')) {
             if ($user && ($user->isLogistics() || $user->isAdmin())) {
                 return redirect('/dashboard');
             }
+
             return app(AuthenticatedSessionController::class)->createHub();
         }
         if (str_starts_with($host, 'admin.')) {
             if ($user && $user->isAdmin()) {
                 return redirect('/dashboard');
             }
+
             return app(AuthenticatedSessionController::class)->createAdmin();
         }
 
@@ -99,7 +102,7 @@ class BuyerHomeController extends Controller
             ->get();
 
         // 5. "Daily Discover" & Search Product Feed
-        $query = Product::with(['shop', 'category'])
+        $query = Product::with(['shop', 'category'])->availableForSale()
             ->where('status', 'active');
 
         // Search Filter (Product name, description, SKU, and matching category or shop name)
@@ -107,14 +110,14 @@ class BuyerHomeController extends Controller
             $search = trim($request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('description', 'ilike', "%{$search}%")
-                  ->orWhere('sku', 'ilike', "%{$search}%")
-                  ->orWhereHas('category', function ($catQ) use ($search) {
-                      $catQ->where('name', 'ilike', "%{$search}%");
-                  })
-                  ->orWhereHas('shop', function ($shopQ) use ($search) {
-                      $shopQ->where('name', 'ilike', "%{$search}%");
-                  });
+                    ->orWhere('description', 'ilike', "%{$search}%")
+                    ->orWhere('sku', 'ilike', "%{$search}%")
+                    ->orWhereHas('category', function ($catQ) use ($search) {
+                        $catQ->where('name', 'ilike', "%{$search}%");
+                    })
+                    ->orWhereHas('shop', function ($shopQ) use ($search) {
+                        $shopQ->where('name', 'ilike', "%{$search}%");
+                    });
             });
         }
 
@@ -127,10 +130,10 @@ class BuyerHomeController extends Controller
 
         // Price Range Filters
         if ($request->filled('min_price') && is_numeric($request->input('min_price'))) {
-            $query->where('price', '>=', (float)$request->input('min_price'));
+            $query->where('price', '>=', (float) $request->input('min_price'));
         }
         if ($request->filled('max_price') && is_numeric($request->input('max_price'))) {
-            $query->where('price', '<=', (float)$request->input('max_price'));
+            $query->where('price', '<=', (float) $request->input('max_price'));
         }
 
         // In Stock Filter
@@ -140,7 +143,7 @@ class BuyerHomeController extends Controller
 
         // Rating Filter (e.g. 4 stars and above)
         if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->where('rating', '>=', (float)$request->input('rating'));
+            $query->where('rating', '>=', (float) $request->input('rating'));
         }
 
         // Sort Engine
@@ -173,7 +176,7 @@ class BuyerHomeController extends Controller
         $relatedProducts = [];
         if ($request->filled('search') || $request->filled('category')) {
             $matchedIds = $feedProducts->pluck('id')->toArray();
-            $relatedQuery = Product::with(['shop', 'category'])
+            $relatedQuery = Product::with(['shop', 'category'])->availableForSale()
                 ->where('status', 'active')
                 ->whereNotIn('id', $matchedIds);
 

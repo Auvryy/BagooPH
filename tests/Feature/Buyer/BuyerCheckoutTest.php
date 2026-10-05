@@ -30,7 +30,7 @@ class BuyerCheckoutTest extends TestCase
             'status' => 'active',
         ]);
 
-        $shop = Shop::factory()->create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'status' => 'active',
             'address' => 'Lopez Avenue, Batong Malake',

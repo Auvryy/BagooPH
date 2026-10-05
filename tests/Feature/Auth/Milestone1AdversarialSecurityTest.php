@@ -791,7 +791,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        Shop::create([
+        Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Live Store',
             'slug' => 'live-store',
@@ -820,7 +820,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        Shop::create([
+        Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Live Store 2',
             'slug' => 'live-store-2',

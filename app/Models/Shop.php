@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\ShopEligibilityService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,12 +27,34 @@ class Shop extends Model
         'city',
         'rating',
         'status',
+        'review_status', 'review_submitted_at', 'reviewed_at', 'review_feedback',
+        'business_permit_path', 'review_decision_id', 'review_version',
     ];
+
+    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version'];
 
     protected $casts = [
         'is_default' => 'boolean',
         'rating' => 'float',
+        'review_submitted_at' => 'immutable_datetime',
+        'reviewed_at' => 'immutable_datetime',
+        'review_version' => 'integer',
     ];
+
+    public function currentReview(): BelongsTo
+    {
+        return $this->belongsTo(ShopReviewDecision::class, 'review_decision_id');
+    }
+
+    public function reviewDecisions(): HasMany
+    {
+        return $this->hasMany(ShopReviewDecision::class);
+    }
+
+    public function scopeEligible(Builder $query): Builder
+    {
+        return app(ShopEligibilityService::class)->eligibleShops($query);
+    }
 
     public function user(): BelongsTo
     {

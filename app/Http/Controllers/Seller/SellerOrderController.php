@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Shop;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,7 +24,7 @@ class SellerOrderController extends Controller
 
     public function index(Request $request): Response
     {
-        $shop = $this->getShop($request);
+        $shop = $this->getActiveShop($request, history: true);
         $status = $request->input('status', 'all');
 
         $baseItemQuery = fn () => OrderItem::where('shop_id', $shop->id);
@@ -70,6 +71,7 @@ class SellerOrderController extends Controller
 
         return Inertia::render('Seller/Orders', [
             'orderItems' => $orderItems,
+            'shopEligible' => app(ShopEligibilityService::class)->isEligible($shop),
             'shop' => $shop,
             'currentStatus' => $status,
             'counts' => $counts,

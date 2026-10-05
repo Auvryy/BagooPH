@@ -62,7 +62,7 @@ class SitemapController extends Controller
         ];
 
         // Active published products
-        $products = Product::where('status', 'active')
+        $products = Product::where('status', 'active')->availableForSale()
             ->whereNotNull('slug')
             ->select(['id', 'slug', 'updated_at'])
             ->latest('updated_at')
@@ -77,14 +77,14 @@ class SitemapController extends Controller
             ->get();
 
         // Active registered shops
-        $shops = Shop::where('status', 'active')
+        $shops = Shop::eligible()
             ->whereNotNull('slug')
             ->select(['id', 'slug', 'updated_at'])
             ->orderBy('id')
             ->get();
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
 
         foreach ($staticPages as $page) {
             $loc = htmlspecialchars($page['url'], ENT_XML1, 'UTF-8');
