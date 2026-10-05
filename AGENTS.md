@@ -2,6 +2,12 @@
 
 Keep work direct, scoped, and concise. Inspect existing code before changing it; do not invent routes, models, fields, or behavior.
 
+## Local Task Management
+
+- Always read [Task Management](<docs/Task Management.md>) before starting any repository task, including reviews and documentation work. Follow its task review, scheduling, sprint, label, time tracking, and plain-language update workflow.
+- This guide is machine-local and intentionally ignored by Git. Never force-add it or copy its private contents into tracked documentation.
+- If the guide is missing, report that the local task workflow is unavailable and continue independent repository work under these instructions. Do not invent task tracker configuration, task history, or time records.
+
 ## Safety and Git
 
 - Work only inside this repository.
