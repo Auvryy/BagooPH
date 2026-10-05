@@ -133,7 +133,7 @@ class KycRegistrationTest extends TestCase
         $idFile = UploadedFile::fake()->create('buyer_id.jpg', 500, 'image/jpeg');
 
         $response = $this->post('/register', [
-            'name' => 'Alex Buyer 2',
+            'name' => 'Alex Another Buyer',
             'email' => 'alex.buyer2@example.com',
             'phone' => '+63 917 555 6666',
             'address' => '789 Sunrise Ave',
@@ -240,6 +240,7 @@ class KycRegistrationTest extends TestCase
             'slug' => 'pacific-express-cargo',
             'code' => 'PEC',
             'contact_email' => $applicant->email,
+            'contact_phone' => $applicant->phone, 'address' => $applicant->address,
             'status' => 'pending',
             'is_active' => false,
         ]);

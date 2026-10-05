@@ -37,11 +37,11 @@ class KycDecisionGovernanceTest extends TestCase
             'phone' => '+639171234567', 'address' => 'Bagoo Test Street', 'city' => 'Makati',
         ]);
         if ($role === 'seller') {
-            Shop::create(['user_id' => $user->id, 'root_category_id' => $this->validMasterCategory()->id, 'name' => 'Bagoo Application Shop', 'slug' => 'bagoo-application-'.$user->id, 'status' => 'pending']);
+            Shop::create(['user_id' => $user->id, 'root_category_id' => $this->validMasterCategory()->id, 'name' => 'Bagoo Application Shop', 'phone' => $user->phone, 'address' => $user->address, 'city' => $user->city, 'slug' => 'bagoo-application-'.$user->id, 'status' => 'pending']);
         } elseif ($role === 'courier') {
             CourierProfile::create(['user_id' => $user->id, 'vehicle_type' => 'Motorcycle', 'plate_number' => 'TEST-123', 'or_cr_status' => 'Pending Verification', 'is_available' => false]);
         } elseif ($role === 'logistics') {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Application Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'B'.$user->id, 'contact_email' => $user->email, 'status' => 'pending', 'is_active' => false]);
+            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Application Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'B'.$user->id, 'contact_email' => $user->email, 'contact_phone' => $user->phone, 'address' => $user->address, 'status' => 'pending', 'is_active' => false]);
         }
         $this->addKycEvidence($user);
 

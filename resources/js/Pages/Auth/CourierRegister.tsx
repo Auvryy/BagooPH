@@ -207,7 +207,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
 
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(1); else if (["vehicle_type", "plate_number", "license_number"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -221,7 +221,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         }));
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(1); else if (["vehicle_type", "plate_number", "license_number"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -405,6 +405,9 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                             streetLabel="Garage / Terminal Street Address"
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
+                                province: errors.province,
+                                municipality: errors.municipality,
+                                barangay: errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: errors.address,
                             }}

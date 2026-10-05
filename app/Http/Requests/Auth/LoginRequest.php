@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,7 +43,10 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = $this->only('email', 'password');
+        $identity = User::whereRaw('LOWER(email) = LOWER(?)', [$credentials['email']])->first();
+        $credentials['email'] = $identity?->email ?? $credentials['email'];
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -71,7 +75,7 @@ class LoginRequest extends FormRequest
             if ($user->role !== 'admin') {
                 $roleMismatch = 'Role mismatch: Non-admin accounts cannot access the Platform Governance portal.';
             }
-        } elseif ($host === $appDomain || $host === 'www.' . $appDomain) {
+        } elseif ($host === $appDomain || $host === 'www.'.$appDomain) {
             if ($user->role !== 'buyer') {
                 $roleMismatch = 'Role mismatch: Non-buyer accounts cannot access the Buyer Marketplace portal.';
             }

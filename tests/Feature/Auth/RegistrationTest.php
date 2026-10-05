@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -49,7 +50,7 @@ class RegistrationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect(route('login'));
 
-        $user = \App\Models\User::where('email', 'maria.delacruz@example.com')->first();
+        $user = User::where('email', 'maria.delacruz@example.com')->first();
         $this->assertNotNull($user);
         $this->assertEquals('Maria Santos Dela Cruz', $user->name);
         $this->assertEquals('Maria', $user->first_name);
@@ -60,7 +61,7 @@ class RegistrationTest extends TestCase
         $this->assertGreaterThanOrEqual(24, $user->age);
         $this->assertEquals('Quezon City', $user->city);
         $this->assertEquals('Unit 401 Katipunan Ave', $user->address);
-        $this->assertEquals('+63 917 123 4567', $user->phone);
+        $this->assertEquals('+639171234567', $user->phone);
     }
 
     public function test_buyer_registration_accepts_different_ph_phone_formats(): void
@@ -68,14 +69,14 @@ class RegistrationTest extends TestCase
         $phoneFormats = [
             '+63 918 222 3333',
             '09182223333',
-            '9182223333',
+            '639182223333',
             '+639182223333',
         ];
 
         foreach ($phoneFormats as $idx => $phone) {
             $email = "buyer.phone.{$idx}@example.com";
             $response = $this->post('/register', [
-                'name' => "Buyer {$idx}",
+                'name' => 'Buyer Applicant',
                 'email' => $email,
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
@@ -87,9 +88,9 @@ class RegistrationTest extends TestCase
             ]);
 
             $response->assertSessionHasNoErrors();
-            $user = \App\Models\User::where('email', $email)->first();
+            $user = User::where('email', $email)->first();
             $this->assertNotNull($user);
-            $this->assertEquals($phone, $user->phone);
+            $this->assertEquals('+639182223333', $user->phone);
         }
     }
 }

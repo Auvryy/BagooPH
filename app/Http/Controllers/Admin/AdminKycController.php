@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\ApplicationText;
 use App\Services\KycDecisionService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
@@ -78,9 +79,12 @@ class AdminKycController extends Controller
     public function reject(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()?->isAdmin() && $request->user()->status === 'active', 403);
+        if (is_string($request->input('reason'))) {
+            $request->merge(['reason' => trim(\Normalizer::normalize($request->input('reason'), \Normalizer::FORM_KC), ' ')]);
+        }
         $validated = $request->validate([
             'review_token' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
-            'reason' => 'required|string|min:5|max:1000',
+            'reason' => ['bail', 'required', 'string', new ApplicationText('notes', 5, 1000)],
         ]);
         app(KycDecisionService::class)->decide($request, $user, 'rejected', $validated);
 

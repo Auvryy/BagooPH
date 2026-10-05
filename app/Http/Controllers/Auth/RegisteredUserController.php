@@ -3,26 +3,24 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\CourierProfile;
-use App\Models\LogisticsCompany;
 use App\Models\User;
-use App\Rules\BirthDate;
-use App\Rules\MasterCategory;
+use App\Services\ApplicationRegistrationService;
+use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
 use App\Services\OtpService;
-use App\Services\SellerApplicationService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,11 +67,18 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $role = $request->input('role', 'buyer');
+        if (! is_string($role)) {
+            throw ValidationException::withMessages(['role' => 'Choose a supported account role.']);
+        }
         $birthDates = app(BirthDateEligibility::class);
-        $requiresAdult = $birthDates->requiresAdult($role);
 
         // Merge composite name if first_name or last_name is provided without a full name
         if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
+            foreach (['first_name', 'middle_name', 'last_name'] as $field) {
+                if ($request->filled($field) && ! is_string($request->input($field))) {
+                    throw ValidationException::withMessages([$field => 'Enter a valid name.']);
+                }
+            }
             $compositeName = trim(
                 ($request->input('first_name', '').' '.
                 ($request->input('middle_name') ? $request->input('middle_name').' ' : '').
@@ -82,58 +87,28 @@ class RegisteredUserController extends Controller
             $request->merge(['name' => $compositeName]);
         }
 
-        // Base validation rules
-        $rules = [
-            'name' => 'required|string|max:255',
-            'first_name' => 'nullable|string|max:255',
-            'last_name' => 'nullable|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'sex' => 'nullable|string|max:50',
-            'birthday' => [$requiresAdult ? 'required' : 'nullable', new BirthDate($requiresAdult)],
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+        $applications = app(ApplicationValidationService::class);
+        $request->merge($applications->registrationValues($request->all(), $role));
+        $rules = $applications->rules($role) + [
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
-            'phone' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'province' => 'nullable|string|max:255',
-            'municipality' => 'nullable|string|max:255',
-            'barangay' => 'nullable|string|max:255',
-            'postal_code' => 'nullable|string|max:20',
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
-
-        // Role-specific validation rules
-        if ($role === 'seller') {
-            $rules['shop_name'] = 'required|string|max:255';
-            $rules['root_category_id'] = ['bail', 'required', 'integer', new MasterCategory];
-            $rules['phone'] = 'required|string|max:255';
-            $rules['address'] = 'required|string|max:255';
-            $rules['city'] = 'required|string|max:255';
-            $rules['id_document'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-            $rules['business_permit'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-        } elseif ($role === 'courier') {
-            $rules['phone'] = 'required|string|max:255';
-            $rules['address'] = 'required|string|max:255';
-            $rules['city'] = 'required|string|max:255';
-            $rules['vehicle_type'] = 'required|string|max:100';
-            $rules['plate_number'] = 'required|string|max:50';
-            $rules['license_number'] = 'nullable|string|max:50';
-            $rules['id_document'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-            $rules['driver_license'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-            $rules['or_cr_document'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-        } elseif ($role === 'logistics') {
-            $rules['company_name'] = 'required|string|max:255';
-            $rules['company_code'] = 'nullable|string|max:20';
-            $rules['franchise_number'] = 'nullable|string|max:100';
-            $rules['fleet_size'] = 'nullable|integer|min:1|max:100000';
-            $rules['phone'] = 'required|string|max:255';
-            $rules['address'] = 'required|string|max:255';
-            $rules['city'] = 'required|string|max:255';
-            $rules['business_permit'] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+        foreach (['user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'] as $field) {
+            $rules[$field] = ['prohibited'];
+        }
+        $files = match ($role) {
+            'seller' => ['id_document', 'business_permit'],
+            'courier' => ['id_document', 'driver_license', 'or_cr_document'],
+            'logistics' => ['business_permit'],
+            default => [],
+        };
+        foreach ($files as $field) {
+            $rules[$field] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+        }
+        if ($role === 'logistics') {
             $rules['franchise_document'] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
         }
-
         $validated = $request->validate($rules);
 
         $paths = app(VerificationDocumentService::class)->storeUploads($validated);
@@ -187,61 +162,20 @@ class RegisteredUserController extends Controller
             'kyc_submitted_at' => $idPath ? now() : ($isBuyer ? null : now()),
         ];
 
-        if ($role === 'seller') {
-            try {
-                $user = app(SellerApplicationService::class)->register($account, $validated['shop_name'], (int) $validated['root_category_id']);
-            } catch (\Throwable $exception) {
-                Storage::disk('local')->delete(array_values($paths));
-                throw $exception;
+        try {
+            $user = app(ApplicationRegistrationService::class)->register($account + ['_franchise_path' => $franchisePath], $validated);
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete(array_values($paths));
+            if ($exception instanceof QueryException && in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
+                $detail = $exception->errorInfo[2] ?? '';
+                if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email')) {
+                    throw ValidationException::withMessages(['email' => 'This email address is already registered.']);
+                }
+                if (str_contains($detail, 'logistics_companies_code') || str_contains($detail, 'logistics_companies.code')) {
+                    throw ValidationException::withMessages(['company_code' => 'This company code is already registered.']);
+                }
             }
-        } else {
-            $user = User::create($account);
-        }
-
-        // Create the remaining role profiles using their existing registration flow.
-        if ($role === 'courier') {
-            CourierProfile::create([
-                'user_id' => $user->id,
-                'vehicle_type' => $validated['vehicle_type'],
-                'plate_number' => $validated['plate_number'],
-                'license_number' => $validated['license_number'] ?? null,
-                'or_cr_status' => 'Pending Verification',
-                'is_available' => false,
-            ]);
-        } elseif ($role === 'logistics') {
-            $companyName = $validated['company_name'];
-            $baseCode = ! empty($validated['company_code'])
-                ? Str::upper(preg_replace('/[^A-Za-z0-9]/', '', $validated['company_code']))
-                : Str::upper(Str::substr(preg_replace('/[^A-Za-z0-9]/', '', $companyName), 0, 4));
-            if (strlen($baseCode) < 2) {
-                $baseCode = 'LOG';
-            }
-            $code = $baseCode;
-            $counter = 1;
-            while (LogisticsCompany::where('code', $code)->exists()) {
-                $code = $baseCode.$counter;
-                $counter++;
-            }
-
-            LogisticsCompany::create([
-                'user_id' => $user->id,
-                'name' => $companyName,
-                'slug' => Str::slug($companyName.'-'.$user->id),
-                'code' => $code,
-                'contact_email' => $validated['email'],
-                'contact_phone' => $validated['phone'] ?? null,
-                'address' => trim(($validated['address'] ?? '').', '.($validated['city'] ?? '')),
-                'status' => 'pending',
-                'is_active' => false,
-                'accreditation_details' => [
-                    'franchise_number' => $validated['franchise_number'] ?? 'PENDING-LTFRB',
-                    'fleet_size' => (int) ($validated['fleet_size'] ?? 10),
-                    'franchise_document_path' => $franchisePath,
-                    'business_permit_path' => $permitPath,
-                    'operating_province' => $validated['province'] ?? $validated['city'] ?? 'Laguna',
-                    'vehicle_types' => $request->input('vehicle_types', ['motorcycle', 'l300_van']),
-                ],
-            ]);
+            throw $exception;
         }
 
         try {
@@ -294,6 +228,7 @@ class RegisteredUserController extends Controller
 
         $shop = $user->isSeller() ? $user->shop()->orderBy('id')->with('rootCategory')->first() : $user->shop;
         $category = app(MasterCategoryService::class)->snapshot($shop?->root_category_id);
+        $user->setRelation('shop', $shop);
 
         return Inertia::render('Auth/PendingApproval', [
             'user' => [
@@ -313,6 +248,7 @@ class RegisteredUserController extends Controller
                 ...app(VerificationDocumentService::class)->links($user),
             ],
             'shop' => $shop,
+            'application' => app(ApplicationValidationService::class)->form($user),
             'sellerCategory' => $user->isSeller() ? [
                 'value' => $shop?->root_category_id,
                 'name' => $category['name'] ?? null,
@@ -332,27 +268,27 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle rejected evidence resubmission or an unreviewed worker birth-date correction.
+     * Handle rejected evidence resubmission or an unreviewed application correction.
      */
     public function resubmitKyc(Request $request): RedirectResponse
     {
         $user = $request->user();
 
-        $rules = [
-            'birthday' => ['sometimes', 'required', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
-            'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-            'business_permit' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-            'driver_license' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-            'or_cr_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-            'franchise_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-        ];
-        if ($user->isSeller()) {
-            $rules['root_category_id'] = ['bail', 'sometimes', 'required', 'integer', new MasterCategory];
-            $rules['shop_id'] = ['prohibited'];
-        } else {
+        $applications = app(ApplicationValidationService::class);
+        $request->merge($applications->normalize($request->all(), $user->role));
+        $rules = [];
+        foreach ($applications->rules($user->role, $user) as $field => $fieldRules) {
+            $rules[$field] = ['sometimes', ...$fieldRules];
+        }
+        foreach (['id_document', 'business_permit', 'driver_license', 'or_cr_document', 'franchise_document'] as $field) {
+            $rules[$field] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+        }
+        foreach (['role', 'user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'] as $field) {
+            $rules[$field] = ['prohibited'];
+        }
+        if (! $user->isSeller()) {
             $rules['root_category_id'] = ['prohibited'];
         }
-
         $validated = $request->validate($rules);
 
         app(KycSubmissionService::class)->submit($user, $validated);

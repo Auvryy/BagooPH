@@ -33,6 +33,7 @@ import {
 type DocumentKind = 'id' | 'permit' | 'license' | 'orcr' | 'franchise';
 
 interface KycApplicant extends User {
+    application_details: import('@/Components/ApplicationFields').ApplicationDetails;
     birthday?: string | null;
     review_age: number | null;
     logistics_company?: {
@@ -698,6 +699,19 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                     <p>Company activity: {inspectingApplicant.logistics_company.status} · {inspectingApplicant.logistics_company.is_active ? 'Enabled' : 'Restricted'}</p>
                                 </div>
                             )}
+                            <details className="rounded-[12px] border border-slate-300 bg-white p-4">
+                                <summary className="cursor-pointer font-semibold text-slate-900">Application details and validation</summary>
+                                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                                    {inspectingApplicant.application_details.fields.map(field => {
+                                        const value = inspectingApplicant.application_details.values[field.key];
+                                        return <div key={field.key}>
+                                            <dt className="text-xs text-slate-600">{field.label}</dt>
+                                            <dd className="break-words text-sm text-slate-900">{Array.isArray(value) ? value.join(', ') || 'Not provided' : value == null || value === '' ? 'Not provided' : String(value)}</dd>
+                                            {Object.entries(inspectingApplicant.application_details.errors).filter(([key]) => key === field.key || key.startsWith(field.key + '.')).flatMap(([key, messages]) => messages.map((error, index) => <p key={`${key}-${index}`} className="mt-1 text-xs text-amber-800">{error}</p>))}
+                                        </div>;
+                                    })}
+                                </dl>
+                            </details>
                             {inspectingApplicant.review_issues.length > 0 && inspectingApplicant.kyc_status === 'pending_approval' && (
                                 <ul className="list-disc space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-4 pl-7 text-xs text-amber-900">
                                     {inspectingApplicant.review_issues.map(issue => <li key={issue}>{issue}</li>)}

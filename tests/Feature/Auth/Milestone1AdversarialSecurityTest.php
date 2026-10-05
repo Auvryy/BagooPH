@@ -461,6 +461,8 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $shop = Shop::create([
             'user_id' => $seller->id,
+            'root_category_id' => $this->validMasterCategory()->id,
+            'phone' => $seller->phone, 'address' => $seller->address, 'city' => $seller->city,
             'name' => 'Seller Store',
             'slug' => 'seller-store',
             'status' => 'pending',
@@ -747,6 +749,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         Shop::create([
             'user_id' => $seller->id,
             'name' => 'Idempotent Shop',
+            'phone' => $seller->phone, 'address' => $seller->address, 'city' => $seller->city,
             'root_category_id' => $this->validMasterCategory()->id,
             'slug' => 'idempotent-shop',
             'status' => 'pending',
@@ -850,6 +853,8 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'License image was cut off',
         ]);
+
+        CourierProfile::factory()->create(['user_id' => $courier->id]);
 
         $newLicense = UploadedFile::fake()->create('new_license.jpg', 300, 'image/jpeg');
         $newOrCr = UploadedFile::fake()->create('new_or_cr.pdf', 400, 'application/pdf');

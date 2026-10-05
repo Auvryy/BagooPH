@@ -20,8 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Tracking validation must see controls before generic input trimming removes them.
-        $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*')]);
+        // These validators must see controls before generic input trimming removes them.
+        $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*')
+            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject'))]);
 
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
 

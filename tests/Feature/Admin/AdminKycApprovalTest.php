@@ -66,6 +66,7 @@ class AdminKycApprovalTest extends TestCase
         $shop = Shop::create([
             'user_id' => $seller->id,
             'root_category_id' => $this->validMasterCategory()->id,
+            'phone' => $seller->phone, 'address' => $seller->address, 'city' => $seller->city,
             'name' => 'Pending Shop',
             'slug' => 'pending-shop',
             'status' => 'pending',
@@ -165,6 +166,8 @@ class AdminKycApprovalTest extends TestCase
             'kyc_status' => 'rejected',
             'kyc_feedback' => 'Permit is expired.',
         ]);
+
+        Shop::factory()->create(['user_id' => $seller->id, 'root_category_id' => $this->validMasterCategory()->id, 'status' => 'pending']);
 
         $newPermit = UploadedFile::fake()->create('new_permit_2026.pdf', 1000, 'application/pdf');
 

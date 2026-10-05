@@ -20,6 +20,8 @@ class KycDecisionService
         $user->loadMissing(['shop' => fn ($query) => $query->orderBy('id'), 'courierProfile', 'logisticsCompany']);
 
         return [
+            'applicant_id' => $user->id,
+            'application' => app(ApplicationValidationService::class)->values($user),
             'submitted_at' => $user->kyc_submitted_at?->toISOString(),
             'role' => $user->role,
             'account' => $user->only(['name', 'email', 'phone', 'address', 'city', 'birthday']),
@@ -84,7 +86,18 @@ class KycDecisionService
             $issues[] = 'Vehicle type and plate number are required.';
         }
 
-        return $issues;
+        foreach ($this->fieldErrors($submission) as $field => $errors) {
+            if (! in_array($field, ['birthday', 'root_category_id'], true)) {
+                $issues = array_merge($issues, $errors);
+            }
+        }
+
+        return array_values(array_unique($issues));
+    }
+
+    public function fieldErrors(array $submission): array
+    {
+        return app(ApplicationValidationService::class)->fieldErrors($submission['application'], $submission['role'], User::find($submission['applicant_id']));
     }
 
     public function presentation(User $user): array
@@ -96,6 +109,8 @@ class KycDecisionService
             'review_age' => app(BirthDateEligibility::class)->age($user->birthday),
             'required_documents' => $this->requiredDocuments($submission),
             'review_issues' => $this->readiness($submission),
+            'application_errors' => $this->fieldErrors($submission),
+            'application_details' => app(ApplicationValidationService::class)->form($user),
             'shop_category' => $submission['shop_category'],
             'decision_history' => KycDecision::where('user_id', $user->id)->orderByDesc('id')->get()->map(fn (KycDecision $decision) => [
                 'id' => $decision->id,
@@ -150,6 +165,8 @@ class KycDecisionService
                 $currentApplication = $submission;
                 $reviewedApplication = $existing->submission;
                 unset($currentApplication['shop_category'], $reviewedApplication['shop_category']);
+                // Older recorded reviews did not capture the new fields; preserve their original retry contract.
+                $currentApplication = array_intersect_key($currentApplication, $reviewedApplication);
                 abort_unless(hash_equals($this->token($currentApplication), $this->token($reviewedApplication)), 409, 'This application changed. Reload the queue and review its current evidence.');
                 abort_unless($existing->decision === $action && $existing->reason === $reason && $existing->reviewer_id === $actor->id, 409, 'This submission has already been reviewed. Reload the queue.');
 

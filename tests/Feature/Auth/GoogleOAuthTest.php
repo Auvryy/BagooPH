@@ -57,7 +57,8 @@ class GoogleOAuthTest extends TestCase
     public function test_google_callback_links_existing_user_by_email(): void
     {
         $existing = User::factory()->create([
-            'email' => 'existingbuyer@gmail.com',
+            'email' => 'ExistingBuyer@Bagoo.test',
+            'name' => 'Existing Buyer',
             'google_id' => null,
             'role' => 'buyer',
             'avatar' => null,
@@ -65,7 +66,7 @@ class GoogleOAuthTest extends TestCase
 
         $abstractUser = Mockery::mock(SocialiteUser::class);
         $abstractUser->shouldReceive('getId')->andReturn('google-id-2002');
-        $abstractUser->shouldReceive('getEmail')->andReturn('existingbuyer@gmail.com');
+        $abstractUser->shouldReceive('getEmail')->andReturn('existingbuyer@bagoo.test');
         $abstractUser->shouldReceive('getName')->andReturn('Existing Buyer');
         $abstractUser->shouldReceive('getAvatar')->andReturn('https://lh3.googleusercontent.com/new_avatar.jpg');
 
@@ -80,6 +81,9 @@ class GoogleOAuthTest extends TestCase
         $this->assertAuthenticatedAs($existing);
 
         $existing->refresh();
+        $this->assertDatabaseCount('users', 1);
+        $this->assertSame('ExistingBuyer@Bagoo.test', $existing->email);
+        $this->assertSame('Existing Buyer', $existing->name);
         $this->assertEquals('google-id-2002', $existing->google_id);
         $this->assertEquals('https://lh3.googleusercontent.com/new_avatar.jpg', $existing->avatar);
     }

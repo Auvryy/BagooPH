@@ -160,7 +160,6 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         e.preventDefault();
 
         const newErrors: Record<string, string> = {};
-        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
         if (!data.sex) newErrors.sex = 'Sex is required';
         if (!data.city.trim()) newErrors.city = 'City / municipality is required';
         if (!data.address.trim()) newErrors.address = 'Delivery address is required';
@@ -189,6 +188,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
 
         post(route('register'), {
             forceFormData: true,
+            onError: handleRegistrationErrors,
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -205,8 +205,14 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         }
         post(route('register'), {
             forceFormData: true,
+            onError: handleRegistrationErrors,
             onFinish: () => reset('password', 'password_confirmation'),
         });
+    };
+
+    const handleRegistrationErrors = (validationErrors: Record<string, string>) => {
+        const identityFields = ['name', 'first_name', 'middle_name', 'last_name', 'email', 'password', 'password_confirmation'];
+        setCurrentStep(Object.keys(validationErrors).some(key => identityFields.includes(key)) ? 1 : 2);
     };
 
     return (
@@ -325,7 +331,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         required
                                     />
                                 </div>
-                                <InputError message={stepErrors.first_name || errors.first_name} className="mt-1" />
+                                <InputError message={stepErrors.first_name || errors.first_name || (errors as Record<string, string>).name} className="mt-1" />
                             </div>
 
                             <div className="sm:col-span-3">
@@ -341,6 +347,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                     placeholder="Santos"
                                     onChange={(e) => setData('middle_name', e.target.value)}
                                 />
+                                <InputError message={errors.middle_name} className="mt-1" />
                             </div>
 
                             <div className="sm:col-span-4">
@@ -465,7 +472,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                             <div className="sm:col-span-7">
                                 <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    Date of Birth *
+                                    Date of Birth (optional)
                                 </label>
                                 <div className="relative">
                                     <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -477,7 +484,6 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         value={data.birthday}
                                         className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900"
                                         onChange={handleBirthdayChange}
-                                        required
                                     />
                                 </div>
                                 <InputError message={stepErrors.birthday || errors.birthday} className="mt-1" />
@@ -570,6 +576,9 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                             streetLabel="Delivery Street Address / House No."
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
+                                province: errors.province,
+                                municipality: errors.municipality,
+                                barangay: errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}

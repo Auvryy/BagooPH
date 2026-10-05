@@ -17,9 +17,9 @@ class CourierProfileFactory extends Factory
     {
         return [
             'user_id' => User::factory()->courier(),
-            'vehicle_type' => 'Motorcycle (Express Dispatch)',
-            'plate_number' => 'NC-' . fake()->numerify('####'),
-            'license_number' => 'N02-' . fake()->numerify('##-######'),
+            'vehicle_type' => 'Motorcycle',
+            'plate_number' => 'NC-'.fake()->numerify('####'),
+            'license_number' => 'N02-'.fake()->numerify('##-######'),
             'or_cr_status' => 'Verified & Registered',
             'is_available' => true,
         ];
