@@ -869,11 +869,13 @@ export default function BuyerProfile({
                                                 <input
                                                     type="text"
                                                     value={data.name}
+                                                    readOnly
                                                     onChange={(e) => setData('name', e.target.value)}
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
                                                     required
                                                 />
                                                 {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-sans">{errors.name}</p>}
+                                                <Link href="/account/identity-corrections" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</Link>
                                             </div>
 
                                             <div>

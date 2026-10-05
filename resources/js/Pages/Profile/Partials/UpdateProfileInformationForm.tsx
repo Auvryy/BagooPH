@@ -16,6 +16,7 @@ export default function UpdateProfileInformation({
     className?: string;
 }) {
     const user = usePage().props.auth.user!;
+    const reviewedIdentity = user.role === 'admin' || ['approved', 'verified'].includes(user.kyc_status ?? '');
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
@@ -53,7 +54,10 @@ export default function UpdateProfileInformation({
                         required
                         isFocused
                         autoComplete="name"
+                        readOnly={reviewedIdentity}
                     />
+
+                    {reviewedIdentity && <p className="mt-2 text-sm text-slate-600">Reviewed identity requires evidence and an admin decision. <Link href="/account/identity-corrections" className="font-semibold text-[#C20836] underline">Request an identity correction</Link>.</p>}
 
                     <InputError className="mt-2" message={errors.name} />
                 </div>
