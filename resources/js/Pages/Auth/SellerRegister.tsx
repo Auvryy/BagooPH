@@ -21,7 +21,7 @@ import {
     Check
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
+import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
@@ -140,11 +140,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
 
     const validateStep2 = () => {
         const newErrors: Record<string, string> = {};
-        const phoneDigits = extractNationalDigits(data.phone);
         if (!data.phone.trim()) {
-            newErrors.phone = 'Mobile phone number is required';
-        } else if (phoneDigits.length < 10) {
-            newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
+            newErrors.phone = 'A shop contact number is required';
         }
         if (!data.city.trim()) newErrors.city = 'City or municipality is required';
         if (!data.address.trim()) newErrors.address = 'Warehouse or pickup address is required';
@@ -176,7 +173,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
 
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday || errors.root_category_id) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "shop_name", "email", "birthday", "root_category_id"].some(key => keys.includes(key))) setCurrentStep(1); else if (["phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -190,7 +187,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         }));
         post(route('register'), {
             forceFormData: true,
-            onError: errors => { if (errors.birthday || errors.root_category_id) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "shop_name", "email", "birthday", "root_category_id"].some(key => keys.includes(key))) setCurrentStep(1); else if (["phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -377,18 +374,14 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                 {currentStep === 2 && (
                     <div className="space-y-4">
                         <div>
-                            <PhoneInput
-                                id="phone"
-                                name="phone"
-                                label="Merchant Mobile Phone Number"
+                            <BusinessContactInput
+                                label="Merchant contact number"
                                 value={data.phone}
                                 onChange={(val) => {
                                     setData('phone', val);
                                     if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
                                 }}
                                 required
-                                accentColor="primary"
-                                helperText="10-digit mobile number (e.g. 917 123 4567)"
                                 error={stepErrors.phone || errors.phone}
                             />
                         </div>
@@ -418,6 +411,9 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                             streetLabel="Warehouse / Store Street Address"
                             streetPlaceholder="Unit No., Building, Street Name"
                             errors={{
+                                province: errors.province,
+                                municipality: errors.municipality,
+                                barangay: errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}

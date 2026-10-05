@@ -2,6 +2,7 @@ import React, { FormEventHandler, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import ApplicationFields, { ApplicationDetails, ApplicationValues } from '@/Components/ApplicationFields';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 import { CourierProfile, Shop, User } from '@/types';
@@ -26,6 +27,7 @@ import {
 
 interface PendingApprovalProps {
     user: User;
+    application: ApplicationDetails;
     birthDate: { value: string | null; needs_correction: boolean; limits: BirthDateLimits };
     sellerCategory: {
         value: number | null;
@@ -45,7 +47,7 @@ interface PendingApprovalProps {
     } | null;
 }
 
-export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory }: PendingApprovalProps) {
+export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory, application }: PendingApprovalProps) {
     const isRejected = user.kyc_status === 'rejected';
 
     const idInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +62,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
 
     const { data, setData, post, processing, errors, reset, transform } = useForm<{
         birthday: string;
+        details: ApplicationValues;
         root_category_id: string;
         id_document: File | null;
         business_permit: File | null;
@@ -68,6 +71,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
         franchise_document: File | null;
     }>({
         birthday: birthDate.value || '',
+        details: application.values,
         root_category_id: sellerCategory?.value ? String(sellerCategory.value) : '',
         id_document: null,
         business_permit: null,
@@ -78,7 +82,10 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
 
     const handleResubmit: FormEventHandler = (e) => {
         e.preventDefault();
-        transform(({ root_category_id, ...fields }) => sellerCategory?.can_correct ? { ...fields, root_category_id } : fields);
+        transform(({ root_category_id, details, ...fields }) => {
+            const changes = application.can_correct ? Object.fromEntries(Object.entries(details).filter(([key, value]) => key !== 'birthday' && key !== 'root_category_id' && JSON.stringify(value ?? '') !== JSON.stringify(application.values[key] ?? ''))) : {};
+            return sellerCategory?.can_correct ? { ...fields, ...changes, root_category_id } : { ...fields, ...changes };
+        });
         post(route('kyc.resubmit'), {
             forceFormData: true,
             preserveScroll: true,
@@ -91,6 +98,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 setData('birthday', (page.props.birthDate as PendingApprovalProps['birthDate']).value || '');
                 const category = page.props.sellerCategory as PendingApprovalProps['sellerCategory'];
                 setData('root_category_id', category?.value ? String(category.value) : '');
+                setData('details', (page.props.application as ApplicationDetails).values);
             },
         });
     };
@@ -112,15 +120,17 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
             <Head title="Account Verification Status — BagooPH" />
 
             <div className="space-y-6 font-sans text-xs">
-                {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || sellerCategory?.can_correct) && (
+                {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || application.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">
                         <p className="font-semibold text-slate-900">Correct your application before review</p>
                         {birthDate.needs_correction && <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />}
                         {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}
                         {sellerCategory?.issue && <p className="text-xs text-amber-800">{sellerCategory.issue}</p>}
                         {!birthDate.needs_correction && <InputError message={errors.birthday} />}
+                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => setData('details', { ...data.details, [key]: value })} />}
+                        <InputError message={(errors as { application?: string }).application} />
                         <InputError message={(errors as { documents?: string }).documents} />
-                        <button type="submit" disabled={processing || (data.birthday === (birthDate.value || '') && data.root_category_id === (sellerCategory?.value ? String(sellerCategory.value) : ''))} className="rounded-[12px] border border-[#E00D42] bg-[#E00D42] px-4 py-2 font-semibold text-white disabled:opacity-50">{processing ? 'Submitting...' : 'Submit correction for review'}</button>
+                        <button type="submit" disabled={processing || (data.birthday === (birthDate.value || '') && data.root_category_id === (sellerCategory?.value ? String(sellerCategory.value) : '') && JSON.stringify(data.details) === JSON.stringify(application.values))} className="rounded-[12px] border border-[#E00D42] bg-[#E00D42] px-4 py-2 font-semibold text-white disabled:opacity-50">{processing ? 'Submitting...' : 'Submit correction for review'}</button>
                     </form>
                 )}
                 {sellerCategory?.issue && !sellerCategory.can_correct && <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">{sellerCategory.issue} Contact an admin for a controlled review; this form cannot replace a completed decision or create a missing shop.</p>}
@@ -286,6 +296,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 {/* Resubmission Form (Rejected Mode) */}
                 {isRejected && (
                     <form onSubmit={handleResubmit} className="p-4 bg-white border-2 border-[#E00D42]/30 rounded-xl space-y-4">
+                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => setData('details', { ...data.details, [key]: value })} />}
                         <InputError message={(errors as { documents?: string }).documents} />
                         <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />
                         {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}

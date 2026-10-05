@@ -26,7 +26,7 @@ import {
     Compass
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
+import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
@@ -155,11 +155,8 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         } else if (!/\S+@\S+\.\S+/.test(data.email)) {
             newErrors.email = 'Valid corporate email address is required';
         }
-        const phoneDigits = extractNationalDigits(data.phone);
         if (!data.phone.trim()) {
             newErrors.phone = 'Dispatch hotline phone number is required';
-        } else if (phoneDigits.length < 10) {
-            newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
         }
         if (!data.password) {
             newErrors.password = 'Password is required';
@@ -175,9 +172,6 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
 
     const validateStep2 = () => {
         const newErrors: Record<string, string> = {};
-        if (!data.franchise_number.trim()) {
-            newErrors.franchise_number = 'LTFRB franchise or accreditation CPC number is required';
-        }
         if (data.vehicle_types.length === 0) {
             newErrors.vehicle_types = 'Please select at least one vehicle category';
         }
@@ -222,7 +216,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
 
         post('/register', {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "company_name", "company_code", "phone", "password", "password_confirmation"].some(key => keys.includes(key))) setCurrentStep(1); else if (["franchise_number", "fleet_size", "vehicle_types"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -236,7 +230,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         }));
         post('/register', {
             forceFormData: true,
-            onError: errors => { if (errors.birthday) setCurrentStep(1); },
+            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "company_name", "company_code", "phone", "password", "password_confirmation"].some(key => keys.includes(key))) setCurrentStep(1); else if (["franchise_number", "fleet_size", "vehicle_types"].some(key => keys.includes(key))) setCurrentStep(2); },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -376,7 +370,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     </div>
                                     <input
                                         type="text"
-                                        maxLength={6}
+                                        maxLength={20}
                                         value={data.company_code}
                                         onChange={e => setData('company_code', e.target.value.toUpperCase())}
                                         placeholder="TFX"
@@ -437,17 +431,13 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                    Dispatch Phone <span className="text-[#E00D42]">*</span>
-                                </label>
-                                <PhoneInput
+                                <BusinessContactInput
                                     value={data.phone}
                                     onChange={val => setData('phone', val)}
-                                    placeholder="917 123 4567"
+                                    label="Dispatch contact number"
+                                    required
+                                    error={stepErrors.phone || errors.phone}
                                 />
-                                {(stepErrors.phone || errors.phone) && (
-                                    <p className="text-xs text-[#E00D42]">{stepErrors.phone || errors.phone}</p>
-                                )}
                             </div>
                         </div>
 
@@ -539,7 +529,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                         {/* LTFRB Franchise # */}
                         <div className="space-y-1">
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                LTFRB Franchise / CPC Accreditation Number <span className="text-[#E00D42]">*</span>
+                                LTFRB Franchise / CPC Accreditation Number (optional)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -577,6 +567,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
+                                {errors.fleet_size && <p className="text-xs text-[#E00D42]">{errors.fleet_size}</p>}
                             </div>
 
                             <div className="space-y-1">
@@ -670,9 +661,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     </div>
                                 </button>
                             </div>
-                            {stepErrors.vehicle_types && (
-                                <p className="text-xs text-[#E00D42]">{stepErrors.vehicle_types}</p>
-                            )}
+                            <InputError message={stepErrors.vehicle_types || errors.vehicle_types || Object.entries(errors).find(([key]) => key.startsWith('vehicle_types.'))?.[1]} />
                         </div>
 
                         {/* Navigation Buttons */}
@@ -730,6 +719,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                 }));
                             }}
                             errors={{
+                                province: errors.province,
+                                municipality: errors.municipality,
+                                barangay: errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}
