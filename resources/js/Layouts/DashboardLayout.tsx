@@ -39,44 +39,22 @@ interface Props {
 }
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
-    const { auth, flash, sellerShops, categories } = usePage<PageProps>().props;
+    const { auth, flash } = usePage<PageProps>().props;
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [shopSwitcherOpen, setShopSwitcherOpen] = useState(false);
     const [hubSwitcherOpen, setHubSwitcherOpen] = useState(false);
-    const [createShopModalOpen, setCreateShopModalOpen] = useState(false);
-    const [newShopName, setNewShopName] = useState('');
-    const [newShopCategoryId, setNewShopCategoryId] = useState('');
-    const [newShopDescription, setNewShopDescription] = useState('');
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
     const role = user?.role || 'buyer';
     const currentShop = user?.shop;
-    const shops = sellerShops && sellerShops.length > 0 ? sellerShops : (currentShop ? [currentShop] : []);
+    const shops = user?.sellerShops ?? (currentShop ? [currentShop] : []);
     const activeHub = (user as any)?.activeHub;
     const allHubs = (user as any)?.allHubs || [];
     const logisticsCompany = (user as any)?.logisticsCompany;
     const canSwitchHubs = Boolean((user as any)?.canSwitchHubs);
-
-    const handleCreateShop = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newShopName.trim() || !newShopCategoryId) return;
-
-        router.post(route('seller.shops.create'), {
-            name: newShopName.trim(),
-            root_category_id: newShopCategoryId,
-            description: newShopDescription.trim() || undefined,
-        }, {
-            onSuccess: () => {
-                setCreateShopModalOpen(false);
-                setNewShopName('');
-                setNewShopCategoryId('');
-                setNewShopDescription('');
-            }
-        });
-    };
 
     const handleUserMenuEnter = () => {
         if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
@@ -99,6 +77,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         if (role === 'admin') {
             return [
                 { name: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard, current: component === 'Admin/Dashboard' || route().current('admin.dashboard') || url === '/admin/dashboard' || url === '/admin' },
+                { name: 'Shop reviews', href: route('admin.shops.index'), icon: Store, current: component === 'Admin/ShopReviews' },
                 { name: 'KYC Queue', href: route('admin.kyc.index'), icon: ShieldCheck, current: component.startsWith('Admin/Kyc') || route().current('admin.kyc.*') || url.startsWith('/admin/kyc') },
                 { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || route().current('admin.users*') || url.startsWith('/admin/users') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
@@ -108,6 +87,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
         if (role === 'seller') {
             return [
+                { name: 'Shops', href: route('seller.shops.index'), icon: Store, current: component === 'Seller/Shops' },
                 { 
                     name: 'Dashboard', 
                     href: route('seller.dashboard'), 
@@ -288,6 +268,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         {shops.map((s) => (
                                             <button
                                                 key={s.id}
+                                                disabled={!s.eligible}
                                                 type="button"
                                                 onClick={() => {
                                                     setShopSwitcherOpen(false);
@@ -302,7 +283,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 <div className="min-w-0 flex-1 pr-2">
                                                     <p className="truncate">{s.name}</p>
                                                     <p className="text-[10px] text-slate-400 font-sans truncate">
-                                                        Enclosure: {s.root_category?.name || 'General'}
+                                                        {s.root_category?.name || 'Missing category'} · {s.review_status?.replaceAll('_', ' ') || 'Review required'} · {s.status}
                                                     </p>
                                                 </div>
                                                 {s.id === currentShop.id && (
@@ -317,12 +298,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             type="button"
                                             onClick={() => {
                                                 setShopSwitcherOpen(false);
-                                                setCreateShopModalOpen(true);
+                                                router.visit(route('seller.shops.index'));
                                             }}
                                             className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-semibold transition cursor-pointer"
                                         >
                                             <Plus className="w-3 h-3" />
-                                            <span>New Specialty Store</span>
+                                            <span>Manage shops and approvals</span>
                                         </button>
                                     </div>
                                 </div>
@@ -790,90 +771,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 </main>
             </div>
 
-            {/* Create Store Profile Modal */}
-            {createShopModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-6">
-                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 rounded-lg bg-red-50 text-[#E00D42]">
-                                    <Store className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h2 className="text-sm font-bold text-slate-900">Create Storefront Profile</h2>
-                                    <p className="text-[11px] text-slate-500">Add a dedicated category enclosure under this merchant account</p>
-                                </div>
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={() => setCreateShopModalOpen(false)}
-                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateShop} className="mt-4 space-y-4 text-xs">
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Store Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={newShopName}
-                                    onChange={(e) => setNewShopName(e.target.value)}
-                                    placeholder="e.g. Bagoo Urban EDC"
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Root Category Enclosure *</label>
-                                <select
-                                    required
-                                    value={newShopCategoryId}
-                                    onChange={(e) => setNewShopCategoryId(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs bg-white"
-                                >
-                                    <option value="">Select Root Category Enclosure...</option>
-                                    {(categories || []).map((cat) => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-slate-400 mt-1">
-                                    All products listed in this store will be strictly bounded to this root category enclosure.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Description</label>
-                                <textarea
-                                    rows={2}
-                                    value={newShopDescription}
-                                    onChange={(e) => setNewShopDescription(e.target.value)}
-                                    placeholder="Brief storefront specialty summary..."
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-hidden focus:border-[#E00D42] text-xs"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setCreateShopModalOpen(false)}
-                                    className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-lg bg-[#E00D42] hover:bg-[#b50a35] text-white font-bold transition shadow-xs cursor-pointer"
-                                >
-                                    Create Storefront
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

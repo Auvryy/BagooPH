@@ -1,7 +1,6 @@
 import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import PhoneInput from '@/Components/PhoneInput';
 import { Shop } from '@/types';
 import { 
     Store, 
@@ -92,6 +91,7 @@ export default function SellerSettings({ shop }: Props) {
 
                 <form onSubmit={submit} className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-6">
                     
+                    <p className="text-sm text-slate-600">The shop name, contact details and master category were reviewed. Branding can update the description, logo and banner; reviewed details require a separate correction review.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
@@ -99,6 +99,7 @@ export default function SellerSettings({ shop }: Props) {
                             </label>
                             <input
                                 type="text"
+                                readOnly
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
@@ -123,14 +124,7 @@ export default function SellerSettings({ shop }: Props) {
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Merchant Hotline / Mobile:
                             </label>
-                            <PhoneInput
-                                value={data.phone}
-                                onChange={(val) => setData('phone', val)}
-                                placeholder="917 123 4567"
-                                accentColor="primary"
-                                helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                required
-                            />
+                            <input readOnly value={shop.phone ?? ''} aria-label="Reviewed shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs" />
                         </div>
 
                         <div>
@@ -139,6 +133,7 @@ export default function SellerSettings({ shop }: Props) {
                             </label>
                             <input
                                 type="text"
+                                readOnly
                                 value={data.city}
                                 onChange={(e) => setData('city', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
@@ -152,6 +147,7 @@ export default function SellerSettings({ shop }: Props) {
                             </label>
                             <input
                                 type="text"
+                                readOnly
                                 value={data.address}
                                 onChange={(e) => setData('address', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"

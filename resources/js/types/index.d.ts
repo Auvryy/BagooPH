@@ -53,6 +53,7 @@ export interface User {
     kyc_reviewed_at?: string | null;
     email_verified_at?: string | null;
     shop?: Shop | null;
+    sellerShops?: Shop[];
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
 }
@@ -70,6 +71,11 @@ export interface Shop {
     city?: string | null;
     rating: string | number;
     status: string;
+    review_status?: 'pending_approval' | 'approved' | 'rejected' | null;
+    review_feedback?: string | null;
+    review_submitted_at?: string | null;
+    reviewed_at?: string | null;
+    eligible?: boolean;
     root_category_id?: number | null;
     root_category?: Category | null;
     is_default?: boolean;
