@@ -4,13 +4,16 @@ import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import { useForm } from '@inertiajs/react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import { AccountClosureReview } from '@/types/accountClosure';
 
 export default function DeleteUserForm({
     className = '',
+    closure,
 }: {
     className?: string;
+    closure: AccountClosureReview;
 }) {
     const [confirmingUserDeletion, setConfirmingUserDeletion] = useState(false);
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -25,7 +28,13 @@ export default function DeleteUserForm({
         clearErrors,
     } = useForm({
         password: '',
+        source_token: closure.source_token,
     });
+
+    useEffect(() => {
+        setData('source_token', closure.source_token);
+        if (!closure.allowed) setConfirmingUserDeletion(false);
+    }, [closure.source_token, closure.allowed]);
 
     const confirmUserDeletion = () => {
         setConfirmingUserDeletion(true);
@@ -38,7 +47,7 @@ export default function DeleteUserForm({
             preserveScroll: true,
             onSuccess: () => closeModal(),
             onError: () => passwordInput.current?.focus(),
-            onFinish: () => reset(),
+            onFinish: () => reset('password'),
         });
     };
 
@@ -46,39 +55,34 @@ export default function DeleteUserForm({
         setConfirmingUserDeletion(false);
 
         clearErrors();
-        reset();
+        reset('password');
     };
 
     return (
         <section className={`space-y-6 ${className}`}>
             <header>
                 <h2 className="text-lg font-medium text-gray-900">
-                    Delete Account
+                    Close account
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Before deleting your account,
-                    please download any data or information that you wish to
-                    retain.
+                    {closure.retention_note}
                 </p>
             </header>
 
-            <DangerButton onClick={confirmUserDeletion}>
-                Delete Account
-            </DangerButton>
+            {closure.blockers.map((blocker, index) => <div key={index} className="text-sm"><p className="font-medium text-slate-900">{blocker.message}</p><p className="mt-1 text-slate-600">{blocker.next}</p></div>)}
+            {closure.allowed && <DangerButton onClick={confirmUserDeletion}>
+                Close unused account
+            </DangerButton>}
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
                 <form onSubmit={deleteUser} className="p-6">
                     <h2 className="text-lg font-medium text-gray-900">
-                        Are you sure you want to delete your account?
+                        Close this unused account?
                     </h2>
 
                     <p className="mt-1 text-sm text-gray-600">
-                        Once your account is deleted, all of its resources and
-                        data will be permanently deleted. Please enter your
-                        password to confirm you would like to permanently delete
-                        your account.
+                        This account has no related records or stored files. Enter your password to confirm removal. Your current responsibilities will be checked again before the account is closed.
                     </p>
 
                     <div className="mt-6">
@@ -106,6 +110,8 @@ export default function DeleteUserForm({
                             message={errors.password}
                             className="mt-2"
                         />
+                        <InputError message={errors.source_token} className="mt-2" />
+                        {errors.source_token && <button type="button" onClick={() => router.reload({ only: ['closure'], onSuccess: () => clearErrors('source_token') })} className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm">Reload closure checks</button>}
                     </div>
 
                     <div className="mt-6 flex justify-end">
@@ -113,8 +119,8 @@ export default function DeleteUserForm({
                             Cancel
                         </SecondaryButton>
 
-                        <DangerButton className="ms-3" disabled={processing}>
-                            Delete Account
+                        <DangerButton className="ms-3" disabled={processing || !closure.allowed || !!errors.source_token}>
+                            Close account
                         </DangerButton>
                     </div>
                 </form>

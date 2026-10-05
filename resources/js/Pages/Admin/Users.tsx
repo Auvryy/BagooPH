@@ -116,7 +116,7 @@ export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
                                                 {u.status || 'Unknown'}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-4"><div className="flex flex-wrap gap-2"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link>{(u.role === 'admin' || ['approved', 'verified'].includes(u.kyc_status ?? '')) && <Link href={`${activityBaseUrl}/${u.id}/identity-corrections`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Identity corrections</Link>}</div></td>
+                                        <td className="py-4 px-4"><div className="flex flex-wrap gap-2"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link>{(u.role === 'admin' || ['approved', 'verified'].includes(u.kyc_status ?? '')) && <Link href={`${activityBaseUrl}/${u.id}/identity-corrections`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Identity corrections</Link>}<Link href={`${activityBaseUrl}/${u.id}/closure`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review closure</Link></div></td>
                                     </tr>
                                 ))}
                             </tbody>
