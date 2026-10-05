@@ -6,10 +6,12 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/reviewed-identity-corrections` |
+| Git branch | `admin/identity-and-closure-safety` |
 | Phase | 0 |
 | Minimum prerequisites | [B01](01-seller-category-approval.md), [B02](02-application-validation.md), [B06](06-account-restrictions.md), [B07](07-resource-restrictions.md) |
 | Result | Reviewed identity can be corrected with current evidence and an append-only decision. |
+
+B08 and B09 share one selected delivery branch. B08 must pass its focused gate before B09 starts; keep separate acceptance evidence and commits. Stop after the complete batch for user review and merge before B10.
 
 ## Purpose
 
@@ -95,7 +97,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop when the controlled reviewed-change path, explicit legacy review, and continuity safeguards pass. Do not widen generic profile permissions or call all legacy identities audited without evidence.
 
 ```text
-Implement only B08 from docs/admin-plan/08-reviewed-identity-corrections.md on admin/reviewed-identity-corrections.
+Implement only B08 from docs/admin-plan/08-reviewed-identity-corrections.md on admin/identity-and-closure-safety.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.
