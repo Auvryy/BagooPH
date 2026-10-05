@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CrossDomainFallbackMiddleware;
+use App\Http\Middleware\EnsureAccountOpen;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\EnsureApprovedCourier;
 use App\Http\Middleware\EnsureBuyerAccess;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
 
         $middleware->web(append: [
+            EnsureAccountOpen::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

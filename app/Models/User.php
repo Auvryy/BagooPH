@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Services\AccountClosureService;
 use App\Services\BirthDateEligibility;
-use App\Services\ResourceRestrictionService;
 use App\Services\SecretMailService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     protected $hidden = [
         'identity_version',
+        'closed_at',
         'restriction_version',
         'password',
         'remember_token',
@@ -72,6 +73,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
             $user->age = app(BirthDateEligibility::class)->age($user->birthday);
         });
         static::updating(function (User $user): void {
+            if ($user->getRawOriginal('closed_at') !== null && ($user->isDirty('closed_at') || $user->status !== 'inactive')) {
+                throw ValidationException::withMessages(['status' => 'Closed accounts remain inactive and retained. Reopening requires a separate policy.']);
+            }
             if ($user->isDirty('role')) {
                 throw ValidationException::withMessages([
                     'role' => 'Account roles cannot be changed. Register a separate account for another role.',
@@ -79,6 +83,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
             }
             if ($user->isDirty(['birthday', 'age'])) {
                 $user->age = app(BirthDateEligibility::class)->age($user->birthday);
+            }
+        });
+        static::deleting(function (User $user): void {
+            if (! app(AccountClosureService::class)->canHardDelete($user)) {
+                throw new \LogicException('Referenced account identities must be retained. Use the account closure review.');
             }
         });
     }
@@ -94,6 +103,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'kyc_reviewed_at' => 'datetime',
             'restriction_version' => 'integer',
             'identity_version' => 'integer',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -131,12 +141,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function canDeleteOwnAccount(): bool
     {
-        // Courier closure needs custody and cash handover before account removal.
-        return ! $this->isCourier()
-            && ! KycDecision::where('user_id', $this->id)->orWhere('reviewer_id', $this->id)->exists()
-            && ! RestrictionDecision::where('actor_id', $this->id)->orWhere(fn ($query) => $query->where('subject_type', 'account')->where('subject_id', $this->id))->exists()
-            && ! RestrictionAffectedWork::where('responsible_user_id', $this->id)->exists()
-            && ! app(ResourceRestrictionService::class)->ownerHasHistory($this);
+        return app(AccountClosureService::class)->canSelfDelete($this);
     }
 
     public function isLogistics(): bool
@@ -160,6 +165,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function canAccessPortal(): bool
     {
         return UserRole::tryFrom($this->role) !== null
+            && $this->closed_at === null
             && $this->status === 'active'
             && $this->isKycApproved()
             && $this->hasEligibleBirthDate();
@@ -188,7 +194,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     private function eligibleWorkerQuery(Builder $query, string $role): Builder
     {
-        return $query->where('role', $role)->where('status', 'active')
+        return $query->where('role', $role)->where('status', 'active')->whereNull('closed_at')
             ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
             ->where(function (Builder $query) {
                 $query->where(fn ($legacy) => $legacy->whereNull('birthday')->where('identity_version', 0))->orWhere(function (Builder $query) {

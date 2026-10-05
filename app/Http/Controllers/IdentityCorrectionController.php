@@ -21,13 +21,14 @@ class IdentityCorrectionController extends Controller
     {
         $restrictions->currentActor($request->user());
         $candidates = User::where(fn ($query) => $query->whereIn('kyc_status', User::APPROVED_KYC_STATUSES)->orWhere('role', 'admin'))
+            ->whereNull('closed_at')
             ->where(function ($query) {
                 $dates = app(BirthDateEligibility::class)->limits();
                 $query->whereNull('birthday')->orWhereDate('birthday', '>', $dates['past_maximum'])
                     ->orWhere(fn ($worker) => $worker->whereIn('role', ['seller', 'courier', 'logistics', 'admin'])->whereDate('birthday', '>', $dates['adult_maximum']))
                     ->orWhereHas('shop', fn ($shop) => $shop->whereNull('root_category_id')->orWhereNotIn('root_category_id', app(MasterCategoryService::class)->activeRoots()->select('id')));
             })->orderBy('id')->paginate(20)->through(fn ($user) => $user->only(['id', 'name', 'role', 'birthday']));
-        $requests = IdentityCorrectionRequest::whereDoesntHave('decision')->orderBy('id')->paginate(20, pageName: 'requests_page')
+        $requests = IdentityCorrectionRequest::whereDoesntHave('decision')->whereIn('user_id', User::whereNull('closed_at')->select('id'))->orderBy('id')->paginate(20, pageName: 'requests_page')
             ->through(fn ($correction) => ['id' => $correction->id, 'user_id' => $correction->user_id, 'name' => User::find($correction->user_id)?->name,
                 'reason' => $correction->reason, 'requested_at' => $correction->requested_at->toISOString()]);
 

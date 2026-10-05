@@ -22,7 +22,7 @@ class ShopEligibilityService
     public function eligibleShops(Builder $query): Builder
     {
         return $this->reviewedShops($query->where('shops.status', 'active')
-            ->whereHas('user', fn (Builder $owner) => $owner->where('role', 'seller')->where('status', 'active')
+            ->whereHas('user', fn (Builder $owner) => $owner->where('role', 'seller')->where('status', 'active')->whereNull('closed_at')
                 ->whereIn('kyc_status', User::APPROVED_KYC_STATUSES)
                 ->where(fn ($age) => $age->where(fn ($legacy) => $legacy->whereNull('birthday')->where('identity_version', 0))->orWhere(fn ($date) => $date
                     ->whereDate('birthday', '>=', '0001-01-01')->whereDate('birthday', '<=', app(BirthDateEligibility::class)->limits()['adult_maximum'])))));

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
@@ -221,6 +222,8 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user');
+        Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user');
         Route::get('/identity-corrections', [IdentityCorrectionController::class, 'index']);
         Route::get('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'show']);
         Route::post('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'store']);
@@ -469,6 +472,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     $registerResourceRestrictionRoutes();
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user')->name('users.closure');
+    Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user')->name('users.closure.store');
     Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show'])->name('users.activity');
     Route::get('/identity-corrections', [IdentityCorrectionController::class, 'index'])->name('identity-corrections.index');
     Route::get('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.show');

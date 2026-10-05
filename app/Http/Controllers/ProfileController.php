@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\AccountClosureService;
 use App\Services\BuyerAccessService;
 use App\Services\IdentityCorrectionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ProfileController extends Controller
 {
@@ -31,6 +33,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'closure' => app(AccountClosureService::class)->presentation($request->user(), $request->user()->id, self: true),
         ]);
     }
 
@@ -64,24 +67,16 @@ class ProfileController extends Controller
         if ($request->user()->isBuyer()) {
             app(BuyerAccessService::class)->requirePortal($request->user());
         }
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
-        $user = $request->user();
-
-        if (! $user->canDeleteOwnAccount()) {
-            throw ValidationException::withMessages([
-                'password' => $user->isCourier()
-                    ? 'Rider self-service deletion is unavailable. Account closure requires review of parcel custody and cash handover.'
-                    : 'Self-service deletion is unavailable for accounts with KYC review history. Account closure requires preserving that evidence.',
-            ]);
+        try {
+            app(AccountClosureService::class)->close($request->user(), $request->user()->id, $request->all(), self: true);
+        } catch (HttpException $error) {
+            if ($error->getStatusCode() !== 409) {
+                throw $error;
+            }
+            throw ValidationException::withMessages(['source_token' => $error->getMessage()]);
         }
 
         Auth::logout();
-
-        $user->delete();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

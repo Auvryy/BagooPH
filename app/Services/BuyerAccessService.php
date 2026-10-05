@@ -26,6 +26,7 @@ class BuyerAccessService
     public function canViewHolding(User $user): bool
     {
         return $user->isBuyer()
+            && $user->closed_at === null
             && in_array($user->status, ['active', 'pending_approval', 'inactive', 'suspended'], true)
             && in_array($user->kyc_status, ['none', 'pending_approval', 'rejected', ...User::APPROVED_KYC_STATUSES], true);
     }
@@ -54,6 +55,7 @@ class BuyerAccessService
     public function hasExistingOrderEligibility(User $user): bool
     {
         return $user->isBuyer() && $user->isKycApproved()
+            && $user->closed_at === null
             && in_array($user->status, ['active', 'inactive', 'suspended'], true);
     }
 

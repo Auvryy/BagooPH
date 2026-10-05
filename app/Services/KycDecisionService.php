@@ -155,6 +155,7 @@ class KycDecisionService
             $user = $users->get($subject->id);
             abort_unless($actor?->isAdmin() && $actor->canAccessPortal(), 403);
             abort_unless($user && in_array($user->role, ['buyer', 'seller', 'courier', 'logistics'], true), 403);
+            abort_unless($user->closed_at === null, 409, 'A closed account cannot receive a new application decision.');
             $this->lockProfile($user);
             $submission = $this->submission($user, lockCategory: true);
             $token = $this->token($submission);

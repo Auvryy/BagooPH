@@ -60,6 +60,7 @@ class IdentityCorrectionService
     {
         $actor = User::findOrFail($actor->id);
         abort_unless($actor->id === $subject->id || ($actor->isAdmin() && $actor->canAccessPortal()), 403);
+        abort_unless($actor->closed_at === null && $subject->closed_at === null, 409, 'Closed accounts retain their recorded identity. A new correction cannot reopen them.');
         abort_unless(in_array($subject->role, ['buyer', 'seller', 'courier', 'logistics', 'admin'], true), 409, 'The account role needs controlled review.');
         abort_unless($subject->isKycApproved(), 409, 'Use application resubmission until identity approval is complete.');
 
@@ -292,6 +293,7 @@ class IdentityCorrectionService
             $this->restrictions->lockWork($workIds);
             $users = User::where(fn ($query) => $query->whereIn('id', [$request->user()->id, $subject->id])->orWhere('role', 'admin'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $subject = $users->get($subject->id);
+            abort_unless($subject->closed_at === null, 409, 'A closed account cannot receive a new identity decision.');
             $actor = $this->restrictions->currentActor($users->get($request->user()->id));
             app(KycDecisionService::class)->lockProfile($subject);
             $shop = $this->shop($subject, $correction->shop_id);
