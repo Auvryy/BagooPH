@@ -4,11 +4,11 @@ This document is the single source for current implementation gaps and delivery 
 
 ## Project Delivery Target: October 4, 2026
 
-At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation remains 18 future admin branches, or 19 checkpoints including the existing foundation.
+At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation is 18 bounded admin tasks on 17 planned branches, or 18 Git deliveries including the existing foundation; B06+B07 share one branch.
 
 Every planned task uses **October 4, 2026** as its common start date and extends to its individual deadline. These overlapping planning windows do not authorize simultaneous implementation or bypass dependencies. The checkpoint windows describe intended execution and review order; estimates, acceptance gates, and completion evidence remain unchanged.
 
-**Capacity risk:** the current 18-branch effort estimate is 360 hours. October 5-November 20 contains 35 weekdays, providing 140-210 focused hours at the earlier assumption of 4-6 hours per weekday, before other required work. The date therefore requires an explicit capacity and priority review; it is not evidence that one developer can complete the entire baseline in that time. Keep estimates honest and identify additional help or an approved scope decision rather than shrinking estimates to fit the calendar.
+**Capacity risk:** the current 18-task effort estimate is 360 hours. October 5-November 20 contains 35 weekdays, providing 140-210 focused hours at the earlier assumption of 4-6 hours per weekday, before other required work. The date therefore requires an explicit capacity and priority review; it is not evidence that one developer can complete the entire baseline in that time. Keep estimates honest and identify additional help or an approved scope decision rather than shrinking estimates to fit the calendar.
 
 Reserve November 18-20 for regression fixes, review, and demonstration preparation. Required safety, custody, recovery, notification, COD, and settlement gates remain unchanged. Missing or failing prerequisites stay visible; do not claim completion or silently extend the target. This documentation change leaves runtime readiness and the existing test baseline unchanged.
 
@@ -35,6 +35,8 @@ Audit date: September 24, 2026.
 
 Scoped rider lifecycle lockdown review: October 3, 2026. This review updates entry-point, portal-access, tracking-privacy, and delivery-evidence controls; it is not a fresh audit of every role.
 
+Scoped account/resource restriction review: October 5, 2026, B06+B07. This updates governance decisions, independent activity, and retained work; overall phase and cross-role ratings remain unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -42,7 +44,7 @@ Scoped rider lifecycle lockdown review: October 3, 2026. This review updates ent
 
 | Area | State | Evidence and gap |
 |---|---|---|
-| Account roles and approval | Partial | Shared root/subdomain account gates enforce approval and activity. Saved account roles are fixed. KYC decisions require current private evidence, retain immutable history, preserve independent restrictions, and handle retries/conflicts. B01 enforces the original seller shop's master category. B02 shares application-field rules across registration, permitted correction, and readiness. Independent additional-shop review, related resource eligibility, and buyer-entry alignment remain. See the scoped implementation reviews below. |
+| Account roles and approval | Partial | Shared root/subdomain gates enforce fixed roles, approval, and activity. KYC retains private evidence and immutable decisions. B01-B05 add category/application rules, independent shop review, resource eligibility, and buyer access alignment. B06+B07 add separate reasoned account/resource activity decisions, current-parent checks, last-admin continuity, and retained affected-work responsibility. Controlled identity repair, broader closure safety, and the Phase 0 acceptance gate remain. See the scoped implementation reviews below. |
 | Cross-cutting input and mutation safety | Partial | Application registration/correction/readiness share canonical text, phone, postal, email, identifier, and enum rules through B02. Other account/profile, saved-address, shopping, and operational mutations still need their own validation, idempotency, stale-state, and authorization audit. |
 | Alternate lifecycle entry points | Implemented | Simulator advance/reset routes, public tracking actions, and direct Platform Admin parcel overrides are removed on root and applicable subdomain routes. Guest and all-role tests verify repeated requests cannot change assignment, custody, checkpoints, payment, or commission records. |
 | Secret and KYC protection | Implemented | Registration, resubmission, and buyer ID uploads use private storage. Document access requires the applicant or an active Platform Admin; raw paths are hidden from serialized data. Legacy public URLs are blocked, with a tested migration command for stored files and references. OTP, verification-link, and password-reset mail reject logging transports and logging fallbacks; failures log only safe identifiers and exception classes. Deployment must apply the web-server rules and legacy-file migration described in `VERIFICATION_DOCUMENT_SECURITY.md`. |
@@ -59,7 +61,7 @@ Scoped rider lifecycle lockdown review: October 3, 2026. This review updates ent
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
 | Buyer-only completion | Implemented | Only the owning buyer can advance a delivered order to `COMPLETED`; normal-flow coverage verifies delivery remains financially pending before reconciliation. |
-| Admin governance and audit | Partial | Platform logistics views remain read-only for parcel custody. Unsafe direct overrides and account role/status shortcuts are removed. KYC review has shared applicant validation, transactional history, and private evidence gates; resource review, reasoned restrictions, active-work deletion protections, controlled reviewed repair, and accurate metrics remain. Custody corrections retain Phase 5. |
+| Admin governance and audit | Partial | Platform logistics views remain read-only for parcel custody. KYC/shop review, positive resource eligibility, and B06+B07 reasoned restrictions have transactional history and scoped authorization. Restriction subjects/history cannot be deleted through model or raw database writes. Searchable governance audit, general active-work closure protections, controlled reviewed repair, and accurate metrics remain. Custody corrections retain Phase 5. |
 | Cross-role presentation | Partial | Courier work is separated into company/hub-scoped pickup and final-mile queues with persistent duty state, delivery-linked messages, real profile data, real proof, and truthful trip history. Other portals still need canonical-status and unfinished-feature cleanup. |
 | Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
@@ -75,7 +77,7 @@ These scores measure the approved core flow, not deferred enterprise features. D
 | Delivery Rider | 7.5/10 | 10/10 | Attempt records, hub-return custody, retry/RTS, and COD remittance |
 | Hub Handler | 7/10 | 10/10 | Manifest lifecycle, discrepancy handling, and secure counter release |
 | Logistics Company Admin | 6/10 | 10/10 | Tenant-safe personnel/fleet controls, manifest supervision, exceptions, and remittance reconciliation |
-| Platform Admin | 5/10 | 10/10 | Approval/suspension audit, immutable overrides, COD audit, and removal of fake operations |
+| Platform Admin | 5/10 | 10/10 | Searchable governance audit, controlled repair/closure, COD audit, and removal of fake operations |
 | End-to-end cross-role flow | 7.5/10 | 10/10 | Normal delivery is enforced and tested; recovery, self-pickup, COD reconciliation, and settlement remain |
 
 Before this validation audit, the documents described the happy path well but left malformed input, duplicate requests, concurrency, alternate endpoints, privacy, and recovery behavior open to interpretation. `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` closes those design gaps; the phases below close the implementation gaps.
@@ -705,6 +707,84 @@ Local implementation commits: `2424f65 feat: align buyer approval and existing-o
 
 **Publication recommendation:** B05 is ready for user-managed push/review within its verified scope, with the unchanged red full suite and concurrency/UI limits disclosed. After user-managed merge and an updated `main`, continue with [B06: account restrictions](admin-plan/06-account-restrictions.md). Stop B05 here; the October 4-November 20 delivery window remains unchanged.
 
+## Account and Resource Restriction Review (October 5, 2026 - B06+B07)
+
+Implemented [B06](admin-plan/06-account-restrictions.md) and [B07](admin-plan/07-resource-restrictions.md) on `admin/governance-restrictions`, from `main` at `16b502c` with B01-B05 merged. B06's focused acceptance gate passed before B07 implementation. Each task retains its own acceptance checks and logical commits; the final regression/build review covers the combined branch.
+
+**State: Scoped restriction decisions verified; Phase 0 remains partial.** Account activity and resource activity have separate, reasoned decisions. A fresh authorized actor, a canonical plain-text reason, explicit work-review confirmation, and a server-generated source token are required. The token binds the current target, reviewed identity/parent scope, restriction versions, and affected work. Identical actor/action/reason retries return the original decision; conflicting retries or stale target/parent/work return a conflict without another mutation. Reactivation requires a separate decision and current eligibility.
+
+The shared transaction locks the stable governance guard, affected orders/parcels, accounts in ID order, then company, facilities, profiles/handlers, fleet, shop, and categories where relevant. The work set and parent/assignment identity are checked again after locks. Activity/version, immutable before/after history, actor/time/reason, and affected-work responsibility commit together. Audit or responsibility-write failure rolls back all changes. The last eligible Platform Admin cannot be restricted; a self-restriction with another eligible admin records that reviewer as responsible. Restricting an admin with earlier recovery responsibility creates a new responsibility record while retaining the earlier record.
+
+B06 supports buyer, seller, courier, logistics, and admin account restrictions without changing roles, KYC, duty, placement, child activity, stock, commercial states, or cash. Suspended buyers retain the narrow B05 owned-order/receipt exception. Worker reactivation checks current reviewed identity and profile/network structure without silently reactivating a separately restricted resource. Legacy approved/verified accounts with missing birth dates retain the earlier compatibility; invalid known dates and unknown states cannot bypass review.
+
+B07 uses each resource's existing activity fields plus its own restriction version:
+
+| Resource | Scope and retained behavior |
+|---|---|
+| Shop | Platform Admin; current seller account, independent reviewed identity/category, and local shop activity stay separate. Listings/commerce and direct seller fulfillment re-read positive eligibility. |
+| Company | Platform Admin; status and active flag change together. Restoration requires an eligible logistics owner with one company and leaves facilities, assignments, fleet, and duty unchanged. |
+| Hub | Platform Admin or eligible own Company Admin; existing active flag governs routing/facility work. The decision distinguishes suspension from deactivation without adding another activity flag. |
+| Handler assignment | Platform Admin or eligible own Company Admin; original account/company/facility remain fixed. Reactivation requires the approved handler account and matching eligible company/facility. |
+| Fleet | Platform Admin or eligible own Company Admin; linked operational eligibility requires supported vehicle kind and matching company/facility/driver/profile. Reactivation restores a recorded active/idle/maintenance mode; idle and maintenance stay unavailable. Legacy restrictions without a recorded mode require an explicit valid activation and are described as such. |
+
+Current orders, parcel route/assignment, checkpoint actors and hubs, proof presence, and available manifest references are retained with expected COD/payment/commission context. These are review records, not physical handovers. Cash holder and reconciliation remain explicitly unverified: payment labels and commission rows cannot prove cash custody. Feeder/linehaul manifest references have no durable vehicle link yet, so fleet review identifies company/facility manifest work for attention without claiming that the restricted vehicle carried it. Full manifests and recovery retain their later phase boundaries.
+
+Company Admin can review and restrict only its own hub, handler, and fleet resources, including locally inactive resources. It cannot decide account/shop/company activity, lift platform restrictions, read foreign resource history, or view seller settlement rows. Malformed foreign-parent assignments are withheld from company review and remain for controlled platform repair. Handler-only and unplaced accounts receive no governance permission. Restriction history has database and model guards against update/delete; referenced account/resource deletion and parent cascades cannot erase recorded subjects. Migration rollback refuses to remove retained history/version safeguards after decisions exist. General closure safety remains B09.
+
+The account review and resource review screens show activity, approval/parent eligibility, affected work, reasoned actions, and recorded history separately. Conflict responses require reloading the current review before resubmitting. Root and subdomain endpoints share services while links keep the current portal. Company resource navigation remains available when every facility is paused; floor-handler accounts do not gain company controls. No custody/reassignment/finance-success controls were introduced.
+
+| B06 acceptance case | Verified evidence |
+|---|---|
+| All-role suspension/deactivation | All five roles on root/subdomain; role and approval unchanged. |
+| Invalid reason/action/state | Canonical reason boundaries, unsafe text, malformed source, unknown state, missing confirmation, and role/status injection deny without mutation. |
+| Identical retry | Same decision returned, including an old restriction retry after valid reactivation. |
+| Stale decision | Current target, parent scope, and work are compared; changed work conflicts. |
+| Active work/cash | Buyer, seller, courier, company owner, handler, and prior admin responsibility scopes retain only affected records and existing custody/money facts. |
+| Buyer receipt exception | Owned delivered completion remains available; foreign orders and new purchase deny. |
+| Separate reactivation | All five roles; invalid approval/age/profile denies; independent resource restrictions and duty persist. |
+| Inactive reviewer | Fresh route/service authorization denies a cached restricted admin. |
+| Last eligible admin | Pending/underage admins cannot count as replacements; sequential competing decisions preserve eligible oversight. |
+| Audit/recovery failure | Both write failures roll back activity/version/history/work. |
+| Fixed roles | Posted role conversion denies; no role-conversion action. |
+
+| B07 acceptance case | Verified evidence |
+|---|---|
+| Every resource type | Reasoned independent suspension/deactivation, each on both admin portals, stops positive eligibility. |
+| Restricted parent | Parent activity/approval, reviewed shop/category, handler membership, and linked fleet/driver gates deny bypasses. |
+| Parent reinstated | Company/hub restoration leaves restricted children and off-duty rider placement unchanged until valid separate decisions. |
+| Company ownership | Each own resource on root/subdomain passes; foreign, company-level, shop, and floor-handler attempts deny. |
+| Active parcel/manifest/cash | Existing order, parcel, stock, checkpoint, proof and ledger attributes remain identical; responsibility and unverified cash context persist. |
+| Reason/unknown source | Malformed/injected inputs and unknown string/boolean states deny without mutation. |
+| Stale target/parent | Changed work and company/account restriction-reactivation version cycles invalidate old sources. |
+| Identical/competing retry | One original decision; different actor/reason/action cannot overwrite or reapply it. |
+| Audit/recovery failure | Atomic rollback for both failed history and failed affected-work writes. |
+| Portal/service agreement | Root/subdomain review/actions, selectors, handler scans, linked-fleet pickup, routing, and direct seller fulfillment enforce current scope. |
+
+| Scoped assessment | Before | After | Evidence and remaining limit |
+|---|---:|---:|---|
+| Reasoned account restriction and admin continuity | 2/10 | 9/10 | All B06 cases; simultaneous PostgreSQL requests remain unverified. |
+| Independent resource restriction and parent scope | 4/10 | 9/10 | All B07 cases; durable vehicle-manifest linkage and operational recovery remain later work. |
+| Restriction review interface | 2/10 | 8/10 | Real activity, parent/work context, conflict handling, and production build; browser/device usability was not tested. |
+| Overall Platform Admin readiness | 5/10 | 5/10 | Controlled repair/closure, moderation, audit search, overview, notifications, and finance retain their own gates. |
+| End-to-end cross-role flow | 7.5/10 | 7.5/10 | These decisions preserve work; they do not complete custody recovery, self-pickup, cash reconciliation, or settlement. |
+
+Verification:
+
+- Final restriction gate: **190 tests with 1,366 assertions**, comprising **75 B06 tests with 445 assertions** and **115 B07 tests with 921 assertions**. Coverage includes source/parent/version cycles, retries, rollback, all resource/role scopes, preservation of work, and raw-write/cascade history guards.
+- The earlier combined regression selection passed **660 tests with 7,333 assertions**. The final full run contains the same affected suites plus the added guard/scope cases: **675 passing tests with 7,455 assertions** across account/resource decisions, shared access/fixed roles, courier operations, logistics resource/hub/custody, shop review/eligibility, seller fulfillment, and buyer access. These sets overlap.
+- Fresh pre-batch baseline: **1,647 tests with 12,426 assertions**. Final full run: **1,837 tests with 13,792 assertions**. Both retain exactly **58 failures and one error**, compared by full test identity, failure/error kind, and exception type. No new, resolved, or changed-type failures appeared. The error remains `ChallengerM1StressTest::test_standard_product_without_variants`. The full suite is red and is not a release pass.
+- TypeScript/Vite production build passed through Docker. The host attempt passed TypeScript but could not replace a generated assets directory because of filesystem ownership; the repository's Docker equivalent resolved the build. Laravel Pint passed for **24 changed/new PHP files**. Whitespace, documentation links, and tracked-content/reachable-history privacy checks passed. Tests used explicit testing/database/cache/session/mail overrides and isolated SQLite `:memory:`; no browser/device testing occurred.
+- All three additive migrations applied to the guarded local PostgreSQL application. Before/after counts and hashes of original non-secret columns across **25 existing domain tables** remained identical. All restriction versions started at zero, new decision/work tables stayed empty, and **eight database history/reference guards** exist. Existing eligible counts remain **one company, three hubs, three handlers, two couriers, and three vehicles**. No database reset, seed rewrite, activity change, or synthetic live decision was performed.
+- Lock order and re-read behavior were inspected separately; SQLite and additive local migration checks do not prove simultaneous PostgreSQL concurrency.
+
+Deployment and remaining limits: apply the three October 5 restriction migrations to another environment before using these decisions. Retain private-file protections and earlier evidence migrations. Existing restrictions without recorded decisions are labeled legacy, never assigned an invented reason/actor/date. Controlled repair and general closure remain B08/B09; broad audit search and overview remain B11/B12; B13 still owns Phase 0 acceptance. Manifest/custody recovery, RTS, self-pickup, notifications, cash custody/reconciliation, and settlement are not completed by this batch.
+
+Local commits: `37daa3c docs: group account and resource restriction delivery`; `909c38d feat: add reasoned account restrictions and admin continuity`; `b8bf349 feat: add account activity review and affected-work context`; `ad60fe6 feat: add independent resource restrictions and retained history`; `f3e6d36 feat: add scoped resource activity review screens`. The evidence commit has subject `docs: record B06 and B07 verification and readiness`; its generated hash is reported in the handoff. Nothing was pushed or merged by the agent.
+
+Implementation references: [account decisions](../app/Services/AccountRestrictionService.php), [resource decisions](../app/Services/ResourceRestrictionService.php), [history guards](../database/migrations/2026_10_05_120100_preserve_restriction_history.php), [account review](../resources/js/Pages/Admin/AccountRestriction.tsx), [resource review](../resources/js/Pages/Governance/ResourceRestriction.tsx), [resource list](../resources/js/Pages/Governance/Resources.tsx), [B06 tests](../tests/Feature/Admin/AccountRestrictionTest.php), and [B07 tests](../tests/Feature/Admin/ResourceRestrictionTest.php).
+
+**Publication recommendation:** B06+B07 are ready for user-managed push/review within the verified restriction scope, with the unchanged red full suite and concurrency/UI limits disclosed. After user review/merge and an updated `main`, [B08: controlled identity corrections](admin-plan/08-reviewed-identity-corrections.md) is the next bounded task. Stop this batch here; the October 4-November 20 window is unchanged.
+
 ## Delivery Phases
 
 Work on one phase at a time. Do not begin a later phase until the current phase has focused tests and its cross-role acceptance path passes.
@@ -713,7 +793,7 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 ### Phase 0: Security and Lifecycle Entry-Point Lockdown
 
-**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain seller, courier, hub, and admin portals share positive account eligibility, including non-active admin denial and role/action boundaries. Account roles are fixed at creation; admin conversion controls/routes and their coupled status shortcut are removed. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Proxy-aware tracking throttling and consistent legacy courier approval checks are implemented and tested. Private verification uploads, authorized document access, legacy-file migration, and secret-mail protections are implemented. KYC decisions now have evidence/session/version checks, atomic history, safe retries, and independent restriction preservation. Adult worker birth dates are validated at registration/correction/approval; known underage reviewed users cannot access worker/admin portals, while missing-date legacy accounts still need a controlled audit. B01 enforces master-category scope for new registration, owned unreviewed correction, and original-shop KYC approval. B02 shares canonical application-field rules across registration, correction, and review. B03 implements independent shop decisions, fresh owned context, and positive shop/category commerce eligibility; legacy shops require actual review. B04 shares positive company/facility/assignment checks across resource reads, placement, routing, dispatch, and custody actions. B05 aligns buyer holding, sign-in, protected work, and narrow owned-order access. Reasoned suspension/reactivation, controlled repair, and other live sample-success paths remain.
+**State: Partial.** The main rider lifecycle mutation-path closures are implemented. Simulator, public tracking, and direct admin custody mutation paths are removed; root and subdomain seller, courier, hub, and admin portals share positive account eligibility, including non-active admin denial and role/action boundaries. Account roles are fixed at creation; admin conversion controls/routes and their coupled status shortcut are removed. Rider transitions lock order and parcel, reject terminal or mismatched commercial states, require stored delivery proof, and preserve completed evidence on retries. Proxy-aware tracking throttling and consistent legacy courier approval checks are implemented and tested. Private verification uploads, authorized document access, legacy-file migration, and secret-mail protections are implemented. KYC decisions now have evidence/session/version checks, atomic history, safe retries, and independent restriction preservation. Adult worker birth dates are validated at registration/correction/approval; known underage reviewed users cannot access worker/admin portals, while missing-date legacy accounts still need a controlled audit. B01 enforces master-category scope for new registration, owned unreviewed correction, and original-shop KYC approval. B02 shares canonical application-field rules across registration, correction, and review. B03 implements independent shop decisions, fresh owned context, and positive shop/category commerce eligibility; legacy shops require actual review. B04 shares positive company/facility/assignment checks across resource reads, placement, routing, dispatch, and custody actions. B05 aligns buyer holding, sign-in, protected work, and narrow owned-order access. B06+B07 implement separate reasoned account/resource restrictions, last-admin continuity, and retained affected-work responsibility. Controlled repair/closure, broader governance, and other live sample-success paths remain.
 
 - Keep simulator advance/reset routes removed in every environment; use real role flows in tests.
 - Keep public tracking read-only, masked, and rate-limited; authenticated actions belong in their authorized portal and lifecycle service.
@@ -730,9 +810,9 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
 
-Next Phase 0 work: B01-B05 are implemented; continue with B06-B13 of [the bounded admin plan](admin-plan/README.md) after B05 publication/review, starting with reasoned restrictions, then controlled identity correction, active-work deletion protections, moderation/audit, and truthful overview data. Preserve fixed roles, adult-worker validation, and the verified KYC/shop/resource foundations. B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
+Next Phase 0 work: B01-B05 are merged; B06+B07 are locally implemented and verified on their shared branch. After user-managed batch review/merge, continue with B08-B13 of [the bounded admin plan](admin-plan/README.md): controlled identity correction, active-work closure protections, moderation/audit, and truthful overview data. Preserve fixed roles, adult-worker validation, and the verified KYC/shop/resource foundations. B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
-B06 and B07 are selected as one bounded delivery on `admin/governance-restrictions`, with B06's focused acceptance gate before B07 implementation. Their task records, acceptance requirements, and logical commits remain separate; combined regression/build checks precede user review and merge. This allocation does not complete either feature or waive B13 and later phase gates.
+B06 and B07 share one bounded delivery on `admin/governance-restrictions`; the scoped review above records their separate acceptance evidence and combined regression/build results. Local completion does not imply user publication/merge or waive B13 and later phase gates.
 
 ### Phase 1: Normal Order and Seller Flow
 
