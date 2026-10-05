@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,14 @@ class LogisticsCompany extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeEligible(Builder $query): Builder
+    {
+        return $query->where('logistics_companies.is_active', true)
+            ->where('logistics_companies.status', 'active')
+            ->whereHas('user', fn (Builder $owner) => $owner->eligibleLogisticsAccounts()
+                ->has('logisticsCompany', '=', 1));
     }
 
     public function hubs(): HasMany

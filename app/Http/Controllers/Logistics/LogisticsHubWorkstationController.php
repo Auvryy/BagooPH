@@ -3,25 +3,29 @@
 namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
-use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
-use App\Models\HubHandler;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\OrderStateMachineService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LogisticsHubWorkstationController extends Controller
 {
+    public function __construct(private readonly LogisticsEligibilityService $eligibility) {}
+
     /**
      * A picked-up parcel is physically on its way to the origin Bayan Hub,
      * but it is not in hub custody until the hub operator records the intake
@@ -74,51 +78,12 @@ class LogisticsHubWorkstationController extends Controller
      */
     protected function getActiveHub(Request $request, ?User $user): array
     {
-        $hubsQuery = LogisticsHub::with('company')
-            ->where('is_active', true);
-
-        if ($user && ! $user->isAdmin()) {
-            $companyId = $user->logisticsCompany?->id;
-
-            if ($companyId) {
-                $hubsQuery->where('logistics_company_id', $companyId);
-            } else {
-                $handlerHubIds = HubHandler::where('user_id', $user->id)
-                    ->where('is_active', true)
-                    ->pluck('hub_id');
-
-                $hubsQuery->whereIn('id', $handlerHubIds);
-            }
+        [$hub, $hubs] = $this->eligibility->hubContext($request, strict: true);
+        if ($hub) {
+            $request->session()->put('active_hub_id', $hub->id);
         }
 
-        $hubs = $hubsQuery
-            ->orderBy('tier')
-            ->orderBy('name')
-            ->get();
-
-        $requestedHubId = $request->input('hub_id') ?? session('active_hub_id');
-        $activeHub = null;
-
-        if ($requestedHubId) {
-            $activeHub = $hubs->firstWhere('id', (int) $requestedHubId);
-        }
-
-        if (! $activeHub && $user) {
-            $handler = HubHandler::where('user_id', $user->id)->where('is_active', true)->first();
-            if ($handler) {
-                $activeHub = $hubs->firstWhere('id', $handler->hub_id);
-            }
-        }
-
-        if (! $activeHub) {
-            $activeHub = $hubs->first();
-        }
-
-        if ($activeHub) {
-            session(['active_hub_id' => $activeHub->id]);
-        }
-
-        return [$activeHub, $hubs];
+        return [$hub, $hubs];
     }
 
     /**
@@ -127,9 +92,9 @@ class LogisticsHubWorkstationController extends Controller
     public function dashboard(Request $request): Response
     {
         $user = $request->user();
-        [, $accessibleHubs] = $this->getActiveHub($request, $user);
-        $company = $user?->logisticsCompany ?? $accessibleHubs->first()?->company;
-        $isCompanyAdministrator = (bool) $user?->logisticsCompany;
+        [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
+        $company = $accessibleHubs->first()?->company;
+        $isCompanyAdministrator = $user && $this->eligibility->isCompanyAdministrator($user);
 
         $requestedHubId = $request->integer('hub_id');
         $scopeHub = $requestedHubId > 0
@@ -137,7 +102,7 @@ class LogisticsHubWorkstationController extends Controller
             : null;
 
         if (! $isCompanyAdministrator) {
-            $scopeHub = $accessibleHubs->first();
+            $scopeHub = $activeHub;
         }
 
         $scopeHubIds = $scopeHub
@@ -165,6 +130,7 @@ class LogisticsHubWorkstationController extends Controller
         $exceptions = $custodyQuery()->whereIn('status', $exceptionStatuses)->count();
         $dispatchedToday = DeliveryCheckpoint::query()
             ->whereIn('hub_id', $scopeHubIds)
+            ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0))
             ->whereIn('checkpoint_type', $outboundCheckpointTypes)
             ->whereDate('created_at', today())
             ->count();
@@ -176,6 +142,7 @@ class LogisticsHubWorkstationController extends Controller
         ];
         $movementCheckpoints = DeliveryCheckpoint::query()
             ->whereIn('hub_id', $scopeHubIds)
+            ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0))
             ->whereIn('checkpoint_type', [...$inboundCheckpointTypes, ...$outboundCheckpointTypes])
             ->where('created_at', '>=', today()->subDays(6)->startOfDay())
             ->get(['checkpoint_type', 'created_at'])
@@ -265,12 +232,13 @@ class LogisticsHubWorkstationController extends Controller
         $facilities = LogisticsHub::query()
             ->whereIn('id', $scopeHubIds)
             ->withCount([
-                'currentDeliveries as parcels_count' => fn ($query) => $query->whereNotIn('status', $terminalStatuses),
+                'currentDeliveries as parcels_count' => fn ($query) => $query->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')->whereNotIn('status', $terminalStatuses),
                 'outboundDeliveries as awaiting_origin_intake_count' => fn ($query) => $query
+                    ->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')
                     ->whereNull('current_hub_id')
                     ->where('status', OrderStateMachineService::STATUS_PICKED_UP),
-                'currentDeliveries as exceptions_count' => fn ($query) => $query->whereIn('status', $exceptionStatuses),
-                'fleet as active_fleet_count' => fn ($query) => $query->where('status', 'active'),
+                'currentDeliveries as exceptions_count' => fn ($query) => $query->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')->whereIn('status', $exceptionStatuses),
+                'fleet as active_fleet_count' => fn ($query) => $query->ready(),
             ])
             ->orderBy('tier')
             ->orderBy('name')
@@ -294,6 +262,7 @@ class LogisticsHubWorkstationController extends Controller
         $recentActivity = DeliveryCheckpoint::query()
             ->with(['delivery', 'hub', 'scannedBy'])
             ->whereIn('hub_id', $scopeHubIds)
+            ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0))
             ->latest()
             ->limit(8)
             ->get()
@@ -342,20 +311,22 @@ class LogisticsHubWorkstationController extends Controller
     {
         $user = $request->user();
         [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
-        $company = $user?->logisticsCompany ?? $accessibleHubs->first()?->company;
-        $isCompanyAdministrator = (bool) $user?->logisticsCompany;
+        $company = $accessibleHubs->first()?->company;
+        $isCompanyAdministrator = $user && $this->eligibility->isCompanyAdministrator($user);
         $terminalStatuses = ['delivered', 'customer_collected', 'completed', 'cancelled', 'returned'];
 
         $networkHubs = LogisticsHub::query()
             ->with('company')
             ->withCount([
-                'handlers as handlers_count' => fn ($query) => $query->where('is_active', true),
-                'fleet as fleet_count' => fn ($query) => $query->where('status', 'active'),
-                'currentDeliveries as parcel_count' => fn ($query) => $query->whereNotIn('status', $terminalStatuses),
+                'handlers as handlers_count' => fn ($query) => $query->eligible(),
+                'fleet as fleet_count' => fn ($query) => $query->ready(),
+                'currentDeliveries as parcel_count' => fn ($query) => $query->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')->whereNotIn('status', $terminalStatuses),
                 'outboundDeliveries as awaiting_origin_intake_count' => fn ($query) => $query
+                    ->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')
                     ->whereNull('current_hub_id')
                     ->where('status', OrderStateMachineService::STATUS_PICKED_UP),
                 'currentDeliveries as ready_pickup_count' => fn ($query) => $query
+                    ->whereColumn('deliveries.logistics_company_id', 'logistics_hubs.logistics_company_id')
                     ->where('delivery_type', 'hub_self_pickup')
                     ->whereIn('status', [
                         OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
@@ -402,8 +373,14 @@ class LogisticsHubWorkstationController extends Controller
                 'company_code' => $company?->code,
                 'active_hub_id' => $activeHub?->id,
                 'can_switch_facility' => $isCompanyAdministrator,
+                'can_scan' => $activeHub && $this->eligibility->canScan($user, $activeHub),
             ],
             'hubs' => $networkHubs,
+            'placementVehicles' => $isCompanyAdministrator
+                ? LogisticsFleet::ready()->where('logistics_company_id', $company?->id ?? 0)
+                    ->orderBy('plate_number')->get(['id', 'hub_id', 'plate_number', 'assigned_driver_id'])
+                    ->map(fn ($vehicle) => [...$vehicle->only(['id', 'hub_id', 'plate_number']), 'assigned' => $vehicle->assigned_driver_id !== null])
+                : [],
         ]);
     }
 
@@ -424,6 +401,52 @@ class LogisticsHubWorkstationController extends Controller
         ]);
     }
 
+    public function placeResource(Request $request, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
+    {
+        abort_unless($this->eligibility->isCompanyAdministrator($request->user()), 403, 'Only a company administrator can manage personnel placement.');
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => strtolower(trim($request->input('email')))]);
+        }
+        $validated = $request->validate([
+            'kind' => 'required|in:handler,courier',
+            'email' => 'required|string|email|max:254',
+            'hub_id' => 'required|integer|exists:logistics_hubs,id',
+            'vehicle_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_fleet,id',
+            'barangay' => 'exclude_unless:kind,courier|nullable|string|max:100',
+            'current_hub_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_hubs,id',
+        ]);
+        [$hub] = $this->eligibility->hubContext($request, strict: true);
+        $account = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
+        if (! $account) {
+            if (! $request->wantsJson()) {
+                throw ValidationException::withMessages(['email' => 'Choose an approved account eligible for this network.']);
+            }
+
+            return $this->operationError($request, 'Choose an approved account eligible for this network.');
+        }
+        try {
+            if ($validated['kind'] === 'handler') {
+                $placements->assignHandler($request->user(), $hub, $account);
+            } else {
+                $placements->placeCourier($request->user(), $hub, $account,
+                    isset($validated['vehicle_id']) ? (int) $validated['vehicle_id'] : null,
+                    $validated['barangay'] ?? null,
+                    isset($validated['current_hub_id']) ? (int) $validated['current_hub_id'] : null);
+            }
+        } catch (DomainException $exception) {
+            if (! $request->wantsJson()) {
+                throw ValidationException::withMessages(['email' => $exception->getMessage()]);
+            }
+
+            return $this->operationError($request, $exception->getMessage());
+        }
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Personnel placement saved.']);
+        }
+
+        return back()->with('success', 'Personnel placement saved.');
+    }
+
     /**
      * Multi-tier vehicle fleet management.
      */
@@ -435,8 +458,10 @@ class LogisticsHubWorkstationController extends Controller
         $selectedTier = $request->query('tier', 'all');
         $selectedStatus = $request->query('status', 'all');
 
-        $fleetQuery = LogisticsFleet::with(['hub', 'driver', 'company'])
-            ->when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id));
+        $fleetBase = LogisticsFleet::query()
+            ->where('hub_id', $activeHub?->id ?? 0)
+            ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0);
+        $fleetQuery = (clone $fleetBase)->with(['hub', 'driver.courierProfile', 'company']);
 
         if ($selectedTier !== 'all') {
             $fleetQuery->where('vehicle_type', $selectedTier);
@@ -447,6 +472,13 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $fleet = $fleetQuery->latest()->get()->map(function ($f) {
+            $driver = $f->driver;
+            if ($driver?->courierProfile?->logistics_company_id !== $f->logistics_company_id
+                || $driver?->courierProfile?->assigned_hub_id !== $f->hub_id
+                || $driver?->courierProfile?->vehicle_id !== $f->id) {
+                $driver = null;
+            }
+
             return [
                 'id' => $f->id,
                 'plate_number' => $f->plate_number,
@@ -456,18 +488,18 @@ class LogisticsHubWorkstationController extends Controller
                 'status' => $f->status,
                 'hub_name' => $f->hub?->name ?? 'Unassigned Hub',
                 'hub_code' => $f->hub?->code ?? 'N/A',
-                'driver_name' => $f->driver?->name ?? 'Unassigned Driver',
-                'driver_phone' => $f->driver?->phone ?? 'N/A',
-                'driver_email' => $f->driver?->email ?? 'N/A',
+                'driver_name' => $driver?->name ?? 'Unassigned Driver',
+                'driver_phone' => $driver?->phone ?? 'N/A',
+                'driver_email' => $driver?->email ?? 'N/A',
             ];
         });
 
         $fleetStats = [
-            'total' => LogisticsFleet::when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))->count(),
-            'active' => LogisticsFleet::when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))->where('status', 'active')->count(),
-            'motorcycles' => LogisticsFleet::when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))->where('vehicle_type', 'motorcycle')->count(),
-            'vans' => LogisticsFleet::when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))->where('vehicle_type', 'l300_van')->count(),
-            'trucks' => LogisticsFleet::when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))->where('vehicle_type', 'wing_truck')->count(),
+            'total' => (clone $fleetBase)->count(),
+            'active' => (clone $fleetBase)->ready()->count(),
+            'motorcycles' => (clone $fleetBase)->where('vehicle_type', 'motorcycle')->count(),
+            'vans' => (clone $fleetBase)->where('vehicle_type', 'l300_van')->count(),
+            'trucks' => (clone $fleetBase)->where('vehicle_type', 'wing_truck')->count(),
         ];
 
         return Inertia::render('Hub/Fleet', [
@@ -504,7 +536,7 @@ class LogisticsHubWorkstationController extends Controller
             'assignedRider',
             'currentHub',
         ])
-            ->when($activeHub, fn ($q) => $this->scopeDeliveryRegistryAtHub($q, $activeHub));
+            ->where(fn ($q) => $this->scopeDeliveryRegistryAtHub($q, $activeHub));
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -560,14 +592,11 @@ class LogisticsHubWorkstationController extends Controller
             'all' => $registryQuery()->count(),
             'in_hub' => $registryQuery()->whereIn('status', ['arrived_at_origin_hub', 'arrived_at_mother_hub', 'arrived_at_destination_hub', 'sorted_to_barangay_bin'])->count(),
             'out_for_delivery' => $registryQuery()->where('status', 'out_for_delivery')->count(),
-            'ready_pickup' => Delivery::when($activeHub, fn ($q) => $q->where('destination_bayan_hub_id', $activeHub->id))->where('delivery_type', 'hub_self_pickup')->whereIn('status', ['ready_for_hub_pickup', 'arrived_at_destination_hub'])->count(),
+            'ready_pickup' => Delivery::where('destination_bayan_hub_id', $activeHub?->id ?? 0)->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)->where('delivery_type', 'hub_self_pickup')->whereIn('status', ['ready_for_hub_pickup', 'arrived_at_destination_hub'])->count(),
             'completed' => $registryQuery()->whereIn('status', ['delivered', 'customer_collected'])->count(),
         ];
 
-        $eligibleRiders = CourierProfile::with('user')
-            ->when($activeHub, fn ($query) => $query->where('assigned_hub_id', $activeHub->id))
-            ->where('is_available', true)
-            ->whereHas('user', fn ($query) => $query->eligibleCouriers())
+        $eligibleRiders = $this->eligibility->riderCandidates($activeHub)
             ->get()
             ->map(fn ($profile) => [
                 'id' => $profile->user_id,
@@ -603,7 +632,8 @@ class LogisticsHubWorkstationController extends Controller
 
         $query = Delivery::with(['order.buyer', 'order.items.product'])
             ->where('delivery_type', 'hub_self_pickup')
-            ->when($activeHub, fn ($q) => $q->where('destination_bayan_hub_id', $activeHub->id))
+            ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
+            ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
             ->whereIn('status', [
                 OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                 OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
@@ -641,7 +671,8 @@ class LogisticsHubWorkstationController extends Controller
 
         $recentlyCollected = Delivery::with(['order.buyer'])
             ->where('delivery_type', 'hub_self_pickup')
-            ->when($activeHub, fn ($q) => $q->where('destination_bayan_hub_id', $activeHub->id))
+            ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
+            ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
             ->where('status', OrderStateMachineService::STATUS_CUSTOMER_COLLECTED)
             ->latest('updated_at')
             ->limit(5)
@@ -668,13 +699,13 @@ class LogisticsHubWorkstationController extends Controller
     public function switchHub(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'hub_id' => 'required|exists:logistics_hubs,id',
+            'hub_id' => 'required|integer|exists:logistics_hubs,id',
         ]);
 
         $user = $request->user();
         [, $accessibleHubs] = $this->getActiveHub($request, $user);
 
-        abort_unless($user?->logisticsCompany, 403, 'Only a logistics company administrator can change the working facility.');
+        abort_unless($user && $this->eligibility->isCompanyAdministrator($user), 403, 'Only a logistics company administrator can change the working facility.');
 
         $hub = $accessibleHubs->firstWhere('id', (int) $validated['hub_id']);
         abort_unless($hub, 403, 'You cannot access this facility.');
@@ -694,10 +725,12 @@ class LogisticsHubWorkstationController extends Controller
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
         abort_unless($activeHub, 403, 'No active facility is assigned to this account.');
+        abort_unless($this->eligibility->canScan($user, $activeHub), 403, 'An active handler assignment is required for floor scans.');
 
         // Recent scans at this hub
         $recentScans = DeliveryCheckpoint::with(['delivery.order.buyer', 'delivery.destinationBayanHub', 'scannedBy'])
-            ->when($activeHub, fn ($q) => $q->where('hub_id', $activeHub->id))
+            ->where('hub_id', $activeHub->id)
+            ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $activeHub->logistics_company_id))
             ->latest()
             ->limit(15)
             ->get()
@@ -745,6 +778,7 @@ class LogisticsHubWorkstationController extends Controller
             $counterPickups = Delivery::with(['order.buyer', 'order.items.product'])
                 ->where('delivery_type', 'hub_self_pickup')
                 ->where('destination_bayan_hub_id', $activeHub->id)
+                ->where('logistics_company_id', $activeHub->logistics_company_id)
                 ->whereIn('status', [
                     OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                     OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
@@ -770,8 +804,9 @@ class LogisticsHubWorkstationController extends Controller
         // Quick stats for active hub
         $stats = [
             'parcels_in_hub' => $activeHub ? Delivery::query()->where('logistics_company_id', $activeHub->logistics_company_id)->where('current_hub_id', $activeHub->id)->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])->count() : 0,
-            'ready_pickup' => $activeHub ? Delivery::where('destination_bayan_hub_id', $activeHub->id)->where('delivery_type', 'hub_self_pickup')->where('status', OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP)->count() : 0,
+            'ready_pickup' => $activeHub ? Delivery::where('destination_bayan_hub_id', $activeHub->id)->where('logistics_company_id', $activeHub->logistics_company_id)->where('delivery_type', 'hub_self_pickup')->where('status', OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP)->count() : 0,
             'dispatched_today' => $activeHub ? DeliveryCheckpoint::where('hub_id', $activeHub->id)
+                ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $activeHub->logistics_company_id))
                 ->whereIn('checkpoint_type', [
                     OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
                     OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
@@ -808,6 +843,8 @@ class LogisticsHubWorkstationController extends Controller
         ]);
 
         $barcode = trim($validated['barcode']);
+        [$hub] = $this->getActiveHub($request, $request->user());
+        abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
         $delivery = Delivery::with([
             'order.items.product',
             'order.buyer',
@@ -833,8 +870,6 @@ class LogisticsHubWorkstationController extends Controller
 
             return back()->with('error', "Parcel #{$barcode} not found in logistics registry.");
         }
-
-        [$hub] = $this->getActiveHub($request, $request->user());
 
         if (! $hub || $hub->logistics_company_id !== $delivery->logistics_company_id) {
             return $this->operationError($request, 'This parcel is outside the active facility company.', 403);
@@ -893,7 +928,7 @@ class LogisticsHubWorkstationController extends Controller
                     'notes' => $validated['notes'] ?? "Floor Scan: {$requestedAction}",
                 ]
             );
-        } catch (\DomainException $exception) {
+        } catch (DomainException $exception) {
             return $this->operationError($request, $exception->getMessage(), 409);
         }
 
@@ -1022,6 +1057,8 @@ class LogisticsHubWorkstationController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        [$activeHub] = $this->getActiveHub($request, $request->user());
+        abort_unless($activeHub && $this->eligibility->canScan($request->user(), $activeHub), 403, 'An active handler assignment is required for counter release.');
         $barcode = trim($validated['barcode']);
         $delivery = Delivery::with(['order.buyer', 'order.items.product'])
             ->where('tracking_number', $barcode)
@@ -1046,7 +1083,7 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $stateMachine = app(OrderStateMachineService::class);
-        $recipient = $validated['recipient_name'] ?: ($delivery->order?->buyer?->name ?? 'Customer');
+        $recipient = ($validated['recipient_name'] ?? null) ?: ($delivery->order?->buyer?->name ?? 'Customer');
         $notes = "Counter Pickup Handover. Verified ID/Claim for {$recipient}.".(! empty($validated['notes']) ? " Note: {$validated['notes']}" : '');
 
         try {
@@ -1062,7 +1099,7 @@ class LogisticsHubWorkstationController extends Controller
                     'geofence_verified' => true,
                 ]
             );
-        } catch (\DomainException $exception) {
+        } catch (DomainException $exception) {
             return $this->operationError($request, $exception->getMessage(), 409);
         }
 
@@ -1139,7 +1176,7 @@ class LogisticsHubWorkstationController extends Controller
                     'notes' => $validated['notes'] ?? "Sorted to bin {$bin} for {$barangay}",
                 ]
             );
-        } catch (\DomainException $exception) {
+        } catch (DomainException $exception) {
             return $this->operationError($request, $exception->getMessage(), 409);
         }
 
@@ -1177,28 +1214,6 @@ class LogisticsHubWorkstationController extends Controller
 
         $rider = User::with('courierProfile')->findOrFail($validated['rider_id']);
 
-        if (! $rider->isEligibleCourier()) {
-            return $this->operationError($request, 'Selected rider is not an active, approved courier.');
-        }
-
-        $profile = $rider->courierProfile;
-        if (! $profile || ! $profile->is_available) {
-            return $this->operationError($request, 'Selected rider is not currently available for dispatch.');
-        }
-
-        if ($profile->logistics_company_id !== $delivery->logistics_company_id) {
-            return $this->operationError($request, 'Selected rider belongs to another logistics company.');
-        }
-
-        if (! $delivery->destination_bayan_hub_id || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id) {
-            return $this->operationError($request, 'Selected rider is not assigned to this destination hub.');
-        }
-
-        $destinationBarangay = trim((string) $delivery->order?->destination_barangay);
-        if ($profile->assigned_barangay && $destinationBarangay !== '' && strcasecmp(trim($profile->assigned_barangay), $destinationBarangay) !== 0) {
-            return $this->operationError($request, 'Selected rider does not cover the parcel destination barangay.');
-        }
-
         $result = DB::transaction(function () use ($delivery, $rider, $request, $validated) {
             $orderId = Delivery::whereKey($delivery->id)->value('order_id');
             $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
@@ -1208,11 +1223,11 @@ class LogisticsHubWorkstationController extends Controller
                 return ['error' => 'Self-pickup parcels cannot be assigned to a delivery rider.'];
             }
 
-            if ($lockedDelivery->status !== OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN) {
+            if (! in_array($lockedDelivery->status, [OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN, OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER], true)) {
                 return ['error' => 'Parcel must be sorted into its destination bin before rider assignment.'];
             }
 
-            if ($lockedDelivery->assigned_rider_id) {
+            if ($lockedDelivery->assigned_rider_id && $lockedDelivery->assigned_rider_id !== $rider->id) {
                 return ['error' => 'Parcel is already assigned to a final-mile rider.'];
             }
 
@@ -1228,7 +1243,7 @@ class LogisticsHubWorkstationController extends Controller
                         'notes' => $validated['notes'] ?? "Assigned to final-mile rider {$rider->name}",
                     ]
                 );
-            } catch (\DomainException $exception) {
+            } catch (DomainException $exception) {
                 return ['error' => $exception->getMessage()];
             }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Building2,
     Check,
@@ -21,6 +21,7 @@ interface NetworkScope {
     company_code: string | null;
     active_hub_id: number | null;
     can_switch_facility: boolean;
+    can_scan: boolean;
 }
 
 interface HubItem {
@@ -50,13 +51,15 @@ interface HubItem {
 interface Props {
     scope: NetworkScope;
     hubs: HubItem[];
+    placementVehicles: { id: number; hub_id: number; plate_number: string; assigned: boolean }[];
 }
 
 const facilityType = (tier: HubItem['tier']) => (
     tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'
 );
 
-export default function HubNetwork({ scope, hubs }: Props) {
+export default function HubNetwork({ scope, hubs, placementVehicles }: Props) {
+    const placement = useForm({ kind: 'handler', email: '', hub_id: String(scope.active_hub_id ?? ''), current_hub_id: '', vehicle_id: '', barangay: '' });
     const [filterTier, setFilterTier] = useState<'all' | HubItem['tier']>('all');
     const [search, setSearch] = useState('');
     const [selectedHub, setSelectedHub] = useState<HubItem | null>(null);
@@ -126,7 +129,7 @@ export default function HubNetwork({ scope, hubs }: Props) {
                     {scope.company_code && <span className="text-slate-400">· {scope.company_code}</span>}
                 </span>
             )}
-            actions={(
+            actions={scope.can_scan ? (
                 <Link
                     href={route('hub.scan.station')}
                     className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
@@ -134,11 +137,69 @@ export default function HubNetwork({ scope, hubs }: Props) {
                     <ScanLine className="h-4 w-4" />
                     Scan parcel
                 </Link>
-            )}
+            ) : undefined}
         >
             <Head title="Facility Network — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                {scope.can_switch_facility && hubs.length > 0 && (
+                    <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs" onSubmit={(event) => {
+                        event.preventDefault();
+                        placement.post(route('hub.placements'), { preserveScroll: true, onSuccess: () => placement.reset('email', 'vehicle_id', 'barangay', 'current_hub_id') });
+                    }}>
+                        <h2 className="text-base font-bold text-slate-900">Place personnel at a facility</h2>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">Use an approved account’s email. Placement keeps account approval separate, and riders manage their own duty status.</p>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                <span>Responsibility</span>
+                                <select className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.kind} onChange={(event) => {
+                                    placement.setData('kind', event.target.value);
+                                    placement.setData('vehicle_id', '');
+                                    placement.setData('current_hub_id', '');
+                                }}>
+                                    <option value="handler">Hub handler</option><option value="courier">Courier</option>
+                                </select>
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                <span>Account email</span>
+                                <input type="email" required maxLength={254} className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.email} onChange={(event) => placement.setData('email', event.target.value)} />
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                <span>Destination facility</span>
+                                <select required className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.hub_id} onChange={(event) => {
+                                    placement.setData('hub_id', event.target.value);
+                                    placement.setData('vehicle_id', '');
+                                }}>
+                                    <option value="">Choose a facility</option>
+                                    {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}
+                                </select>
+                            </label>
+                            {placement.data.kind === 'courier' && (<>
+                                <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                    <span>Current rider facility</span>
+                                    <select className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.current_hub_id} onChange={(event) => placement.setData('current_hub_id', event.target.value)}>
+                                        <option value="">Not yet assigned</option>
+                                        {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}
+                                    </select>
+                                </label>
+                                <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                    <span>Vehicle at destination facility</span>
+                                    <select className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.vehicle_id} onChange={(event) => placement.setData('vehicle_id', event.target.value)}>
+                                        <option value="">Reviewed personal vehicle</option>
+                                        {placementVehicles.filter((vehicle) => vehicle.hub_id === Number(placement.data.hub_id)).map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.plate_number}{vehicle.assigned ? ' (assigned)' : ''}</option>)}
+                                    </select>
+                                    <span className="block font-normal text-slate-500">For an existing fleet rider, select the current or another available vehicle.</span>
+                                </label>
+                                <label className="space-y-1 text-xs font-semibold text-slate-700">
+                                    <span>Assigned barangay (optional)</span>
+                                    <input maxLength={100} className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.barangay} onChange={(event) => placement.setData('barangay', event.target.value)} />
+                                </label>
+                            </>)}
+                        </div>
+                        {Object.values(placement.errors).map((error, index) => <p key={index} role="alert" className="mt-2 text-sm text-red-700">{error}</p>)}
+                        <button type="submit" disabled={placement.processing} className="mt-4 rounded-md bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{placement.processing ? 'Saving…' : 'Save placement'}</button>
+                    </form>
+                )}
                 <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
                     <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>

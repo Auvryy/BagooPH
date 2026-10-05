@@ -6,7 +6,6 @@ use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
-use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
@@ -16,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class OrderStateMachineService
 {
+    public function __construct(private readonly LogisticsEligibilityService $eligibility) {}
+
     public const STATUS_PLACED = 'placed';
 
     public const STATUS_CONFIRMED = 'confirmed';
@@ -87,6 +88,18 @@ class OrderStateMachineService
             $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
             $lockedDelivery->setRelation('order', $lockedOrder);
             $targetStatus = strtolower(trim($targetStatus));
+            if ($targetStatus !== self::STATUS_COMPLETED) {
+                $hubIds = [$scanMetadata['hub_id'] ?? null];
+                if ($targetStatus === self::STATUS_PICKED_UP) {
+                    $hubIds[] = $lockedDelivery->origin_bayan_hub_id;
+                } elseif (in_array($targetStatus, [self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED], true)) {
+                    $hubIds[] = $lockedDelivery->destination_bayan_hub_id;
+                }
+                $this->eligibility->lockNetwork((int) $lockedDelivery->logistics_company_id, [$actor->id, $scanMetadata['rider_id'] ?? null], $hubIds);
+            } else {
+                User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            }
+            $actor = User::findOrFail($actor->id);
             $hub = $this->resolveHub($scanMetadata['hub_id'] ?? null);
 
             $this->assertActiveActor($actor);
@@ -166,11 +179,7 @@ class OrderStateMachineService
 
     private function assertActiveActor(User $actor): void
     {
-        $approved = $actor->isCourier()
-            ? $actor->isEligibleCourier()
-            : $actor->status === 'active' && $actor->kyc_status === 'approved';
-
-        if (! $approved) {
+        if (! $actor->canAccessPortal()) {
             throw new DomainException('Only active and approved accounts may change parcel custody.');
         }
     }
@@ -183,8 +192,10 @@ class OrderStateMachineService
         array $metadata
     ): void {
         if ($targetStatus === self::STATUS_PICKED_UP) {
+            $this->eligibility->assertBayanHub((int) $delivery->origin_bayan_hub_id);
             $this->assertCourier($actor, $delivery->courier_id, 'pickup rider');
-            $profile = $actor->courierProfile;
+            $profile = CourierProfile::where('user_id', $actor->id)->lockForUpdate()->first();
+            $this->eligibility->assertCourierScope($profile, (int) $delivery->logistics_company_id, (int) $delivery->origin_bayan_hub_id);
             if (! $profile || $profile->logistics_company_id !== $delivery->logistics_company_id || $profile->assigned_hub_id !== $delivery->origin_bayan_hub_id) {
                 throw new DomainException('The pickup rider is not assigned to this logistics company and origin hub.');
             }
@@ -193,8 +204,10 @@ class OrderStateMachineService
         }
 
         if (in_array($targetStatus, [self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED], true)) {
+            $this->eligibility->assertBayanHub((int) $delivery->destination_bayan_hub_id);
             $this->assertCourier($actor, $delivery->assigned_rider_id, 'final-mile rider');
-            $profile = $actor->courierProfile;
+            $profile = CourierProfile::where('user_id', $actor->id)->lockForUpdate()->first();
+            $this->eligibility->assertCourierScope($profile, (int) $delivery->logistics_company_id, (int) $delivery->destination_bayan_hub_id);
             if (! $profile || $profile->logistics_company_id !== $delivery->logistics_company_id || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id) {
                 throw new DomainException('The final-mile rider is outside the parcel company or destination-hub scope.');
             }
@@ -219,7 +232,8 @@ class OrderStateMachineService
         }
 
         $isScopedCompanyAdmin = $this->isCompanyAdmin($actor, $delivery->logistics_company_id);
-        if (! $isScopedCompanyAdmin && ! HubHandler::where('user_id', $actor->id)->where('hub_id', $hub->id)->where('is_active', true)->exists()) {
+        $hasHandlerAssignment = HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->lockForUpdate()->first();
+        if (! $hasHandlerAssignment && ! ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER && $isScopedCompanyAdmin)) {
             throw new DomainException('This operator is not assigned to the scanned facility.');
         }
 
@@ -240,21 +254,34 @@ class OrderStateMachineService
         if (! $expectedHubId || $hub->id !== $expectedHubId) {
             throw new DomainException('The parcel is not expected at this facility for the requested scan.');
         }
+        $tier = in_array($targetStatus, [self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_SORTED_TO_LINE_HAUL, self::STATUS_IN_TRANSIT_TO_DEST_HUB], true)
+            ? 'regional_mother_hub' : 'local_bayan_hub';
+        if ($hub->tier !== $tier) {
+            throw new DomainException('The facility tier does not match the requested custody operation.');
+        }
+        if (in_array($targetStatus, [self::STATUS_READY_FOR_HUB_PICKUP, self::STATUS_CUSTOMER_COLLECTED], true) && ! $hub->allows_self_pickup) {
+            throw new DomainException('The selected facility does not currently allow counter pickup.');
+        }
 
         if ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER && empty($metadata['rider_id'])) {
             throw new DomainException('A final-mile rider is required for assignment.');
         }
 
         if ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER) {
+            if ($delivery->status === $targetStatus && (int) $metadata['rider_id'] !== $delivery->assigned_rider_id) {
+                throw new DomainException('The parcel already belongs to another final-mile rider.');
+            }
             $rider = User::with('courierProfile')->find($metadata['rider_id']);
             $profile = $rider
                 ? CourierProfile::where('user_id', $rider->id)->lockForUpdate()->first()
                 : null;
+            $newWork = $delivery->status !== $targetStatus;
+            $this->eligibility->assertCourierScope($profile, (int) $delivery->logistics_company_id, (int) $delivery->destination_bayan_hub_id, newWork: $newWork);
             $barangay = trim((string) $delivery->order?->destination_barangay);
             if (
                 ! $rider
                 || ! $rider->isEligibleCourier()
-                || ! $profile?->is_available
+                || ($newWork && ! $profile?->is_available)
                 || $profile->logistics_company_id !== $delivery->logistics_company_id
                 || $profile->assigned_hub_id !== $delivery->destination_bayan_hub_id
                 || ($profile->assigned_barangay && $barangay !== '' && strcasecmp($profile->assigned_barangay, $barangay) !== 0)
@@ -262,7 +289,7 @@ class OrderStateMachineService
                 throw new DomainException('The selected rider is not eligible for this company, hub, and barangay.');
             }
 
-            if (Delivery::riderHasActiveWork($rider->id, $delivery->id)) {
+            if ($newWork && Delivery::riderHasActiveWork($rider->id, $delivery->id)) {
                 throw new DomainException('The selected rider already has active courier work.');
             }
         }
@@ -352,12 +379,11 @@ class OrderStateMachineService
 
     private function resolveHub(mixed $hubId): ?LogisticsHub
     {
-        return $hubId ? LogisticsHub::whereKey($hubId)->where('is_active', true)->first() : null;
+        return $hubId ? LogisticsHub::eligible()->whereKey($hubId)->first() : null;
     }
 
     private function isCompanyAdmin(User $actor, ?int $companyId): bool
     {
-        return $actor->isLogistics()
-            && LogisticsCompany::whereKey($companyId)->where('user_id', $actor->id)->exists();
+        return $this->eligibility->isCompanyAdministrator($actor, $companyId);
     }
 }

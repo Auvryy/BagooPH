@@ -128,6 +128,7 @@ class B21_to_B25_CourierOperationsBoundaryTest extends TestCase
         $courierB = $this->createApprovedUser('courier');
         $suffix = Str::random(8);
         $company = LogisticsCompany::create([
+            'user_id' => $this->createApprovedUser('logistics')->id,
             'name' => 'Bagoo Test Dispatch', 'slug' => 'test-dispatch-'.$suffix,
             'code' => 'TEST-'.$suffix, 'status' => 'active', 'is_active' => true,
         ]);

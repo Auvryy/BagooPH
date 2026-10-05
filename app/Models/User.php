@@ -167,7 +167,17 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function scopeEligibleCouriers(Builder $query): Builder
     {
-        return $query->where('role', 'courier')->where('status', 'active')
+        return $this->eligibleWorkerQuery($query, 'courier');
+    }
+
+    public function scopeEligibleLogisticsAccounts(Builder $query): Builder
+    {
+        return $this->eligibleWorkerQuery($query, 'logistics');
+    }
+
+    private function eligibleWorkerQuery(Builder $query, string $role): Builder
+    {
+        return $query->where('role', $role)->where('status', 'active')
             ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
             ->where(function (Builder $query) {
                 $query->whereNull('birthday')->orWhere(function (Builder $query) {

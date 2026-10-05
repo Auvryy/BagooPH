@@ -351,6 +351,8 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
         $this->actingAs($originHandler)
             ->get(route('hub.scan.station', ['hub_id' => $destinationHub->id]))
+            ->assertForbidden();
+        $this->get(route('hub.scan.station'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Hub/ScanStation')
@@ -401,7 +403,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'barcode' => $delivery->tracking_number,
             'hub_id' => $originHub->id,
             'mode' => 'inspect',
-        ])->assertStatus(409);
+        ])->assertForbidden();
 
         $this->actingAs($originHandler)->postJson(route('hub.scan'), [
             'barcode' => $delivery->tracking_number,

@@ -2,9 +2,11 @@
 
 namespace App\Services\Courier;
 
+use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Logistics\LogisticsEligibilityService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -201,7 +203,12 @@ class CourierMessagingService
 
     private function accessibleDeliveries(User $rider): Collection
     {
-        $profile = $rider->courierProfile;
+        $current = User::find($rider->id);
+        if (! $current?->isEligibleCourier()) {
+            return collect();
+        }
+        $profile = $current->courierProfile;
+        $rider->setRelation('courierProfile', $profile);
         if (! $profile?->logistics_company_id || ! $profile->assigned_hub_id) {
             return collect();
         }
@@ -229,6 +236,7 @@ class CourierMessagingService
     private function participantsForDelivery(Delivery $delivery, User $rider): array
     {
         $participants = [];
+        $canWork = app(LogisticsEligibilityService::class)->isOperational($rider->courierProfile);
 
         if ($delivery->courier_id === $rider->id && $rider->courierProfile?->assigned_hub_id === $delivery->origin_bayan_hub_id) {
             $seller = $delivery->order?->items?->first()?->product?->shop?->user;
@@ -238,7 +246,7 @@ class CourierMessagingService
                     'user' => $seller,
                     'shop_id' => $delivery->order->items->first()->product->shop->id,
                     'shop_name' => $delivery->order->items->first()->product->shop->name,
-                    'can_send' => in_array($delivery->status, self::PICKUP_MESSAGE_STATUSES, true),
+                    'can_send' => $canWork && in_array($delivery->status, self::PICKUP_MESSAGE_STATUSES, true),
                 ];
             }
         }
@@ -251,7 +259,7 @@ class CourierMessagingService
                 'user' => $delivery->order->buyer,
                 'shop_id' => null,
                 'shop_name' => null,
-                'can_send' => in_array($delivery->status, self::FINAL_MILE_MESSAGE_STATUSES, true),
+                'can_send' => $canWork && in_array($delivery->status, self::FINAL_MILE_MESSAGE_STATUSES, true),
             ];
         }
 
@@ -260,7 +268,16 @@ class CourierMessagingService
 
     private function activeParticipantForDelivery(Delivery $delivery, User $rider): array
     {
-        $profile = $rider->courierProfile;
+        $hubId = in_array($delivery->status, self::PICKUP_MESSAGE_STATUSES, true) && $delivery->courier_id === $rider->id
+            ? $delivery->origin_bayan_hub_id
+            : (in_array($delivery->status, self::FINAL_MILE_MESSAGE_STATUSES, true) && $delivery->assigned_rider_id === $rider->id
+                ? $delivery->destination_bayan_hub_id : null);
+        $eligibility = app(LogisticsEligibilityService::class);
+        $eligibility->lockNetwork((int) $delivery->logistics_company_id, [$rider->id], [$hubId]);
+        $rider = User::findOrFail($rider->id);
+        $profile = CourierProfile::where('user_id', $rider->id)->lockForUpdate()->first();
+        $eligibility->assertCourierScope($profile, (int) $delivery->logistics_company_id, (int) $hubId);
+        $rider->setRelation('courierProfile', $profile);
         if (
             ! $rider->isEligibleCourier()
             || ! $profile

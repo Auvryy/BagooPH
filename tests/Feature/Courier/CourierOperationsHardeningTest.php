@@ -813,7 +813,7 @@ class CourierOperationsHardeningTest extends TestCase
         $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $delivery = $this->createDelivery('out_for_delivery', $rider, ['courier_notes' => 'Original handoff note']);
         $originalProof = '/storage/'.UploadedFile::fake()->create('original.jpg', 20, 'image/jpeg')->store('delivery-proofs', 'public');
-        $service = new OrderStateMachineService;
+        $service = app(OrderStateMachineService::class);
         $this->mock(OrderStateMachineService::class, function (MockInterface $mock) use ($service, $originalProof) {
             $mock->shouldReceive('transition')->once()->andReturnUsing(function ($parcel, $target, $actor, $metadata) use ($service, $originalProof) {
                 // Model a second submission winning after this request bound the old parcel state.

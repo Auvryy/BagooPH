@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,13 @@ class LogisticsHub extends Model
     public function isMotherHub(): bool
     {
         return $this->tier === 'regional_mother_hub';
+    }
+
+    public function scopeEligible(Builder $query): Builder
+    {
+        return $query->where('logistics_hubs.is_active', true)
+            ->whereIn('logistics_hubs.tier', ['local_bayan_hub', 'regional_mother_hub'])
+            ->whereHas('company', fn (Builder $company) => $company->eligible());
     }
 
     public function isBayanHub(): bool

@@ -31,11 +31,15 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
 
     public function test_t2_b12_01_non_existent_barcode_scan(): void
     {
-        $logistics = $this->createApprovedUser('logistics');
+        $this->seed(DatabaseSeeder::class);
+        $logistics = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
+        $hub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
         $response = $this->actingAs($logistics)->postJson(route('hub.scan'), [
             'barcode' => 'BGO-TRK-NONEXISTENT',
+            'hub_id' => $hub->id,
         ]);
-        $this->assertTrue(in_array($response->status(), [400, 404, 422]));
+        $response->assertNotFound();
+        $this->assertDatabaseCount('delivery_checkpoints', 0);
     }
 
     public function test_t2_b12_02_double_intake_scan_idempotency(): void
