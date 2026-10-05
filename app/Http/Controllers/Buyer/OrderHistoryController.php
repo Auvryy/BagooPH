@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\BuyerAccessService;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,13 +15,20 @@ class OrderHistoryController extends Controller
 {
     public function index(Request $request): Response
     {
-        return app(BuyerProfileController::class)->index($request);
+        $buyer = app(BuyerAccessService::class)->requireExistingOrders($request->user());
+
+        return Inertia::render('Buyer/Orders', [
+            'orders' => Order::where('buyer_id', $buyer->id)->latest('id')->paginate(12)
+                ->through(fn (Order $order) => $order->only(['id', 'order_number', 'status', 'total_amount', 'created_at'])),
+            'canUsePortal' => $buyer->canAccessPortal(),
+        ]);
     }
 
     public function show(Request $request, Order $order): Response
     {
-        $user = $request->user();
-        $ownedBuyerOrder = $user->isBuyer() && $order->buyer_id === $user->id;
+        $access = app(BuyerAccessService::class);
+        $user = $access->current($request->user());
+        $ownedBuyerOrder = $access->canAccessExistingOrders($user) && $order->buyer_id === $user->id;
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
@@ -28,17 +36,21 @@ class OrderHistoryController extends Controller
 
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,
+            'canUsePortal' => $user->isBuyer() && $user->canAccessPortal(),
+            'canConfirmReceipt' => $ownedBuyerOrder && $order->status === 'delivered' && $order->delivery?->status === 'delivered',
         ]);
     }
 
     public function confirmReceived(Request $request, Order $order): RedirectResponse
     {
-        if (! $request->user()->isBuyer() || $order->buyer_id !== $request->user()->id) {
+        $buyer = app(BuyerAccessService::class)->current($request->user());
+        if (! $buyer->isBuyer() || $order->buyer_id !== $buyer->id) {
             abort(403);
         }
+        app(BuyerAccessService::class)->requireExistingOrders($buyer, $order);
 
         try {
-            app(OrderLifecycleService::class)->buyerComplete($order, $request->user());
+            app(OrderLifecycleService::class)->buyerComplete($order, $buyer);
         } catch (\RuntimeException $exception) {
             return back()->with('error', $exception->getMessage());
         }

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\BirthDate;
 use App\Services\BirthDateEligibility;
+use App\Services\BuyerAccessService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class BuyerProfileController extends Controller
 {
     public function index(Request $request): Response
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         // Migrate legacy profile address if user has no saved addresses
         if ($user->addresses()->count() === 0 && $user->address && $user->city) {
@@ -68,7 +69,7 @@ class BuyerProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -120,7 +121,7 @@ class BuyerProfileController extends Controller
 
     public function storeAddress(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         $validated = $request->validate([
             'recipient_name' => 'nullable|string|max:255',
@@ -160,7 +161,7 @@ class BuyerProfileController extends Controller
 
     public function setDefaultAddress(Request $request, Address $address): RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         if ($address->user_id !== $user->id) {
             abort(403);
@@ -174,7 +175,7 @@ class BuyerProfileController extends Controller
 
     public function destroyAddress(Request $request, Address $address): RedirectResponse
     {
-        $user = $request->user();
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
         if ($address->user_id !== $user->id) {
             abort(403);

@@ -163,7 +163,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         $response->assertSessionHasErrors('email');
     }
 
-    public function test_suspended_user_cannot_authenticate_via_login(): void
+    public function test_suspended_buyer_sign_in_opens_only_existing_orders_and_still_denies_checkout(): void
     {
         $user = User::factory()->create([
             'email' => 'suspended.victim@bagoo.test',
@@ -178,9 +178,11 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $this->assertGuest();
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHasErrors('email');
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('buyer.orders.index'));
+        $this->get('/buyer/checkout')->assertRedirect(route('kyc.pending'));
+        $this->post('/checkout', [])->assertRedirect(route('kyc.pending'));
+        $this->assertSame('suspended', $user->fresh()->status);
     }
 
     /*

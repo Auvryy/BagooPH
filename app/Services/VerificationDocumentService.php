@@ -71,8 +71,11 @@ class VerificationDocumentService
     public function authorize(User $actor, User $owner): void
     {
         $actor = User::findOrFail($actor->id);
+        $ownAccess = $actor->id === $owner->id && ($actor->isBuyer()
+            ? ($actor->canAccessPortal() || app(BuyerAccessService::class)->canManageApplication($actor))
+            : in_array($actor->status, ['active', 'pending_approval'], true));
         abort_unless(
-            ($actor->id === $owner->id && in_array($actor->status, ['active', 'pending_approval'], true))
+            $ownAccess
             || ($actor->isAdmin() && $actor->canAccessPortal()),
             403,
         );

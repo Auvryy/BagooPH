@@ -130,7 +130,7 @@ class PrivateVerificationDocumentsTest extends TestCase
         }
     }
 
-    public function test_buyer_upload_stores_only_private_files_and_profile_shows_an_authorized_link(): void
+    public function test_buyer_upload_stores_only_private_files_and_holding_shows_an_authorized_link(): void
     {
         $owner = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'none']);
         $this->actingAs($owner)->post(route('buyer.kyc.upload'), [
@@ -139,8 +139,10 @@ class PrivateVerificationDocumentsTest extends TestCase
         $path = $owner->fresh()->id_document_path;
         Storage::disk('local')->assertExists($path);
         Storage::disk('public')->assertMissing($path);
-        $this->get(route('buyer.profile'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('user.id_document_path', '/verification-documents/'.$owner->id.'/id.pdf')
+        $this->get(route('buyer.profile'))->assertRedirect(route('kyc.pending'));
+        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/BuyerApproval')
+            ->where('identityDocumentUrl', '/verification-documents/'.$owner->id.'/id.pdf')
             ->where('auth.user.id_document_path', '/verification-documents/'.$owner->id.'/id.pdf'));
     }
 

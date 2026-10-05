@@ -257,12 +257,14 @@ class OtpVerificationTest extends TestCase
             'otp_token' => $token,
         ]);
 
-        $response->assertRedirect(route('buyer.index'));
+        $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();
 
         $user = User::where('email', $email)->first();
         $this->assertNotNull($user);
         $this->assertNotNull($user->email_verified_at);
+        $this->assertSame('none', $user->kyc_status);
+        $this->assertFalse($user->canCompleteCheckout());
 
         // Assert token is single-use and burned
         $otpRecord = EmailOtp::where('email', $email)->first();

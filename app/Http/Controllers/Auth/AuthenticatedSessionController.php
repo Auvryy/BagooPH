@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\BuyerAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -85,9 +86,8 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        // Public marketplace entry grants no purchase or worker-portal permission.
-        if ($user->isBuyer() && $user->status !== 'suspended') {
-            return redirect()->intended(route('buyer.index', absolute: false));
+        if ($user->isBuyer()) {
+            return app(BuyerAccessService::class)->signInDestination($request);
         }
 
         return app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {

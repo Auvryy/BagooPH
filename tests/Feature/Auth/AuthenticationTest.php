@@ -84,7 +84,7 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('kyc.pending', absolute: false));
     }
 
-    public function test_unverified_or_pending_buyer_is_redirected_to_home_page_upon_login(): void
+    public function test_unreviewed_buyer_is_redirected_to_holding_upon_login(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -98,7 +98,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('buyer.index', absolute: false));
+        $response->assertRedirect(route('kyc.pending', absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
