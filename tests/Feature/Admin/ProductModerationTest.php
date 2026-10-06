@@ -21,10 +21,12 @@ use Inertia\Testing\AssertableInertia as Assert;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class ProductModerationTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -218,7 +220,7 @@ class ProductModerationTest extends TestCase
         $this->actingAs($buyer)->get('/product/'.$product->slug)->assertNotFound();
         $this->post('/cart', ['product_id' => $product->id, 'quantity' => 1])->assertSessionHasErrors('product_id');
         $this->patch('/cart/'.$line->id, ['quantity' => 2])->assertSessionHasErrors();
-        $this->from('/checkout')->post('/checkout', ['item_ids' => [$line->id], 'recipient_name' => 'Maria Santos',
+        $this->from('/checkout')->post('/checkout', ['checkout_token' => $this->checkoutToken($buyer), 'item_ids' => [$line->id], 'recipient_name' => 'Maria Santos',
             'recipient_phone' => '+639171234567', 'shipping_address' => '123 Rizal Street', 'shipping_city' => 'Manila',
             'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1000', 'destination_barangay' => 'Ermita', 'delivery_type' => 'doorstep', 'payment_method' => 'cod'])
             ->assertRedirect('/checkout')->assertSessionHas('error');

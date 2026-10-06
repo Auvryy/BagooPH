@@ -12,11 +12,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class BuyerAddressTest extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     private function createBuyerWithCart(): array
@@ -92,7 +94,7 @@ class BuyerAddressTest extends TestCase
         $this->assertDatabaseHas('addresses', [
             'user_id' => $buyer->id,
             'recipient_name' => $buyer->name,
-            'phone' => '+63 917 111 2222',
+            'phone' => '+639171112222',
             'city' => 'Taguig City',
             'street' => 'Unit 1204 High Street Residences',
             'is_default' => true, // First address automatically becomes default
@@ -300,6 +302,7 @@ class BuyerAddressTest extends TestCase
         $this->createCheckoutNetwork($shop, ['Makati City' => 'Metro Manila']);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Selected Recipient',
             'recipient_phone' => '+63 918 333 4444',
             'shipping_address' => 'Unit 701, Tower 2, Ayala Ave',
@@ -316,7 +319,7 @@ class BuyerAddressTest extends TestCase
         $order = Order::latest()->first();
         $this->assertNotNull($order);
         $this->assertEquals('Selected Recipient', $order->recipient_name);
-        $this->assertEquals('+63 918 333 4444', $order->recipient_phone);
+        $this->assertEquals('+639183334444', $order->recipient_phone);
         $this->assertEquals('Unit 701, Tower 2, Ayala Ave', $order->shipping_address);
         $this->assertEquals('Makati City', $order->shipping_city);
     }
@@ -329,6 +332,7 @@ class BuyerAddressTest extends TestCase
         $this->assertEquals(0, $buyer->addresses()->count());
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'New Address Recipient',
             'recipient_phone' => '+63 918 555 6666',
             'shipping_address' => '99 Sunset Blvd',
@@ -347,7 +351,7 @@ class BuyerAddressTest extends TestCase
         $this->assertSame('New Address Recipient', Order::where('buyer_id', $buyer->id)->firstOrFail()->recipient_name);
         $this->assertNotNull($savedAddress);
         $this->assertEquals($buyer->name, $savedAddress->recipient_name);
-        $this->assertEquals('+63 918 555 6666', $savedAddress->phone);
+        $this->assertEquals('+639185556666', $savedAddress->phone);
         $this->assertEquals('99 Sunset Blvd', $savedAddress->street);
         $this->assertEquals('Pasig City', $savedAddress->city);
     }

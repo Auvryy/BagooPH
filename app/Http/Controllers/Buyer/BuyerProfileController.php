@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
-use App\Models\User;
 use App\Rules\BirthDate;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\BuyerAddressService;
 use App\Services\IdentityCorrectionService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
@@ -22,21 +22,6 @@ class BuyerProfileController extends Controller
     public function index(Request $request): Response
     {
         $user = app(BuyerAccessService::class)->requirePortal($request->user());
-
-        // Migrate legacy profile address if user has no saved addresses
-        if ($user->addresses()->count() === 0 && $user->address && $user->city) {
-            $user->addresses()->create([
-                'recipient_name' => $user->name,
-                'phone' => $user->phone ?? '+63 912 345 6789',
-                'province' => 'Metro Manila',
-                'city' => $user->city,
-                'barangay' => null,
-                'street' => $user->address,
-                'postal_code' => $user->postal_code,
-                'type' => 'Home',
-                'is_default' => true,
-            ]);
-        }
 
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
 
@@ -125,38 +110,7 @@ class BuyerProfileController extends Controller
     {
         $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
-        $validated = $request->validate([
-            'recipient_name' => 'nullable|string|max:255',
-            'phone' => 'required|string|max:50',
-            'province' => 'nullable|string|max:100',
-            'city' => 'required|string|max:100',
-            'barangay' => 'nullable|string|max:100',
-            'street' => 'required|string|max:255',
-            'postal_code' => 'nullable|string|max:20',
-            'type' => 'nullable|string|max:50',
-            'is_default' => 'nullable|boolean',
-        ]);
-
-        $hasExistingAddresses = $user->addresses()->exists();
-        $isDefault = $request->boolean('is_default');
-
-        // First address created automatically becomes default
-        if (! $hasExistingAddresses || $isDefault) {
-            $user->addresses()->update(['is_default' => false]);
-            $isDefault = true;
-        }
-
-        $user->addresses()->create([
-            'recipient_name' => $user->name, // Strictly locked to verified account name
-            'phone' => $validated['phone'],
-            'province' => $validated['province'] ?? null,
-            'city' => $validated['city'],
-            'barangay' => $validated['barangay'] ?? null,
-            'street' => $validated['street'],
-            'postal_code' => $validated['postal_code'] ?? null,
-            'type' => $validated['type'] ?? 'Home',
-            'is_default' => $isDefault,
-        ]);
+        app(BuyerAddressService::class)->create($user, $request->all());
 
         return back()->with('success', 'Address added successfully.');
     }
@@ -165,12 +119,7 @@ class BuyerProfileController extends Controller
     {
         $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
-        if ($address->user_id !== $user->id) {
-            abort(403);
-        }
-
-        $user->addresses()->update(['is_default' => false]);
-        $address->update(['is_default' => true]);
+        app(BuyerAddressService::class)->setDefault($user, $address);
 
         return back()->with('success', 'Default address updated.');
     }
@@ -179,19 +128,7 @@ class BuyerProfileController extends Controller
     {
         $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
-        if ($address->user_id !== $user->id) {
-            abort(403);
-        }
-
-        $wasDefault = $address->is_default;
-        $address->delete();
-
-        if ($wasDefault) {
-            $oldest = $user->addresses()->oldest()->first();
-            if ($oldest) {
-                $oldest->update(['is_default' => true]);
-            }
-        }
+        app(BuyerAddressService::class)->delete($user, $address);
 
         return back()->with('success', 'Address deleted successfully.');
     }

@@ -8,7 +8,6 @@ use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Shop;
 use DomainException;
-use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -88,28 +87,11 @@ class LogisticsRoutingEngine
             $query->where('logistics_company_id', $company->id);
         }
 
-        // 1. Check if covered by a hub's specific coverage_barangays
-        if ($barangay) {
-            $allHubs = (clone $query)->get();
-            foreach ($allHubs as $hub) {
-                if ($hub->coversBarangay($barangay)) {
-                    return $hub;
-                }
-            }
-        }
+        // A repeated barangay name or a partial city name cannot override the destination province/city.
+        $hubs = $query->orderBy('id')->get()->filter(fn (LogisticsHub $hub) => $this->matchesDestination($hub, $province, $city, $barangay));
 
-        // 2. Match city/municipality
-        $normalizedCity = $this->normalizePlace($city);
-        $cityMatch = $normalizedCity === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($normalizedCity) {
-            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
-
-            return $hubCity !== '' && (str_contains($normalizedCity, $hubCity) || str_contains($hubCity, $normalizedCity));
-        });
-        if ($cityMatch) {
-            return $cityMatch;
-        }
-
-        return null;
+        return $hubs->first(fn (LogisticsHub $hub) => $barangay && $hub->coversBarangay($barangay))
+            ?? $hubs->first(fn (LogisticsHub $hub) => empty($hub->coverage_barangays));
     }
 
     /**
@@ -159,6 +141,9 @@ class LogisticsRoutingEngine
             if (! $origin || ! $destination || ! $originMother || ! $destinationMother) {
                 throw new DomainException('No complete eligible Bayan and Mother Hub route serves this parcel.');
             }
+            if (! $this->matchesDestination($destination, $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay)) {
+                throw new DomainException('Choose a pickup hub serving the stated delivery address.');
+            }
             if (! $this->isContiguousRoadServiceable($origin->province, $origin->city_municipality)
                 || ! $this->isContiguousRoadServiceable($destination->province, $destination->city_municipality)) {
                 throw new DomainException('The selected facilities are outside the supported road network.');
@@ -172,6 +157,9 @@ class LogisticsRoutingEngine
                 || LogisticsHub::eligible()->whereIn('id', $motherIds)->where('tier', 'regional_mother_hub')->count() !== $motherIds->count()
                 || ($order->delivery_type === 'hub_self_pickup' && ! LogisticsHub::eligible()->whereKey($destination->id)->where('allows_self_pickup', true)->exists())) {
                 throw new DomainException('The selected facility capabilities changed. Check the route again.');
+            }
+            if (! $this->matchesDestination($destination->fresh(), $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay)) {
+                throw new DomainException('The destination coverage changed. Check the delivery address again.');
             }
             $barangay = $order->destination_barangay ?? 'GENERAL';
             $parcel->fill([
@@ -212,7 +200,17 @@ class LogisticsRoutingEngine
             }
         }
 
-        throw new Exception('No logistics company can provide the complete seller-to-buyer hub route.');
+        throw new DomainException('No logistics company can provide the complete seller-to-buyer hub route.');
+    }
+
+    private function matchesDestination(LogisticsHub $hub, string $province, string $city, ?string $barangay): bool
+    {
+        $cityKey = fn (string $place) => preg_replace('/^(?:city|municipality) of | (?:city|municipality)$/', '', $this->normalizePlace($place));
+
+        return $this->normalizePlace($province) !== '' && $cityKey($city) !== ''
+            && $this->normalizePlace((string) $hub->province) === $this->normalizePlace($province)
+            && $cityKey((string) $hub->city_municipality) === $cityKey($city)
+            && (empty($hub->coverage_barangays) || ($barangay && $hub->coversBarangay($barangay)));
     }
 
     private function normalizePlace(string $value): string

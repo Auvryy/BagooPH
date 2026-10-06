@@ -2,21 +2,28 @@
 
 namespace App\Services\Orders;
 
+use App\Exceptions\CheckoutException;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CheckoutSubmission;
 use App\Models\Delivery;
+use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\ShopEligibilityService;
+use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class CheckoutOrderService
@@ -34,64 +41,83 @@ class CheckoutOrderService
     {
         $buyer = app(BuyerAccessService::class)->current($buyer);
         if (! $buyer->isBuyer()) {
-            throw new RuntimeException('Buyer access is required to place an order.');
+            throw new CheckoutException('Buyer access is required to place an order.');
         }
 
         // Keep the invariant in the order service as well as the controller so
         // no future checkout entry point can place an order around the UI gate.
         if (! $buyer->canCompleteCheckout()) {
             if ($buyer->status !== 'active') {
-                throw new RuntimeException('Your account is not active and cannot place an order.');
+                throw new CheckoutException('Your account is not active and cannot place an order.');
             }
 
             if ($buyer->isKycPending()) {
-                throw new RuntimeException('Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
+                throw new CheckoutException('Your ID verification is currently pending review. Please wait for approval before completing your purchase.');
             }
 
             if ($buyer->isKycRejected()) {
-                throw new RuntimeException('Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
+                throw new CheckoutException('Your submitted ID was rejected. Please re-upload a valid ID to proceed.');
             }
 
-            throw new RuntimeException('Identity verification is required before placing an order. Please upload a valid ID to proceed.');
+            throw new CheckoutException('Identity verification is required before placing an order. Please upload a valid ID to proceed.');
         }
 
-        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data) {
+        $submissions = app(CheckoutSubmissionService::class);
+        $tokenHash = $submissions->tokenHash($buyer, $cart, $data['checkout_token'] ?? null);
+        $data = app(CommerceInputService::class)->checkout($data, $cartItemIds);
+        $cartItemIds = $data['item_ids'];
+        $requestHash = $submissions->fingerprint($data);
+
+        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data, $submissions, $tokenHash, $requestHash) {
             // Serialize the owned Bag before lines and the seller/shop/category/product locks.
             if (! Cart::whereKey($cart->id)->where('user_id', $buyer->id)->lockForUpdate()->first()) {
-                throw new RuntimeException('This Shopping Bag is unavailable to your account.');
+                throw new CheckoutException('This Shopping Bag is unavailable to your account.');
             }
-            $selectedIds = array_values(array_unique(array_map('intval', $cartItemIds)));
-            if ($selectedIds === [] || count($selectedIds) !== count($cartItemIds)) {
-                throw new RuntimeException('Select one or more unique Shopping Bag items.');
+            // The original result remains available after selected Bag lines, stock and routing change.
+            if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash)) {
+                return $original;
             }
+            if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
+                throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
+            }
+            if ($data['delivery_type'] === 'hub_self_pickup' && ! LogisticsHub::eligible()
+                ->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
+                throw ValidationException::withMessages(['pickup_hub_id' => 'Choose an available Bayan Hub that supports self-pickup.']);
+            }
+            $selectedIds = $cartItemIds;
 
             $items = CartItem::query()
                 ->where('cart_id', $cart->id)
                 ->whereIn('id', $selectedIds)
                 ->with('product.shop')
+                ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
 
             if ($items->count() !== count($selectedIds)) {
-                throw new RuntimeException('One or more selected Shopping Bag items are unavailable.');
+                throw new CheckoutException('One or more selected Shopping Bag items are unavailable.');
             }
 
             $products = app(ShopEligibilityService::class)->lockSaleProducts(
                 $items->pluck('product_id')->unique()->all(), [$buyer->id]
             );
             if (! $buyer->fresh()->canCompleteCheckout()) {
-                throw new RuntimeException('Your account is no longer eligible to place an order.');
+                throw new CheckoutException('Your account is no longer eligible to place an order.');
             }
 
             foreach ($items as $item) {
                 $product = $products->get($item->product_id);
                 if (! $product || $product->status !== 'active' || ! $product->shop || $product->shop->status !== 'active') {
-                    throw new RuntimeException('One or more selected products or shops are unavailable.');
+                    throw new CheckoutException('One or more selected products or shops are unavailable.');
                 }
                 $item->setRelation('product', $product);
             }
 
-            $this->inventory->assertCheckoutAvailability($items, $products);
+            try {
+                $this->inventory->assertCheckoutAvailability($items, $products);
+            } catch (RuntimeException $exception) {
+                throw new CheckoutException($exception->getMessage(), previous: $exception);
+            }
 
             $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id);
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
@@ -176,7 +202,11 @@ class CheckoutOrderService
                     'estimated_delivery_at' => now()->addDays(3),
                 ]);
 
-                $this->routingEngine->planDeliveryRoute($delivery, $order, $shop);
+                try {
+                    $this->routingEngine->planDeliveryRoute($delivery, $order, $shop);
+                } catch (DomainException $exception) {
+                    throw new CheckoutException($exception->getMessage(), previous: $exception);
+                }
                 $orders->push($order->load('delivery', 'items'));
             }
 
@@ -184,7 +214,23 @@ class CheckoutOrderService
                 $voucher->increment('used_count');
             }
 
+            if ($data['save_address']) {
+                app(BuyerAddressService::class)->create($buyer, [
+                    'phone' => $data['recipient_phone'], 'province' => $data['shipping_province'],
+                    'city' => $data['shipping_city'], 'barangay' => $data['destination_barangay'],
+                    'street' => $data['shipping_address'], 'postal_code' => $data['shipping_postal_code'],
+                    'latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude'],
+                    'landmark' => $data['landmark'], 'type' => 'Home', 'is_default' => false,
+                ]);
+            }
+
             CartItem::where('cart_id', $cart->id)->whereIn('id', $selectedIds)->delete();
+
+            $submission = CheckoutSubmission::create([
+                'buyer_id' => $buyer->id, 'cart_id' => $cart->id, 'token_hash' => $tokenHash,
+                'request_hash' => $requestHash, 'order_count' => $orders->count(), 'created_at' => now(),
+            ]);
+            $submission->orders()->attach($orders->pluck('id')->all());
 
             return $orders;
         });
@@ -194,9 +240,14 @@ class CheckoutOrderService
     {
         $normalized = strtoupper(trim((string) $code));
 
-        return $normalized === ''
+        $voucher = $normalized === ''
             ? null
             : Voucher::where('code', $normalized)->lockForUpdate()->first();
+        if ($normalized !== '' && ! $voucher) {
+            throw new CheckoutException('This voucher is unavailable. Remove it or choose another voucher.');
+        }
+
+        return $voucher;
     }
 
     private function allocateVoucher(?Voucher $voucher, Collection $shopAmounts): Collection
@@ -209,7 +260,7 @@ class CheckoutOrderService
         if ($voucher->shop_id) {
             $amounts = $shopAmounts->get($voucher->shop_id);
             if (! $amounts || ! $voucher->isValidForAmount($amounts['subtotal'], $voucher->shop_id)) {
-                throw new RuntimeException('This shop voucher is not valid for the selected items.');
+                throw new CheckoutException('This shop voucher is not valid for the selected items.');
             }
 
             return $discounts->put(
@@ -221,7 +272,7 @@ class CheckoutOrderService
         $totalSubtotal = round($shopAmounts->sum('subtotal'), 2);
         $totalShipping = round($shopAmounts->sum('shipping'), 2);
         if (! $voucher->isValidForAmount($totalSubtotal)) {
-            throw new RuntimeException('This platform voucher is no longer valid.');
+            throw new CheckoutException('This platform voucher is no longer valid.');
         }
 
         $totalDiscountCents = (int) round($voucher->calculateDiscount($totalSubtotal, $totalShipping) * 100);

@@ -199,16 +199,18 @@ export default function BuyerProfile({
     });
 
     // New Address Form (PSGC)
-    const [newAddress, setNewAddress] = useState({
+    const addressForm = useForm({
         recipient_name: user.name,
-        phone: user.phone || '+63 912 345 6789',
-        province: 'Metro Manila',
-        city: 'Quezon City',
-        barangay: 'Diliman',
-        street: '',
+        phone: user.phone || '',
+        province: user.province || '',
+        city: user.city || '',
+        barangay: user.barangay || '',
+        street: user.address || '',
+        postal_code: user.postal_code || '',
         type: 'Home',
         is_default: false,
     });
+    const { data: newAddress, setData: setNewAddress } = addressForm;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -329,25 +331,13 @@ export default function BuyerProfile({
 
     const handleAddAddress = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newAddress.street) return;
+        if (!newAddress.street || addressForm.processing) return;
 
-        router.post(route('buyer.addresses.store'), {
-            ...newAddress,
-            recipient_name: user.name,
-        }, {
+        addressForm.post(route('buyer.addresses.store'), {
             preserveScroll: true,
             onSuccess: () => {
                 setShowAddressModal(false);
-                setNewAddress({
-                    recipient_name: user.name,
-                    phone: user.phone || '+63 912 345 6789',
-                    province: 'Metro Manila',
-                    city: 'Quezon City',
-                    barangay: 'Diliman',
-                    street: '',
-                    type: 'Home',
-                    is_default: false,
-                });
+                addressForm.reset();
             },
         });
     };
@@ -1354,6 +1344,7 @@ export default function BuyerProfile({
                             </div>
 
                             <form onSubmit={handleAddAddress} className="space-y-4 text-xs">
+                                {addressForm.errors.recipient_name && <p role="alert" className="text-rose-600">{addressForm.errors.recipient_name}</p>}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block font-bold text-slate-700 mb-1 font-sans flex items-center justify-between">
@@ -1378,6 +1369,7 @@ export default function BuyerProfile({
                                             onChange={(val) => setNewAddress({ ...newAddress, phone: val })}
                                             placeholder="917 123 4567"
                                             accentColor="primary"
+                                            error={addressForm.errors.phone}
                                             helperText="10-digit mobile number (e.g. 917 123 4567)"
                                             required
                                         />
@@ -1402,10 +1394,20 @@ export default function BuyerProfile({
                                         }));
                                     }}
                                     accentColor="primary"
+                                    errors={{province: addressForm.errors.province, city: addressForm.errors.city,
+                                        municipality: addressForm.errors.city, barangay: addressForm.errors.barangay, address: addressForm.errors.street}}
                                     required={true}
                                     streetLabel="Street Name, Building, House No."
                                     streetPlaceholder="e.g. Unit 402, High Street Tower, 26th St."
                                 />
+
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1" htmlFor="address-postal-code">Postal code (optional)</label>
+                                    <input id="address-postal-code" type="text" inputMode="numeric" maxLength={4} pattern="[0-9]{4}"
+                                        value={newAddress.postal_code} onChange={event => addressForm.setData('postal_code', event.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 p-2.5 text-xs" />
+                                    {addressForm.errors.postal_code && <p className="text-rose-600 mt-1">{addressForm.errors.postal_code}</p>}
+                                </div>
 
                                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                                     <label className="flex items-center gap-2 font-sans text-xs cursor-pointer">
@@ -1420,9 +1422,10 @@ export default function BuyerProfile({
 
                                     <button
                                         type="submit"
+                                        disabled={addressForm.processing}
                                         className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase rounded-xl transition shadow-xs"
                                     >
-                                        Save Address
+                                        {addressForm.processing ? 'Saving...' : 'Save Address'}
                                     </button>
                                 </div>
                             </form>

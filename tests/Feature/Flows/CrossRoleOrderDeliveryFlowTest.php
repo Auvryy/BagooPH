@@ -18,10 +18,12 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class CrossRoleOrderDeliveryFlowTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -60,7 +62,8 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'unit_price' => $product->price,
         ]);
 
-        $this->actingAs($buyer)->post(route('checkout.store'), [
+        $checkoutPayload = [
+            'checkout_token' => $this->checkoutToken($buyer, $cart),
             'recipient_name' => $buyer->name,
             'recipient_phone' => $buyer->phone,
             'shipping_address' => 'Pedro Guevara Avenue, Poblacion III',
@@ -71,7 +74,8 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'delivery_type' => 'doorstep',
             'item_ids' => [$item->id],
             'payment_method' => 'cod',
-        ])->assertRedirect(route('buyer.orders.index'));
+        ];
+        $this->actingAs($buyer)->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
 
         $order = Order::with('delivery')->firstOrFail();
         $delivery = $order->delivery;
@@ -180,6 +184,15 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'delivered',
             'buyer_completed',
         ], DeliveryCheckpoint::where('delivery_id', $delivery->id)->orderBy('id')->pluck('checkpoint_type')->all());
+
+        $completed = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(),
+            DeliveryCheckpoint::where('delivery_id', $delivery->id)->count()];
+        $this->actingAs($buyer)->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
+        $this->assertSame($completed, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(),
+            DeliveryCheckpoint::where('delivery_id', $delivery->id)->count()]);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame($startingStock - 1, $product->fresh()->stock);
+        $this->assertDatabaseCount('checkout_submissions', 1);
 
         Storage::disk('public')->delete($proofPath);
     }

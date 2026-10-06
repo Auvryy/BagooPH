@@ -12,11 +12,13 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class ChallengerM1StressTest extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     /**
@@ -105,6 +107,7 @@ class ChallengerM1StressTest extends TestCase
 
         // Buyer 1 Checks out
         $this->actingAs($buyer1)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer1),
             'recipient_name' => 'Buyer One',
             'recipient_phone' => '+63 917 111 2222',
             'shipping_address' => 'Addr 1',
@@ -122,6 +125,7 @@ class ChallengerM1StressTest extends TestCase
 
         // Buyer 2 Checks out
         $this->actingAs($buyer2)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer2),
             'recipient_name' => 'Buyer Two',
             'recipient_phone' => '+63 918 333 4444',
             'shipping_address' => 'Addr 2',
@@ -182,6 +186,7 @@ class ChallengerM1StressTest extends TestCase
         $this->assertNull($item->size);
 
         $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Reader Ana',
             'recipient_phone' => '09228887766',
             'shipping_address' => 'Library Lane',
@@ -257,15 +262,16 @@ class ChallengerM1StressTest extends TestCase
         $this->createCheckoutNetwork($shop, ['Taguig' => 'Metro Manila']);
 
         $phoneFormats = [
-            '+63 (917) 123-4567',
-            '0918-987-6543',
-            '+639991234567',
+            '+63 (917) 123-4567' => '+639171234567',
+            '0918-987-6543' => '+639189876543',
+            '+639991234567' => '+639991234567',
         ];
 
-        foreach ($phoneFormats as $phone) {
+        foreach ($phoneFormats as $phone => $expectedPhone) {
             $this->actingAs($buyer)->post('/cart', ['product_id' => $product->id, 'quantity' => 1])
                 ->assertSessionHasNoErrors()->assertSessionHas('success');
             $this->actingAs($buyer)->post('/checkout', [
+                'checkout_token' => $this->checkoutToken($buyer),
                 'recipient_name' => 'Tech Enthusiast', 'recipient_phone' => $phone,
                 'shipping_address' => '100 Silicon Ave', 'shipping_city' => 'Taguig',
                 'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1634',
@@ -279,7 +285,8 @@ class ChallengerM1StressTest extends TestCase
             $this->assertSame('ready_for_pickup', $order->fresh()->status);
             $delivery = Delivery::where('order_id', $order->id)->first();
             $this->assertNotNull($delivery);
-            $this->assertEquals($phone, $delivery->delivery_phone, "Delivery phone must accurately preserve {$phone}");
+            $this->assertSame($expectedPhone, $order->fresh()->recipient_phone);
+            $this->assertSame($expectedPhone, $delivery->delivery_phone, 'Dispatch must preserve the canonical checkout phone.');
         }
     }
 }

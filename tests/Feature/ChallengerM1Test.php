@@ -14,12 +14,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\Concerns\InteractsWithKycReviews;
 use Tests\TestCase;
 
 class ChallengerM1Test extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use InteractsWithKycReviews;
     use RefreshDatabase;
 
@@ -326,6 +328,7 @@ class ChallengerM1Test extends TestCase
 
         // Step 4: Checkout and verify order_items preservation
         $checkoutResponse = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Maria Clara',
             'recipient_phone' => '09171234567',
             'shipping_address' => 'Unit 402 Casa Real',
@@ -344,7 +347,7 @@ class ChallengerM1Test extends TestCase
         $order = Order::where('buyer_id', $buyer->id)->latest()->first();
         $this->assertNotNull($order);
         $this->assertEquals('Maria Clara', $order->recipient_name);
-        $this->assertEquals('09171234567', $order->recipient_phone);
+        $this->assertEquals('+639171234567', $order->recipient_phone);
         $this->assertEquals(3000.00, (float) $order->subtotal); // 3 * 750 + 1 * 750 = 3000
 
         // Verify Order Items
@@ -428,9 +431,11 @@ class ChallengerM1Test extends TestCase
         ]);
 
         $targetPhone = '+63 917 555 1234';
+        $expectedPhone = '+639175551234';
 
         // Checkout with specific recipient phone
         $checkoutResponse = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Juan Dela Cruz',
             'recipient_phone' => $targetPhone,
             'shipping_address' => 'Block 12 Lot 5 Golden Heights',
@@ -446,12 +451,12 @@ class ChallengerM1Test extends TestCase
 
         $order = Order::where('buyer_id', $buyer->id)->latest()->first();
         $this->assertNotNull($order);
-        $this->assertEquals($targetPhone, $order->recipient_phone);
+        $this->assertEquals($expectedPhone, $order->recipient_phone);
 
         // Verify Delivery record has accurate delivery_phone (not null, not empty)
         $delivery = Delivery::where('order_id', $order->id)->first();
         $this->assertNotNull($delivery, 'Delivery record must exist after checkout');
-        $this->assertEquals($targetPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must match recipient_phone');
+        $this->assertEquals($expectedPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must match canonical recipient_phone');
         $this->assertEquals('Juan Dela Cruz', $delivery->delivery_recipient_name);
         $this->assertEquals('Block 12 Lot 5 Golden Heights, Antipolo, Rizal', $delivery->delivery_address);
 
@@ -464,7 +469,7 @@ class ChallengerM1Test extends TestCase
         $this->assertSame('ready_for_pickup', $order->fresh()->status);
 
         $delivery->refresh();
-        $this->assertEquals($targetPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must be preserved after seller marks ready');
+        $this->assertEquals($expectedPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must be preserved after seller marks ready');
         $this->assertEquals('unassigned', $delivery->status);
     }
 
