@@ -1,253 +1,37 @@
 import React, { useState } from 'react';
-import { Head, router, Link } from '@inertiajs/react';
+import { Head, router, Link, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { PaginatedData, Delivery } from '@/types';
-import { 
-    Truck, 
-    Package, 
-    Search, 
-    Filter, 
-    CheckCircle2, 
-    Clock, 
-    MapPin, 
-    User, 
-    Building2, 
-    TrendingUp, 
-    RotateCcw, 
-    DollarSign, 
-    AlertTriangle, 
-    RefreshCw 
-} from 'lucide-react';
+import AdminFinanceAvailability from '@/Components/AdminFinanceAvailability';
+import { recordLabel } from '@/Components/GovernanceRecord';
+import type { AdminLogisticsProps } from '@/types/admin';
+import type { PageProps } from '@/types';
 
-interface CourierRider {
-    id: number;
-    name: string;
-    email: string;
-    phone: string;
-    active_jobs: number;
-    completed_jobs: number;
-    status: string;
-}
-
-interface Props {
-    deliveries: PaginatedData<Delivery>;
-    couriers: CourierRider[];
-    filters: {
-        search?: string;
-        status?: string;
-    };
-    stats: {
-        total: number;
-        inTransit: number;
-        unassigned: number;
-        delivered: number;
-        totalShippingRevenue: number;
-        courierPayouts: number;
-        hubFee: number;
-        activeFleetCount: number;
-    };
-}
-
-export default function AdminLogistics({ deliveries, couriers, filters, stats }: Props) {
-    const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
-    const handleFilterSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('admin.logistics'), {
-            search: searchTerm || undefined,
-            status: statusFilter === 'all' ? undefined : statusFilter,
-        }, { preserveState: true });
-    };
-
-    const formatPrice = (val: number) => {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            minimumFractionDigits: 2,
-        }).format(val);
-    };
-
-    return (
-        <DashboardLayout
-            title="Central Logistics Sorting Hub"
-            subtitle="Platform-wide parcel telemetry, fleet dispatch supervision, and revenue split ledger"
-        >
-            <Head title="Logistics Sorting Hub — Platform Admin" />
-
-            <div className="mb-5 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
-                Parcel custody changes must be recorded by assigned riders and logistics operators.
-                Platform corrections are currently unavailable.
-            </div>
-
-            <div className="space-y-6 font-sans">
-                
-                {/* 1. LOGISTICS FACILITY METRICS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans text-xs">
-                    
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
-                            <Truck className="w-6 h-6 animate-pulse" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold">In-Transit Parcels</span>
-                            <h3 className="text-2xl font-black text-slate-900">{stats.inTransit}</h3>
-                            <p className="text-[10px] text-amber-600 font-bold">Active in sorting/delivery</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-rose-50 text-[#E00D42] flex items-center justify-center font-bold shrink-0">
-                            <Package className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold">Unassigned Broadcasts</span>
-                            <h3 className="text-2xl font-black text-[#E00D42]">{stats.unassigned}</h3>
-                            <p className="text-[10px] text-slate-500">Awaiting rider claim (FCFS)</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-                            <CheckCircle2 className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold">Delivered Packages</span>
-                            <h3 className="text-2xl font-black text-emerald-600">{stats.delivered}</h3>
-                            <p className="text-[10px] text-slate-500">100% Successful Drop-offs</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
-                            <Building2 className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold">Hub Facility Share</span>
-                            <h3 className="text-2xl font-black text-indigo-600">{formatPrice(stats.hubFee)}</h3>
-                            <p className="text-[10px] text-slate-500">20% Sorting Hub fee split</p>
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* 2. FLEET ROSTER STRIP */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3 font-sans text-xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <h4 className="font-bold text-slate-900 uppercase">Active Bagoo Express Fleet ({couriers.length} Drivers)</h4>
-                        <span className="text-emerald-600 font-bold">● All Systems Nominal</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                        {couriers.map((courier) => (
-                            <div key={courier.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-                                <div className="flex items-center justify-between font-bold">
-                                    <span className="text-slate-900 truncate">{courier.name}</span>
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                                        {courier.status}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-slate-500">{courier.phone}</p>
-                                <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px] text-slate-600">
-                                    <span>Active: <strong>{courier.active_jobs}</strong></span>
-                                    <span>Done: <strong>{courier.completed_jobs}</strong></span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 3. PARCEL DISPATCH TABLE */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                    
-                    {/* Search & Filter Form */}
-                    <form onSubmit={handleFilterSubmit} className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 border-b border-slate-100 font-sans text-xs">
-                        <div className="relative w-full sm:w-80">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search Tracking #, Order #, Recipient..."
-                                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="rounded-xl bg-slate-50 border border-slate-200 text-xs py-2 px-3 focus:ring-[#E00D42] focus:border-[#E00D42]"
-                            >
-                                <option value="all">All Statuses</option>
-                                <option value="unassigned">Unassigned</option>
-                                <option value="assigned">Assigned</option>
-                                <option value="picked_up">Picked Up</option>
-                                <option value="in_transit">In Transit</option>
-                                <option value="out_for_delivery">Out for Delivery</option>
-                                <option value="delivered">Delivered</option>
-                            </select>
-
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-slate-900 text-white font-bold rounded-xl uppercase hover:bg-black transition"
-                            >
-                                Filter
-                            </button>
-                        </div>
-                    </form>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-sans">
-                            <thead>
-                                <tr className="border-b border-slate-200 font-sans text-[10px] text-slate-400 uppercase">
-                                    <th className="pb-3 pr-4">Tracking #</th>
-                                    <th className="pb-3 px-4">Merchant Origin</th>
-                                    <th className="pb-3 px-4">Recipient Destination</th>
-                                    <th className="pb-3 px-4">Assigned Driver</th>
-                                    <th className="pb-3 px-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 font-sans">
-                                {deliveries.data.map((del) => (
-                                    <tr key={del.id} className="hover:bg-slate-50/60 transition">
-                                        <td className="py-3.5 pr-4">
-                                            <span className="font-bold text-slate-900">#{del.tracking_number}</span>
-                                            <span className="block text-[10px] text-slate-400">Order #{del.order?.order_number}</span>
-                                        </td>
-                                        <td className="py-3.5 px-4 font-sans">
-                                            <span className="font-bold text-slate-800">{del.pickup_store_name || 'Bagoo Merchant'}</span>
-                                        </td>
-                                        <td className="py-3.5 px-4 font-sans">
-                                            <span className="font-bold text-slate-800">{del.delivery_recipient_name}</span>
-                                            <span className="block text-[10px] text-slate-500 font-sans truncate max-w-xs">{del.delivery_address}</span>
-                                        </td>
-                                        <td className="py-3.5 px-4">
-                                            {del.courier ? (
-                                                <span className="font-bold text-slate-900">{del.courier.name}</span>
-                                            ) : (
-                                                <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded">
-                                                    UNASSIGNED
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="py-3.5 px-4">
-                                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                                del.status === 'delivered' 
-                                                    ? 'bg-emerald-100 text-emerald-800' 
-                                                    : 'bg-amber-100 text-amber-800'
-                                            }`}>
-                                                {del.status.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                </div>
-            </div>
-        </DashboardLayout>
-    );
+export default function AdminLogistics({ deliveries, couriers, filters, stats, statusOptions, finance }: AdminLogisticsProps) {
+    const [search, setSearch] = useState(filters.search);
+    const [status, setStatus] = useState(filters.status);
+    const { errors } = usePage<PageProps>().props;
+    const control = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
+    return <DashboardLayout title="Logistics oversight" subtitle="Platform-wide recorded parcels, rider placement and duty">
+        <Head title="Logistics oversight — Bagoo Admin" />
+        <div className="space-y-6">
+            <div className="rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">This view is read only. Assigned riders and eligible hub handlers record parcel custody. Platform recovery actions are unavailable until exception oversight is implemented.</div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
+                ['Parcel records', stats.total, 'All recorded parcels'],
+                ['Open parcels', stats.open, 'Known open pickup, hub, delivery and recovery states'],
+                ['Awaiting pickup assignment', stats.awaitingPickupAssignment, 'Unassigned state with no recorded rider'],
+                ['Delivered or collected status', stats.handoverStatus, 'Delivered, customer collected or completed states; cash remains separate'],
+            ].map(([label, count, note]) => <section key={String(label)} className="rounded-xl border border-slate-300 bg-white p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold text-slate-900">{count}</p><p className="mt-2 text-xs leading-5 text-slate-500">{note}</p></section>)}</div>
+            <section className="rounded-xl border border-slate-300 bg-white p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold text-slate-900">Rider account roster</h2><Link href={route('admin.users', { role: 'courier' })} className="text-sm font-semibold text-[#E00D42] hover:underline">All rider accounts</Link></div><p className="mt-2 text-sm text-slate-600">Showing {couriers.length} of {stats.courierAccounts} accounts · {stats.onDutyEligibleRiders} on-duty riders have eligible network placement. Live presence is unavailable.</p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{couriers.map((rider) => <div key={rider.id} className="rounded-lg border border-slate-300 p-4"><h3 className="font-semibold text-slate-900">{rider.name} · #{rider.id}</h3><p className="mt-2 text-sm text-slate-700">Duty preference: {rider.on_duty === null ? 'Not recorded' : rider.on_duty ? 'On duty' : 'Off duty'}</p><p className="mt-1 text-xs text-slate-500">Activity: {recordLabel(rider.status)} · Approval: {rider.kyc_status ? recordLabel(rider.kyc_status) : 'Unavailable'}</p><p className="mt-1 text-xs text-slate-500">Company: {rider.company_id ? '#' + rider.company_id : 'Not assigned'} · Hub: {rider.hub_id ? '#' + rider.hub_id : 'Not assigned'}</p><p className="mt-1 text-xs text-slate-500">Network eligibility: {rider.network_eligible ? 'Eligible' : 'Not eligible'} · {rider.linked_open_parcels} linked open parcels</p></div>)}</div>
+                {!couriers.length && <p className="mt-5 text-sm text-slate-500">No courier accounts are recorded.</p>}<p className="mt-4 text-xs text-slate-500">Linked parcels use recorded pickup or delivery rider references. Network eligibility and duty do not prove that a rider is idle or holds a parcel.</p>
+            </section>
+            <section className="rounded-xl border border-slate-300 bg-white p-6"><h2 className="font-semibold text-slate-900">Parcel registry</h2><p className="mt-2 text-sm text-slate-600">{stats.exceptions} parcels are in failed delivery or return-to-sender states. Counts cover the platform; table filters apply only to the registry below.</p>
+                <form onSubmit={(event) => { event.preventDefault(); router.get(route('admin.logistics'), { search, status }, { preserveState: true }); }} className="mt-5 flex flex-wrap gap-3"><label className="grow text-sm text-slate-600">Search recorded parcels<input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Tracking, order, seller or recipient" className={control + ' mt-1 block w-full'} /></label><label className="text-sm text-slate-600">Exact recorded state<select value={status} onChange={(event) => setStatus(event.target.value)} className={control + ' mt-1 block w-full'}><option value="all">All states</option>{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.count})</option>)}</select></label><button className="self-end rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Apply filters</button><button type="button" onClick={() => { setSearch(''); setStatus('all'); router.get(route('admin.logistics')); }} className="self-end rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Clear</button></form>
+                {Object.keys(errors).length > 0 && <div role="alert" className="mt-3 text-sm text-rose-700">{Object.entries(errors).map(([field, message]) => <p key={field}>{message}</p>)}</div>}
+                <div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-slate-300 text-xs text-slate-500"><tr>{['Tracking / order', 'Seller / recipient', 'Pickup rider', 'Delivery rider', 'Current recorded hub', 'Parcel state'].map((label) => <th key={label} className="px-3 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{deliveries.data.map((parcel) => <tr key={parcel.id}><td className="px-3 py-4"><p className="font-semibold">{parcel.tracking_number}</p>{parcel.order_url && <Link href={parcel.order_url} className="mt-1 block text-xs font-semibold text-[#E00D42] hover:underline">{parcel.order?.order_number ?? 'View order'}</Link>}</td><td className="px-3 py-4"><p>{parcel.pickup_store_name ?? 'Seller not recorded'}</p><p className="mt-1 text-xs text-slate-500">To: {parcel.delivery_recipient_name ?? 'Recipient not recorded'}</p><p className="max-w-xs text-xs text-slate-500">{parcel.delivery_address ?? 'Address not recorded'}</p></td><td className="px-3 py-4">{parcel.courier?.name ?? 'Unassigned'}</td><td className="px-3 py-4">{parcel.assigned_rider?.name ?? 'Unassigned'}</td><td className="px-3 py-4">{parcel.current_hub?.name ?? 'No current hub recorded'}</td><td className="px-3 py-4">{recordLabel(parcel.status)}</td></tr>)}</tbody></table></div>
+                {!deliveries.data.length && <p className="py-8 text-center text-sm text-slate-500">No parcels match these filters.</p>}<div className="mt-5 flex justify-between gap-4 border-t border-slate-300 pt-4 text-sm"><p className="text-slate-600">{deliveries.total} matching parcels · Page {deliveries.current_page} of {deliveries.last_page}</p><div className="flex gap-3">{deliveries.prev_page_url && <Link href={deliveries.prev_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Previous</Link>}{deliveries.next_page_url && <Link href={deliveries.next_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Next</Link>}</div></div>
+            </section>
+            <AdminFinanceAvailability finance={finance} />
+        </div>
+    </DashboardLayout>;
 }

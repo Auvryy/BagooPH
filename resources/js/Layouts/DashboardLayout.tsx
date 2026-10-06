@@ -79,7 +79,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard, current: component === 'Admin/Dashboard' || route().current('admin.dashboard') || url === '/admin/dashboard' || url === '/admin' },
                 { name: 'Shop reviews', href: route('admin.shops.index'), icon: Store, current: component === 'Admin/ShopReviews' },
                 { name: 'KYC Queue', href: route('admin.kyc.index'), icon: ShieldCheck, current: component.startsWith('Admin/Kyc') || route().current('admin.kyc.*') || url.startsWith('/admin/kyc') },
-                { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || route().current('admin.users*') || url.startsWith('/admin/users') },
+                { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || component === 'Admin/AccountContext' || route().current('admin.users*') || url.startsWith('/admin/users') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
