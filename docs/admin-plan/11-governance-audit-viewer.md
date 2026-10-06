@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/governance-audit-viewer` |
+| Git branch | `admin/moderation-audit-and-overview` (B10-B12 batch) |
 | Phase | 0 |
 | Minimum prerequisites | [B03](03-shop-approval-eligibility.md), [B06](06-account-restrictions.md), [B07](07-resource-restrictions.md), [B08](08-reviewed-identity-corrections.md), [B09](09-account-closure-safety.md), [B10](10-product-moderation.md) |
 | Result | Authorized reviewers can trace recorded governance decisions without editing history. |
@@ -90,8 +90,10 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 
 Stop after verified read-only context, filters, pagination, and privacy. Decision-writing fixes belong to their owning branches; do not hide missing records with synthetic history.
 
+For the selected B10-B12 batch, verify B10 before starting this task and complete this audit/privacy gate before B12. Keep separate task records and commits; stop the combined batch after its final verification for user review before B13.
+
 ```text
-Implement only B11 from docs/admin-plan/11-governance-audit-viewer.md on admin/governance-audit-viewer.
+Implement B11 from docs/admin-plan/11-governance-audit-viewer.md on admin/moderation-audit-and-overview after B10's focused gate passes.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.

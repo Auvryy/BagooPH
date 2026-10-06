@@ -4,7 +4,7 @@ This document is the single source for current implementation gaps and delivery 
 
 ## Project Delivery Target: October 4, 2026
 
-At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation is 18 bounded admin tasks on 16 planned branches, or 17 Git deliveries including the existing foundation; B06+B07 and B08+B09 each share one branch.
+At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation is 18 bounded admin tasks on 14 planned branches, or 15 Git deliveries including the existing foundation; B06+B07, B08+B09, and B10-B12 each share one branch.
 
 Every planned task uses **October 4, 2026** as its common start date and extends to its individual deadline. These overlapping planning windows do not authorize simultaneous implementation or bypass dependencies. The checkpoint windows describe intended execution and review order; estimates, acceptance gates, and completion evidence remain unchanged.
 
@@ -869,9 +869,9 @@ Every phase must also pass the mandatory acceptance gate in `docs/CORE_FLOW_VALI
 
 Acceptance: direct URLs, stale pages, alternate portals, simulators, and malformed inputs cannot bypass ownership or lifecycle rules; secrets and KYC files are not publicly exposed.
 
-Next Phase 0 work: B01-B07 are merged; B08+B09 are locally implemented and verified on `admin/identity-and-closure-safety`. After user-managed review/merge of this batch and an updated `main`, continue with B10-B13 of [the bounded admin plan](admin-plan/README.md): product moderation, searchable governance audit, truthful overview data, and Phase 0 acceptance. Preserve fixed roles, adult-worker validation, and the verified KYC/shop/resource foundations. B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
+Next Phase 0 work: B01-B09 are merged into `main` at `1d53c70`. The selected B10-B12 batch uses `admin/moderation-audit-and-overview` for product moderation, searchable governance audit, and truthful overview data, with separate focused gates before each dependent task. Preserve fixed roles, adult-worker validation, and the verified KYC/shop/resource foundations. After combined verification and user-managed review/merge, B13 must verify all applicable Phase 0 requirements rather than treating branch publication as phase completion. Rider waybill scan evidence follows after Phase 0; retry/RTS and COD persistence retain their later phase order.
 
-B06+B07 share `admin/governance-restrictions`; B08+B09 share `admin/identity-and-closure-safety`. The scoped reviews above record separate acceptance evidence and combined regression/build results. Local completion does not imply user publication/merge or waive B13 and later phase gates.
+B06+B07 share `admin/governance-restrictions`; B08+B09 share `admin/identity-and-closure-safety`; B10-B12 share `admin/moderation-audit-and-overview`. Each batch retains separate acceptance gates and combined regression/build checks. Local completion does not imply user publication/merge or waive B13 and later phase gates.
 
 ### Phase 1: Normal Order and Seller Flow
 

@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/truthful-overview` |
+| Git branch | `admin/moderation-audit-and-overview` (B10-B12 batch) |
 | Phase | 0 |
 | Minimum prerequisites | [B04](04-logistics-resource-eligibility.md), [B11](11-governance-audit-viewer.md) |
 | Result | Overview/Logistics show recorded counts and availability without invented finance. |
@@ -91,7 +91,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop when the admin surface shows only real scoped data and honest unavailable modules, and the frontend build passes. Finance remains a later source-driven feature.
 
 ```text
-Implement only B12 from docs/admin-plan/12-truthful-overview.md on admin/truthful-overview.
+Implement B12 from docs/admin-plan/12-truthful-overview.md on admin/moderation-audit-and-overview after B11's focused gate passes.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.
