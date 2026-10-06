@@ -41,14 +41,11 @@ class BuyerProfileController extends Controller
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
 
         $wallet = [
-            'balance' => 5000.00,
+            'available' => false,
+            'balance' => null,
             'currency' => 'PHP',
-            'status' => 'Active',
-            'account_number' => 'BG-WLT-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
-            'recent_transactions' => [
-                ['id' => 'tx-1', 'title' => 'Top-up via Sandbox Simulation', 'amount' => 5000.00, 'type' => 'credit', 'date' => 'Today'],
-                ['id' => 'tx-2', 'title' => 'Order Payment #ORD-8821', 'amount' => -1250.00, 'type' => 'debit', 'date' => 'Yesterday'],
-            ],
+            'account_number' => null,
+            'recent_transactions' => [],
         ];
 
         $orders = Order::where('buyer_id', $user->id)

@@ -15,12 +15,8 @@ import {
     Phone, 
     Mail, 
     Calendar, 
-    CreditCard, 
     Check, 
-    ArrowUpRight, 
-    ArrowDownLeft, 
     Clock, 
-    Sparkles, 
     AlertCircle,
     Package,
     Tag,
@@ -43,10 +39,10 @@ import {
 } from 'lucide-react';
 
 interface WalletData {
-    balance: number;
+    available: false;
+    balance: null;
     currency: string;
-    status: string;
-    account_number: string;
+    account_number: null;
     recent_transactions: {
         id: string;
         title: string;
@@ -117,11 +113,8 @@ export default function BuyerProfile({
 
     const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
-    const [wallet, setWallet] = useState<WalletData>(initialWallet);
+    const wallet = initialWallet;
     const [showAddressModal, setShowAddressModal] = useState(false);
-    const [topupAmount, setTopupAmount] = useState<number>(1000);
-    const [topupLoading, setTopupLoading] = useState(false);
-    const [topupSuccess, setTopupSuccess] = useState(false);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -372,29 +365,6 @@ export default function BuyerProfile({
         });
     };
 
-    const handleTopup = (amount: number) => {
-        setTopupLoading(true);
-        setTimeout(() => {
-            setWallet(prev => ({
-                ...prev,
-                balance: prev.balance + amount,
-                recent_transactions: [
-                    {
-                        id: `tx-${Date.now()}`,
-                        title: `Top-up Sandbox Simulation (+₱${amount.toLocaleString()})`,
-                        amount: amount,
-                        type: 'credit',
-                        date: 'Just now',
-                    },
-                    ...prev.recent_transactions,
-                ],
-            }));
-            setTopupLoading(false);
-            setTopupSuccess(true);
-            setTimeout(() => setTopupSuccess(false), 3000);
-        }, 600);
-    };
-
     const formatPrice = (val?: number | string | null) => {
         const num = Number(val || 0);
         return new Intl.NumberFormat('en-PH', {
@@ -443,13 +413,13 @@ export default function BuyerProfile({
         { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: orders.length },
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
-        { id: 'wallet', label: 'Simulated Digital Wallet', icon: Wallet, badge: formatPrice(wallet.balance) },
+        { id: 'wallet', label: 'Bagoo Wallet', icon: Wallet, badge: wallet.available ? undefined : 'Unavailable' },
         { id: 'vouchers', label: 'My Vouchers & Promos', icon: Tag, badge: '3 Available' },
     ];
 
     return (
         <BuyerLayout>
-            <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Simulated Digital Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
+            <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
 
             <div className="w-full space-y-6 font-sans">
                 
@@ -460,7 +430,7 @@ export default function BuyerProfile({
                             {activeTab === 'orders' ? 'My Purchases & Order Tracking' : 'Account Settings & Credentials'}
                         </h1>
                         <p className="text-xs text-slate-500 font-sans">
-                            {activeTab === 'orders' ? 'Track real-time parcel dispatch, delivery timelines, and order receipts' : 'Manage personal credentials, PSGC shipping addresses, and simulated wallet'}
+                            {activeTab === 'orders' ? 'View recorded delivery updates and order receipts' : 'Manage your account information and delivery addresses'}
                         </p>
                     </div>
 
@@ -1316,83 +1286,18 @@ export default function BuyerProfile({
                             </div>
                         )}
 
-                        {/* TAB 4: SIMULATED DIGITAL WALLET */}
+                        {/* TAB 4: BAGOO WALLET */}
                         {activeTab === 'wallet' && (
-                            <div className="space-y-6">
-                                
-                                {/* Wallet Hero Stage */}
-                                <div className="bg-slate-950 rounded-3xl p-6 sm:p-8 text-white border border-slate-800 shadow-xl space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Wallet className="w-5 h-5 text-amber-400" />
-                                            <span className="font-sans text-xs font-bold uppercase text-slate-400">Bagoo Digital Wallet Sandbox</span>
-                                        </div>
-                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-sans text-[10px] font-bold border border-emerald-500/30">
-                                            AUTHORIZED ACTIVE
-                                        </span>
-                                    </div>
-
-                                    <div>
-                                        <span className="text-xs text-slate-400 font-sans">Available Account Balance</span>
-                                        <h2 className="text-3xl sm:text-4xl font-black text-emerald-400 mt-1">
-                                            {formatPrice(wallet.balance)}
-                                        </h2>
-                                        <p className="text-[11px] text-slate-400 font-sans mt-1">
-                                            Account: {wallet.account_number} • Instant settlement at checkout without gateway fees
-                                        </p>
-                                    </div>
-
-                                    {/* Quick Simulation Top-Up Strip */}
-                                    <div className="pt-4 border-t border-slate-800 space-y-2">
-                                        <span className="text-[10px] font-sans text-slate-400 uppercase font-bold">Simulate Instant Top-up:</span>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {[500, 1000, 2500, 5000].map((amt) => (
-                                                <button
-                                                    key={amt}
-                                                    type="button"
-                                                    onClick={() => handleTopup(amt)}
-                                                    disabled={topupLoading}
-                                                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold border border-slate-700 transition"
-                                                >
-                                                    +₱{amt.toLocaleString()}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {topupSuccess && (
-                                            <p className="text-emerald-400 text-xs font-sans font-bold flex items-center gap-1.5 mt-2 animate-fade-in">
-                                                <Check className="w-3.5 h-3.5" /> Balance updated in sandbox ledger!
-                                            </p>
-                                        )}
-                                    </div>
+                            <section className="rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs">
+                                <div className="flex items-center gap-3">
+                                    <Wallet className="h-6 w-6 shrink-0 text-[#E00D42]" aria-hidden="true" />
+                                    <h3 className="text-lg font-bold text-slate-900">Bagoo Wallet</h3>
                                 </div>
-
-                                {/* Transactions Statement */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
-                                    <h4 className="font-bold text-slate-900 text-sm uppercase font-sans">Recent Wallet Transactions</h4>
-                                    <div className="divide-y divide-slate-100">
-                                        {wallet.recent_transactions.map((tx) => (
-                                            <div key={tx.id} className="py-3 flex items-center justify-between font-sans text-xs">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
-                                                        tx.type === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                                    }`}>
-                                                        {tx.type === 'credit' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-slate-800">{tx.title}</p>
-                                                        <span className="text-[10px] text-slate-400">{tx.date}</span>
-                                                    </div>
-                                                </div>
-
-                                                <span className={`font-black ${tx.type === 'credit' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                    {tx.type === 'credit' ? '+' : ''}{formatPrice(tx.amount)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                            </div>
+                                <p className="mt-5 font-semibold text-slate-800">Currently unavailable</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    Wallet balances, top-ups and wallet payments are not available yet. Checkout uses cash on delivery.
+                                </p>
+                            </section>
                         )}
 
                         {/* TAB 5: VOUCHERS & PROMOS */}
