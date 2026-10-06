@@ -43,6 +43,12 @@ class CartController extends Controller
     {
         $cart = $this->getCart($request);
         $cart->load(['items.product.shop']);
+        $eligibleIds = Product::availableForSale()->whereIn('id', $cart->items->pluck('product_id'))->pluck('id');
+        foreach ($cart->items as $item) {
+            $available = $eligibleIds->contains($item->product_id) && $item->product?->stock > 0;
+            $item->setAttribute('available_for_purchase', $available);
+            $item->setAttribute('unavailable_reason', $available ? null : 'This listing is unavailable for new purchases. You can remove it from your Bag.');
+        }
 
         // Default sort: Most recent product added/updated is the first row
         $items = $cart->items->sort(function ($a, $b) {

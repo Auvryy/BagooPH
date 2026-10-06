@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use LogicException;
 
 class Product extends Model
 {
@@ -29,6 +30,13 @@ class Product extends Model
                 $product->slug = static::generateUniqueSlug($product->name, $product->id);
             } elseif ($product->isDirty('slug')) {
                 $product->slug = static::makeSlugUnique($product->slug, $product->id);
+            }
+        });
+
+        static::deleting(function (Product $product) {
+            if ($product->orderItems()->exists() || $product->reviews()->exists()
+                || CartItem::where('product_id', $product->id)->exists() || $product->moderationDecisions()->exists()) {
+                throw new LogicException('Referenced products must be archived to preserve their history.');
             }
         });
     }
@@ -94,6 +102,8 @@ class Product extends Model
     ];
 
     protected $casts = [
+        'compliance_restricted' => 'boolean',
+        'moderation_version' => 'integer',
         'price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',
         'weight_kg' => 'decimal:2',
@@ -102,6 +112,13 @@ class Product extends Model
         'sales_count' => 'integer',
         'variants' => 'array',
     ];
+
+    protected $attributes = ['compliance_restricted' => false, 'moderation_version' => 0];
+
+    public function moderationDecisions(): HasMany
+    {
+        return $this->hasMany(ProductModerationDecision::class);
+    }
 
     public function shop(): BelongsTo
     {

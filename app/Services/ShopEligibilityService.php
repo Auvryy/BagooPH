@@ -148,7 +148,7 @@ class ShopEligibilityService
     {
         $shop = Shop::find($product->shop_id);
 
-        return $product->status === 'active' && $shop && $this->isEligible($shop)
+        return $product->status === 'active' && ! $product->compliance_restricted && $shop && $this->isEligible($shop)
             && in_array((int) $product->category_id, $this->categoryIds($shop), true);
     }
 
@@ -175,7 +175,7 @@ class ShopEligibilityService
     {
         $scopes = $this->categoryScopes();
 
-        return $query->where('products.status', 'active')->whereHas('shop', fn ($q) => $q->eligible())
+        return $query->where('products.status', 'active')->where('products.compliance_restricted', false)->whereHas('shop', fn ($q) => $q->eligible())
             ->where(function ($queryScopes) use ($scopes) {
                 $queryScopes->whereRaw('1 = 0');
                 foreach ($scopes as $rootId => $categoryIds) {

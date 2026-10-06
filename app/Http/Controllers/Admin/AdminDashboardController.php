@@ -7,7 +7,6 @@ use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,21 +70,13 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    public function products(): Response
+    public function products(Request $request): Response
     {
         $products = Product::with(['shop', 'category'])->latest()->paginate(15);
 
         return Inertia::render('Admin/Products', [
             'products' => $products,
+            'moderationBaseUrl' => $request->getPathInfo(),
         ]);
-    }
-
-    public function toggleProductStatus(Request $request, Product $product): RedirectResponse
-    {
-        $product->update([
-            'status' => $product->status === 'active' ? 'draft' : 'active',
-        ]);
-
-        return back()->with('success', 'Product status toggled.');
     }
 }

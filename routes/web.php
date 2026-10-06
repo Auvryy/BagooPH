@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
 use App\Http\Controllers\Admin\LogisticsHubController;
+use App\Http\Controllers\Admin\ProductModerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -37,12 +38,12 @@ use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
-use App\Http\Controllers\VerificationDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -237,7 +238,8 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
         Route::get('/products', [AdminDashboardController::class, 'products']);
-        Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
+        Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
+        Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
         Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
@@ -487,7 +489,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
-    Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
+    Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');
+    Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
 });
 
