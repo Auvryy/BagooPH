@@ -40,7 +40,8 @@ export default function CartIndex({ cart, items, total }: Props) {
         return sorted[0]?.id ?? null;
     };
 
-    const mostRecentId = getMostRecentItemId(items);
+    const selectableItems = items.filter(item => item.available_for_purchase === true);
+    const mostRecentId = getMostRecentItemId(selectableItems);
 
     // Default to only checking the recent product added when opening the cart
     const [selectedIds, setSelectedIds] = useState<number[]>(() => {
@@ -61,6 +62,7 @@ export default function CartIndex({ cart, items, total }: Props) {
     const { auth } = usePage<PageProps>().props;
 
     useEffect(() => {
+        setSelectedIds(current => current.filter(id => items.some(item => item.id === id && item.available_for_purchase === true)));
         setQuantityDrafts((current) => ({
             ...current,
             ...Object.fromEntries(items.map((item) => [item.id, String(item.quantity)])),
@@ -114,20 +116,22 @@ export default function CartIndex({ cart, items, total }: Props) {
     }, [items, searchQuery, filterBy, sortBy, selectedIds]);
 
     const toggleItemSelection = (id: number) => {
+        if (!selectableItems.some(item => item.id === id)) return;
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.length === items.length) {
+        if (selectedIds.length === selectableItems.length) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(items.map(i => i.id));
+            setSelectedIds(selectableItems.map(i => i.id));
         }
     };
 
     const maximumQuantityForItem = (item: CartItem) => {
+        if (item.available_for_purchase !== true) return 0;
         const productStock = Math.max(0, Number(item.product?.stock ?? 0));
         const otherProductQuantity = items
             .filter((candidate) => candidate.id !== item.id && candidate.product_id === item.product_id)
@@ -215,7 +219,7 @@ export default function CartIndex({ cart, items, total }: Props) {
         router.delete(route('cart.destroy', item.id), { preserveScroll: true });
     };
 
-    const selectedItems = items.filter(item => selectedIds.includes(item.id));
+    const selectedItems = selectableItems.filter(item => selectedIds.includes(item.id));
     const subtotal = selectedItems.reduce((sum, item) => sum + (Number(item.unit_price) * item.quantity), 0);
     const shipping = selectedItems.length === 0 ? 0 : (subtotal > 1500 ? 0 : (subtotal > 0 ? 50 : 0));
     const grandTotal = Math.max(0, subtotal + shipping);
@@ -368,11 +372,12 @@ export default function CartIndex({ cart, items, total }: Props) {
                                     <label className="flex items-center gap-2.5 cursor-pointer select-none font-bold text-slate-800">
                                         <input
                                             type="checkbox"
-                                            checked={items.length > 0 && selectedIds.length === items.length}
+                                            checked={selectableItems.length > 0 && selectedIds.length === selectableItems.length}
+                                            disabled={selectableItems.length === 0}
                                             onChange={toggleSelectAll}
                                             className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42]"
                                         />
-                                        <span>Select All ({selectedIds.length}/{items.length} items)</span>
+                                        <span>Select available ({selectedIds.length}/{selectableItems.length} items)</span>
                                     </label>
                                     <div className="flex items-center gap-2">
                                         <Store className="w-4 h-4 text-[#E00D42]" />
@@ -405,6 +410,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedIds.includes(item.id)}
+                                                        disabled={item.available_for_purchase !== true}
                                                         onChange={() => toggleItemSelection(item.id)}
                                                         className="w-4 h-4 rounded text-[#E00D42] focus:ring-[#E00D42]/20 border-slate-300 cursor-pointer accent-[#E00D42] shrink-0"
                                                     />
@@ -438,6 +444,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                                     : 'Out of stock'}
                                                             </span>
                                                         </div>
+                                                        {item.available_for_purchase !== true && <p className="text-xs text-rose-700">{item.unavailable_reason ?? 'This listing is unavailable for new purchases.'}</p>}
                                                     </div>
                                                 </div>
 
