@@ -24,6 +24,9 @@ export interface Address {
     barangay?: string | null;
     street: string;
     postal_code?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    landmark?: string | null;
     type?: string | null;
     is_default: boolean;
     created_at?: string;
@@ -40,6 +43,8 @@ export interface User {
     avatar?: string | null;
     address?: string | null;
     city?: string | null;
+    province?: string | null;
+    barangay?: string | null;
     postal_code?: string | null;
     status?: string;
     kyc_status?: KycStatus;

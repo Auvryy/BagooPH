@@ -60,6 +60,7 @@ interface Props {
     addresses?: Address[];
     defaultAddressId?: number | null;
     pickupHubs?: PickupHubItem[];
+    checkoutToken: string;
 }
 
 export default function CheckoutIndex({ 
@@ -74,6 +75,7 @@ export default function CheckoutIndex({
     addresses = [],
     defaultAddressId = null,
     pickupHubs = [],
+    checkoutToken,
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -143,12 +145,6 @@ export default function CheckoutIndex({
         });
     };
 
-    // Format address string helper
-    const formatAddressString = (addr: Address) => {
-        const parts = [addr.street, addr.barangay, addr.province].filter(Boolean);
-        return parts.length > 0 ? parts.join(', ') : addr.street;
-    };
-
     // Find initial default address: prefers defaultAddressId or is_default or first
     const initialAddress = addresses.find(a => a.id === defaultAddressId)
         || addresses.find(a => a.is_default)
@@ -160,17 +156,18 @@ export default function CheckoutIndex({
     );
 
     const { data, setData, post, processing, errors } = useForm({
+        checkout_token: checkoutToken,
         item_ids: items.map(i => i.id),
         recipient_name: user.name || initialAddress?.recipient_name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
-        shipping_address: initialAddress ? formatAddressString(initialAddress) : (user.address || ''),
+        shipping_address: initialAddress?.street || user.address || '',
         shipping_city: initialAddress?.city || user.city || '',
-        shipping_province: initialAddress?.province || 'Metro Manila',
+        shipping_province: initialAddress?.province || user.province || '',
         shipping_postal_code: initialAddress?.postal_code || user.postal_code || '',
-        destination_barangay: initialAddress?.barangay || '',
-        shipping_latitude: (initialAddress as any)?.latitude || '',
-        shipping_longitude: (initialAddress as any)?.longitude || '',
-        landmark: (initialAddress as any)?.landmark || '',
+        destination_barangay: initialAddress?.barangay || user.barangay || '',
+        shipping_latitude: initialAddress?.latitude ?? '',
+        shipping_longitude: initialAddress?.longitude ?? '',
+        landmark: initialAddress?.landmark || '',
         delivery_type: 'doorstep' as 'doorstep' | 'hub_self_pickup',
         pickup_hub_id: '' as string | number,
         payment_method: 'cod',
@@ -188,7 +185,7 @@ export default function CheckoutIndex({
                 recipient_phone: user.phone || '',
                 shipping_address: '',
                 shipping_city: '',
-                shipping_province: 'Metro Manila',
+                shipping_province: '',
                 shipping_postal_code: '',
                 destination_barangay: '',
                 shipping_latitude: '',
@@ -203,14 +200,14 @@ export default function CheckoutIndex({
                     ...prev,
                     recipient_name: user.name || found.recipient_name || '',
                     recipient_phone: found.phone,
-                    shipping_address: formatAddressString(found),
+                    shipping_address: found.street,
                     shipping_city: found.city,
-                    shipping_province: found.province || 'Metro Manila',
+                    shipping_province: found.province || '',
                     shipping_postal_code: found.postal_code || '',
                     destination_barangay: found.barangay || '',
-                    shipping_latitude: (found as any).latitude || '',
-                    shipping_longitude: (found as any).longitude || '',
-                    landmark: (found as any).landmark || '',
+                    shipping_latitude: found.latitude ?? '',
+                    shipping_longitude: found.longitude ?? '',
+                    landmark: found.landmark || '',
                     save_address: false,
                 }));
             }
@@ -301,7 +298,8 @@ export default function CheckoutIndex({
             return;
         }
 
-        if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim() || !data.shipping_city.trim()) {
+        if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim()
+            || !data.shipping_city.trim() || !data.shipping_province.trim() || !data.destination_barangay.trim() || !data.shipping_postal_code.trim()) {
             setValidationError('Please complete all required recipient and address fields.');
             return;
         }
@@ -361,6 +359,15 @@ export default function CheckoutIndex({
                     <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2.5 font-sans">
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                         <span>{flash.error}</span>
+                    </div>
+                )}
+                {Object.keys(errors).length > 0 && (
+                    <div role="alert" className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-sans space-y-2">
+                        <p className="font-semibold">Please check your checkout details.</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                            {Array.from(new Set(Object.values(errors))).map(error => <li key={error}>{error}</li>)}
+                        </ul>
+                        {errors.checkout_token && <Link href={route('checkout.index')} className="font-semibold underline">Reload checkout</Link>}
                     </div>
                 )}
 
@@ -626,10 +633,12 @@ export default function CheckoutIndex({
                                         </div>
 
                                         <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Barangay</label>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
                                             <input
                                                 type="text"
                                                 value={data.destination_barangay}
+                                                required
+                                                maxLength={100}
                                                 onChange={(e) => setData('destination_barangay', e.target.value)}
                                                 placeholder="e.g. Brgy. Santisimo Rosario"
                                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
@@ -650,10 +659,12 @@ export default function CheckoutIndex({
                                         </div>
 
                                         <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Province</label>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Province *</label>
                                             <input
                                                 type="text"
                                                 value={data.shipping_province}
+                                                required
+                                                maxLength={100}
                                                 onChange={(e) => setData('shipping_province', e.target.value)}
                                                 placeholder="e.g. Laguna"
                                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
@@ -661,14 +672,16 @@ export default function CheckoutIndex({
                                         </div>
 
                                         <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Postal Code (Optional)</label>
+                                            <label className="block font-semibold text-slate-700 mb-1.5">Postal Code *</label>
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
                                                 maxLength={4}
+                                                required
+                                                pattern="[0-9]{4}"
                                                 placeholder="e.g. 4000"
                                                 value={data.shipping_postal_code}
-                                                onChange={(e) => setData('shipping_postal_code', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                                onChange={(e) => setData('shipping_postal_code', e.target.value)}
                                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                             />
                                         </div>
