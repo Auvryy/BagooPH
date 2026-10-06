@@ -57,6 +57,7 @@ trait InteractsWithRoles
                 'user_id' => $user->id,
                 'name' => $user->name."'s Store",
                 'status' => 'active',
+                'city' => 'Los Baños',
             ]);
         }
 

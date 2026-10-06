@@ -35,7 +35,7 @@ trait CreatesE2EOrders
 
     public function createE2EProduct(Shop $shop, array $attributes = []): Product
     {
-        $category = Category::first() ?? Category::factory()->create();
+        $category = $shop->rootCategory ?? Category::factory()->create();
 
         return Product::factory()->create(array_merge([
             'shop_id' => $shop->id,
