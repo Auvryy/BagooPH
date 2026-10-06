@@ -2,14 +2,13 @@
 
 namespace Tests\Feature\E2E\Tier2;
 
-use App\Models\CommissionLedger;
-use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -17,8 +16,9 @@ use Tests\TestCase;
 
 class B34_to_B35_E2EAndAdversarialBoundaryTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Boundary 34: Test Runner Error Trapping
@@ -48,18 +48,18 @@ class B34_to_B35_E2EAndAdversarialBoundaryTest extends TestCase
 
     public function test_t2_b34_05_database_rollback_on_exception(): void
     {
-        $initialUsers = \App\Models\User::count();
+        $initialUsers = User::count();
 
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () {
-                \App\Models\User::factory()->create();
+            DB::transaction(function () {
+                User::factory()->create();
                 throw new \Exception('Forced rollback');
             });
         } catch (\Exception $e) {
             // Expected
         }
 
-        $this->assertEquals($initialUsers, \App\Models\User::count());
+        $this->assertEquals($initialUsers, User::count());
     }
 
     // ==========================================
@@ -79,18 +79,17 @@ class B34_to_B35_E2EAndAdversarialBoundaryTest extends TestCase
         $this->assertEquals(0.00, $subtotal);
     }
 
-    public function test_t2_b35_03_multiple_concurrent_settlements(): void
+    public function test_t2_b35_03_delivery_retry_preserves_required_single_settlement(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), ['status' => 'delivered']);
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), ['status' => 'delivered']);
-
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $rider = User::findOrFail($delivery->assigned_rider_id);
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
+        $this->assertSame('completed', $order->fresh()->status);
+        // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.
         $this->assertLedgerIdempotent($order);
     }
 
@@ -105,22 +104,14 @@ class B34_to_B35_E2EAndAdversarialBoundaryTest extends TestCase
 
     public function test_t2_b35_05_zero_duplicate_ledger_records(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'delivered');
-
-        CommissionLedger::create([
-            'order_id' => $order->id,
-            'seller_id' => $seller->id,
-            'courier_id' => 1,
-            'gross_amount' => 500.00,
-            'seller_amount' => 450.00,
-            'platform_commission' => 50.00,
-            'delivery_fee' => 60.00,
-            'status' => 'settled',
-        ]);
-
-        $this->assertEquals(1, CommissionLedger::where('order_id', $order->id)->count());
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs($order->buyer)->post(route('buyer.orders.confirm', $order))->assertSessionHas('success');
+        $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
+        $this->assertSame('completed', $order->fresh()->status);
+        // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.
+        $this->assertLedgerIdempotent($order);
     }
 }

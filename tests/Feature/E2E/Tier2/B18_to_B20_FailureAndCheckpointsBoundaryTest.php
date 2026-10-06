@@ -3,13 +3,15 @@
 namespace Tests\Feature\E2E\Tier2;
 
 use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
-use App\Models\Product;
+use App\Models\LogisticsHub;
+use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -17,8 +19,9 @@ use Tests\TestCase;
 
 class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Boundary 18: Delivery Failure Min-Length & Reason Codes
@@ -26,86 +29,57 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
 
     public function test_t2_b18_01_empty_failure_reason_rejected(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'failed',
-            'courier_notes' => '',
-        ]);
-        $this->assertTrue(in_array($response->status(), [200, 302, 400, 422]));
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => '', 'courier_notes' => 'The parcel could not be handed over at the address.',
+        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b18_02_under_5_chars_reason_rejected(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'failed',
-            'courier_notes' => 'bad',
-        ]);
-        $this->assertTrue(in_array($response->status(), [200, 302, 400, 422]));
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => 'bad', 'courier_notes' => 'The parcel could not be handed over at the address.',
+        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b18_03_invalid_failure_code_rejected(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'unknown_invalid_status',
-        ]);
-        $this->assertTrue(in_array($response->status(), [302, 400, 422]));
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => 'UNKNOWN_CODE', 'courier_notes' => 'The parcel could not be handed over at the address.',
+        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b18_04_reporting_failure_on_non_active_delivery_barred(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'failed',
-            'courier_notes' => 'Customer was not available',
-        ]);
-
-        $delivery->refresh();
-        $this->assertNotEquals('failed', $delivery->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => 'Customer unreachable',
+        ])->assertSessionHas('error');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b18_05_non_assigned_courier_reporting_failure_barred(): void
     {
-        $courierA = $this->createApprovedUser('courier');
-        $courierB = $this->createApprovedUser('courier');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courierA);
-
-        $this->actingAs($courierB)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'failed',
-            'courier_notes' => 'Unauthorized failure report',
-        ]);
-
-        $delivery->refresh();
-        $this->assertEquals($courierA->id, $delivery->courier_id);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $other = $this->flowRider($hub, $this->createApprovedUser('courier'));
+        $this->actingAs($other)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivery_failed', 'failure_reason' => 'Customer unreachable'])->assertSessionHas('error');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     // ==========================================
@@ -114,50 +88,72 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
 
     public function test_t2_b19_01_inventory_double_restoration_guard(): void
     {
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $product = $this->createE2EProduct($shop, ['stock' => 5]);
-
-        $product->increment('stock', 1);
-        $this->assertEquals(6, $product->fresh()->stock);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $stock = $order->items->first()->product->fresh()->stock;
+        $this->reportFlowFailure($delivery, 'Customer refused');
+        $this->receiveFailureFlow($delivery);
+        $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
+        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->assertCheckpointLogged($delivery, 'parcel_returned');
+        $this->assertSame('returned', $order->fresh()->status);
+        $quantity = $order->items->sum('quantity');
+        $this->assertSame($stock + $quantity, $order->items->first()->product->fresh()->stock);
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'parcel_returned')->count());
     }
 
-    public function test_t2_b19_02_return_without_delivery_failure_barred(): void
+    public function test_t2_b19_02_outbound_inspection_does_not_authorize_return(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery');
-
-        $this->assertEquals('out_for_delivery', $delivery->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertConflict();
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
-    public function test_t2_b19_03_commission_ledger_reversal_on_return(): void
+    public function test_t2_b19_03_uncollected_return_keeps_accounting_pending(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'returned');
-
-        $this->assertNull($order->commissionLedger);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $stock = $order->items->first()->product->fresh()->stock;
+        $this->reportFlowFailure($delivery, 'Customer refused');
+        $this->receiveFailureFlow($delivery);
+        $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
+        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->assertCheckpointLogged($delivery, 'parcel_returned');
+        $this->assertSame('returned', $order->fresh()->status);
+        $this->assertNull($order->fresh()->commissionLedger);
+        $this->assertSame('pending', $order->fresh()->payment_status);
     }
 
-    public function test_t2_b19_04_non_hub_return_execution_barred(): void
+    public function test_t2_b19_04_buyer_cannot_scan_return_custody(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $this->assertNotNull($buyer->id);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($order->buyer)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertForbidden();
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b19_05_return_status_immutability(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'returned');
-        $delivery = $this->createE2EDelivery($order, 'returned');
-
-        $this->assertEquals('returned', $delivery->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $stock = $order->items->first()->product->fresh()->stock;
+        $this->reportFlowFailure($delivery, 'Customer refused');
+        $this->receiveFailureFlow($delivery);
+        $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
+        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->assertCheckpointLogged($delivery, 'parcel_returned');
+        $this->assertSame('returned', $order->fresh()->status);
+        $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('error');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     // ==========================================
@@ -166,67 +162,69 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
 
     public function test_t2_b20_01_updating_existing_checkpoint_barred(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $cp = DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'order_placed',
-            'notes' => 'Original note',
-        ]);
-
-        $this->assertEquals('Original note', $cp->notes);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $checkpoint = $delivery->checkpoints()->where('checkpoint_type', 'courier_pickup')->sole();
+        $before = $checkpoint->getRawOriginal();
+        try {
+            $checkpoint->update(['notes' => 'Changed custody evidence']);
+        } catch (\LogicException|QueryException $exception) {
+            // A persistence guard may reject the attempted historical mutation.
+        }
+        $this->assertNotNull($checkpoint->fresh(), 'Custody history must not be deleted.');
+        $this->assertSame($before, $checkpoint->fresh()->getRawOriginal(), 'Custody evidence must remain unchanged.');
     }
 
     public function test_t2_b20_02_deleting_checkpoint_record_barred(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $cp = DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'order_placed',
-        ]);
-
-        $this->assertNotNull($cp->id);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $checkpoint = $delivery->checkpoints()->where('checkpoint_type', 'courier_pickup')->sole();
+        $before = $checkpoint->getRawOriginal();
+        try {
+            $checkpoint->delete();
+        } catch (\LogicException|QueryException $exception) {
+            // A persistence guard may reject the attempted historical mutation.
+        }
+        $this->assertNotNull($checkpoint->fresh(), 'Custody history must not be deleted.');
+        $this->assertSame($before, $checkpoint->fresh()->getRawOriginal(), 'Custody evidence must remain unchanged.');
     }
 
     public function test_t2_b20_03_out_of_order_checkpoint_validation(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $this->assertEquals('unassigned', $delivery->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $hub = LogisticsHub::findOrFail($delivery->origin_mother_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
+            'action' => 'RECEIVE_AT_MOTHER_HUB', 'expected_status' => 'picked_up',
+        ])->assertConflict();
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b20_04_empty_barcode_scan_logging_guard(): void
     {
-        $delivery = new Delivery();
-        $this->assertNull($delivery->tracking_number);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.scan'), ['barcode' => '', 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertUnprocessable()->assertJsonValidationErrors('barcode');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t2_b20_05_tampering_with_created_at(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $cp = DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'order_placed',
-        ]);
-
-        $this->assertNotNull($cp->created_at);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $checkpoint = $delivery->checkpoints()->where('checkpoint_type', 'courier_pickup')->sole();
+        $before = $checkpoint->getRawOriginal();
+        try {
+            DB::table('delivery_checkpoints')->where('id', $checkpoint->id)->update(['created_at' => now()->subDay()]);
+        } catch (\LogicException|QueryException $exception) {
+            // A persistence guard may reject the attempted historical mutation.
+        }
+        $this->assertNotNull($checkpoint->fresh(), 'Custody history must not be deleted.');
+        $this->assertSame($before, $checkpoint->fresh()->getRawOriginal(), 'Custody evidence must remain unchanged.');
     }
 }

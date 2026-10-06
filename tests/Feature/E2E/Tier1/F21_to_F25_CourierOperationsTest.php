@@ -3,7 +3,6 @@
 namespace Tests\Feature\E2E\Tier1;
 
 use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\User;
@@ -12,6 +11,7 @@ use Illuminate\Support\Str;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -20,6 +20,7 @@ use Tests\TestCase;
 class F21_to_F25_CourierOperationsTest extends TestCase
 {
     use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
 
     // ==========================================
@@ -290,44 +291,33 @@ class F21_to_F25_CourierOperationsTest extends TestCase
 
     public function test_t1_f25_02_reschedule_action(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'failed');
-
-        $delivery->update(['status' => 'in_transit']);
-        $this->assertEquals('in_transit', $delivery->fresh()->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $this->reportFlowFailure($delivery);
+        $this->receiveFailureFlow($delivery);
+        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
+        $this->assertSame('out_for_delivery', $delivery->fresh()->status);
     }
 
     public function test_t1_f25_03_reschedule_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'delivery_rescheduled',
-            'location_name' => 'Central Sorting Hub',
-            'notes' => 'Rescheduled for next business day delivery',
-        ]);
-
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $this->reportFlowFailure($delivery);
+        $this->receiveFailureFlow($delivery);
+        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
         $this->assertCheckpointLogged($delivery, 'delivery_rescheduled');
     }
 
     public function test_t1_f25_04_return_action(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'delivery_failed');
-        $delivery = $this->createE2EDelivery($order, 'failed');
-
-        $delivery->update(['status' => 'returned']);
-        $this->assertEquals('returned', $delivery->fresh()->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        $this->reportFlowFailure($delivery);
+        $this->receiveFailureFlow($delivery);
+        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
+        $this->assertCheckpointLogged($delivery, 'parcel_returned');
+        $this->assertSame('returned', $delivery->fresh()->status);
     }
 
     public function test_t1_f25_05_attempt_cap_warning(): void
