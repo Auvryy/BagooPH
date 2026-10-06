@@ -11,6 +11,8 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\ShopEligibilityService;
@@ -55,15 +57,18 @@ class CheckoutOrderService
             throw new RuntimeException('Identity verification is required before placing an order. Please upload a valid ID to proceed.');
         }
 
+        $data = app(CommerceInputService::class)->checkout($data, $cartItemIds);
+        $cartItemIds = $data['item_ids'];
+        if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
+            throw new RuntimeException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
+        }
+
         return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data) {
             // Serialize the owned Bag before lines and the seller/shop/category/product locks.
             if (! Cart::whereKey($cart->id)->where('user_id', $buyer->id)->lockForUpdate()->first()) {
                 throw new RuntimeException('This Shopping Bag is unavailable to your account.');
             }
-            $selectedIds = array_values(array_unique(array_map('intval', $cartItemIds)));
-            if ($selectedIds === [] || count($selectedIds) !== count($cartItemIds)) {
-                throw new RuntimeException('Select one or more unique Shopping Bag items.');
-            }
+            $selectedIds = $cartItemIds;
 
             $items = CartItem::query()
                 ->where('cart_id', $cart->id)
@@ -182,6 +187,16 @@ class CheckoutOrderService
 
             if ($voucher && $discounts->sum() > 0) {
                 $voucher->increment('used_count');
+            }
+
+            if ($data['save_address']) {
+                app(BuyerAddressService::class)->create($buyer, [
+                    'phone' => $data['recipient_phone'], 'province' => $data['shipping_province'],
+                    'city' => $data['shipping_city'], 'barangay' => $data['destination_barangay'],
+                    'street' => $data['shipping_address'], 'postal_code' => $data['shipping_postal_code'],
+                    'latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude'],
+                    'landmark' => $data['landmark'], 'type' => 'Home', 'is_default' => false,
+                ]);
             }
 
             CartItem::where('cart_id', $cart->id)->whereIn('id', $selectedIds)->delete();

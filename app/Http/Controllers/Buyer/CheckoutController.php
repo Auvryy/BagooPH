@@ -8,12 +8,13 @@ use App\Models\LogisticsHub;
 use App\Models\Product;
 use App\Models\Voucher;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\KycSubmissionService;
-use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +34,10 @@ class CheckoutController extends Controller
             $rawIds = is_array($request->input('items'))
                 ? $request->input('items')
                 : explode(',', (string) $request->input('items'));
-            $itemIds = array_filter(array_map('intval', $rawIds));
+            $itemIds = app(CommerceInputService::class)->selection($rawIds);
+            if ($cart->items->whereIn('id', $itemIds)->count() !== count($itemIds)) {
+                return redirect()->route('buyer.cart')->with('error', 'One or more selected Shopping Bag items are unavailable.');
+            }
             $checkoutItems = $cart->items->whereIn('id', $itemIds)->values();
         } else {
             // Default to the most recent item added when arriving at checkout without explicit items parameter
@@ -76,21 +80,6 @@ class CheckoutController extends Controller
         // Approved/verified is the reviewed authorization state. Do not infer
         // a pending review from a missing path in the shared user payload.
         $kycStatus = $user->isKycApproved() ? 'approved' : ($user->kyc_status ?? 'none');
-
-        // Fetch saved addresses, migrating user profile address if user has no saved addresses
-        if ($user->addresses()->count() === 0 && $user->address && $user->city) {
-            $user->addresses()->create([
-                'recipient_name' => $user->name,
-                'phone' => $user->phone ?? '',
-                'province' => 'Metro Manila',
-                'city' => $user->city,
-                'barangay' => null,
-                'street' => $user->address,
-                'postal_code' => $user->postal_code,
-                'type' => 'Home',
-                'is_default' => true,
-            ]);
-        }
 
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
         $defaultAddress = $user->defaultAddress();
@@ -138,65 +127,23 @@ class CheckoutController extends Controller
             return redirect()->route('buyer.cart')->with('error', 'Your shopping bag is empty.');
         }
 
-        $validated = $request->validate([
-            'recipient_name' => 'required|string|max:255',
-            'recipient_phone' => 'required|string|max:50',
-            'shipping_address' => 'required|string|max:500',
-            'shipping_city' => 'required|string|max:100',
-            'shipping_province' => 'required|string|max:100',
-            'shipping_postal_code' => 'required|regex:/^[0-9]{4}$/',
-            'shipping_latitude' => 'nullable|numeric|between:-90,90',
-            'shipping_longitude' => 'nullable|numeric|between:-180,180',
-            'landmark' => 'nullable|string|max:255',
-            'delivery_type' => 'nullable|string|in:doorstep,hub_self_pickup',
-            'pickup_hub_id' => 'nullable|exists:logistics_hubs,id',
-            'destination_barangay' => 'required|string|max:100',
-            'payment_method' => 'nullable|string|in:cod,card,bank_transfer,e_wallet',
-            'notes' => 'nullable|string|max:500',
-            'voucher_code' => 'nullable|string|max:50',
-            'save_address' => 'nullable|boolean',
-            'item_ids' => 'required|array|min:1',
-            'item_ids.*' => 'required|integer|distinct',
-        ]);
-
-        // Contiguous Land Delimitation: strictly reject non-contiguous island addresses
-        $routingEngine = app(LogisticsRoutingEngine::class);
-        $province = $validated['shipping_province'] ?? $validated['shipping_city'];
-        if (! $routingEngine->isContiguousRoadServiceable($province, $validated['shipping_city'])) {
-            return back()->with('error', 'Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
-        }
+        $selection = $request->validate(['item_ids' => ['required', 'array', 'list', 'min:1']]);
 
         try {
             $orders = app(CheckoutOrderService::class)->place(
                 $user,
                 $cart,
-                $validated['item_ids'],
-                $validated
+                $selection['item_ids'],
+                $request->all()
             );
-
-            if ($request->boolean('save_address')) {
-                $hasExisting = $user->addresses()->exists();
-                $user->addresses()->create([
-                    'recipient_name' => $user->name,
-                    'phone' => $validated['recipient_phone'],
-                    'city' => $validated['shipping_city'],
-                    'province' => $province,
-                    'barangay' => $validated['destination_barangay'],
-                    'street' => $validated['shipping_address'],
-                    'postal_code' => $validated['shipping_postal_code'],
-                    'latitude' => $validated['shipping_latitude'] ?? null,
-                    'longitude' => $validated['shipping_longitude'] ?? null,
-                    'landmark' => $validated['landmark'] ?? null,
-                    'type' => 'Home',
-                    'is_default' => ! $hasExisting,
-                ]);
-            }
 
             $message = $orders->count() === 1
                 ? "Order #{$orders->first()->order_number} successfully placed."
                 : "{$orders->count()} shop orders successfully placed.";
 
             return redirect()->route('buyer.orders.index')->with('success', $message);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
