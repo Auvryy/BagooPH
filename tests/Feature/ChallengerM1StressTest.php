@@ -7,23 +7,23 @@ use App\Models\Category;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
+use Tests\Concerns\InteractsWithCheckoutNetwork;
 use Tests\TestCase;
 
 class ChallengerM1StressTest extends TestCase
 {
+    use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
     /**
-     * Stress Test: Multiple users adding diverse variants simultaneously.
+     * Interleaved requests verify isolation; SQLite does not prove simultaneous locking.
      * Asserts zero cross-contamination between buyer carts and order items.
      */
-    public function test_multi_user_concurrent_cart_and_variant_isolation(): void
+    public function test_interleaved_buyers_keep_cart_variants_and_orders_isolated(): void
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active', 'kyc_status' => 'approved']);
         $shop = Shop::factory()->approved()->create([
@@ -40,6 +40,7 @@ class ChallengerM1StressTest extends TestCase
             'name' => 'Leather Oxford Shoes',
             'slug' => 'leather-oxford-shoes',
             'sku' => 'SHOE-OXF',
+            'variants' => ['colors' => [['name' => 'Brown'], ['name' => 'Black']], 'sizes' => [['name' => '42', 'stock' => 25], ['name' => '44', 'stock' => 25]]],
             'price' => 1200.00,
             'stock' => 50,
             'status' => 'active',
@@ -51,6 +52,7 @@ class ChallengerM1StressTest extends TestCase
             'name' => 'Canvas Sneakers',
             'slug' => 'canvas-sneakers',
             'sku' => 'SHOE-SNK',
+            'variants' => ['colors' => [['name' => 'White']], 'sizes' => [['name' => '41', 'stock' => 50]]],
             'price' => 800.00,
             'stock' => 50,
             'status' => 'active',
@@ -58,6 +60,8 @@ class ChallengerM1StressTest extends TestCase
 
         $buyer1 = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
         $buyer2 = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
+
+        $this->createCheckoutNetwork($shop, ['Quezon City' => 'Metro Manila', 'Taguig City' => 'Metro Manila']);
 
         // Buyer 1 adds Product A (Brown / 42) and Product B (White / 41)
         $this->actingAs($buyer1)->post('/cart', [
@@ -85,7 +89,7 @@ class ChallengerM1StressTest extends TestCase
             'quantity' => 3,
             'color' => 'Brown',
             'size' => '42',
-        ]);
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
 
         // Verify Buyer 1 Cart
         $cart1 = Cart::where('user_id', $buyer1->id)->first();
@@ -105,8 +109,12 @@ class ChallengerM1StressTest extends TestCase
             'recipient_phone' => '+63 917 111 2222',
             'shipping_address' => 'Addr 1',
             'shipping_city' => 'Quezon City',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'Poblacion',
+            'item_ids' => $cart1->items()->pluck('id')->all(),
+            'shipping_postal_code' => '1100',
             'payment_method' => 'cod',
-        ]);
+        ])->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         // Buyer 1 cart is cleared, Buyer 2 cart remains intact
         $this->assertEquals(0, $cart1->fresh()->items()->count());
@@ -117,10 +125,15 @@ class ChallengerM1StressTest extends TestCase
             'recipient_name' => 'Buyer Two',
             'recipient_phone' => '+63 918 333 4444',
             'shipping_address' => 'Addr 2',
-            'shipping_city' => 'Davao City',
+            'shipping_city' => 'Taguig City',
+            'shipping_postal_code' => '1634',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'Poblacion',
+            'item_ids' => $cart2->items()->pluck('id')->all(),
             'payment_method' => 'card',
-        ]);
+        ])->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
+        $this->assertSame('cod', Order::where('buyer_id', $buyer2->id)->firstOrFail()->payment_method);
         $this->assertEquals(0, $cart2->fresh()->items()->count());
 
         // Verify stock decrements correctly:
@@ -151,6 +164,8 @@ class ChallengerM1StressTest extends TestCase
             'status' => 'active',
         ]);
 
+        $this->createCheckoutNetwork($shop, ['Makati City' => 'Metro Manila']);
+
         $buyer = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
 
         $this->actingAs($buyer)->post('/cart', [
@@ -170,12 +185,20 @@ class ChallengerM1StressTest extends TestCase
             'recipient_name' => 'Reader Ana',
             'recipient_phone' => '09228887766',
             'shipping_address' => 'Library Lane',
-            'shipping_city' => 'Iloilo City',
+            'shipping_city' => 'Makati City',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'Poblacion',
+            'item_ids' => $cart->items()->pluck('id')->all(),
+            'shipping_postal_code' => '1226',
             'payment_method' => 'cod',
-        ]);
+        ])->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         $order = Order::where('buyer_id', $buyer->id)->first();
-        $orderItem = $order->items()->first();
+        $this->assertNotNull($order);
+        $this->assertNotNull($order->delivery->origin_mother_hub_id);
+        $this->assertNotNull($order->delivery->destination_mother_hub_id);
+        $this->assertSame('pending', $order->payment_status);
+        $orderItem = $order->items()->firstOrFail();
         $this->assertEquals('BOOK-PH-001', $orderItem->sku_snapshot);
         $this->assertNull($orderItem->color);
         $this->assertNull($orderItem->size);
@@ -216,7 +239,7 @@ class ChallengerM1StressTest extends TestCase
     {
         $seller = User::factory()->create(['role' => 'seller', 'status' => 'active', 'kyc_status' => 'approved']);
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'name' => 'Gadgets', 'slug' => 'gadgets', 'status' => 'active']);
-        $category = Category::create(['name' => 'Electronics', 'slug' => 'electronics']);
+        $category = Category::create(['name' => 'Electronics', 'slug' => 'electronics', 'parent_id' => $shop->root_category_id]);
 
         $product = Product::create([
             'shop_id' => $shop->id,
@@ -231,10 +254,7 @@ class ChallengerM1StressTest extends TestCase
 
         $buyer = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
 
-        $this->actingAs($buyer)->post('/cart', [
-            'product_id' => $product->id,
-            'quantity' => 1,
-        ]);
+        $this->createCheckoutNetwork($shop, ['Taguig' => 'Metro Manila']);
 
         $phoneFormats = [
             '+63 (917) 123-4567',
@@ -243,33 +263,20 @@ class ChallengerM1StressTest extends TestCase
         ];
 
         foreach ($phoneFormats as $phone) {
-            $order = Order::create([
-                'order_number' => 'BGO-'.strtoupper(Str::random(8)),
-                'buyer_id' => $buyer->id,
-                'subtotal' => 199.00,
-                'shipping_fee' => 50.00,
-                'total_amount' => 249.00,
-                'payment_method' => 'cod',
-                'status' => 'processing',
-                'recipient_name' => 'Tech Enthusiast',
-                'recipient_phone' => $phone,
-                'shipping_address' => 'Silicon Ave',
-                'shipping_city' => 'Taguig',
-            ]);
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'shop_id' => $shop->id,
-                'quantity' => 1,
-                'unit_price' => 199.00,
-                'subtotal' => 199.00,
-                'sku_snapshot' => 'CABLE-001',
-            ]);
-
-            // Seller marks order ready for pickup
-            $this->actingAs($seller)->post("/seller/orders/{$order->id}/ready");
-
+            $this->actingAs($buyer)->post('/cart', ['product_id' => $product->id, 'quantity' => 1])
+                ->assertSessionHasNoErrors()->assertSessionHas('success');
+            $this->actingAs($buyer)->post('/checkout', [
+                'recipient_name' => 'Tech Enthusiast', 'recipient_phone' => $phone,
+                'shipping_address' => '100 Silicon Ave', 'shipping_city' => 'Taguig',
+                'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1634',
+                'destination_barangay' => 'Fort Bonifacio', 'payment_method' => 'cod',
+                'item_ids' => Cart::where('user_id', $buyer->id)->firstOrFail()->items()->pluck('id')->all(),
+            ])->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+            $order = Order::where('buyer_id', $buyer->id)->latest('id')->firstOrFail();
+            $this->actingAs($seller)->post("/seller/orders/{$order->id}/accept")->assertSessionHas('success');
+            $this->actingAs($seller)->post("/seller/orders/{$order->id}/pack")->assertSessionHas('success');
+            $this->actingAs($seller)->post("/seller/orders/{$order->id}/ready")->assertSessionHas('success');
+            $this->assertSame('ready_for_pickup', $order->fresh()->status);
             $delivery = Delivery::where('order_id', $order->id)->first();
             $this->assertNotNull($delivery);
             $this->assertEquals($phone, $delivery->delivery_phone, "Delivery phone must accurately preserve {$phone}");
