@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/product-moderation` |
+| Git branch | `admin/moderation-audit-and-overview` (B10-B12 batch) |
 | Phase | 0 |
 | Minimum prerequisites | [B02](02-application-validation.md), [B03](03-shop-approval-eligibility.md), [B06](06-account-restrictions.md), [B07](07-resource-restrictions.md) |
 | Result | Product compliance changes have a current source state, reason, and immutable audit. |
@@ -89,8 +89,10 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 
 Stop after reasoned product decisions and storefront/checkout consistency pass. Do not expand into customer dispute resolution or order/stock correction.
 
+For the selected B10-B12 batch, complete this focused gate before B11 implementation. Keep separate task records and commits, then run the combined checks after B12 and stop for user review before B13.
+
 ```text
-Implement only B10 from docs/admin-plan/10-product-moderation.md on admin/product-moderation.
+Implement B10 from docs/admin-plan/10-product-moderation.md on admin/moderation-audit-and-overview.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.

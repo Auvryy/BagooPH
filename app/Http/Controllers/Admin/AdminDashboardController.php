@@ -3,47 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Delivery;
-use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
+use App\Services\AdminOverviewService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminDashboardController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request, AdminOverviewService $overview): Response
     {
-        $totalUsers = User::count();
-        $usersByRole = [
-            'buyers' => User::where('role', 'buyer')->count(),
-            'sellers' => User::where('role', 'seller')->count(),
-            'couriers' => User::where('role', 'courier')->count(),
-            'admins' => User::where('role', 'admin')->count(),
-        ];
-
-        $totalRevenue = Order::where('payment_status', 'paid')->sum('total_amount');
-        $totalOrders = Order::count();
-        $totalProducts = Product::count();
-        $activeDeliveries = Delivery::whereIn('status', ['assigned', 'picked_up', 'in_transit', 'out_for_delivery'])->count();
-
-        $recentOrders = Order::with(['buyer', 'delivery.courier'])->latest()->take(6)->get();
-        $recentUsers = User::latest()->take(6)->get();
-
-        return Inertia::render('Admin/Dashboard', [
-            'stats' => [
-                'totalUsers' => $totalUsers,
-                'usersByRole' => $usersByRole,
-                'totalRevenue' => (float) $totalRevenue,
-                'totalOrders' => $totalOrders,
-                'totalProducts' => $totalProducts,
-                'activeDeliveries' => $activeDeliveries,
-            ],
-            'recentOrders' => $recentOrders,
-            'recentUsers' => $recentUsers,
-        ]);
+        return Inertia::render('Admin/Dashboard', $overview->overview($request->user(), $request->is('admin/*') ? '/admin' : ''));
     }
 
     public function users(Request $request): Response
@@ -71,21 +42,13 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    public function products(): Response
+    public function products(Request $request): Response
     {
         $products = Product::with(['shop', 'category'])->latest()->paginate(15);
 
         return Inertia::render('Admin/Products', [
             'products' => $products,
+            'moderationBaseUrl' => $request->getPathInfo(),
         ]);
-    }
-
-    public function toggleProductStatus(Request $request, Product $product): RedirectResponse
-    {
-        $product->update([
-            'status' => $product->status === 'active' ? 'draft' : 'active',
-        ]);
-
-        return back()->with('success', 'Product status toggled.');
     }
 }

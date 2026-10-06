@@ -7,6 +7,8 @@ use App\Models\LogisticsHub;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\AccountRestrictionService;
+use App\Services\ProductModerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -121,7 +123,7 @@ class SharedPortalAccessTest extends TestCase
         }
 
         foreach ([
-            ['PATCH', '/products/'.$product->id.'/toggle', []],
+            ['POST', '/products/'.$product->id.'/moderation', []],
             ['POST', '/kyc/'.$applicant->id.'/approve', []],
             ['POST', '/kyc/'.$applicant->id.'/reject', ['reason' => 'Document is unreadable.']],
         ] as [$method, $path, $payload]) {
@@ -133,6 +135,7 @@ class SharedPortalAccessTest extends TestCase
         $this->assertSame($before, $applicant->fresh()->getAttributes());
         $this->assertSame('active', $product->fresh()->status);
         $this->assertSame(7, $product->fresh()->stock);
+        $this->assertDatabaseCount('product_moderation_decisions', 0);
         $response = $this->actingAs($admin)->get('http://localhost/dashboard')->assertRedirect();
         $this->assertStringEndsWith('/login', $response->headers->get('Location'));
         $this->assertGuest();
@@ -198,7 +201,7 @@ class SharedPortalAccessTest extends TestCase
         if ($portalRole === 'seller') {
             $this->patch($prefix.'/products/'.$product->id.'/stock', ['mode' => 'set', 'quantity' => 99])->assertForbidden();
         } elseif ($portalRole === 'admin') {
-            $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertForbidden();
+            $this->post($prefix.'/products/'.$product->id.'/moderation')->assertForbidden();
         } else {
             $hub = $this->companyHub(User::factory()->create(['role' => 'logistics']));
             $this->post($prefix.'/switch-hub', ['hub_id' => $hub->id])->assertForbidden();
@@ -206,20 +209,27 @@ class SharedPortalAccessTest extends TestCase
         $this->assertSame(7, $product->fresh()->stock);
         $this->assertSame('active', $product->fresh()->status);
         $this->assertSame('seller', $seller->fresh()->role);
+        $this->assertDatabaseCount('product_moderation_decisions', 0);
     }
 
     public function test_active_admin_kyc_exemption_keeps_oversight_without_worker_actions(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'kyc_status' => 'none']);
         $applicant = User::factory()->create(['role' => 'seller', 'status' => 'pending_approval', 'kyc_status' => 'pending_approval']);
-        $product = $this->sellerProduct($applicant);
         foreach (self::portalPrefixes('admin') as $prefix) {
+            $product = $this->sellerProduct($applicant);
             $this->actingAs($admin)->get($prefix.'/dashboard')->assertOk();
             $this->get($prefix.'/kyc')->assertOk();
-            $expectedStatus = $product->fresh()->status === 'active' ? 'draft' : 'active';
-            $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertSessionHas('success');
-            $this->assertSame($expectedStatus, $product->fresh()->status);
+            $this->get($prefix.'/products/'.$product->id.'/moderation')->assertOk();
+            $state = app(ProductModerationService::class)->state($product->fresh());
+            $this->post($prefix.'/products/'.$product->id.'/moderation', ['action' => 'remove',
+                'reason' => 'Correct this listing before allowing new purchases.',
+                'source_token' => app(AccountRestrictionService::class)->token($state)])->assertSessionHas('success');
+            $this->assertTrue($product->fresh()->compliance_restricted);
+            $this->assertSame('active', $product->fresh()->status);
+            $this->assertSame(7, $product->fresh()->stock);
         }
+        $this->assertDatabaseCount('product_moderation_decisions', 2);
         foreach (self::portalPrefixes('logistics') as $prefix) {
             $this->get($prefix.'/dashboard')->assertOk();
             $this->get($prefix.'/scan')->assertForbidden();
@@ -243,10 +253,11 @@ class SharedPortalAccessTest extends TestCase
         User::whereKey($admin->id)->update(['status' => $status]);
         Auth::forgetGuards();
 
-        $response = $this->patch($prefix.'/products/'.$product->id.'/toggle')->assertRedirect();
+        $response = $this->post($prefix.'/products/'.$product->id.'/moderation')->assertRedirect();
         $this->assertStringEndsWith('/login', $response->headers->get('Location'));
         $this->assertGuest();
         $this->assertSame($before, $product->fresh()->getAttributes());
+        $this->assertDatabaseCount('product_moderation_decisions', 0);
     }
 
     public function test_review_holding_and_guest_hub_login_remain_available(): void
@@ -277,7 +288,7 @@ class SharedPortalAccessTest extends TestCase
     {
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'status' => 'active', 'is_default' => true]);
 
-        return Product::factory()->create(['shop_id' => $shop->id, 'stock' => 7, 'status' => 'active']);
+        return Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'stock' => 7, 'status' => 'active']);
     }
 
     private function companyHub(User $actor): LogisticsHub

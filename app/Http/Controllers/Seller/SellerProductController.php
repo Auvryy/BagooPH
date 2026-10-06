@@ -48,6 +48,18 @@ class SellerProductController extends Controller
             ->withQueryString();
 
         $categories = Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get();
+        $products->through(function (Product $product) {
+            $decision = $product->moderationDecisions()->orderByDesc('id')->first();
+            $product->setAttribute('compliance_feedback', $decision ? [
+                'action' => $decision->action, 'reason' => $decision->reason,
+                'decided_at' => $decision->decided_at->toISOString(),
+                'next_action' => $product->compliance_restricted
+                    ? 'Correct the listing details and ask Platform Admin to review reinstatement. Editing or publishing alone cannot lift the restriction.'
+                    : 'Normal seller listing and shop eligibility still apply.',
+            ] : null);
+
+            return $product;
+        });
 
         return Inertia::render('Seller/Products', [
             'products' => $products,
@@ -83,6 +95,8 @@ class SellerProductController extends Controller
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
             'variants' => 'nullable',
+            'compliance_restricted' => 'prohibited',
+            'moderation_version' => 'prohibited',
         ], [
             'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
             'image_files.*.max' => 'Each product image must not exceed 5MB.',
@@ -145,6 +159,8 @@ class SellerProductController extends Controller
             'gallery_manifest' => 'nullable|string',
             'variants' => 'nullable',
             'status' => 'required|in:active,draft,archived',
+            'compliance_restricted' => 'prohibited',
+            'moderation_version' => 'prohibited',
         ], [
             'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
             'image_files.*.max' => 'Each product image must not exceed 5MB.',
@@ -389,7 +405,7 @@ class SellerProductController extends Controller
             abort(403, 'Unauthorized product deletion.');
         }
 
-        if ($product->orderItems()->exists() || $product->reviews()->exists() || CartItem::where('product_id', $product->id)->exists()) {
+        if ($product->orderItems()->exists() || $product->reviews()->exists() || CartItem::where('product_id', $product->id)->exists() || $product->moderationDecisions()->exists()) {
             $product->update(['status' => 'archived']);
 
             return back()->with('success', 'Product archived to preserve its references and history.');

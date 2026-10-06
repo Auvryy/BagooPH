@@ -35,7 +35,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
 - Implementation-status lists must not be copied into role or operational specifications because they become stale.
-- [admin-plan/README.md](admin-plan/README.md) divides admin work into 18 bounded tasks on 16 planned branches, with B06+B07 and B08+B09 each sharing a delivery branch. Dependencies, scope, exclusions, acceptance cases, and stopping points remain separate for each task. These are execution plans under the normative contracts, not current implementation-status lists or authorization to run every branch automatically.
+- [admin-plan/README.md](admin-plan/README.md) divides admin work into 18 bounded tasks on 14 planned branches, with B06+B07, B08+B09, and B10-B12 each sharing a delivery branch. Dependencies, scope, exclusions, acceptance cases, and stopping points remain separate for each task. These are execution plans under the normative contracts, not current implementation-status lists or authorization to run every branch automatically.
 - [admin-plan/WORKFLOW.md](admin-plan/WORKFLOW.md) explains the foundation review, one-branch Git workflow, isolated checks, local commits, and user-only publication. [admin-plan/CAPABILITIES.md](admin-plan/CAPABILITIES.md) maps governance functions to the existing roles and identifies optional additions.
 
 ## Supporting References

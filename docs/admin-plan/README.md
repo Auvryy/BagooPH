@@ -6,7 +6,7 @@ These documents are execution plans. They do not declare features implemented, c
 
 ## Branch count and the checkpoint before starting
 
-Plan for **18 bounded admin tasks on 16 admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. B06 and B07 share `admin/governance-restrictions`, and B08/B09 share `admin/identity-and-closure-safety`, giving **17 Git delivery branches including the foundation**. Each task retains its own acceptance checks. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
+Plan for **18 bounded admin tasks on 14 admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. B06/B07 share `admin/governance-restrictions`, B08/B09 share `admin/identity-and-closure-safety`, and B10-B12 share `admin/moderation-audit-and-overview`, giving **15 Git delivery branches including the foundation**. Each task retains its own acceptance checks. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
 
 This is an initial branch allocation, not a count of every remaining branch in the whole project. Role-owned manifest, rider scan, retry, return, and self-pickup work has its own roadmap prerequisites. A later admin branch cannot substitute for those workflows. If evidence requires splitting a branch, update this index and the roadmap explicitly before adding another task.
 
@@ -31,6 +31,8 @@ Work serially by default. The dependency column records the minimum prerequisite
 
 The authorized B06+B07 batch is one bounded exception to the task-to-branch mapping. Verify B06's account-decision and continuity checks before implementing B07 on the same branch. Keep separate task records, focused acceptance checks, and logical commits; then run the combined regression checks and frontend build. B08 waits for review and merge of the complete batch. The separately selected B08+B09 batch shares `admin/identity-and-closure-safety`, starting from merged B06+B07. Verify B08 before implementing B09; preserve separate task records, acceptance cases and logical commits, then run the combined regression and build. B10 waits for user review and merge of this batch. No phase gate is waived.
 
+The selected B10-B12 batch uses `admin/moderation-audit-and-overview` from merged B08/B09. Verify B10's moderation and commerce gate before B11, then B11's context/privacy gate before B12. Preserve separate task records and logical commits, followed by combined regression and build checks. Stop after B12; user review and merge precede the separate B13 acceptance gate.
+
 | ID | Git branch | Focus and plan | Minimum dependency | Delivery phase |
 |---|---|---|---|---|
 | B01 | `admin/seller-category-approval` | [14 master categories, registration, correction, and original-shop KYC](01-seller-category-approval.md) | Foundation merged | 0 |
@@ -42,9 +44,9 @@ The authorized B06+B07 batch is one bounded exception to the task-to-branch mapp
 | B07 | `admin/governance-restrictions` | [Independent shop/company/facility restrictions](07-resource-restrictions.md) | B03, B04, B06 verified within the batch | 0 |
 | B08 | `admin/identity-and-closure-safety` | [Controlled identity corrections and legacy review](08-reviewed-identity-corrections.md) | B01, B02, B06, B07 | 0 |
 | B09 | `admin/identity-and-closure-safety` | [Active-work and evidence safeguards for closure](09-account-closure-safety.md) | B06, B07, B08 verified within the batch | 0 |
-| B10 | `admin/product-moderation` | [Reasoned product compliance decisions](10-product-moderation.md) | B02, B03, B06, B07 | 0 |
-| B11 | `admin/governance-audit-viewer` | [Account context and searchable immutable decision history](11-governance-audit-viewer.md) | B03, B06-B10 | 0 |
-| B12 | `admin/truthful-overview` | [Real operational counts, truthful availability, PHP display](12-truthful-overview.md) | B04, B11 | 0 |
+| B10 | `admin/moderation-audit-and-overview` | [Reasoned product compliance decisions](10-product-moderation.md) | B02, B03, B06, B07 | 0 |
+| B11 | `admin/moderation-audit-and-overview` | [Account context and searchable immutable decision history](11-governance-audit-viewer.md) | B03, B06-B09, B10 verified within the batch | 0 |
+| B12 | `admin/moderation-audit-and-overview` | [Real operational counts, truthful availability, PHP display](12-truthful-overview.md) | B04, B11 verified within the batch | 0 |
 | B13 | `test/admin-phase0-acceptance` | [Cross-role acceptance and existing-failure triage](13-phase0-acceptance.md) | B01-B12 | 0 gate |
 | B14 | `admin/exception-oversight` | [Restricted-work and delivery-exception oversight](14-exception-oversight.md) | B13; role-owned Phases 2 and 3 gates | 3 |
 | B15 | `admin/governance-notifications` | [Persistent in-app governance notices](15-governance-notifications.md) | B13, B14; Phase 4 notification foundation | 4 |

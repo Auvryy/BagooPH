@@ -1979,6 +1979,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                     />
                                                     <div className="space-y-0.5 min-w-0">
                                                         <p className="font-bold text-slate-900 text-xs font-sans truncate max-w-xs">{product.name}</p>
+                                                        {product.compliance_restricted && <div className="mt-2 max-w-sm rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
+                                                            <p className="font-semibold">Restricted from new purchases</p>
+                                                            <p className="mt-1 whitespace-pre-line">{product.compliance_feedback?.reason ?? 'Ask Platform Admin to review this restriction.'}</p>
+                                                            <p className="mt-2">{product.compliance_feedback?.next_action ?? 'Editing or publishing does not lift this restriction.'}</p>
+                                                        </div>}
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <p className="text-[11px] text-slate-400 font-sans">SKU: {product.sku || 'AUTO'}</p>
                                                             {product.variants && ((product.variants.colors && product.variants.colors.length > 0) || (product.variants.sizes && product.variants.sizes.length > 0)) && (

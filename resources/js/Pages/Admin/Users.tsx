@@ -77,7 +77,7 @@ export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
                                     <th className="py-3.5 px-6">User Profile</th>
                                     <th className="py-3.5 px-4">Registered Role</th>
                                     <th className="py-3.5 px-4">Contact Info</th>
-                                    <th className="py-3.5 px-4">Account Status</th>
+                                    <th className="py-3.5 px-4">Approval / Activity</th>
                                     <th className="py-3.5 px-4">Activity review</th>
                                 </tr>
                             </thead>
@@ -115,8 +115,9 @@ export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
                                             }`}>
                                                 {u.status || 'Unknown'}
                                             </span>
+                                            <p className="mt-2 text-[11px] text-slate-500">Approval: {u.role === 'admin' ? 'Controlled admin access' : (u.kyc_status?.replaceAll('_', ' ') || 'Unknown')}</p>
                                         </td>
-                                        <td className="py-4 px-4"><div className="flex flex-wrap gap-2"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link>{(u.role === 'admin' || ['approved', 'verified'].includes(u.kyc_status ?? '')) && <Link href={`${activityBaseUrl}/${u.id}/identity-corrections`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Identity corrections</Link>}<Link href={`${activityBaseUrl}/${u.id}/closure`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review closure</Link></div></td>
+                                        <td className="py-4 px-4"><div className="flex flex-wrap gap-2"><Link href={`${activityBaseUrl}/${u.id}/context`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-[#E00D42] hover:bg-rose-50">Inspect account</Link><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link>{(u.role === 'admin' || ['approved', 'verified'].includes(u.kyc_status ?? '')) && <Link href={`${activityBaseUrl}/${u.id}/identity-corrections`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Identity corrections</Link>}<Link href={`${activityBaseUrl}/${u.id}/closure`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review closure</Link></div></td>
                                     </tr>
                                 ))}
                             </tbody>

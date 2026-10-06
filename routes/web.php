@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
 use App\Http\Controllers\Admin\LogisticsHubController;
+use App\Http\Controllers\Admin\ProductModerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
+use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\MarketplaceController;
@@ -36,13 +38,13 @@ use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\ShopVerificationDocumentController;
-use App\Http\Controllers\SitemapController;
-use App\Http\Controllers\VerificationDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -222,6 +224,7 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/users/{userId}/context', [GovernanceHistoryController::class, 'account'])->whereNumber('userId');
         Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user');
         Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user');
         Route::get('/identity-corrections', [IdentityCorrectionController::class, 'index']);
@@ -237,7 +240,8 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
         Route::get('/products', [AdminDashboardController::class, 'products']);
-        Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus']);
+        Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
+        Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
         Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
@@ -343,6 +347,11 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
     });
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/governance-history', [GovernanceHistoryController::class, 'index'])->name('governance-history.index');
+    Route::get('/governance-history/{source}/{decisionId}', [GovernanceHistoryController::class, 'show'])->whereNumber('decisionId')->name('governance-history.show');
 });
 
 // Backward-compatible Public Marketplace / Catalog routes
@@ -472,6 +481,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     $registerResourceRestrictionRoutes();
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/users/{userId}/context', [GovernanceHistoryController::class, 'account'])->whereNumber('userId')->name('users.context');
     Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user')->name('users.closure');
     Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user')->name('users.closure.store');
     Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show'])->name('users.activity');
@@ -487,7 +497,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
-    Route::patch('/products/{product}/toggle', [AdminDashboardController::class, 'toggleProductStatus'])->name('products.toggle');
+    Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');
+    Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
 });
 

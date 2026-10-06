@@ -106,6 +106,14 @@ export interface ProductImage {
 }
 
 export interface Product {
+    compliance_restricted?: boolean;
+    moderation_version?: number;
+    compliance_feedback?: {
+        action: 'remove' | 'reinstate';
+        reason: string;
+        decided_at: string;
+        next_action: string;
+    } | null;
     id: number;
     shop_id: number;
     category_id?: number | null;
@@ -138,6 +146,8 @@ export interface Product {
 }
 
 export interface CartItem {
+    available_for_purchase?: boolean;
+    unavailable_reason?: string | null;
     id: number;
     cart_id: number;
     product_id: number;
