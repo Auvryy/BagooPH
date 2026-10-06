@@ -207,6 +207,8 @@ class GovernanceHistoryService
             ? ['source' => 'product_moderation', 'id' => $model->prior_decision_id] : null;
         if ($request && ($request->provenance['kyc_decision_id'] ?? null)) {
             $prior = ['source' => 'kyc_review', 'id' => $request->provenance['kyc_decision_id']];
+        } elseif ($request && ($request->provenance['shop_review_decision_id'] ?? null)) {
+            $prior = ['source' => 'shop_review', 'id' => $request->provenance['shop_review_decision_id']];
         }
         if ($source === 'shop_review' && $model->kyc_decision_id) {
             $prior = ['source' => 'kyc_review', 'id' => $model->kyc_decision_id];

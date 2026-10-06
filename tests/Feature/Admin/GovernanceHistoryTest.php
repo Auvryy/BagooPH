@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\AccountClosure;
 use App\Models\CourierProfile;
 use App\Models\HubHandler;
+use App\Models\IdentityCorrectionDecision;
 use App\Models\IdentityCorrectionRequest;
 use App\Models\KycDecision;
 use App\Models\LogisticsCompany;
@@ -256,6 +257,25 @@ class GovernanceHistoryTest extends TestCase
             'documents' => ['id' => ['path' => 'private/secret.pdf']]]);
         $this->assertSame(['account' => ['name' => 'Maria Santos'], 'work' => [['order_id' => 4, 'parcel' => ['id' => 2]]]], $result);
         $this->assertStringNotContainsString('secret', json_encode($result));
+    }
+
+    public function test_legacy_identity_history_links_its_recorded_shop_review_without_inventing_kyc(): void
+    {
+        $admin = $this->admin();
+        $shop = Shop::factory()->approved()->create();
+        $source = app(IdentityCorrectionService::class)->source($shop->user, $shop);
+        // Explicit immutable projection fixture: a shop review can exist without a KYC decision.
+        $request = IdentityCorrectionRequest::create(['user_id' => $shop->user_id, 'shop_id' => $shop->id, 'requester_id' => $shop->user_id,
+            'version' => 1, 'source_token' => app(AccountRestrictionService::class)->token($source), 'request_token' => hash('sha256', 'prior-shop-review'),
+            'reason' => 'Review the proposed identity.', 'source' => $source, 'proposed' => ['name' => 'Maria Santos'], 'evidence' => [],
+            'provenance' => ['source' => 'legacy_without_recorded_review', 'kyc_decision_id' => null, 'shop_review_decision_id' => $shop->review_decision_id], 'requested_at' => now()]);
+        $decision = IdentityCorrectionDecision::create(['correction_request_id' => $request->id, 'actor_id' => $admin->id, 'actor_name' => $admin->name,
+            'review_token' => hash('sha256', 'prior-shop-review-decision'), 'action' => 'reject', 'reason' => 'Current evidence needs another review.',
+            'before_state' => ['identity' => $source], 'after_state' => ['identity' => $source], 'decided_at' => now()]);
+        $this->actingAs($admin)->get('/governance-history/identity_correction/'.$decision->id)->assertInertia(fn (Assert $page) => $page
+            ->where('event.prior_decision', ['source' => 'shop_review', 'id' => $shop->review_decision_id]));
+        $this->get('/governance-history/shop_review/'.$shop->review_decision_id)->assertOk();
+        $this->assertDatabaseCount('kyc_decisions', 0);
     }
 
     public function test_deleted_and_retained_closed_subjects_keep_history_and_honest_current_context(): void
