@@ -12,11 +12,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class BuyerAddressTest extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     private function createBuyerWithCart(): array
@@ -300,6 +302,7 @@ class BuyerAddressTest extends TestCase
         $this->createCheckoutNetwork($shop, ['Makati City' => 'Metro Manila']);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Selected Recipient',
             'recipient_phone' => '+63 918 333 4444',
             'shipping_address' => 'Unit 701, Tower 2, Ayala Ave',
@@ -329,6 +332,7 @@ class BuyerAddressTest extends TestCase
         $this->assertEquals(0, $buyer->addresses()->count());
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'New Address Recipient',
             'recipient_phone' => '+63 918 555 6666',
             'shipping_address' => '99 Sunset Blvd',

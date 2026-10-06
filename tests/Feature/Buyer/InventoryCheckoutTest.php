@@ -11,10 +11,12 @@ use App\Models\User;
 use Database\Factories\ShopFactory;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class InventoryCheckoutTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -46,7 +48,7 @@ class InventoryCheckoutTest extends TestCase
         $cart = Cart::where('user_id', $buyer->id)->with('items')->firstOrFail();
 
         $this->actingAs($buyer)
-            ->post(route('checkout.store'), $this->checkoutPayload([$cart->items->first()->id]))
+            ->post(route('checkout.store'), $this->checkoutPayload($buyer, [$cart->items->first()->id]))
             ->assertRedirect(route('buyer.orders.index'));
 
         $order = Order::with('items.product.shop.user')->firstOrFail();
@@ -103,7 +105,7 @@ class InventoryCheckoutTest extends TestCase
 
         $this->actingAs($buyer)
             ->from(route('checkout.index'))
-            ->post(route('checkout.store'), $this->checkoutPayload([$red->id, $blue->id]))
+            ->post(route('checkout.store'), $this->checkoutPayload($buyer, [$red->id, $blue->id]))
             ->assertRedirect(route('checkout.index'))
             ->assertSessionHas('error');
 
@@ -113,9 +115,10 @@ class InventoryCheckoutTest extends TestCase
     }
 
     /** @param list<int> $itemIds */
-    private function checkoutPayload(array $itemIds): array
+    private function checkoutPayload(User $buyer, array $itemIds): array
     {
         return [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Santa Cruz Buyer',
             'recipient_phone' => '+63 917 000 0002',
             'shipping_address' => 'Pedro Guevara Avenue, Poblacion III',

@@ -12,11 +12,13 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class DeliveryPhoneConsistencyTest extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     public function test_checkout_populates_delivery_phone_and_variant_fields(): void
@@ -75,6 +77,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
         ]);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Jane Buyer',
             'recipient_phone' => '+63 918 765 4321',
             'shipping_address' => '456 Acacia Ave',
@@ -90,7 +93,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);
-        $this->assertEquals('+63 918 765 4321', $order->recipient_phone);
+        $this->assertEquals('+639187654321', $order->recipient_phone);
 
         $orderItem = OrderItem::where('order_id', $order->id)->first();
         $this->assertNotNull($orderItem);
@@ -100,7 +103,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
 
         $delivery = Delivery::where('order_id', $order->id)->first();
         $this->assertNotNull($delivery);
-        $this->assertEquals('+63 918 765 4321', $delivery->delivery_phone);
+        $this->assertEquals('+639187654321', $delivery->delivery_phone);
     }
 
     public function test_seller_order_ready_preserves_the_checkout_delivery_and_phone(): void
@@ -145,6 +148,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
         $this->actingAs($buyer)->post('/cart', ['product_id' => $product->id, 'quantity' => 1])
             ->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Mark Recipient', 'recipient_phone' => '+63 919 888 7777',
             'shipping_address' => '789 Pine Street', 'shipping_city' => 'Taguig',
             'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1634',
@@ -165,6 +169,6 @@ class DeliveryPhoneConsistencyTest extends TestCase
         $this->assertSame('ready_for_pickup', $order->fresh()->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
         $this->assertSame(1, Delivery::where('order_id', $order->id)->count());
-        $this->assertEquals('+63 919 888 7777', $delivery->delivery_phone);
+        $this->assertEquals('+639198887777', $delivery->delivery_phone);
     }
 }

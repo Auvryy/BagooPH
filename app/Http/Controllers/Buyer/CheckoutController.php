@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Buyer;
 
+use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\LogisticsHub;
@@ -11,12 +12,17 @@ use App\Services\BuyerAccessService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\KycSubmissionService;
 use App\Services\Orders\CheckoutOrderService;
+use App\Services\Orders\CheckoutSubmissionService;
 use App\Services\ShopEligibilityService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class CheckoutController extends Controller
 {
@@ -101,6 +107,7 @@ class CheckoutController extends Controller
             'addresses' => $addresses,
             'defaultAddressId' => $defaultAddress?->id,
             'pickupHubs' => $pickupHubs,
+            'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart),
         ]);
     }
 
@@ -123,7 +130,7 @@ class CheckoutController extends Controller
 
         $cart = Cart::where('user_id', $user->id)->with(['items.product.shop'])->first();
 
-        if (! $cart || $cart->items->isEmpty()) {
+        if (! $cart) {
             return redirect()->route('buyer.cart')->with('error', 'Your shopping bag is empty.');
         }
 
@@ -142,10 +149,19 @@ class CheckoutController extends Controller
                 : "{$orders->count()} shop orders successfully placed.";
 
             return redirect()->route('buyer.orders.index')->with('success', $message);
-        } catch (ValidationException $e) {
+        } catch (ValidationException|AuthorizationException $e) {
             throw $e;
-        } catch (\Exception $e) {
+        } catch (HttpExceptionInterface $e) {
+            if ($e->getStatusCode() === 409 && ! $request->expectsJson()) {
+                return redirect()->route('buyer.orders.index')->with('error', $e->getMessage());
+            }
+            throw $e;
+        } catch (CheckoutException $e) {
             return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            Log::warning('Checkout could not be saved.', ['buyer_id' => $user->id, 'exception' => get_class($e)]);
+
+            return back()->with('error', 'We could not save your order. Please try again with the same checkout details.');
         }
     }
 }

@@ -11,11 +11,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class BuyerCartSelectionTest extends TestCase
 {
     use InteractsWithCheckoutNetwork;
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     private function createBuyerWithMultipleCartItems(): array
@@ -141,6 +143,7 @@ class BuyerCartSelectionTest extends TestCase
 
         // Buyer selectively checks out only Item B
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'item_ids' => [$itemB->id],
             'recipient_name' => $buyer->name,
             'recipient_phone' => '+63 917 123 4567',
@@ -178,6 +181,7 @@ class BuyerCartSelectionTest extends TestCase
         [$buyer, $cart, $itemA, $itemB, $productA, $productB] = $this->createBuyerWithMultipleCartItems();
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => $buyer->name,
             'recipient_phone' => '+63 917 123 4567',
             'shipping_address' => '456 Elm Street',

@@ -4,11 +4,14 @@ namespace Tests\Feature\Buyer;
 
 use App\Models\Address;
 use App\Models\Cart;
+use App\Models\Delivery;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Orders\CheckoutOrderService;
+use App\Services\Orders\CheckoutSubmissionService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -34,6 +37,7 @@ class CommerceInputValidationTest extends TestCase
         $this->createCheckoutNetwork($shop, ['Pasig' => 'Metro Manila']);
 
         return [$buyer, $cart, $product, [
+            'checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart),
             'recipient_name' => 'Maria Santos', 'recipient_phone' => '09171234567',
             'shipping_address' => '123 Mabini Street', 'shipping_city' => 'Pasig',
             'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1600',
@@ -301,6 +305,99 @@ class CommerceInputValidationTest extends TestCase
         $this->assertDatabaseCount('addresses', 0);
         $this->assertSame(10, $product->fresh()->stock);
         $this->assertSame(1, $cart->items()->count());
+    }
+
+    #[DataProvider('invalidSelections')]
+    public function test_selection_identifiers_are_not_coerced_by_http_or_direct_calls(string $kind): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $id = $payload['item_ids'][0];
+        $ids = match ($kind) {
+            'empty' => [], 'duplicate' => [$id, $id], 'float' => [(float) $id], 'boolean' => [true],
+            'signed' => ['+'.$id], 'decimal' => [$id.'.0'], 'exponent' => [$id.'e0'],
+            'leading zero' => ['0'.$id], 'control' => [$id."\n"], 'negative' => [-$id],
+        };
+        $field = $kind === 'empty' ? 'item_ids' : ($kind === 'duplicate' ? 'item_ids.1' : 'item_ids.0');
+        $payload['item_ids'] = $ids;
+        $this->actingAs($buyer)->call('POST', '/checkout', [], [], [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
+            json_encode($payload, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION))
+            ->assertUnprocessable()->assertJsonValidationErrors($field);
+        try {
+            app(CheckoutOrderService::class)->place($buyer, $cart, $ids, $payload);
+            $this->fail('Invalid identifiers cannot be converted into a valid selected line.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey($field, $exception->errors());
+        }
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('checkout_submissions', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame(1, $cart->items()->count());
+    }
+
+    public static function invalidSelections(): array
+    {
+        return array_map(fn ($kind) => [$kind], ['empty', 'duplicate', 'float', 'boolean', 'signed', 'decimal', 'exponent', 'leading zero', 'control', 'negative']);
+    }
+
+    #[DataProvider('invalidSelectionQueries')]
+    public function test_checkout_read_also_rejects_malformed_selection_identifiers(string $kind): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $id = $payload['item_ids'][0];
+        $value = match ($kind) {
+            'decimal' => $id.'.0', 'exponent' => $id.'e0', 'signed' => '+'.$id, 'control' => "\t".$id,
+        };
+        $this->actingAs($buyer)->getJson('/checkout?items='.urlencode($value))->assertUnprocessable()->assertJsonValidationErrors('item_ids.0');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('checkout_submissions', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame(1, $cart->items()->count());
+    }
+
+    public static function invalidSelectionQueries(): array
+    {
+        return [['decimal'], ['exponent'], ['signed'], ['control']];
+    }
+
+    public function test_an_owned_confirmation_cannot_purchase_another_buyers_bag_line(): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $other = User::factory()->create();
+        $otherCart = Cart::create(['user_id' => $other->id]);
+        $foreign = $otherCart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => $product->price]);
+        $payload['item_ids'] = [$foreign->id];
+        $this->actingAs($buyer)->post('/checkout', $payload)->assertSessionHas('error');
+        try {
+            app(CheckoutOrderService::class)->place($buyer, $cart, [$foreign->id], $payload);
+            $this->fail('The service must scope selected lines to the owned Bag.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('One or more selected Shopping Bag items are unavailable.', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('checkout_submissions', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame(1, $cart->items()->count());
+        $this->assertSame(1, $otherCart->items()->count());
+    }
+
+    public function test_new_address_default_and_deletion_do_not_rewrite_legacy_order_or_waybill_snapshots(): void
+    {
+        $buyer = User::factory()->create(['name' => 'Maria Santos']);
+        $order = Order::factory()->create(['buyer_id' => $buyer->id, 'recipient_name' => 'Legacy Recipient 123',
+            'recipient_phone' => 'legacy-phone', 'shipping_address' => '100 Legacy Street']);
+        $delivery = Delivery::create(['order_id' => $order->id, 'tracking_number' => 'LEGACY-ADDRESS-RECORD',
+            'pickup_address' => '100 Origin Street', 'delivery_address' => '100 Legacy Street',
+            'delivery_recipient_name' => 'Legacy Recipient 123', 'delivery_phone' => 'legacy-phone']);
+        $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal()];
+        $first = app(BuyerAddressService::class)->create($buyer, ['phone' => '09171234567', 'city' => 'Pasig', 'street' => '123 Mabini Street']);
+        $second = app(BuyerAddressService::class)->create($buyer, ['phone' => '09181234567', 'city' => 'Manila', 'street' => '456 Rizal Street']);
+        app(BuyerAddressService::class)->setDefault($buyer, $second);
+        app(BuyerAddressService::class)->delete($buyer, $first);
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal()]);
+        $this->assertSame('Maria Santos', $buyer->fresh()->name);
+        $this->assertSame('123 Mabini Street', $first->street);
+        $this->assertTrue($second->fresh()->is_default);
     }
 
     private function address(User $buyer, bool $default): Address

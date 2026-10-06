@@ -33,7 +33,7 @@ class CommerceInputService
             'landmark' => $this->text('address', 5, 255),
             'notes' => $this->text('notes', 1, 500),
             'delivery_type' => ['nullable', Rule::in(['doorstep', 'hub_self_pickup'])],
-            'pickup_hub_id' => ['bail', 'required_if:delivery_type,hub_self_pickup', 'nullable', $this->identifier(), 'integer', 'exists:logistics_hubs,id'],
+            'pickup_hub_id' => ['bail', 'required_if:delivery_type,hub_self_pickup', 'nullable', $this->identifier(), 'integer'],
             'payment_method' => ['nullable', Rule::in(['cod', 'card', 'bank_transfer', 'e_wallet'])],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],

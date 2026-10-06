@@ -13,10 +13,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class BuyerCheckoutKycGateTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -208,6 +210,7 @@ class BuyerCheckoutKycGateTest extends TestCase
         [, , , $cart] = $this->createCartWithProduct($buyer);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Approved Buyer',
             'recipient_phone' => '09171234567',
             'shipping_address' => 'Pedro Guevara Avenue, Poblacion III',

@@ -19,10 +19,12 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class ShopEligibilityTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     public function test_a_missing_shop_uses_the_review_screen_without_creating_a_store(): void
@@ -196,7 +198,13 @@ class ShopEligibilityTest extends TestCase
             'details_changed' => $shop->update(['name' => 'Another business']),
         };
         try {
-            app(CheckoutOrderService::class)->place($buyer, $cart, [$item->id], []);
+            app(CheckoutOrderService::class)->place($buyer, $cart, [$item->id], [
+                'checkout_token' => $this->checkoutToken($buyer, $cart),
+                'recipient_name' => 'Maria Santos', 'recipient_phone' => '+639171234567',
+                'shipping_address' => '123 Mabini Street', 'shipping_city' => 'Manila',
+                'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1000',
+                'destination_barangay' => 'Poblacion', 'delivery_type' => 'doorstep', 'payment_method' => 'cod',
+            ]);
             $this->fail('New checkout must reject an ineligible shop or scope.');
         } catch (RuntimeException $exception) {
             $this->assertStringContainsString('unavailable', $exception->getMessage());

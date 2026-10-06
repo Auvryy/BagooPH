@@ -11,10 +11,12 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
 class BuyerCheckoutTest extends TestCase
 {
+    use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -90,6 +92,7 @@ class BuyerCheckoutTest extends TestCase
         [, $cartItem] = $this->createCartWithProduct($buyer, 300.00, 2);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'Jane Buyer',
             'recipient_phone' => '+63 912 341 2341',
             'shipping_address' => '456 Rizal St, Brgy San Jose',
@@ -111,7 +114,7 @@ class BuyerCheckoutTest extends TestCase
         $this->assertEquals(600.00, (float) $order->subtotal);
         $this->assertEquals(50.00, (float) $order->shipping_fee);
         $this->assertEquals(650.00, (float) $order->total_amount);
-        $this->assertEquals('+63 912 341 2341', $order->recipient_phone);
+        $this->assertEquals('+639123412341', $order->recipient_phone);
     }
 
     public function test_checkout_waives_shipping_fee_for_orders_exceeding_threshold(): void
@@ -125,6 +128,7 @@ class BuyerCheckoutTest extends TestCase
         [, $cartItem] = $this->createCartWithProduct($buyer, 2000.00, 1);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
+            'checkout_token' => $this->checkoutToken($buyer),
             'recipient_name' => 'High Value Buyer',
             'recipient_phone' => '+63 917 888 9999',
             'shipping_address' => '789 High Street',
