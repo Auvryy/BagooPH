@@ -17,7 +17,7 @@ class ProductModerationService
     public function validate(array $input): array
     {
         if (is_string($input['reason'] ?? null)) {
-            $input['reason'] = trim(\Normalizer::normalize($input['reason'], \Normalizer::FORM_KC));
+            $input['reason'] = trim(\Normalizer::normalize($input['reason'], \Normalizer::FORM_KC), ' ');
         }
 
         return Validator::make($input, [

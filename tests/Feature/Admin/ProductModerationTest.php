@@ -84,6 +84,7 @@ class ProductModerationTest extends TestCase
     public static function invalidInputs(): array
     {
         return [['reason', ''], ['reason', '    '], ['reason', '<script>bad</script>'], ['reason', "Hidden\u{200b}reason"],
+            ['reason', "\0Hidden control reason"], ['reason', "Hidden control reason\t"],
             ['reason', str_repeat('a', 1001)], ['source_token', null], ['source_token', 'wrong'],
             ['action', 'activate'], ['status', 'active'], ['price', '1.00'], ['stock', 99],
             ['shop_id', 2], ['category_id', 2], ['actor_id', 2], ['compliance_restricted', false], ['moderation_version', 10]];
