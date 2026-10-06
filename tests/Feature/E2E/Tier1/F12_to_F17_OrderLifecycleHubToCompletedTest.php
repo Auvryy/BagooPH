@@ -2,15 +2,18 @@
 
 namespace Tests\Feature\E2E\Tier1;
 
-use App\Models\CommissionLedger;
-use App\Models\CourierProfile;
-use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsHub;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -18,8 +21,9 @@ use Tests\TestCase;
 
 class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Feature 12: AT_SORTING_CENTER (Stage 6)
@@ -27,81 +31,51 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f12_01_hub_intake_barcode_scan(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'picked_up', $courier);
-        $logistics = $this->createApprovedUser('logistics');
-
-        $response = $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-            'location_name' => 'Metro Manila Central Sorting Station',
-        ]);
-
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->confirmFlowScan($delivery, $hub, 'RECEIVE_FROM_PICKUP_RIDER');
+        $this->assertSame($hub->id, $delivery->fresh()->current_hub_id);
     }
 
     public function test_t1_f12_02_state_transition_to_at_sorting_center(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'picked_up', $courier);
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-        ]);
-
-        $delivery->refresh();
-        $this->assertTrue(in_array($delivery->status, ['in_transit', 'at_sorting_center']));
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->confirmFlowScan($delivery, $hub, 'RECEIVE_FROM_PICKUP_RIDER');
+        $this->assertSame('arrived_at_origin_hub', $delivery->fresh()->status);
+        $this->assertSame('at_sorting_center', $order->fresh()->status);
     }
 
     public function test_t1_f12_03_hub_intake_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'picked_up', $courier);
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-        ]);
-
-        $delivery->refresh();
-        $this->assertCheckpointLogged($delivery, 'hub_intake');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->confirmFlowScan($delivery, $hub, 'RECEIVE_FROM_PICKUP_RIDER');
+        $this->assertCheckpointLogged($delivery, 'arrived_at_origin_hub');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'hub_id' => $hub->id, 'scanned_by_id' => $this->flowHandler($hub)->id]);
     }
 
     public function test_t1_f12_04_first_mile_courier_discharged(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'picked_up', $courier);
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-        ]);
-
-        $delivery->refresh();
-        $this->assertNotNull($delivery->id);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'picked_up');
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->confirmFlowScan($delivery, $hub, 'RECEIVE_FROM_PICKUP_RIDER');
+        $pickup = User::findOrFail($delivery->courier_id);
+        $this->actingAs($pickup)->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page->has('queues.pickupTasks', 0));
+        $this->assertSame($pickup->id, $delivery->fresh()->courier_id);
     }
 
     public function test_t1_f12_05_hub_intake_queue(): void
     {
-        $logistics = $this->createApprovedUser('logistics');
-        $response = $this->actingAs($logistics)->get(route('hub.index'));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_origin_hub');
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->get(route('hub.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('scope.selected_hub_id', $hub->id)->where('stats.parcels_in_custody', 1));
     }
 
     // ==========================================
@@ -110,90 +84,58 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f13_01_area_sorting_submission(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-        $logistics = $this->createApprovedUser('logistics');
-
-        $response = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'destination_area' => 'Area A',
-            'sorting_bin' => 'BIN-A1',
-            'bin' => 'BIN-A1',
-            'barangay' => 'Santa Cruz, Laguna',
-        ]);
-
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.sort'), [
+            'delivery_id' => $delivery->id, 'barangay' => 'Poblacion III', 'bin' => 'BIN: BRGY-POBLACION-III',
+        ])->assertOk();
+        $this->assertSame('sorted_to_barangay_bin', $delivery->fresh()->status);
     }
 
     public function test_t1_f13_02_delivery_attributes_updated(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'destination_area' => 'Area A',
-            'sorting_bin' => 'BIN-A1',
-            'bin' => 'BIN-A1',
-            'barangay' => 'Santa Cruz, Laguna',
-        ]);
-
-        $delivery->refresh();
-        $this->assertNotNull($delivery->id);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.sort'), [
+            'delivery_id' => $delivery->id, 'barangay' => 'Poblacion III', 'bin' => 'BIN: BRGY-POBLACION-III',
+        ])->assertOk();
+        $this->assertSame('Poblacion III', $order->fresh()->destination_barangay);
+        $this->assertSame('BIN: BRGY-POBLACION-III', $delivery->fresh()->destination_bin);
     }
 
     public function test_t1_f13_03_state_transition_to_sorted(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'destination_area' => 'Area A',
-            'bin' => 'BIN-A1',
-            'barangay' => 'Barangay San Antonio',
-        ]);
-
-        $delivery->refresh();
-        $this->assertNotNull($delivery->id);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.sort'), [
+            'delivery_id' => $delivery->id, 'barangay' => 'Poblacion III', 'bin' => 'BIN: BRGY-POBLACION-III',
+        ])->assertOk();
+        $this->assertSame('sorted_to_barangay_bin', $delivery->fresh()->status);
+        $this->assertSame('sorted', $order->fresh()->status);
     }
 
     public function test_t1_f13_04_sorted_checkpoint_logged(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-        $logistics = $this->createApprovedUser('logistics');
-
-        $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'destination_area' => 'Area A',
-            'bin' => 'BIN-A1',
-            'barangay' => 'Barangay San Antonio',
-        ]);
-
-        $delivery->refresh();
-        $this->assertCheckpointLogged($delivery, 'barangay_sort', 'Barangay San Antonio');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.sort'), [
+            'delivery_id' => $delivery->id, 'barangay' => 'Poblacion III', 'bin' => 'BIN: BRGY-POBLACION-III',
+        ])->assertOk();
+        $this->assertCheckpointLogged($delivery, 'sorted_to_barangay_bin');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'hub_id' => $hub->id, 'scanned_by_id' => $this->flowHandler($hub)->id]);
     }
 
     public function test_t1_f13_05_hub_area_queue_count(): void
     {
-        $logistics = $this->createApprovedUser('logistics');
-        $response = $this->actingAs($logistics)->get(route('hub.index'));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub))->get(route('hub.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('scope.selected_hub_id', $hub->id)->where('stats.parcels_in_custody', 1));
     }
 
     // ==========================================
@@ -202,60 +144,53 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f14_01_hub_rider_candidate_lookup(): void
     {
-        $admin = $this->createApprovedUser('admin');
-        $response = $this->actingAs($admin)->get(route('admin.users'));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertOk();
+        $this->assertSame($rider->id, $delivery->fresh()->assigned_rider_id);
+        $this->assertNotSame($rider->id, $delivery->courier_id);
     }
 
     public function test_t1_f14_02_assign_parcel_to_area_rider(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'in_transit', $courier);
-
-        $this->assertEquals($courier->id, $delivery->courier_id);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertOk();
+        $this->assertSame($rider->id, $delivery->fresh()->assigned_rider_id);
     }
 
     public function test_t1_f14_03_state_transition_to_assigned_to_rider(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
-
-        $this->assertEquals('assigned', $delivery->status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertOk();
+        $this->assertSame('assigned_to_rider', $delivery->fresh()->status);
+        $this->assertSame('assigned_to_rider', $order->fresh()->status);
     }
 
     public function test_t1_f14_04_rider_assigned_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'rider_assigned',
-            'location_name' => 'Central Sorting Hub',
-            'scanned_by_id' => $courier->id,
-            'notes' => 'Assigned to delivery rider',
-        ]);
-
-        $this->assertCheckpointLogged($delivery, 'rider_assigned');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertOk();
+        $this->assertCheckpointLogged($delivery, 'assigned_to_rider');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'assigned_to_rider', 'scanned_by_id' => $this->flowHandler($hub)->id]);
     }
 
     public function test_t1_f14_05_courier_delivery_tab_visibility(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $response = $this->actingAs($courier)->get(route('courier.deliveries', ['tab' => 'delivery']));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page
+            ->has('queues.finalMileTasks', 1)->where('queues.finalMileTasks.0.id', $delivery->id));
     }
 
     // ==========================================
@@ -264,81 +199,52 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f15_01_rider_departs_hub_dock(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'in_transit', $courier);
-
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'out_for_delivery',
-            'courier_notes' => 'Departed dock for delivery',
-        ]);
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+            ->assertSessionHas('success');
+        $this->assertNull($delivery->fresh()->current_hub_id);
     }
 
     public function test_t1_f15_02_state_transition_to_out_for_delivery(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'in_transit', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'out_for_delivery',
-            'courier_notes' => 'Rider en route',
-        ]);
-
-        $delivery->refresh();
-        $this->assertEquals('out_for_delivery', $delivery->status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+            ->assertSessionHas('success');
+        $this->assertSame('out_for_delivery', $delivery->fresh()->status);
+        $this->assertSame('out_for_delivery', $order->fresh()->status);
     }
 
     public function test_t1_f15_03_out_for_delivery_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'in_transit', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'out_for_delivery',
-            'courier_notes' => 'En route to customer',
-        ]);
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'out_for_delivery',
-            'location_name' => $delivery->delivery_address,
-            'scanned_by_id' => $courier->id,
-            'notes' => 'Departed dock',
-        ]);
-
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+            ->assertSessionHas('success');
         $this->assertCheckpointLogged($delivery, 'out_for_delivery');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'out_for_delivery', 'scanned_by_id' => $delivery->assigned_rider_id]);
     }
 
     public function test_t1_f15_04_buyer_live_notification(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $response = $this->actingAs($buyer)->get(route('buyer.orders.show', $order->id));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+            ->assertSessionHas('success');
+        // A tracking page is not evidence of a persistent event notice (Phase 4).
+        $this->assertTrue(Schema::hasTable('notifications'), 'Phase 4: persistent event notification storage is missing.');
+        $this->assertGreaterThan(0, $order->buyer->notifications()->count(), 'The buyer must receive a recorded dispatch notice.');
     }
 
     public function test_t1_f15_05_courier_active_route(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $response = $this->actingAs($courier)->get(route('courier.deliveries'));
-        $response->assertOk();
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+            ->assertSessionHas('success');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page
+            ->has('queues.finalMileTasks', 1)->where('queues.finalMileTasks.0.status', 'out_for_delivery'));
     }
 
     // ==========================================
@@ -347,91 +253,65 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f16_01_doorstep_handover_execution(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-            'courier_notes' => 'Received by buyer at front door',
-        ]);
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        Storage::fake('public');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertTrue(Storage::disk('public')->exists(substr($delivery->fresh()->proof_image, strlen('/storage/'))));
     }
 
     public function test_t1_f16_02_state_transition_to_delivered(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
-        $delivery->refresh();
-        $order->refresh();
-        $this->assertEquals('delivered', $delivery->status);
-        $this->assertEquals('delivered', $order->status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        Storage::fake('public');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertSame('delivered', $delivery->fresh()->status);
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
     }
 
     public function test_t1_f16_03_doorstep_handover_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
-        $delivery->refresh();
-        $this->assertCheckpointLogged($delivery, 'doorstep_handover');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        Storage::fake('public');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->assertCheckpointLogged($delivery, 'delivered');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'delivered', 'scanned_by_id' => $delivery->assigned_rider_id]);
     }
 
     public function test_t1_f16_04_payment_status_settled(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
-        $order->refresh();
-        $this->assertEquals('paid', $order->payment_status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        Storage::fake('public');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->completeFlowOrder($order);
+        // Phase 5 must record COD custody/reconciliation and settlement before these checks can pass.
+        $this->assertNotNull($order->fresh()->commissionLedger, 'Phase 5: recorded reconciliation and seller settlement are missing.');
+        $this->assertSame('paid', $order->fresh()->payment_status);
     }
 
     public function test_t1_f16_05_commission_ledger_generation(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'out_for_delivery');
+        Storage::fake('public');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('success');
+        $this->completeFlowOrder($order);
+        // Phase 5 must record COD custody/reconciliation and settlement before these checks can pass.
+        $this->assertNotNull($order->fresh()->commissionLedger, 'Phase 5: recorded reconciliation and seller settlement are missing.');
         $this->assertCommissionSplit($order);
     }
 
@@ -441,66 +321,54 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
 
     public function test_t1_f17_01_buyer_confirmation_action(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'delivered');
-        $delivery = $this->createE2EDelivery($order, 'delivered');
-
-        $response = $this->actingAs($buyer)->post(route('buyer.orders.confirm', $order->id));
-        $response->assertRedirect();
-
-        $this->assertEquals('completed', $order->fresh()->status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $this->assertSame('completed', $order->fresh()->status);
     }
 
     public function test_t1_f17_02_state_transition_to_completed(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'delivered');
-
-        $this->actingAs($buyer)->post(route('buyer.orders.confirm', $order->id));
-        $this->assertEquals('completed', $order->fresh()->status);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('delivered', $delivery->fresh()->status);
     }
 
     public function test_t1_f17_03_buyer_confirmed_checkpoint(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'completed');
-        $delivery = $this->createE2EDelivery($order, 'delivered');
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'buyer_confirmed',
-            'location_name' => $delivery->delivery_address,
-            'scanned_by_id' => $buyer->id,
-            'notes' => 'Customer confirmed receipt of goods',
-        ]);
-
-        $this->assertCheckpointLogged($delivery, 'buyer_confirmed');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'buyer_completed', 'scanned_by_id' => $order->buyer_id]);
     }
 
     public function test_t1_f17_04_seller_settlement_finalized(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'completed');
-
-        $this->assertNotNull($order->id);
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $this->assertCommissionSplit($order);
     }
 
     public function test_t1_f17_05_review_submission_enabled(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'completed');
+        $order = $this->readyOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $product = $order->items->first()->product;
+        $this->actingAs($order->buyer)->post(route('buyer.reviews.store'), [
+            'product_id' => $product->id, 'order_id' => $order->id, 'rating' => 5, 'comment' => 'The parcel arrived safely.',
+        ])->assertSessionHas('success');
+        $this->assertDatabaseHas('reviews', ['buyer_id' => $order->buyer_id, 'order_id' => $order->id, 'product_id' => $product->id, 'rating' => 5]);
+    }
 
-        $response = $this->actingAs($buyer)->get(route('buyer.orders.show', $order->id));
-        $response->assertOk();
+    private function readyOrder(): Order
+    {
+        $seller = $this->createApprovedUser('seller');
+
+        return $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $this->createE2EShop($seller), [], 'ready_for_pickup');
     }
 }

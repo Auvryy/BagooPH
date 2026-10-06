@@ -11,6 +11,8 @@ use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\AccountRestrictionService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
@@ -32,29 +34,47 @@ trait InteractsWithOrderActions
     {
         $this->assertContains($stage, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']);
         $items = $items ?: [['product' => $this->createE2EProduct($shop), 'quantity' => 2]];
+        $orders = $this->checkoutFlowOrders($buyer, $items, $shipping);
+        $this->assertCount(1, $orders);
+        $order = $orders->first();
+        $this->sellerFlowStage($order, $stage);
+
+        return $order->fresh(['items.product', 'delivery', 'buyer']);
+    }
+
+    public function checkoutFlowOrders(User $buyer, array $items, array $shipping = []): Collection
+    {
         $payload = $this->flowCheckoutPayload($buyer, $items, $shipping);
         $stocks = [];
         foreach ($items as $item) {
             $product = $item['product'];
-            $stocks[$product->id] = [$product, $product->stock - ($item['quantity'] ?? 1)];
+            $stocks[$product->id] ??= [$product, $product->fresh()->stock];
+            $stocks[$product->id][1] -= $item['quantity'] ?? 1;
         }
         $before = Order::pluck('id');
         $this->actingAs($buyer)->post(route('checkout.store'), $payload)
             ->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
-        $orders = Order::whereNotIn('id', $before)->get();
-        $this->assertCount(1, $orders);
-        $order = $orders->first()->load('items.product', 'delivery', 'buyer');
-        $this->assertSame('placed', $order->status);
-        $this->assertSame('pending', $order->payment_status);
+        $orders = Order::whereNotIn('id', $before)->with('items.product', 'delivery', 'buyer')->get();
+        $this->assertCount(collect($items)->pluck('product.shop_id')->unique()->count(), $orders);
+        foreach ($orders as $order) {
+            $this->assertSame('placed', $order->status);
+            $this->assertSame('pending', $order->payment_status);
+            $this->assertNotNull($order->delivery->origin_mother_hub_id);
+            $this->assertNotNull($order->delivery->destination_mother_hub_id);
+        }
         foreach ($stocks as [$product, $expected]) {
             $this->assertSame($expected, $product->fresh()->stock);
         }
         $this->assertSame(0, CartItem::whereIn('id', $payload['item_ids'])->count());
-        $this->assertNotNull($order->delivery->origin_mother_hub_id);
-        $this->assertNotNull($order->delivery->destination_mother_hub_id);
-        $this->sellerFlowStage($order, $stage);
 
-        return $order->fresh(['items.product', 'delivery', 'buyer']);
+        return $orders;
+    }
+
+    public function newFlowOrder(string $stage = 'placed', array $shipping = []): Order
+    {
+        $seller = $this->createApprovedUser('seller');
+
+        return $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $this->createE2EShop($seller), [], $stage, $shipping);
     }
 
     public function flowCheckoutPayload(User $buyer, array $items, array $shipping = []): array
@@ -81,12 +101,13 @@ trait InteractsWithOrderActions
 
     public function sellerFlowStage(Order $order, string $stage): void
     {
-        $seller = $order->items->first()->product->shop->user;
+        $shop = $order->items->first()->product->shop;
+        $seller = $shop->user;
         foreach (['confirmed' => 'accept', 'preparing' => 'pack', 'ready_for_pickup' => 'ready'] as $target => $action) {
             if ($order->fresh()->status === $stage) {
                 return;
             }
-            $this->actingAs($seller)->post(route('seller.orders.'.$action, $order))
+            $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->post(route('seller.orders.'.$action, $order))
                 ->assertSessionHasNoErrors()->assertSessionHas('success');
             $this->assertSame($target, $order->fresh()->status);
         }
@@ -241,5 +262,51 @@ trait InteractsWithOrderActions
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame('delivered', $order->fresh()->delivery->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    public function restrictFlowAccount(User $subject, string $action): void
+    {
+        $this->assertContains($action, ['suspend', 'deactivate', 'reactivate']);
+        $role = $subject->role;
+        $service = app(AccountRestrictionService::class);
+        $this->actingAs($this->createApprovedUser('admin'))->postJson(route('admin.users.activity.store', $subject), [
+            'action' => $action, 'reason' => 'Review the current account responsibilities.', 'affected_work_confirmed' => true,
+            'source_token' => $service->token($service->state($subject->fresh())),
+        ])->assertOk();
+        $this->assertSame(match ($action) {
+            'suspend' => 'suspended', 'deactivate' => 'inactive', 'reactivate' => 'active',
+        }, $subject->fresh()->status);
+        $this->assertSame($role, $subject->fresh()->role);
+    }
+
+    public function reportFlowFailure(Delivery $delivery, string $reason = 'Customer unreachable'): void
+    {
+        // Exercise the owned request boundary; missing Phase 3 support must remain a failing gate.
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => $reason,
+            'courier_notes' => 'The rider called at the address and could not hand over the parcel.',
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('delivery_failed', $delivery->fresh()->status);
+        $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
+        $this->assertSame(1, $delivery->fresh()->failure_attempts);
+        $this->assertSame($reason, $delivery->fresh()->failure_reason);
+        $this->assertCheckpointLogged($delivery, 'delivery_failed');
+    }
+
+    public function receiveFailureFlow(Delivery $delivery): void
+    {
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $inspection = $this->actingAs($handler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect',
+        ])->assertOk()->assertJsonPath('prompt.requires_confirmation', true);
+        // Use the server's actual action, never manufacture a future return-scan code.
+        $prompt = $inspection->json('prompt');
+        $this->actingAs($handler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
+            'action' => $prompt['action'], 'expected_status' => $prompt['expected_status'],
+        ])->assertOk()->assertJsonPath('confirmed', true);
+        $this->assertSame($hub->id, $delivery->fresh()->current_hub_id);
+        $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
     }
 }
