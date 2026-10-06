@@ -63,6 +63,7 @@ export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
                     </div>
                 </div>
 
+                <Link href={`${activityBaseUrl.replace(/\/users$/, '')}/identity-corrections`} className="inline-flex rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold">Review identity corrections</Link>
                 <p className="text-sm text-slate-600">
                     Account roles are fixed. Register a separate account for another role and complete its required approval.
                 </p>
@@ -115,7 +116,7 @@ export default function AdminUsers({ users, filters, activityBaseUrl }: Props) {
                                                 {u.status || 'Unknown'}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-4"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link></td>
+                                        <td className="py-4 px-4"><div className="flex flex-wrap gap-2"><Link href={`${activityBaseUrl}/${u.id}/activity`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review activity</Link>{(u.role === 'admin' || ['approved', 'verified'].includes(u.kyc_status ?? '')) && <Link href={`${activityBaseUrl}/${u.id}/identity-corrections`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Identity corrections</Link>}<Link href={`${activityBaseUrl}/${u.id}/closure`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Review closure</Link></div></td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -737,6 +737,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             <span>Security</span>
                                         </Link>
 
+                                        {(role === 'admin' || ['approved', 'verified'].includes(auth.user?.kyc_status ?? '')) && <Link href="/account/identity-corrections" className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42]">Identity corrections</Link>}
+
                                         <div className="border-t border-slate-200 mt-1 pt-1">
                                             <Link
                                                 href={route('logout')}

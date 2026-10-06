@@ -4,6 +4,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps } from '@/types';
 import DeleteUserForm from './Partials/DeleteUserForm';
+import { AccountClosureReview } from '@/types/accountClosure';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import { 
@@ -25,7 +26,8 @@ import {
 export default function Edit({
     mustVerifyEmail,
     status,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
+    closure,
+}: PageProps<{ mustVerifyEmail: boolean; status?: string; closure: AccountClosureReview }>) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const role = user?.role || 'buyer';
@@ -152,7 +154,7 @@ export default function Edit({
                     <span>Danger Zone</span>
                 </div>
 
-                <DeleteUserForm className="max-w-xl" />
+                <DeleteUserForm className="max-w-xl" closure={closure} />
             </div>
         </div>
     );

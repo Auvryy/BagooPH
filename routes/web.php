@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
+use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
@@ -62,6 +64,12 @@ $registerResourceRestrictionRoutes = function () {
 
 Route::middleware('auth')->get('/verification-documents/{user}/{document}', [VerificationDocumentController::class, 'show'])
     ->name('verification-documents.show');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
+    Route::post('/account/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.store');
+    Route::get('/identity-correction-documents/{correction}/{document}', [IdentityCorrectionController::class, 'document'])->name('identity-correction-documents.show');
+});
 
 Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
 Route::middleware('auth')->get('/shop-verification-documents/{shop}/{document}', [ShopVerificationDocumentController::class, 'show'])->name('shop-verification-documents.show');
@@ -214,6 +222,12 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes) {
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user');
+        Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user');
+        Route::get('/identity-corrections', [IdentityCorrectionController::class, 'index']);
+        Route::get('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'show']);
+        Route::post('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'store']);
+        Route::post('/identity-corrections/{correction}/decision', [IdentityCorrectionController::class, 'decide']);
         Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show']);
         Route::post('/users/{user}/activity', [AccountRestrictionController::class, 'store']);
         Route::get('/shops', [AdminShopReviewController::class, 'index']);
@@ -458,7 +472,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     $registerResourceRestrictionRoutes();
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user')->name('users.closure');
+    Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user')->name('users.closure.store');
     Route::get('/users/{user}/activity', [AccountRestrictionController::class, 'show'])->name('users.activity');
+    Route::get('/identity-corrections', [IdentityCorrectionController::class, 'index'])->name('identity-corrections.index');
+    Route::get('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.show');
+    Route::post('/users/{user}/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.submit');
+    Route::post('/identity-corrections/{correction}/decision', [IdentityCorrectionController::class, 'decide'])->name('identity-corrections.decide');
     Route::post('/users/{user}/activity', [AccountRestrictionController::class, 'store'])->name('users.activity.store');
     Route::get('/shops', [AdminShopReviewController::class, 'index'])->name('shops.index');
     Route::post('/shops/{shop}/approve', [AdminShopReviewController::class, 'approve'])->name('shops.approve');

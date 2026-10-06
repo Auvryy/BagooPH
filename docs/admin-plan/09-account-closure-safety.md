@@ -6,10 +6,12 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/account-closure-safety` |
+| Git branch | `admin/identity-and-closure-safety` |
 | Phase | 0 |
 | Minimum prerequisites | [B06](06-account-restrictions.md), [B07](07-resource-restrictions.md), [B08](08-reviewed-identity-corrections.md) |
 | Result | Closure cannot erase active obligations, last-admin access, or referenced evidence. |
+
+B08 and B09 share one selected delivery branch. B08 must pass its focused gate before B09 starts; keep separate acceptance evidence and commits. Stop after the complete batch for user review and merge before B10.
 
 ## Purpose
 
@@ -94,7 +96,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop when the role-wide matrix and safe outcomes are verified against actual foreign references. Missing cash/history prerequisites remain explicit blockers rather than permission for destructive deletion.
 
 ```text
-Implement only B09 from docs/admin-plan/09-account-closure-safety.md on admin/account-closure-safety.
+Implement only B09 from docs/admin-plan/09-account-closure-safety.md on admin/identity-and-closure-safety.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.

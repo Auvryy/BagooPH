@@ -2,7 +2,7 @@
 
 This workflow applies to the [18-task admin plan](README.md). The [repository instructions](../../AGENTS.md), [documentation map](../README.md), and [roadmap](../CORE_FLOW_ROADMAP.md) remain the sources for repository safety, document authority, and current evidence.
 
-The selected B06+B07 batch uses one `admin/governance-restrictions` branch. Complete and verify B06's focused gate before B07 implementation, with separate task records and logical commits. Use a fresh pre-batch full-suite baseline and combined final regression/build evidence. Stop after both tasks; user review and merge still precede B08. All other task boundaries and phase gates remain as documented.
+The selected B06+B07 batch uses one `admin/governance-restrictions` branch. Complete and verify B06's focused gate before B07 implementation, with separate task records and logical commits. Use a fresh pre-batch full-suite baseline and combined final regression/build evidence. Stop after both tasks; user review and merge still precede B08. The separately selected B08+B09 batch uses `admin/identity-and-closure-safety` after B06+B07 is merged. Verify B08 before implementing B09; use separate task records, focused gates and logical commits, followed by a combined full-suite comparison and build. Stop after B09 for user review and merge before B10. All other task boundaries and phase gates remain as documented.
 
 ## 1. Finish and publish the foundation checkpoint
 

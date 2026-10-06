@@ -401,6 +401,8 @@ export default function BuyerLayout({
                                                     <span>Profile & Settings</span>
                                                 </Link>
 
+                                                {['approved', 'verified'].includes(auth.user.kyc_status ?? '') && <Link href="/account/identity-corrections" className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42]">Identity corrections</Link>}
+
                                                 <Link 
                                                     href={route('buyer.profile', { tab: 'orders' })} 
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"

@@ -8,6 +8,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
+use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
@@ -377,37 +378,40 @@ class CourierDeliveryController extends Controller
 
     public function updateProfile(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'min:2',
-                'max:100',
-                'regex:/^[\\pL][\\pL .\'-]*$/u',
-            ],
-            'phone' => [
-                'nullable',
-                'string',
-                'max:30',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value === null || trim((string) $value) === '') {
-                        return;
-                    }
+        return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
+            $validated = $request->validate([
+                'name' => [
+                    'required',
+                    'string',
+                    'min:2',
+                    'max:100',
+                    'regex:/^[\\pL][\\pL .\'-]*$/u',
+                ],
+                'phone' => [
+                    'nullable',
+                    'string',
+                    'max:30',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if ($value === null || trim((string) $value) === '') {
+                            return;
+                        }
 
-                    $digits = preg_replace('/[^0-9]/', '', (string) $value);
-                    if (! preg_match('/^(?:0?9|639)\\d{9}$/', $digits)) {
-                        $fail('Enter a valid Philippine mobile number.');
-                    }
-                },
-            ],
-        ]);
+                        $digits = preg_replace('/[^0-9]/', '', (string) $value);
+                        if (! preg_match('/^(?:0?9|639)\\d{9}$/', $digits)) {
+                            $fail('Enter a valid Philippine mobile number.');
+                        }
+                    },
+                ],
+            ]);
 
-        $request->user()->update([
-            'name' => trim($validated['name']),
-            'phone' => $this->normalizePhilippineMobile($validated['phone'] ?? null),
-        ]);
+            app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $validated);
+            $request->user()->update([
+                'name' => trim($validated['name']),
+                'phone' => $this->normalizePhilippineMobile($validated['phone'] ?? null),
+            ]);
 
-        return back()->with('success', 'Account contact details updated.');
+            return back()->with('success', 'Account contact details updated.');
+        });
     }
 
     public function toggleDuty(Request $request): RedirectResponse

@@ -111,11 +111,11 @@ class AccountRoleImmutabilityTest extends TestCase
     {
         $buyer = User::factory()->buyer()->create();
         $this->actingAs($buyer)->patch('/profile', [
-            'name' => 'Updated buyer name', 'email' => $buyer->email, 'role' => 'seller',
+            'name' => $buyer->name, 'email' => $buyer->email, 'role' => 'seller',
         ])->assertSessionHasNoErrors()->assertRedirect('/profile');
 
         $this->assertSame('buyer', $buyer->fresh()->role);
-        $this->assertSame('Updated buyer name', $buyer->fresh()->name);
+        $this->assertSame($buyer->name, $buyer->fresh()->name);
     }
 
     public static function adminPortals(): array

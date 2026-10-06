@@ -13,7 +13,7 @@ class ShopReviewDecision extends Model
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
     protected $fillable = [
-        'shop_id', 'seller_id', 'reviewer_id', 'kyc_decision_id', 'root_category_id',
+        'shop_id', 'seller_id', 'reviewer_id', 'kyc_decision_id', 'root_category_id', 'identity_correction_request_id',
         'reviewer_role', 'reviewer_name', 'submission_token', 'decision', 'reason',
         'submission', 'before_state', 'after_state', 'reviewed_at',
     ];

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\IdentityCorrectionRequest;
 use App\Models\KycDecision;
 use App\Models\Shop;
 use App\Models\ShopReviewDecision;
@@ -229,17 +230,27 @@ class ShopReviewService
         return $this->record($shop, $owner, $actor, $kyc->decision, $kyc->reason, $this->submission($shop), $kyc, $before);
     }
 
-    private function record(Shop $shop, User $owner, User $actor, string $action, ?string $reason, array $submission, ?KycDecision $kyc = null, ?array $before = null): ShopReviewDecision
+    public function recordCorrection(Shop $shop, User $owner, User $actor, IdentityCorrectionRequest $correction, array $before, string $reason): ShopReviewDecision
+    {
+        if ($issues = $this->issues($shop, $this->submission($shop))) {
+            throw ValidationException::withMessages(['review' => implode(' ', $issues)]);
+        }
+
+        return $this->record($shop, $owner, $actor, 'approved', $reason, $this->submission($shop), before: $before, correction: $correction);
+    }
+
+    private function record(Shop $shop, User $owner, User $actor, string $action, ?string $reason, array $submission, ?KycDecision $kyc = null, ?array $before = null, ?IdentityCorrectionRequest $correction = null): ShopReviewDecision
     {
         $before ??= $shop->only(['status', 'review_status', 'reviewed_at', 'review_feedback']);
         $status = $shop->status;
-        if ($action === 'approved' && $status === 'pending' && $owner->canAccessPortal()) {
+        if (! $correction && $action === 'approved' && $status === 'pending' && $owner->canAccessPortal()) {
             $status = 'active';
         }
         $shop->update(['review_status' => $action, 'status' => $status, 'reviewed_at' => $kyc?->reviewed_at ?? now(), 'review_feedback' => $reason]);
         $decision = ShopReviewDecision::create([
             'shop_id' => $shop->id, 'seller_id' => $owner->id, 'reviewer_id' => $actor->id,
             'kyc_decision_id' => $kyc?->id, 'root_category_id' => $shop->root_category_id,
+            'identity_correction_request_id' => $correction?->id,
             'reviewer_role' => $actor->role, 'reviewer_name' => $actor->name,
             'submission_token' => $this->token($submission), 'decision' => $action, 'reason' => $reason,
             'submission' => $submission, 'before_state' => $before,

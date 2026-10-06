@@ -182,14 +182,14 @@ class ChallengerM1StressTest extends TestCase
     }
 
     /**
-     * Stress Test: Courier Profile Cascade Deletion & Unique Constraint.
+     * Stress Test: Account removal cannot erase a referenced rider profile.
      */
     public function test_courier_profile_cascade_delete_and_uniqueness(): void
     {
         $courier = User::factory()->create(['role' => 'courier', 'status' => 'active', 'kyc_status' => 'approved']);
         $profile = CourierProfile::create([
             'user_id' => $courier->id,
-            'vehicle_type' => 'Honda Click 125i',
+            'vehicle_type' => 'Motorcycle',
             'plate_number' => 'QC-8888',
             'license_number' => 'LIC-112233',
             'or_cr_status' => 'Verified & Registered',
@@ -198,11 +198,15 @@ class ChallengerM1StressTest extends TestCase
 
         $this->assertDatabaseHas('courier_profiles', ['user_id' => $courier->id]);
 
-        // Delete user
-        $courier->delete();
-
-        // Profile must be cascade-deleted
-        $this->assertDatabaseMissing('courier_profiles', ['id' => $profile->id]);
+        $before = $profile->fresh()->getAttributes();
+        try {
+            $courier->delete();
+            $this->fail('An unsafe account deletion must not erase a rider profile.');
+        } catch (\LogicException $error) {
+            $this->assertStringContainsString('must be retained', $error->getMessage());
+        }
+        $this->assertDatabaseHas('users', ['id' => $courier->id]);
+        $this->assertSame($before, $profile->fresh()->getAttributes());
     }
 
     /**

@@ -63,7 +63,7 @@ class AccountRestrictionService
             'type' => 'account', 'id' => $subject->id, 'name' => $subject->name,
             'role' => $subject->role, 'status' => $subject->status, 'approval' => $subject->kyc_status,
             'source_token' => $this->token($state), 'version' => $subject->restriction_version,
-            'actions' => $this->actions($subject->status), 'state' => $state,
+            'actions' => $subject->closed_at === null ? $this->actions($subject->status) : [], 'state' => $state,
             'affected_work' => $state['work'], 'history' => $this->history('account', $subject->id),
             'legacy_activity' => $subject->restriction_version === 0,
             'cash_note' => 'Cash custody and reconciliation are not recorded yet. Payment labels and commission rows do not prove who holds money.',
@@ -110,6 +110,7 @@ class AccountRestrictionService
             $subject = $users->get($subject->id);
             abort_unless($actor?->isAdmin() && $actor->canAccessPortal(), 403);
             abort_unless($subject && UserRole::tryFrom($subject->role), 409, 'This account has an unknown role and needs controlled review.');
+            abort_unless($subject->closed_at === null, 409, 'A closed account remains inactive. Reopening requires a separate policy.');
             $this->lockScope($subject);
             $currentIds = $this->ordersFor($subject)->orderBy('id')->pluck('id');
             $this->requireCurrent($workIds->all() === $currentIds->all(), $subject->only(['id', 'status']), 'Affected work changed. Reload and review its current responsibilities.');
@@ -220,7 +221,7 @@ class AccountRestrictionService
         $handlers = HubHandler::where('user_id', $subject->id)->orderBy('id')->get();
 
         return [
-            'subject' => $subject->only(['id', 'role', 'status', 'kyc_status', 'kyc_reviewed_at', 'birthday', 'restriction_version']),
+            'subject' => $subject->only(['id', 'role', 'status', 'kyc_status', 'kyc_reviewed_at', 'birthday', 'restriction_version', 'closed_at']),
             'shops' => Shop::where('user_id', $subject->id)->orderBy('id')->get()->map(fn ($shop) => [
                 ...$shop->only(['id', 'status', 'review_status', 'review_decision_id', 'review_version', 'root_category_id', 'restriction_version']),
                 'reviewed_scope' => app(ShopEligibilityService::class)->reviewedShops(Shop::whereKey($shop->id))->exists(),

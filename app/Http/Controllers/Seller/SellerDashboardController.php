@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\IdentityCorrectionService;
 use App\Services\ShopEligibilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -242,45 +243,49 @@ class SellerDashboardController extends Controller
 
     public function updateProfile(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
+            $user = $request->user();
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:50',
-            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:3072',
-            'remove_avatar' => 'nullable|boolean',
-        ]);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:50',
+                'email' => 'required|email|max:255|unique:users,email,'.$user->id,
+                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:3072',
+                'remove_avatar' => 'nullable|boolean',
+            ]);
 
-        if ($request->boolean('remove_avatar')) {
-            if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $user->avatar);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
+            app(IdentityCorrectionService::class)->protectReviewedIdentity($user, $validated);
+
+            if ($request->boolean('remove_avatar')) {
+                if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $user->avatar);
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
                 }
-            }
-            $user->avatar = null;
-        } elseif ($request->hasFile('avatar')) {
-            if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $user->avatar);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
+                $user->avatar = null;
+            } elseif ($request->hasFile('avatar')) {
+                if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $user->avatar);
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
                 }
+
+                $path = $request->file('avatar')->store('avatars', 'public');
+                $user->avatar = '/storage/'.$path;
             }
 
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = '/storage/'.$path;
-        }
+            $user->name = $validated['name'];
+            if ($user->email !== $validated['email']) {
+                $user->email_verified_at = null;
+            }
+            $user->email = $validated['email'];
+            $user->phone = $validated['phone'] ?? null;
+            $user->save();
 
-        $user->name = $validated['name'];
-        if ($user->email !== $validated['email']) {
-            $user->email_verified_at = null;
-        }
-        $user->email = $validated['email'];
-        $user->phone = $validated['phone'] ?? null;
-        $user->save();
-
-        return back()->with('success', 'Profile updated successfully.');
+            return back()->with('success', 'Profile updated successfully.');
+        });
     }
 
     public function previewStorefront(Request $request): Response

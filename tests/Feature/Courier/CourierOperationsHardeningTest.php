@@ -65,11 +65,11 @@ class CourierOperationsHardeningTest extends TestCase
         $before = $this->rider->courierProfile->fresh()->getAttributes();
         $this->actingAs($this->rider)->from($prefix.'/profile')
             ->patch($prefix.'/profile/account', [
-                'name' => 'Ana Rider', 'phone' => '0917 123 4567',
+                'name' => $this->rider->name, 'phone' => '0917 123 4567',
                 'assigned_hub_id' => $this->destinationHub->id,
                 'logistics_company_id' => 999999, 'role' => 'admin',
             ])->assertRedirect($prefix.'/profile')->assertSessionHas('success');
-        $this->assertSame('Ana Rider', $this->rider->fresh()->name);
+        $this->assertSame($this->rider->name, $this->rider->fresh()->name);
         $this->assertSame('+639171234567', $this->rider->fresh()->phone);
         $this->assertSame('courier', $this->rider->fresh()->role);
         $this->assertSame($before, $this->rider->courierProfile->fresh()->getAttributes());
@@ -492,14 +492,14 @@ class CourierOperationsHardeningTest extends TestCase
 
         $this->actingAs($this->rider)
             ->patch(route('courier.profile.update'), [
-                'name' => 'Rider Updated Name',
+                'name' => $this->rider->name,
                 'phone' => '0917 123 4567',
                 'assigned_hub_id' => $this->destinationHub->id,
                 'logistics_company_id' => 999999,
             ])
             ->assertSessionHas('success');
 
-        $this->assertSame('Rider Updated Name', $this->rider->fresh()->name);
+        $this->assertSame($this->rider->name, $this->rider->fresh()->name);
         $this->assertSame('+639171234567', $this->rider->fresh()->phone);
         $this->assertSame($originalHubId, $this->rider->courierProfile->fresh()->assigned_hub_id);
         $this->assertSame($originalCompanyId, $this->rider->courierProfile->fresh()->logistics_company_id);
