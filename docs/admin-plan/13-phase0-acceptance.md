@@ -54,6 +54,21 @@ Inspect these existing files before proposing schema or routes. The list is a st
 - Simultaneous PostgreSQL locking remains unverified by SQLite; inspect ordering/constraints and report the limit instead of claiming concurrency proof.
 - Do not change role/custody/financial contracts to fit old tests. Align fixtures with authority only after verifying the intended behavior.
 
+## Follow-up ownership for an incomplete decision
+
+Completing this audit can produce an incomplete Phase 0 decision. That result does not authorize B14 or require implementing every missing workflow inside B13. Select follow-up work separately after user review of this branch, and repeat the acceptance comparison after each repair.
+
+| Owner and supplemental branch | Bounded work | Required evidence and stopping point |
+|---|---|---|
+| Phase 0 commerce repair: `fix/phase0-commerce-inputs-and-replay` | Apply the existing canonical text/contact/location rules to checkout and saved addresses, including direct service calls. Implement the documented buyer-scoped submission token and persisted original order result. Commit optional address saving with checkout rather than after it. | Valid and adversarial inputs; identical replay after Bag consumption; changed/foreign token rejection; one stock/voucher consumption; multi-shop, route, address and default-address rollback; immutable old snapshots. Run focused checks, the exact full-suite comparison, and the build when the checkout UI changes. Stop before unrelated operational or financial modules. |
+| Cross-role acceptance repair: `test/phase0-cross-role-fixtures` | Correct the identified setup contradictions using reviewed shops, eligible companies/facilities/personnel, real checkout and seller actions, Mother-Hub scans, stored proof and buyer confirmation. Inspect nominally passing fixture-only tests as well; a fabricated order/checkpoint is not transaction evidence. | Assert actual request outcomes, source states, ownership, stock and immutable evidence. Test seller cancellation through its owned API; buyer self-service cancellation stays unavailable. Keep the eventual recovery/accounting assertions and missing-gate failures until their owning workflows exist. Do not invent settled cash or a fixed logistics fee. Record the exact remaining failure identities and phase decision. |
+
+The commerce repair depends on reviewed B13 evidence and existing B02-B05 rules. The fixture repair uses that repair when exercising canonical checkout and otherwise retains the documented role-owned prerequisites. These two supplemental branches are outside the 18 numbered admin tasks; neither is created or started by the audit prompt.
+
+Inspect [CheckoutController](../../app/Http/Controllers/Buyer/CheckoutController.php), [CheckoutOrderService](../../app/Services/Orders/CheckoutOrderService.php), [BuyerProfileController](../../app/Http/Controllers/Buyer/BuyerProfileController.php), [ApplicationValidationService](../../app/Services/ApplicationValidationService.php), the existing rules/models/migrations, and [checkout UI](../../resources/js/Pages/Checkout/Index.tsx) before designing persistence. Reuse the contract without rewriting ambiguous legacy values or guessing new schema names.
+
+Operational text/code validation outside checkout and addresses stays owned by the relevant seller, courier or logistics mutation and its Phase 0 safety gate. Manifest custody remains Phase 2; reason-coded attempts, accountable recovery, RTS and secure counter release remain Phase 3; persistent event notifications remain Phase 4; COD reconciliation and settlement remain B16/B17 in Phase 5. B14/B15/B18 consume these recorded sources after their prerequisites pass. The roadmap records each observed mismatch, exact failed identity and current owner.
+
 ## Data, legacy records, and recovery
 
 - Tests use only SQLite :memory:. No development/production reset, destructive seeder, or business-record patch is allowed.
