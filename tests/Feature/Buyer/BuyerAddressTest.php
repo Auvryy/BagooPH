@@ -11,10 +11,12 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\InteractsWithCheckoutNetwork;
 use Tests\TestCase;
 
 class BuyerAddressTest extends TestCase
 {
+    use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
     private function createBuyerWithCart(): array
@@ -294,7 +296,8 @@ class BuyerAddressTest extends TestCase
 
     public function test_checkout_places_order_with_selected_saved_address(): void
     {
-        [$buyer] = $this->createBuyerWithCart();
+        [$buyer, $shop] = $this->createBuyerWithCart();
+        $this->createCheckoutNetwork($shop, ['Makati City' => 'Metro Manila']);
 
         $response = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Selected Recipient',
@@ -302,6 +305,9 @@ class BuyerAddressTest extends TestCase
             'shipping_address' => 'Unit 701, Tower 2, Ayala Ave',
             'shipping_city' => 'Makati City',
             'shipping_postal_code' => '1226',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'San Lorenzo',
+            'item_ids' => $buyer->cart->items()->pluck('id')->all(),
             'payment_method' => 'cod',
         ]);
 
@@ -317,7 +323,8 @@ class BuyerAddressTest extends TestCase
 
     public function test_checkout_can_save_new_address_to_address_book(): void
     {
-        [$buyer] = $this->createBuyerWithCart();
+        [$buyer, $shop] = $this->createBuyerWithCart();
+        $this->createCheckoutNetwork($shop, ['Pasig City' => 'Metro Manila']);
 
         $this->assertEquals(0, $buyer->addresses()->count());
 
@@ -327,6 +334,9 @@ class BuyerAddressTest extends TestCase
             'shipping_address' => '99 Sunset Blvd',
             'shipping_city' => 'Pasig City',
             'shipping_postal_code' => '1600',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'San Antonio',
+            'item_ids' => $buyer->cart->items()->pluck('id')->all(),
             'payment_method' => 'cod',
             'save_address' => true,
         ]);
@@ -334,6 +344,7 @@ class BuyerAddressTest extends TestCase
         $response->assertRedirect(route('buyer.orders.index'));
 
         $savedAddress = Address::where('user_id', $buyer->id)->first();
+        $this->assertSame('New Address Recipient', Order::where('buyer_id', $buyer->id)->firstOrFail()->recipient_name);
         $this->assertNotNull($savedAddress);
         $this->assertEquals($buyer->name, $savedAddress->recipient_name);
         $this->assertEquals('+63 918 555 6666', $savedAddress->phone);

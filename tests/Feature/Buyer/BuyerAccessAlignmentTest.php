@@ -58,11 +58,12 @@ class BuyerAccessAlignmentTest extends TestCase
                 $response = $this->get($host.$path);
                 $known ? $response->assertRedirect(route('kyc.pending')) : $response->assertForbidden();
             }
-            foreach (['/checkout', '/buyer/profile', '/buyer/addresses', '/buyer/reviews', '/buyer/vouchers/apply', '/buyer/support/assistant', '/buyer/disputes', '/cart'] as $path) {
+            foreach (['/checkout', '/buyer/profile', '/buyer/addresses', '/buyer/reviews', '/buyer/vouchers/apply', '/buyer/support/assistant', '/cart'] as $path) {
                 $response = $this->post($host.$path, ['name' => 'Unauthorized Change']);
                 $known ? $response->assertRedirect(route('kyc.pending')) : $response->assertForbidden();
             }
             $this->get($host.'/profile')->assertForbidden();
+            $this->post($host.'/buyer/disputes', ['reason' => 'Unavailable action'])->assertStatus(405)->assertSessionMissing('success');
             $this->patch($host.'/profile', ['name' => 'Changed Buyer', 'email' => 'changed@bagoo.test'])->assertForbidden();
             $this->get($host.'/chat/messages/999')->assertForbidden();
             $this->post($host.'/chat/send', ['message' => 'Hello'])->assertForbidden();

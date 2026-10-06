@@ -117,7 +117,6 @@ $registerSellerRoutes = function () {
         Route::get('/reviews', [SellerReviewController::class, 'index']);
         Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply']);
         Route::get('/disputes', [SellerDisputeController::class, 'index']);
-        Route::patch('/disputes/{dispute}/respond', [SellerDisputeController::class, 'respond']);
         Route::get('/reports', [SellerDashboardController::class, 'reports']);
         Route::get('/settings', [SellerDashboardController::class, 'settings']);
         Route::post('/settings', [SellerDashboardController::class, 'updateSettings']);
@@ -334,7 +333,6 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->name('addresses.destroy');
             Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
             Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
-            Route::post('/disputes', [BuyerDisputeController::class, 'store'])->name('disputes.store');
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
@@ -440,7 +438,6 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('reviews.reply');
     Route::get('/disputes', [SellerDisputeController::class, 'index'])->name('disputes.index');
-    Route::patch('/disputes/{dispute}/respond', [SellerDisputeController::class, 'respond'])->name('disputes.respond');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
     Route::post('/settings', [SellerDashboardController::class, 'updateSettings'])->name('settings.update');

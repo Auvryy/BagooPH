@@ -13,11 +13,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithCheckoutNetwork;
 use Tests\Concerns\InteractsWithKycReviews;
 use Tests\TestCase;
 
 class ChallengerM1Test extends TestCase
 {
+    use InteractsWithCheckoutNetwork;
     use InteractsWithKycReviews;
     use RefreshDatabase;
 
@@ -240,7 +242,7 @@ class ChallengerM1Test extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Fashion Haven',
             'slug' => 'fashion-haven',
@@ -252,6 +254,7 @@ class ChallengerM1Test extends TestCase
         $category = Category::create([
             'name' => 'Apparel',
             'slug' => 'apparel',
+            'parent_id' => $shop->root_category_id,
         ]);
 
         $product = Product::create([
@@ -260,6 +263,7 @@ class ChallengerM1Test extends TestCase
             'name' => 'Premium Heritage Linen Shirt',
             'slug' => 'premium-heritage-linen-shirt',
             'sku' => 'LINEN-SHIRT-001',
+            'variants' => ['colors' => [['name' => 'Crimson Red'], ['name' => 'Navy Blue']], 'sizes' => [['name' => 'XL', 'stock' => 50], ['name' => 'M', 'stock' => 50]]],
             'price' => 750.00,
             'stock' => 100,
             'status' => 'active',
@@ -271,6 +275,8 @@ class ChallengerM1Test extends TestCase
             'kyc_status' => 'approved',
         ]);
 
+        $this->createCheckoutNetwork($shop, ['Manila' => 'Metro Manila']);
+
         // Buyer adds Variant 1: Crimson Red / XL (Qty: 2)
         $addVar1 = $this->actingAs($buyer)->post('/cart', [
             'product_id' => $product->id,
@@ -278,7 +284,7 @@ class ChallengerM1Test extends TestCase
             'color' => 'Crimson Red',
             'size' => 'XL',
         ]);
-        $addVar1->assertRedirect();
+        $addVar1->assertSessionHasNoErrors()->assertSessionHas('success');
 
         // Buyer adds Variant 2: Navy Blue / M (Qty: 1)
         $addVar2 = $this->actingAs($buyer)->post('/cart', [
@@ -287,7 +293,7 @@ class ChallengerM1Test extends TestCase
             'color' => 'Navy Blue',
             'size' => 'M',
         ]);
-        $addVar2->assertRedirect();
+        $addVar2->assertSessionHasNoErrors()->assertSessionHas('success');
 
         // Verify cart has 2 distinct items
         $cart = Cart::where('user_id', $buyer->id)->first();
@@ -312,7 +318,7 @@ class ChallengerM1Test extends TestCase
             'color' => 'Crimson Red',
             'size' => 'XL',
         ]);
-        $addVar1Again->assertRedirect();
+        $addVar1Again->assertSessionHasNoErrors()->assertSessionHas('success');
 
         $this->assertEquals(2, $cart->items()->count());
         $item1->refresh();
@@ -324,12 +330,15 @@ class ChallengerM1Test extends TestCase
             'recipient_phone' => '09171234567',
             'shipping_address' => 'Unit 402 Casa Real',
             'shipping_city' => 'Manila',
+            'shipping_province' => 'Metro Manila',
+            'destination_barangay' => 'Poblacion',
+            'item_ids' => $cart->items()->pluck('id')->all(),
             'shipping_postal_code' => '1000',
             'payment_method' => 'cod',
             'notes' => 'Ring doorbell upon arrival',
         ]);
 
-        $checkoutResponse->assertRedirect();
+        $checkoutResponse->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         // Verify Order
         $order = Order::where('buyer_id', $buyer->id)->latest()->first();
@@ -378,7 +387,7 @@ class ChallengerM1Test extends TestCase
             'phone' => '09191112222',
         ]);
 
-        $shop = Shop::create([
+        $shop = Shop::factory()->approved()->create([
             'user_id' => $seller->id,
             'name' => 'Artisan Roasters',
             'slug' => 'artisan-roasters',
@@ -390,6 +399,7 @@ class ChallengerM1Test extends TestCase
         $category = Category::create([
             'name' => 'Beverages',
             'slug' => 'beverages',
+            'parent_id' => $shop->root_category_id,
         ]);
 
         $product = Product::create([
@@ -409,6 +419,8 @@ class ChallengerM1Test extends TestCase
             'kyc_status' => 'approved',
         ]);
 
+        $this->createCheckoutNetwork($shop, ['Antipolo' => 'Rizal'], 'Benguet');
+
         // Add to cart
         $this->actingAs($buyer)->post('/cart', [
             'product_id' => $product->id,
@@ -423,11 +435,14 @@ class ChallengerM1Test extends TestCase
             'recipient_phone' => $targetPhone,
             'shipping_address' => 'Block 12 Lot 5 Golden Heights',
             'shipping_city' => 'Antipolo',
+            'shipping_province' => 'Rizal',
+            'destination_barangay' => 'Poblacion',
+            'item_ids' => Cart::where('user_id', $buyer->id)->firstOrFail()->items()->pluck('id')->all(),
             'shipping_postal_code' => '1870',
             'payment_method' => 'cod',
         ]);
 
-        $checkoutResponse->assertRedirect();
+        $checkoutResponse->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         $order = Order::where('buyer_id', $buyer->id)->latest()->first();
         $this->assertNotNull($order);
@@ -438,11 +453,15 @@ class ChallengerM1Test extends TestCase
         $this->assertNotNull($delivery, 'Delivery record must exist after checkout');
         $this->assertEquals($targetPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must match recipient_phone');
         $this->assertEquals('Juan Dela Cruz', $delivery->delivery_recipient_name);
-        $this->assertEquals('Block 12 Lot 5 Golden Heights, Antipolo', $delivery->delivery_address);
+        $this->assertEquals('Block 12 Lot 5 Golden Heights, Antipolo, Rizal', $delivery->delivery_address);
+
+        $this->actingAs($seller)->post("/seller/orders/{$order->id}/accept")->assertSessionHas('success');
+        $this->actingAs($seller)->post("/seller/orders/{$order->id}/pack")->assertSessionHas('success');
 
         // Seller transitions order to ready for pickup
         $readyResponse = $this->actingAs($seller)->post("/seller/orders/{$order->id}/ready");
-        $readyResponse->assertRedirect();
+        $readyResponse->assertSessionHas('success');
+        $this->assertSame('ready_for_pickup', $order->fresh()->status);
 
         $delivery->refresh();
         $this->assertEquals($targetPhone, $delivery->delivery_phone, 'deliveries.delivery_phone must be preserved after seller marks ready');

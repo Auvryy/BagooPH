@@ -10,10 +10,12 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\InteractsWithCheckoutNetwork;
 use Tests\TestCase;
 
 class BuyerCartSelectionTest extends TestCase
 {
+    use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
     private function createBuyerWithMultipleCartItems(): array
@@ -131,6 +133,7 @@ class BuyerCartSelectionTest extends TestCase
     public function test_placing_order_with_item_ids_only_orders_and_deletes_selected_items_leaving_others_in_cart(): void
     {
         [$buyer, $cart, $itemA, $itemB, $productA, $productB] = $this->createBuyerWithMultipleCartItems();
+        $this->createCheckoutNetwork($productA->shop, ['Taguig City' => 'Metro Manila']);
 
         $this->assertEquals(2, $cart->items()->count());
         $this->assertEquals(20, $productA->fresh()->stock);
@@ -143,6 +146,9 @@ class BuyerCartSelectionTest extends TestCase
             'recipient_phone' => '+63 917 123 4567',
             'shipping_address' => '456 Elm Street',
             'shipping_city' => 'Taguig City',
+            'shipping_province' => 'Metro Manila',
+            'shipping_postal_code' => '1634',
+            'destination_barangay' => 'Fort Bonifacio',
             'payment_method' => 'cod',
         ]);
 
@@ -167,7 +173,7 @@ class BuyerCartSelectionTest extends TestCase
         $this->assertEquals($productA->id, $remainingCartItems->first()->product_id);
     }
 
-    public function test_placing_order_without_item_ids_checks_out_entire_cart_for_backwards_compatibility(): void
+    public function test_placing_order_without_item_ids_rejects_without_changing_the_cart_or_stock(): void
     {
         [$buyer, $cart, $itemA, $itemB, $productA, $productB] = $this->createBuyerWithMultipleCartItems();
 
@@ -176,12 +182,17 @@ class BuyerCartSelectionTest extends TestCase
             'recipient_phone' => '+63 917 123 4567',
             'shipping_address' => '456 Elm Street',
             'shipping_city' => 'Taguig City',
+            'shipping_province' => 'Metro Manila',
+            'shipping_postal_code' => '1634',
+            'destination_barangay' => 'Fort Bonifacio',
             'payment_method' => 'cod',
         ]);
 
-        $response->assertRedirect(route('buyer.orders.index'));
-
-        // All items cleared when no specific item_ids provided
-        $this->assertEquals(0, $cart->fresh()->items()->count());
+        $response->assertSessionHasErrors(['item_ids'])->assertSessionMissing('success');
+        $this->assertSame([$itemA->id, $itemB->id], $cart->items()->orderBy('id')->pluck('id')->all());
+        $this->assertSame(20, $productA->fresh()->stock);
+        $this->assertSame(15, $productB->fresh()->stock);
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
     }
 }
