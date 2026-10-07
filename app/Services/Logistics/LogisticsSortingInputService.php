@@ -5,6 +5,7 @@ namespace App\Services\Logistics;
 use App\Models\Delivery;
 use App\Rules\ApplicationText;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Normalizer;
 
@@ -21,14 +22,14 @@ class LogisticsSortingInputService
             if (preg_match('/\p{C}/u', $controls)) {
                 continue;
             }
-            $value = trim(Normalizer::normalize($value, Normalizer::FORM_KC), ' ');
+            $value = trim($field === 'bin' ? $value : Normalizer::normalize($value, Normalizer::FORM_KC), ' ');
             $input[$field] = $value === '' ? null : $value;
         }
 
         return Validator::make($input, [
             'delivery_id' => ['bail', 'required', 'integer', 'min:1', 'exists:deliveries,id'],
             'barangay' => ['bail', 'nullable', 'string', new ApplicationText('location', 2, 100)],
-            'bin' => ['bail', 'nullable', 'string', new ApplicationText('location', 1, 150)],
+            'bin' => ['bail', 'nullable', 'string', new ApplicationText('bin', 1, 150)],
             'notes' => ['bail', 'nullable', 'string', new ApplicationText('notes', 1, 1000)],
         ])->validate();
     }
@@ -46,9 +47,9 @@ class LogisticsSortingInputService
             throw ValidationException::withMessages(['barangay' => 'Use the parcel\'s recorded destination barangay.']);
         }
 
-        $bin = $input['bin'] ?? $delivery->destination_bin ?? 'BIN: BRGY-'.mb_strtoupper(str_replace(' ', '-', $destination));
+        $bin = $input['bin'] ?? $delivery->destination_bin ?? 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', Str::ascii($destination)));
         Validator::make(['bin' => $bin], [
-            'bin' => ['bail', 'required', 'string', new ApplicationText('location', 1, 150)],
+            'bin' => ['bail', 'required', 'string', new ApplicationText('bin', 1, 150)],
         ])->validate();
 
         return ['barangay' => $destination, 'bin' => $bin];

@@ -19,6 +19,7 @@ class ApplicationText implements ValidationRule
         $pattern = match ($this->kind) {
             'name' => "/\A[\p{Latin}\p{M} .’'\-]+\z/u",
             'code' => '/\A[A-Z0-9]+(?:-[A-Z0-9]+)*\z/',
+            'bin' => '/\A[A-Za-z0-9][A-Za-z0-9 :._\/-]*\z/',
             'notes' => '/\A(?:[^\p{C}<>`{}]|\r?\n)*\z/u',
             default => "/\A[\p{Latin}\p{M}\p{N} #.,’'\-\/()&:]+\z/u",
         };

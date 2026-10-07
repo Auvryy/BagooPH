@@ -22,6 +22,8 @@ class LogisticsSortingInputTest extends TestCase
     {
         $values = [
             'bin Greek' => ['bin', 'BIN-α'],
+            'bin lookalike' => ['bin', 'ＢＩＮ-A1'],
+            'bin unsafe scheme' => ['bin', 'javascript:foo'],
             'bin newline' => ['bin', "BIN-A1\n"],
             'bin tab' => ['bin', "\tBIN-A1"],
             'bin hidden' => ['bin', "BIN-\u{200B}A1"],
@@ -64,9 +66,10 @@ class LogisticsSortingInputTest extends TestCase
             'default' => ['/hub/sort', [], 'BIN: BRGY-POBLACION-III'],
             'subdomain default' => ['http://hub.localhost/sort', [], 'BIN: BRGY-POBLACION-III'],
             'blank optional' => ['/hub/sort', ['bin' => '  ', 'barangay' => '  '], 'BIN: BRGY-POBLACION-III'],
-            'normalized text' => ['/hub/sort', ['bin' => ' ＢＩＮ-A1 ', 'barangay' => ' poblacion   iii '], 'BIN-A1'],
+            'normalized text' => ['/hub/sort', ['bin' => ' BIN-A1 ', 'barangay' => ' poblacion   iii '], 'BIN-A1'],
             'boundary' => ['/hub/sort', ['bin' => str_repeat('A', 150), 'notes' => str_repeat('A', 1000)], str_repeat('A', 150)],
             'multiline notes' => ['/hub/sort', ['bin' => 'BIN-A1', 'notes' => "Checked shelf.\nMatched waybill."], 'BIN-A1'],
+            'ASCII separator' => ['/hub/sort', ['bin' => 'SHELF_A.01'], 'SHELF_A.01'],
         ];
     }
 
