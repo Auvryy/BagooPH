@@ -258,21 +258,12 @@ class LogisticsOrderCustodyFlowTest extends TestCase
     #[DataProvider('courierApprovals')]
     public function test_hub_sorts_then_assigns_before_only_the_selected_rider_can_dispatch(string $approval): void
     {
-        $logistics = User::where('email', 'logistics@bagoo.test')->firstOrFail();
-        $assignedRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $destinationHub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $logistics = $this->flowHandler($destinationHub);
+        $assignedRider = $this->flowRider($destinationHub);
         $assignedRider->update(['kyc_status' => $approval]);
-        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
-        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
-        $order = $this->createOrder('at_sorting_center', 'Poblacion III');
-        $delivery = Delivery::factory()->create([
-            'order_id' => $order->id,
-            'logistics_company_id' => $company->id,
-            'destination_bayan_hub_id' => $destinationHub->id,
-            'current_hub_id' => $destinationHub->id,
-            'delivery_type' => 'doorstep',
-            'destination_bin' => 'BIN: BRGY-POBLACION-III',
-            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-        ]);
 
         $this->actingAs($logistics)->postJson(route('hub.sort'), [
             'delivery_id' => $delivery->id,
@@ -309,11 +300,13 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
         $this->actingAs($otherRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ]);
         $this->assertSame(OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER, $delivery->fresh()->status);
 
         $this->actingAs($assignedRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ]);
 
         $this->assertSame(OrderStateMachineService::STATUS_OUT_FOR_DELIVERY, $delivery->fresh()->status);

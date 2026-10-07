@@ -3,6 +3,7 @@
 namespace App\Services\Logistics;
 
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
@@ -228,6 +229,22 @@ class LogisticsRoutingEngine
     {
         $hub = $currentHub ?? $delivery->currentHub;
         $status = strtolower($delivery->status);
+
+        if ($hub?->id === $delivery->destination_bayan_hub_id && $status === 'delivery_failed') {
+            $attempt = DeliveryAttempt::where('delivery_id', $delivery->id)->latest('attempt_number')->first();
+            if ($delivery->current_hub_id === null) {
+                return ['action' => 'RECEIVE_FAILED_DELIVERY', 'prompt' => 'RECEIVE FAILED DELIVERY FROM RIDER',
+                    'next_status' => 'delivery_failed', 'color' => 'amber', 'attempt_reference' => $attempt?->reference];
+            }
+            $approval = $attempt ? app(DeliveryRecoveryService::class)->event($attempt, 'retry_approved') : null;
+            if ($approval && ! $approval->retry_at->isFuture()) {
+                return ['action' => 'RELEASE_APPROVED_RETRY', 'prompt' => 'RELEASE APPROVED RETRY FOR BARANGAY SORTING',
+                    'next_status' => 'arrived_at_destination_hub', 'color' => 'amber', 'attempt_reference' => $attempt->reference];
+            }
+
+            return ['action' => 'AWAIT_RETRY_REVIEW', 'prompt' => 'WAIT FOR COMPANY RETRY REVIEW OR THE APPROVED DATE',
+                'next_status' => 'delivery_failed', 'color' => 'amber'];
+        }
 
         // 1. Destination Bayan Hub inbound custody must be recorded before sorting.
         if ($hub && $hub->id === $delivery->destination_bayan_hub_id && $status === OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB) {

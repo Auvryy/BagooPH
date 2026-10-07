@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Builders\DeliveryBuilder;
+use App\Services\Logistics\DeliveryRecoveryService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -106,7 +107,19 @@ class Delivery extends Model
 
     public function canReattempt(): bool
     {
-        return $this->failure_attempts < 2; // Up to 2 re-attempts (3 attempts total)
+        $attempt = DeliveryAttempt::where('delivery_id', $this->id)->latest('attempt_number')->first();
+        if ($this->status !== 'delivery_failed' || $this->failure_attempts < 1 || $this->failure_attempts > 2
+            || $this->current_hub_id !== $this->destination_bayan_hub_id || ! $attempt
+            || $attempt->attempt_number !== $this->failure_attempts || $attempt->reason_code === 'customer_refused') {
+            return false;
+        }
+        $service = app(DeliveryRecoveryService::class);
+        $receipt = $service->event($attempt, 'hub_return');
+        $approval = $service->event($attempt, 'retry_approved');
+        $custody = DeliveryCheckpoint::lastCustody($this);
+
+        return $receipt && $approval && ! $approval->retry_at->isFuture()
+            && ($custody['kind'] ?? null) === 'hub' && ($custody['recovery_reference'] ?? null) === $receipt->reference;
     }
 
     public static function riderHasActiveWork(int $riderId, ?int $exceptDeliveryId = null): bool
@@ -120,7 +133,21 @@ class Delivery extends Model
             })
             ->when($exceptDeliveryId, fn ($query) => $query->whereKeyNot($exceptDeliveryId))
             ->whereRaw("deliveries.status in ({$placeholders})", self::RIDER_ACTIVE_STATUSES)
+            ->withoutReceivedFailure()
             ->exists();
+    }
+
+    public function scopeWithoutReceivedFailure($query)
+    {
+        return $query->whereNot(function ($received) {
+            $received->whereRaw("deliveries.status in ('delivery_failed', 'return_to_sender')")
+                ->whereColumn('current_hub_id', 'destination_bayan_hub_id')
+                ->whereExists(function ($evidence) {
+                    $evidence->selectRaw('1')->from('delivery_recovery_events')
+                        ->whereColumn('delivery_recovery_events.delivery_id', 'deliveries.id')
+                        ->whereColumn('delivery_recovery_events.hub_id', 'deliveries.current_hub_id')->where('event_type', 'hub_return');
+                });
+        });
     }
 
     public static function activePickupCount(int $riderId): int

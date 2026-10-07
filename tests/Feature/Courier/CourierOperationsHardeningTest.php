@@ -601,13 +601,22 @@ class CourierOperationsHardeningTest extends TestCase
     {
         $delivery = $this->createDelivery('assigned_pickup', $this->rider);
 
-        foreach (['in_transit', 'failed', 'delivery_failed'] as $status) {
+        foreach (['in_transit', 'failed'] as $status) {
             $this->actingAs($this->rider)
                 ->patch(route('courier.updateStatus', $delivery), ['status' => $status])
                 ->assertSessionHasErrors('status');
 
             $this->assertSame('assigned_pickup', $delivery->fresh()->status);
         }
+        // Canonical failure is now supported, but a pickup assignment cannot report a final-mile attempt.
+        Storage::fake('local');
+        $this->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivery_failed', 'failure_reason' => 'customer_unreachable', 'barcode' => $delivery->tracking_number,
+            'courier_notes' => 'The buyer could not be reached at the saved address.', 'location_name' => 'At the saved buyer address',
+            'request_token' => (string) Str::uuid(), 'proof_image_file' => UploadedFile::fake()->image('attempt.jpg'),
+        ])->assertSessionHas('error');
+        $this->assertSame('assigned_pickup', $delivery->fresh()->status);
+        $this->assertDatabaseCount('delivery_attempts', 0);
     }
 
     public function test_wrong_rider_cannot_advance_an_assigned_pickup(): void
@@ -759,7 +768,7 @@ class CourierOperationsHardeningTest extends TestCase
             $delivery = $this->createDelivery($source, $rider);
             $delivery->order->update(['status' => 'ready_for_pickup']);
             $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
-                'status' => $target, 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+                'status' => $target, 'barcode' => $delivery->tracking_number, 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
             ])->assertSessionHas('error');
             $this->assertSame($source, $delivery->fresh()->status);
             $this->assertSame('ready_for_pickup', $delivery->order->fresh()->status);

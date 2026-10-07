@@ -162,7 +162,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $this->assertCheckpointLogged($delivery, 'delivery_failed');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($delivery->destination_bayan_hub_id, $delivery->fresh()->current_hub_id);
-        // The owning Phase 3 branch must add the recorded retry review/date and actual retry action chain.
+        $this->retryFailureFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'sorted_to_barangay_bin');
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
     }

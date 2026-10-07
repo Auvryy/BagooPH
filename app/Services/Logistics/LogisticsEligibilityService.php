@@ -76,7 +76,7 @@ class LogisticsEligibilityService
         }
 
         $statuses = implode(',', array_fill(0, count(Delivery::RIDER_ACTIVE_STATUSES), '?'));
-        $busy = fn () => Delivery::query()->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES);
+        $busy = fn () => Delivery::query()->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES)->withoutReceivedFailure();
 
         return $query->where('logistics_company_id', $hub->logistics_company_id)->where('assigned_hub_id', $hub->id)
             ->whereNotIn('user_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
@@ -95,7 +95,7 @@ class LogisticsEligibilityService
         $statuses = implode(',', array_fill(0, count(Delivery::RIDER_ACTIVE_STATUSES), '?'));
 
         return ! Delivery::where('assigned_rider_id', $profile->user_id)
-            ->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES)->exists();
+            ->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES)->withoutReceivedFailure()->exists();
     }
 
     /**

@@ -142,10 +142,12 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
 
         $this->actingAs($pickupRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ])->assertSessionHas('error');
 
         $this->actingAs($finalRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ])->assertSessionHas('success');
         $this->assertNull($delivery->fresh()->current_hub_id);
         $this->actingAs($finalRider)->patch(route('courier.updateStatus', $delivery), [

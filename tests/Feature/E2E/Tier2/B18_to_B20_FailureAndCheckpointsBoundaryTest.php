@@ -32,9 +32,8 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
-            'status' => 'delivery_failed', 'failure_reason' => '', 'courier_notes' => 'The parcel could not be handed over at the address.',
-        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery, ''), ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
@@ -43,9 +42,8 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
-            'status' => 'delivery_failed', 'failure_reason' => 'bad', 'courier_notes' => 'The parcel could not be handed over at the address.',
-        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery, 'bad'), ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
@@ -54,9 +52,8 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
-            'status' => 'delivery_failed', 'failure_reason' => 'UNKNOWN_CODE', 'courier_notes' => 'The parcel could not be handed over at the address.',
-        ])->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery, 'UNKNOWN_CODE'), ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('failure_reason');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
@@ -65,9 +62,8 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patchJson(route('courier.updateStatus', $delivery), [
-            'status' => 'delivery_failed', 'failure_reason' => 'Customer unreachable',
-        ])->assertSessionHas('error');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery), ['Accept' => 'application/json'])
+            ->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
@@ -78,7 +74,7 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $other = $this->flowRider($hub, $this->createApprovedUser('courier'));
-        $this->actingAs($other)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivery_failed', 'failure_reason' => 'Customer unreachable'])->assertSessionHas('error');
+        $this->actingAs($other)->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery))->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
@@ -152,7 +148,7 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('error');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 

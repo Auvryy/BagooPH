@@ -10,6 +10,7 @@ use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -50,6 +51,8 @@ class LogisticsHubWorkstationController extends Controller
                         ->whereIn('origin_bayan_hub_id', $hubIds)
                         ->whereNull('current_hub_id')
                         ->where('status', OrderStateMachineService::STATUS_PICKED_UP);
+                })->orWhere(function ($returning) use ($hubIds) {
+                    $returning->whereIn('destination_bayan_hub_id', $hubIds)->whereNull('current_hub_id')->whereRaw("deliveries.status = 'delivery_failed'");
                 });
         });
     }
@@ -845,6 +848,7 @@ class LogisticsHubWorkstationController extends Controller
             'mode' => 'nullable|in:inspect,confirm',
             'action' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[A-Z_]+\z/',
             'expected_status' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[a-z_]+\z/',
+            'attempt_reference' => ['nullable', 'string', 'max:64'],
         ]);
 
         $barcode = trim($validated['barcode']);
@@ -896,7 +900,7 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         if (($validated['mode'] ?? 'inspect') !== 'confirm') {
-            $requiresConfirmation = $prompt['action'] !== 'AWAIT_BARANGAY_SORT';
+            $requiresConfirmation = ! in_array($prompt['action'], ['AWAIT_BARANGAY_SORT', 'AWAIT_RETRY_REVIEW'], true);
 
             return $this->scanResponse($this->scanPayload(
                 delivery: $delivery,
@@ -917,27 +921,33 @@ class LogisticsHubWorkstationController extends Controller
             return $this->operationError($request, 'The requested scan action is not a recognized custody handoff.', 422);
         }
 
-        if ($delivery->status === $expectedStatus && ($prompt['action'] !== $requestedAction || $prompt['next_status'] !== $targetStatus)) {
+        if (! in_array($requestedAction, ['RECEIVE_FAILED_DELIVERY', 'RELEASE_APPROVED_RETRY'], true)
+            && $delivery->status === $expectedStatus && ($prompt['action'] !== $requestedAction || $prompt['next_status'] !== $targetStatus)) {
             return $this->operationError($request, 'The scan instruction no longer matches the parcel route. Scan the waybill again.', 409);
         }
 
         $stateMachine = app(OrderStateMachineService::class);
 
         try {
-            $updatedDelivery = $stateMachine->transition(
-                delivery: $delivery,
-                targetStatus: $targetStatus,
-                actor: $request->user(),
-                scanMetadata: [
-                    'hub_id' => $hub?->id,
-                    'barcode' => $barcode,
-                    'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
-                    'facility_code' => $hub?->code,
-                    'scan_action' => $requestedAction,
-                    'expected_status' => $expectedStatus,
-                    'notes' => $validated['notes'] ?? "Floor Scan: {$requestedAction}",
-                ]
-            );
+            $recovery = app(DeliveryRecoveryService::class);
+            $updatedDelivery = match ($requestedAction) {
+                'RECEIVE_FAILED_DELIVERY' => $recovery->receive($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
+                'RELEASE_APPROVED_RETRY' => $recovery->beginRetry($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
+                default => $stateMachine->transition(
+                    delivery: $delivery,
+                    targetStatus: $targetStatus,
+                    actor: $request->user(),
+                    scanMetadata: [
+                        'hub_id' => $hub?->id,
+                        'barcode' => $barcode,
+                        'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
+                        'facility_code' => $hub?->code,
+                        'scan_action' => $requestedAction,
+                        'expected_status' => $expectedStatus,
+                        'notes' => $validated['notes'] ?? "Floor Scan: {$requestedAction}",
+                    ]
+                ),
+            };
         } catch (DomainException $exception) {
             return $this->operationError($request, $exception->getMessage(), 409);
         }
@@ -954,6 +964,7 @@ class LogisticsHubWorkstationController extends Controller
         $nextPrompt = $routingEngine->getDynamicScanPrompt($updatedDelivery, $hub);
         $requiresNextConfirmation = ! in_array($nextPrompt['action'], [
             'AWAIT_BARANGAY_SORT',
+            'AWAIT_RETRY_REVIEW',
             'INSPECT_WAYBILL',
         ], true);
 
@@ -1050,6 +1061,8 @@ class LogisticsHubWorkstationController extends Controller
             'DISPATCH_LINE_HAUL' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
             'RECEIVE_AT_DESTINATION_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
             'STAGE_FOR_PICKUP' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
+            'RECEIVE_FAILED_DELIVERY' => OrderStateMachineService::STATUS_DELIVERY_FAILED,
+            'RELEASE_APPROVED_RETRY' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
             default => null,
         };
     }

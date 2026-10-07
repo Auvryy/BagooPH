@@ -5,6 +5,7 @@ namespace Tests\Feature\E2E\Support;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
@@ -33,6 +34,8 @@ trait InteractsWithOrderActions
     private array $flowRiders = [];
 
     private bool $flowStorageFaked = false;
+
+    private bool $flowAttemptStorageFaked = false;
 
     public function checkoutFlowOrder(User $buyer, Shop $shop, array $items = [], string $stage = 'placed', array $shipping = []): Order
     {
@@ -299,7 +302,7 @@ trait InteractsWithOrderActions
         if ($stage === 'assigned_to_rider') {
             return $delivery->fresh();
         }
-        $this->actingAs($final)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs($final)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
         if ($stage === 'out_for_delivery') {
@@ -348,16 +351,30 @@ trait InteractsWithOrderActions
 
     public function reportFlowFailure(Delivery $delivery, string $reason = 'Customer unreachable'): void
     {
-        // Exercise the owned request boundary; missing Phase 3 support must remain a failing gate.
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
-            'status' => 'delivery_failed', 'failure_reason' => $reason,
-            'courier_notes' => 'The rider called at the address and could not hand over the parcel.',
-        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $code = match ($reason) {
+            'Customer unreachable' => 'customer_unreachable', 'Customer refused' => 'customer_refused',
+            default => throw new \LogicException('Use a documented reason in the actual failure request.'),
+        };
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->flowFailurePayload($delivery, $code))
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('delivery_failed', $delivery->fresh()->status);
         $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
         $this->assertSame(1, $delivery->fresh()->failure_attempts);
-        $this->assertSame($reason, $delivery->fresh()->failure_reason);
+        $this->assertSame($code, $delivery->fresh()->failure_reason);
         $this->assertCheckpointLogged($delivery, 'delivery_failed');
+    }
+
+    public function flowFailurePayload(Delivery $delivery, string $reason = 'customer_unreachable'): array
+    {
+        if (! $this->flowAttemptStorageFaked) {
+            Storage::fake('local');
+            $this->flowAttemptStorageFaked = true;
+        }
+
+        return ['status' => 'delivery_failed', 'failure_reason' => $reason, 'barcode' => $delivery->tracking_number,
+            'location_name' => 'At the saved buyer address', 'request_token' => (string) Str::uuid(),
+            'proof_image_file' => UploadedFile::fake()->image('attempt.jpg'),
+            'courier_notes' => 'The rider called at the address and could not hand over the parcel.'];
     }
 
     public function receiveFailureFlow(Delivery $delivery): void
@@ -372,8 +389,37 @@ trait InteractsWithOrderActions
         $this->actingAs($handler)->postJson(route('hub.scan'), [
             'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
             'action' => $prompt['action'], 'expected_status' => $prompt['expected_status'],
+            'attempt_reference' => $prompt['attempt_reference'] ?? null,
         ])->assertOk()->assertJsonPath('confirmed', true);
         $this->assertSame($hub->id, $delivery->fresh()->current_hub_id);
         $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
+    }
+
+    public function retryFailureFlow(Delivery $delivery): void
+    {
+        $delivery->refresh();
+        $attempt = DeliveryAttempt::where('delivery_id', $delivery->id)->latest('attempt_number')->firstOrFail();
+        $rider = User::findOrFail($attempt->rider_id);
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $this->actingAs($hub->company->user)->post(route('hub.recovery.retry', $delivery), [
+            'retry_at' => now('Asia/Manila')->addMinutes(10)->format('Y-m-d\TH:i'),
+            'notes' => 'The buyer confirmed availability at the same delivery address.',
+            'request_token' => (string) Str::uuid(), 'attempt_reference' => $attempt->reference,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->travel(11)->minutes();
+        $inspection = $this->actingAs($handler)->postJson(route('hub.scan'), [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect',
+        ])->assertOk()->assertJsonPath('prompt.action', 'RELEASE_APPROVED_RETRY');
+        $prompt = $inspection->json('prompt');
+        $this->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
+            'action' => $prompt['action'], 'expected_status' => $prompt['expected_status'], 'attempt_reference' => $prompt['attempt_reference']])
+            ->assertOk()->assertJsonPath('confirmed', true);
+        $this->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'barangay' => $delivery->order->destination_barangay])->assertOk();
+        $this->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertOk();
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('out_for_delivery', $delivery->fresh()->status);
     }
 }

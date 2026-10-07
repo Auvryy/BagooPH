@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Courier;
 
 use App\Http\Controllers\Controller;
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
 use App\Services\IdentityCorrectionService;
+use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -19,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -75,7 +78,8 @@ class CourierDeliveryController extends Controller
                 ->where('assigned_rider_id', $user->id)
                 ->where('logistics_company_id', $profile->logistics_company_id)
                 ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
-                ->whereRaw("deliveries.status in ('assigned_to_rider', 'out_for_delivery')")
+                ->whereRaw("deliveries.status in ('assigned_to_rider', 'out_for_delivery', 'delivery_failed')")
+                ->where(fn ($query) => $query->whereRaw("deliveries.status != 'delivery_failed'")->orWhereNull('current_hub_id'))
                 ->with(['order', 'destinationBayanHub'])
                 ->oldest('assigned_at')
                 ->get();
@@ -101,6 +105,7 @@ class CourierDeliveryController extends Controller
         }
 
         return Inertia::render('Courier/Deliveries', [
+            'recoveryRequestToken' => (string) Str::uuid(),
             'scope' => $this->scopePayload($profile),
             'isOnline' => (bool) $profile?->is_available,
             'stats' => [
@@ -133,8 +138,44 @@ class CourierDeliveryController extends Controller
         return back()->with('success', "Pickup {$claimed->tracking_number} claimed. Proceed to the merchant store.");
     }
 
+    private function reportFailure(Request $request, Delivery $delivery): RedirectResponse
+    {
+        $inputs = app(WaybillScanInputService::class);
+        $request->merge($inputs->normalize(['barcode' => $request->input('barcode'), 'notes' => $request->input('courier_notes')]));
+        $validated = $request->validate([
+            'barcode' => $inputs->barcodeRules(), 'notes' => ['required', ...$inputs->notesRules(500)],
+            'failure_reason' => ['required', Rule::in(array_keys(DeliveryRecoveryService::REASONS))],
+            'location_name' => ['required', ...$inputs->notesRules(255)],
+            'request_token' => ['required', 'uuid'], 'proof_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+        $path = $request->file('proof_image_file')->storeAs('delivery-attempt-proofs', (string) Str::uuid().'.'.$request->file('proof_image_file')->extension(), 'local');
+        abort_unless(is_string($path), 503, 'The attempt proof could not be saved. Please retry.');
+        try {
+            app(DeliveryRecoveryService::class)->fail($delivery, $request->user(), [
+                'barcode' => $validated['barcode'], 'reason' => $validated['failure_reason'], 'notes' => $validated['notes'],
+                'request_token' => $validated['request_token'], 'proof_path' => $path,
+                'location_name' => $validated['location_name'],
+            ]);
+            if (! DeliveryAttempt::where('delivery_id', $delivery->id)->where('proof_path', $path)->exists()) {
+                Storage::disk('local')->delete($path);
+            }
+        } catch (DomainException $exception) {
+            Storage::disk('local')->delete($path);
+
+            return back()->with('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($path);
+            throw $exception;
+        }
+
+        return back()->with('success', 'Attempt recorded. Return the parcel to the destination Bayan Hub for its inbound scan.');
+    }
+
     public function updateStatus(Request $request, Delivery $delivery): RedirectResponse
     {
+        if ($request->input('status') === OrderStateMachineService::STATUS_DELIVERY_FAILED) {
+            return $this->reportFailure($request, $delivery);
+        }
         $inputs = app(WaybillScanInputService::class);
         $scanInput = $inputs->normalize(['barcode' => $request->input('barcode'), 'notes' => $request->input('courier_notes')]);
         $request->merge(['barcode' => $scanInput['barcode'], 'courier_notes' => $scanInput['notes']]);
@@ -144,7 +185,7 @@ class CourierDeliveryController extends Controller
                 OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
                 OrderStateMachineService::STATUS_DELIVERED,
             ])],
-            'barcode' => $inputs->barcodeRules($request->input('status') === OrderStateMachineService::STATUS_PICKED_UP),
+            'barcode' => $inputs->barcodeRules(in_array($request->input('status'), ['picked_up', 'out_for_delivery'], true)),
             'courier_notes' => $inputs->notesRules(500),
             'proof_image_file' => [
                 Rule::requiredIf(
@@ -496,7 +537,9 @@ class CourierDeliveryController extends Controller
             'assignedAt' => $delivery->assigned_at?->toIso8601String(),
             'nextAction' => $delivery->status === OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER
                 ? 'start_delivery'
-                : 'complete_delivery',
+                : ($delivery->status === 'delivery_failed' ? 'return_to_hub' : 'complete_delivery'),
+            'failureAttempts' => $delivery->failure_attempts,
+            'failureReason' => DeliveryRecoveryService::REASONS[$delivery->failure_reason] ?? $delivery->failure_reason,
             'canMessage' => true,
         ];
     }

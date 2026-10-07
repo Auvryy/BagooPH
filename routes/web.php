@@ -25,6 +25,7 @@ use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
+use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\MarketplaceController;
@@ -200,6 +201,9 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
+        Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index']);
+        Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve']);
+        Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof']);
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
@@ -535,6 +539,9 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
+        Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index'])->name('recovery.index');
+        Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve'])->name('recovery.retry');
+        Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof'])->name('recovery.proof');
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');

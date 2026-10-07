@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsHub;
@@ -117,7 +118,7 @@ class OrderStateMachineService
             $inputs = app(WaybillScanInputService::class);
             $scanMetadata = $inputs->normalize($scanMetadata);
             Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
-            $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
+            $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERY_FAILED, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
                 self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,
                 self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB], true);
             $barcode = $scanRequired || isset($scanMetadata['barcode'])
@@ -130,7 +131,7 @@ class OrderStateMachineService
                     ->where('checkpoint_type', $targetStatus)
                     ->when($hub, fn ($query) => $query->where('hub_id', $hub->id))
                     ->when($transport, fn ($query) => $query->where('manifest_number', $transport->manifest->reference))
-                    ->first();
+                    ->latest('id')->first();
                 if ($existing) {
                     if ($existing->scanned_by_id !== $actor->id) {
                         throw new DomainException('This custody action was already recorded by another actor. Refresh the parcel before continuing.');
@@ -164,6 +165,27 @@ class OrderStateMachineService
             };
             if ($requiredOrderStatus && $lockedOrder->status !== $requiredOrderStatus) {
                 throw new DomainException("Order is {$lockedOrder->status}; this scan requires {$requiredOrderStatus}.");
+            }
+
+            if ($targetStatus === self::STATUS_OUT_FOR_DELIVERY) {
+                $custody = DeliveryCheckpoint::lastCustody($lockedDelivery);
+                if ($lockedDelivery->current_hub_id !== $lockedDelivery->destination_bayan_hub_id
+                    || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $lockedDelivery->destination_bayan_hub_id) {
+                    throw new DomainException('The assigned parcel needs actual destination-hub custody before departure.');
+                }
+            }
+            if ($targetStatus === self::STATUS_DELIVERY_FAILED) {
+                $attempt = isset($scanMetadata['attempt_id']) && is_int($scanMetadata['attempt_id'])
+                    ? DeliveryAttempt::find($scanMetadata['attempt_id']) : null;
+                $departure = $lockedDelivery->checkpoints()->where('checkpoint_type', self::STATUS_OUT_FOR_DELIVERY)->latest('id')->first();
+                if (! $attempt || $attempt->delivery_id !== $lockedDelivery->id || $attempt->rider_id !== $actor->id
+                    || $attempt->departure_checkpoint_id !== $departure?->id || $attempt->attempt_number !== $lockedDelivery->failure_attempts + 1
+                    || $attempt->attempt_number > 3 || $attempt->barcode_scanned !== $barcode
+                    || $attempt->source_state !== DeliveryCheckpoint::state($lockedDelivery)) {
+                    throw new DomainException('Use the recorded attempt action with actual reason, notes and proof.');
+                }
+                $scanMetadata['reason'] = $attempt->reason_code;
+                $scanMetadata['notes'] = $attempt->notes.' Attempt evidence: '.$attempt->reference;
             }
 
             if ($targetStatus === self::STATUS_DELIVERED) {
@@ -458,9 +480,6 @@ class OrderStateMachineService
                 $delivery->failure_attempts++;
                 $delivery->failure_reason = $metadata['reason'];
                 $order->status = self::STATUS_DELIVERY_FAILED;
-                if ($delivery->failure_attempts >= 3) {
-                    $delivery->status = self::STATUS_RETURN_TO_SENDER;
-                }
                 break;
         }
     }
