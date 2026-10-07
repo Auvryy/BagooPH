@@ -58,6 +58,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const mapRegion = useRef<HTMLDivElement>(null);
     const [target, setTarget] = useState<ActionTarget | null>(null);
     const [notes, setNotes] = useState('');
+    const [barcode, setBarcode] = useState('');
     const [proof, setProof] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -109,10 +110,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         return () => URL.revokeObjectURL(url);
     }, [proof]);
 
-    const resetAction = () => { setTarget(null); setNotes(''); setProof(null); setErrors({}); };
+    const resetAction = () => { setTarget(null); setNotes(''); setBarcode(''); setProof(null); setErrors({}); };
     const openAction = (id: number, trackingNumber: string, status: ActionTarget['status']) => {
         if (pending.current) return;
-        setNotes(''); setProof(null); setErrors({});
+        setNotes(''); setBarcode(''); setProof(null); setErrors({});
         setTarget({ id, trackingNumber, status });
     };
     const claim = (id: number) => {
@@ -142,6 +143,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (!target || pending.current) return;
+        if (target.status === 'picked_up' && !barcode.trim()) {
+            setErrors({ barcode: 'Enter the code scanned from the parcel waybill.' });
+            return;
+        }
         if (target.status === 'delivered' && !proof) {
             setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
             return;
@@ -151,6 +156,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         setErrors({});
         router.post(courierPath(`/deliveries/${target.id}/status`), {
             _method: 'patch', status: target.status, courier_notes: notes.trim() || undefined,
+            barcode: target.status === 'picked_up' ? barcode : undefined,
             proof_image_file: target.status === 'delivered' ? proof ?? undefined : undefined,
         }, {
             forceFormData: true, preserveScroll: true,
@@ -208,6 +214,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     <p className="break-all text-sm font-semibold text-slate-700">{target.trackingNumber}</p>
                     <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : 'Record the actual handoff with a proof photo. Only the buyer can confirm receipt and complete the order.'}</p>
                     <CourierFieldError message={errors.status} />
+                    {target.status === 'picked_up' && <div>
+                        <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Scanned waybill code</label>
+                        <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan or enter the tracking barcode attached to this parcel after checking its order and contents.</p>
+                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode)} aria-describedby="waybill-help waybill-error" onChange={(event) => setBarcode(event.target.value)} className={courierInput} />
+                        <CourierFieldError id="waybill-error" message={errors.barcode} />
+                    </div>}
                     {target.status === 'delivered' && <div>
                         <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">Proof of delivery photo</label>
                         <p id="proof-help" className="mt-1 text-sm text-slate-600">An image is required, up to 5 MB. Choosing a photo does not record delivery.</p>
