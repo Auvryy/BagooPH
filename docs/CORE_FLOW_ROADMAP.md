@@ -70,7 +70,7 @@ Scoped profile/Shopping Bag repair: October 7, 2026. Existing profile writers sh
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
-| Failed delivery and RTS | Partial | Retained attempts, private proof, actual destination-hub returns, reviewed future retry dates and the three-attempt loop are implemented and scoped verified below. Third failure/refusal enters the reverse queue only after hub receipt. Reverse manifests, seller receipt and restricted recovery remain open. |
+| Failed delivery and RTS | Partial | Retained attempts, private proof, actual destination-hub returns, reviewed future retry dates and the three-attempt loop are implemented and scoped verified below. Third failure/refusal starts the frozen reverse route only after actual hub receipt. Real return manifests, origin staging and owning-seller receipt are scoped verified below; secure-pickup expiry, notices, cash sources and restricted recovery remain open. |
 | Hub self-pickup | Partial | Counter staging and release screens exist; the claim code is optional and lacks secure hashing, expiry, reuse prevention, identity enforcement, and COD custody. |
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
@@ -1357,7 +1357,7 @@ Acceptance: two-shop checkout produces two isolated fulfillment units; invalid t
 
 ### Phase 2: Mother-Hub and Manifest Custody
 
-**State: Partial.** Ordered hub scans and mandatory Mother-Hub custody are enforced; durable manifest records and dispatch/receive controls remain.
+**State: Partial.** Durable manifests and their actual load, dispatch, individual receipt, discrepancy and closure actions are scoped verified below. Ordered hub scans and mandatory Mother-Hub custody are enforced. Genuine extra/wrong-hub physical recovery and simultaneous PostgreSQL verification remain open.
 
 - Add feeder and line-haul manifests with source, destination, vehicle, dispatcher, receiver, timestamps, and included parcels.
 - Require manifest outbound and receiving-facility inbound scans.
@@ -1368,7 +1368,7 @@ Acceptance: same-region and cross-region parcels cannot skip their required Moth
 
 ### Phase 3: Delivery Exceptions and Self-Pickup
 
-**State: Partial.** Durable attempt records, actual destination-hub returns and reviewed retries are scoped verified. Reverse transport, authenticated seller receipt, secure claims and their required notice/cash/restricted-recovery foundations remain open.
+**State: Partial.** Durable attempt records, actual destination-hub returns, reviewed retries, reverse manifest transport and authenticated seller receipt are scoped verified. Secure claims, secure-pickup expiry and the required notice/cash/restricted-recovery foundations remain open.
 
 - Record each delivery attempt with rider, number, reason, notes, proof, attempt time, hub return, and retry date.
 - Allow retries after attempts one and two; begin reverse routing after the third failure.
@@ -1490,3 +1490,29 @@ Migration `2026_10_07_130000_create_delivery_attempt_evidence.php` applied addit
 - `326acc4` — `feat: show failed deliveries and reviewed hub recovery`
 
 The evidence commit has subject `docs: record verified attempts and remaining return prerequisites`; its generated hash is reported in the handoff. No push or merge was performed.
+
+## B14 Prerequisite Reverse Custody and Seller Receipt: October 7, 2026
+
+**The scoped return writers are implemented and verified; B14 remains open.** Branch `feat/logistics-return-custody` is stacked on attempt evidence commit `393663f`. It adds the return path after an actual non-retryable failed-attempt hub receipt. Secure counter expiry still needs its own source writer in the following approved batch; this batch does not fabricate that evidence or complete restricted recovery, notifications, cash collection or admin oversight.
+
+The return route freezes the original waybill and route supported by actual outbound manifest receipts. It follows destination Bayan -> destination Mother -> origin Mother when different -> origin Bayan. Reverse manifests retain an immutable direction and use the existing manager list, assigned-handler load/departure/receipt, vehicle/driver, discrepancy and closure rules. A route whose endpoint Bayan IDs coincide still visits its Mother Hub; arrival at the starting Bayan is not enough to stage the seller return. Each next leg is derived from actual linked reverse receipts. Missing or changed legacy source evidence blocks recovery instead of reconstructing a successful return from status.
+
+The customer order stays `delivery_failed` throughout reverse transport. After all real receipts and closed manifests, an assigned origin handler scans the parcel into seller-return staging. Only the currently eligible owning seller/shop's original-waybill receipt makes the parcel and order `returned`. All items must belong to that selected shop. Retained events/checkpoints link actor, role, hub, original scan, source/target custody and request evidence. Identical receipt retries preserve the original event; changed evidence conflicts, and a failed checkpoint write rolls back the terminal state and receipt. Neither hub staging nor seller receipt changes stock, payment or settlement.
+
+Managers can select return direction in the manifest form; the floor scanner directs reverse transfers through those recorded manifests and offers actual origin staging. The seller order page exposes receipt only for a staged return. Public tracking maps real reverse checkpoints to non-sensitive labels. A genuine failed-attempt hub receipt continues to release the former rider's workload while the parcel travels back through other hubs.
+
+**Fixture corrections:** F19, B19, F25 and combination return cases now perform actual reverse manifest requests, origin staging and owning-seller receipt. The first retryable F25 return fixture now records customer refusal rather than inventing automatic RTS after one unreachable visit. Three older inventory expectations assumed automatic return restocking; they now require unchanged stock, following the baseline's explicit pre-pickup cancellation restoration policy and this return batch's unchanged inventory boundary. Receipt replay still retains exactly one terminal checkpoint. The original attempt rider is read from immutable attempt history after the actual hub receipt clears the live assignment. Required notice and later financial gates remain visible.
+
+**Verification:** The final full isolated SQLite run has **2,508 tests, 42,870 assertions, 19 failures and zero errors**, compared with **2,494 tests, 40,893 assertions, 28 failures and zero errors** before this batch. All **14 added cases pass**; there are **nine resolved failure identities, no new failures, no removed cases and no skipped cases**. The resolved cases are F19 01-04, F25 04, B19 01/03/05 and combination 16. The remaining F19 05 case advances through actual seller receipt to its still-missing persistent notification gate. Its changed assertion context is recorded explicitly; the other retained failure contexts match. The known T4 11 generated-user-identity comparison preserves whether identities differ while ignoring fixture sequence offsets. Remaining failures belong to unfinished later source contracts, so this is not a passing full suite.
+
+The final focused selection passes **29 tests and 2,689 assertions**, including **14 new return cases** covering both portal paths, distinct Mother Hubs, same endpoint Bayan, real seller receipt/replay, foreign actors, premature staging, status-only transport, stale route, wrong scan, plain notes, missing legacy evidence, skipped/direction-mismatched loads, restriction, rollback and raw-SQL retention. The affected TypeScript/Vite build passes in **15.44 seconds**; the scoped PHP style check passes for **20 files**, and `git diff --check` is clean. No browser/device check or simultaneous PostgreSQL race is claimed.
+
+Migration `2026_10_07_140000_create_return_custody_evidence` applied successfully to local PostgreSQL. Before/after complete original-column hashes and counts match across **14 existing domain tables**, including the prior attempt/recovery records. Both new return tables have **0 rows**. Two PostgreSQL immutable-history triggers and the separate manifest-direction trigger are present. Existing manifest records receive the truthful outbound direction of their only former writer; their original columns and evidence remain unchanged, and the original outbound creation-request fingerprint remains supported for retries. No reset or destructive seeding occurred. This establishes additive compatibility and preservation, not a live concurrent custody proof.
+
+**Scoped assessment:** reverse transport and authenticated seller receipt **2/10 -> 8/10**. A failed parcel now has an accountable path back through all required hubs and a final seller custody receipt. Overall Phase 0/2/3, B14 and project readiness remain open; secure claims, their notice/cash sources and controlled restricted recovery follow in separate approved batches. Local implementation commits:
+
+- `b2db6ac` — `feat: retain reverse routes and actual return manifest custody`
+- `b689ad5` — `feat: require origin staging and owning seller return receipt`
+- `94e658f` — `feat: expose return manifests and seller receipt scans`
+
+The evidence commit has subject `docs: record verified return custody and remaining B14 gates`; its generated hash is reported in the handoff. No push or merge was performed.
