@@ -985,6 +985,7 @@ class LogisticsHubWorkstationController extends Controller
     ): array {
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub']);
         $custodyHub = $delivery->currentHub;
+        $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true);
 
         return [
             'success' => true,
@@ -993,7 +994,8 @@ class LogisticsHubWorkstationController extends Controller
             'prompt' => [
                 ...$prompt,
                 'expected_status' => $delivery->status,
-                'requires_confirmation' => $requiresConfirmation,
+                'requires_confirmation' => $requiresConfirmation && ! $requiresManifest,
+                'manifest_url' => $requiresManifest ? (request()->is('hub/*') ? '/hub/manifests' : '/manifests') : null,
             ],
             'delivery' => [
                 'id' => $delivery->id,

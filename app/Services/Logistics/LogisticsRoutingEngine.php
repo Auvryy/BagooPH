@@ -311,12 +311,13 @@ class LogisticsRoutingEngine
                 ];
             }
 
-            $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
+            $nextMother = $hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id;
+            $destHubCode = $nextMother ? ($delivery->destinationMotherHub?->code ?? 'DEST-MOTHER-HUB') : ($delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB');
 
             return [
                 'action' => 'DISPATCH_LINE_HAUL',
                 'prompt' => "LOAD TO DESTINATION MANIFEST -> [{$destHubCode}]",
-                'next_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                'next_status' => $nextMother ? OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB : OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
                 'color' => 'indigo',
             ];
         }

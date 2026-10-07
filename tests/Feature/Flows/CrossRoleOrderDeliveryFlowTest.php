@@ -23,7 +23,7 @@ use Tests\TestCase;
 
 class CrossRoleOrderDeliveryFlowTest extends TestCase
 {
-    use InteractsWithCheckoutSubmission;
+    use InteractsWithCheckoutSubmission, \Tests\Feature\E2E\Support\InteractsWithOrderActions, \Tests\Feature\E2E\Support\InteractsWithRoles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -205,6 +205,15 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         string $action,
         string $expectedStatus
     ): void {
+        if (in_array($action, ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true)) {
+            $this->assertSame($expectedStatus, $delivery->fresh()->status);
+            $this->actingAs($operator)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
+                'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk()->assertJsonPath('prompt.requires_confirmation', false)
+                ->assertJsonPath('prompt.manifest_url', '/hub/manifests');
+            $this->confirmFlowManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
+
+            return;
+        }
         $this->actingAs($operator)->postJson(route('hub.scan'), [
             'barcode' => $delivery->tracking_number,
             'hub_id' => $hub->id,

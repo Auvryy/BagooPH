@@ -5,9 +5,12 @@ namespace Tests\Feature\E2E\Support;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
+use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
@@ -15,6 +18,7 @@ use App\Services\AccountRestrictionService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 
 /** Initial eligibility is a fixture; order and custody evidence must come from real actions. */
@@ -169,6 +173,11 @@ trait InteractsWithOrderActions
 
     public function confirmFlowScan(Delivery $delivery, LogisticsHub $hub, string $action): void
     {
+        if (in_array($action, ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true)) {
+            $this->confirmFlowManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'));
+
+            return;
+        }
         $handler = $this->flowHandler($hub);
         $source = $delivery->fresh()->status;
         $this->actingAs($handler)->postJson(route('hub.scan'), [
@@ -180,6 +189,50 @@ trait InteractsWithOrderActions
             'action' => $action, 'expected_status' => $source,
         ])->assertOk()->assertJsonPath('confirmed', true);
         $delivery->refresh();
+    }
+
+    public function confirmFlowManifest(Delivery $delivery, LogisticsHub $hub, bool $departure, ?User $handler = null): void
+    {
+        $delivery->refresh();
+        $company = LogisticsCompany::findOrFail($delivery->logistics_company_id);
+        $manager = User::findOrFail($company->user_id);
+        $handler ??= $this->flowHandler($hub);
+        if ($departure) {
+            $this->assertSame($hub->id, $delivery->current_hub_id);
+            $destinationId = $delivery->status === 'arrived_at_origin_hub' ? $delivery->origin_mother_hub_id
+                : ($hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id
+                    ? $delivery->destination_mother_hub_id : $delivery->destination_bayan_hub_id);
+            $driver = $this->createApprovedUser('courier');
+            $vehicle = LogisticsFleet::create(['logistics_company_id' => $company->id, 'hub_id' => $hub->id,
+                'plate_number' => 'FLOW-'.str_pad((string) (LogisticsFleet::count() + 1), 4, '0', STR_PAD_LEFT),
+                'vehicle_type' => $hub->isMotherHub() && LogisticsHub::findOrFail($destinationId)->isMotherHub() ? 'wing_truck' : 'l300_van',
+                'model' => 'Bagoo Transport Vehicle', 'capacity_kg' => 10000,
+                'assigned_driver_id' => $driver->id, 'status' => 'active']);
+            $driver->courierProfile->update(['logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id,
+                'vehicle_id' => $vehicle->id, 'is_available' => true]);
+            $this->actingAs($manager)->get('/hub/manifests')->assertOk();
+            $response = $this->postJson('/hub/manifests', ['source_hub_id' => $hub->id, 'destination_hub_id' => $destinationId,
+                'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
+            $manifest = LogisticsManifest::findOrFail($response->json('manifest.id'));
+            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
+        } else {
+            $custody = DeliveryCheckpoint::lastCustody($delivery);
+            $this->assertSame('manifest', $custody['kind']);
+            $manifest = LogisticsManifest::findOrFail($custody['manifest_id']);
+            $this->assertSame($hub->id, $manifest->destination_hub_id);
+            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($handler)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
+                'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk();
+        }
+        $delivery->refresh();
+    }
+
+    public function flowManifestPayload(LogisticsManifest $manifest, array $fields = []): array
+    {
+        return ['version' => $manifest->fresh()->version, 'request_token' => (string) Str::uuid(), ...$fields];
     }
 
     public function flowDelivery(Order $order, string $stage = 'unassigned', ?User $rider = null): Delivery
@@ -210,14 +263,28 @@ trait InteractsWithOrderActions
             ['in_transit_to_mother_hub', $origin, 'DISPATCH_TO_FEEDER'],
             ['arrived_at_mother_hub', $mother, 'RECEIVE_AT_MOTHER_HUB'],
             ['sorted_to_line_haul', $mother, 'SORT_TO_LINE_HAUL'],
-            ['in_transit_to_destination_hub', $mother, 'DISPATCH_LINE_HAUL'],
-            ['arrived_at_destination_hub', $destination, 'RECEIVE_AT_DESTINATION_HUB'],
         ] as [$target, $hub, $action]) {
             $this->confirmFlowScan($delivery, $hub, $action);
             $this->assertSame($target, $delivery->fresh()->status);
             if ($stage === $target) {
                 return $delivery->fresh();
             }
+        }
+        if ($delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id) {
+            $this->confirmFlowManifest($delivery, $mother, true);
+            $mother = LogisticsHub::findOrFail($delivery->destination_mother_hub_id);
+            $this->confirmFlowManifest($delivery, $mother, false);
+            $this->confirmFlowScan($delivery, $mother, 'SORT_TO_LINE_HAUL');
+        }
+        $this->confirmFlowManifest($delivery, $mother, true);
+        $this->assertSame('in_transit_to_destination_hub', $delivery->fresh()->status);
+        if ($stage === 'in_transit_to_destination_hub') {
+            return $delivery->fresh();
+        }
+        $this->confirmFlowManifest($delivery, $destination, false);
+        $this->assertSame('arrived_at_destination_hub', $delivery->fresh()->status);
+        if ($stage === 'arrived_at_destination_hub') {
+            return $delivery->fresh();
         }
         $handler = $this->flowHandler($destination);
         $this->actingAs($handler)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id,

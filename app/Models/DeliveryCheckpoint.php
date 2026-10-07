@@ -79,6 +79,7 @@ class DeliveryCheckpoint extends Model
         ?string $manifestNumber = null,
         ?string $barcodeScanned = null,
         array $evidence = [],
+        ?string $scanProvenance = null,
     ): self {
         return self::create([
             'delivery_id' => $delivery->id,
@@ -89,7 +90,7 @@ class DeliveryCheckpoint extends Model
             'latitude' => $latitude,
             'longitude' => $longitude,
             'barcode_scanned' => $barcodeScanned,
-            'scan_provenance' => $barcodeScanned === null ? 'not_scanned' : 'submitted',
+            'scan_provenance' => $scanProvenance ?? ($barcodeScanned === null ? 'not_scanned' : 'submitted'),
             'manifest_number' => $manifestNumber,
             'notes' => $notes,
             'scanned_by_id' => $actor?->id,

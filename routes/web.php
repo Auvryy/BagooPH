@@ -26,6 +26,7 @@ use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
+use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
@@ -193,6 +194,11 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
+        Route::get('/manifests', [LogisticsManifestController::class, 'index']);
+        Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
+        Route::post('/manifests', [LogisticsManifestController::class, 'store']);
+        Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
@@ -523,6 +529,11 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
+        Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
+        Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
+        Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
+        Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');

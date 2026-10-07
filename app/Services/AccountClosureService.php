@@ -11,6 +11,7 @@ use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
@@ -54,6 +55,7 @@ class AccountClosureService
                 ->orWhereHas('delivery', function ($parcel) use ($subject, $companies, $hubs) {
                     $parcel->where(function ($scope) use ($subject, $companies, $hubs) {
                         $scope->where('courier_id', $subject->id)->orWhere('assigned_rider_id', $subject->id)
+                            ->orWhereIn('id', LogisticsManifestParcel::whereHas('manifest', fn ($manifest) => $manifest->where('driver_id', $subject->id))->select('delivery_id'))
                             ->orWhereIn('logistics_company_id', $companies);
                         foreach (['current_hub_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id'] as $field) {
                             $scope->orWhereIn($field, $hubs);

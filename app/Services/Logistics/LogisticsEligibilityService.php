@@ -8,6 +8,7 @@ use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\User;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
@@ -78,6 +79,7 @@ class LogisticsEligibilityService
         $busy = fn () => Delivery::query()->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES);
 
         return $query->where('logistics_company_id', $hub->logistics_company_id)->where('assigned_hub_id', $hub->id)
+            ->whereNotIn('user_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
             ->whereNotIn('user_id', $busy()->whereNotNull('courier_id')->select('courier_id'))
             ->whereNotIn('user_id', $busy()->whereNotNull('assigned_rider_id')->select('assigned_rider_id'));
     }
@@ -86,7 +88,8 @@ class LogisticsEligibilityService
     {
         $profile = $profile ? CourierProfile::operational()->whereKey($profile->id)->where('is_available', true)->first() : null;
         if (! $profile || ! LogisticsHub::eligible()->whereKey($profile->assigned_hub_id)->where('tier', 'local_bayan_hub')->exists()
-            || Delivery::activePickupCount($profile->user_id) >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) {
+            || Delivery::activePickupCount($profile->user_id) >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER
+            || LogisticsManifest::where('driver_id', $profile->user_id)->where('status', 'dispatched')->exists()) {
             return false;
         }
         $statuses = implode(',', array_fill(0, count(Delivery::RIDER_ACTIVE_STATUSES), '?'));
@@ -123,7 +126,8 @@ class LogisticsEligibilityService
             LogisticsFleet::whereKey($profile->vehicle_id)->lockForUpdate()->first();
         }
         if (! $profile || $profile->logistics_company_id !== $companyId || $profile->assigned_hub_id !== $hubId
-            || ! $this->isOperational($profile) || ($newWork && ! $profile->is_available)) {
+            || ! $this->isOperational($profile) || ($newWork && (! $profile->is_available
+                || LogisticsManifest::where('driver_id', $profile->user_id)->where('status', 'dispatched')->exists()))) {
             throw new DomainException('The rider, company, working facility, or assigned vehicle is not eligible for this operation.');
         }
     }
