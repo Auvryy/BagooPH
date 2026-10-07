@@ -1576,3 +1576,14 @@ verified). This does not improve overall lifecycle or operational readiness.
 Physical Android, deployed HTTPS/mail/token pruning and production-account
 acceptance remain required before native release. Existing Phase 0/financial
 fixture failures and later parcel endpoints remain owned by their prior gates.
+
+
+### Native Rider Account Integration Review: October 7, 2026
+
+The account API has been reconciled with the verified backend through `bc22ee4` in `integrate/rider-mobile-auth-api`. The original `feat/rider-mobile-auth-api` worktree and the separate Rider app were preserved. Source commits `d2c2f7b`, `52da19d` and `485a646` were integrated locally as `aae83f9`, `4edd530` and `c3a8d69`. The roadmap conflict retained both historical evidence sections. Existing native routes, status responses and account fields remain compatible with [RIDER_ACCOUNT_API.md](RIDER_ACCOUNT_API.md).
+
+Shared registration now passes the raw password to the existing hash cast, validates the email token's shape, and consumes that token under a transactional row lock. Failed account persistence rolls back consumption and deletes the newly stored private files; the same verified token can then complete a genuine retry. Native application input retains controls for the shared text validator, a verification code requires exactly six ASCII digits, and native callers cannot supply shop or vehicle placement identifiers. No client input grants approval or changes an existing role.
+
+**Verification:** all **519 authentication/registration tests / 3,984 assertions passed**, using isolated SQLite `:memory:` against the integration worktree and its own autoloader. This includes Rider API acceptance and the existing web registration, application validation, email verification, KYC and private-document cases. The first worktree run identified absent generated Vite assets; providing the existing generated assets corrected that local test setup. A new newline-code case exposed the permissive end anchor and was fixed before the passing run. Scoped style and diff checks passed. No development PostgreSQL data or mobile task records were changed.
+
+**Scoped assessment:** native account integration with the current backend **0/10 -> 8/10**. Compatibility and account/document boundaries are verified locally. This rating does not certify Android behavior, deployed mail/HTTPS, token expiry pruning, operational Rider endpoints or B14. Apply the additive personal-token migration before deploying the adapter; deployment remains user-owned. The verification/fix commit and documentation commit hashes are reported in the handoff.
