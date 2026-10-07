@@ -1516,3 +1516,24 @@ Migration `2026_10_07_140000_create_return_custody_evidence` applied successfull
 - `94e658f` — `feat: expose return manifests and seller receipt scans`
 
 The evidence commit has subject `docs: record verified return custody and remaining B14 gates`; its generated hash is reported in the handoff. No push or merge was performed.
+
+
+### B14 Prerequisite Secure Hub Pickup: October 7, 2026
+
+**The scoped secure-pickup writers and both portal paths are verified; B14 remains open.** Branch `feat/secure-hub-pickup` follows return evidence `bc22ee4`. Actual destination-manifest receipt and closure, an assigned handler scan and recorded counter operating hours are required before staging. The original pickup claim retains the buyer, hub, waybill and ready checkpoint, its seven-calendar-day deadline in Asia/Manila, and a cryptographic code stored only as a hash. The owning buyer can obtain the code once through a private no-store response; later requests cannot reveal it. Losing the original code does not authorize an admin release bypass.
+
+Release requires the actual waybill, matching buyer account/name and photo-ID attestation, unexpired/unlocked claim, and counted COD tender with correct change. Five failed verifications produce a retained 15-minute lock; matching request retries retain the original outcome and conflicting evidence fails. The cash entry records the exact order amount and the collecting handler as holder. It does not mark payment paid, reconcile cash or create seller settlement. Genuine collection moves the parcel to `customer_collected` and the order to `delivered`; only the owning buyer can subsequently confirm `completed`. A legacy collected label without its claim, cash entry and actual handoff checkpoint cannot authorize completion.
+
+Day-three/day-six notices and expiry are retained once from actual holding-clock execution. Expiry blocks code issuance/release without inventing a physical scan. The assigned destination handler must scan the parcel to initiate its frozen reverse route; all original reverse manifests and owning-seller receipt remain required. Pickup, holding and seller-return notices contain the actual hub details, hours, deadline and private order link, never the code. The older logistics instruction to include the code in a persistent notification conflicts with the authoritative privacy contract; this implementation follows `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` and presents the code only once to its owner. Broader dispatch/governance notices and rider collection/remittance remain separate work.
+
+**Verification:** the full isolated SQLite `:memory:` run recorded **2,521 tests / 44,156 assertions / 18 failures / zero errors**, compared with **2,508 / 42,870 / 19 / zero**. All 13 added cases passed; none were removed or skipped and no new failure identity appeared. The actual seller-return-notice case is resolved. The dispatch-notice failure advanced from absent storage to its still-missing actual dispatch notice; the other 17 existing failure identities/types/assertion contexts remained unchanged. A final expiry-crossing check and Inertia rejection check were added afterward; the final focused run passed **16 tests / 1,489 assertions**, including all 14 secure-pickup cases and the actual counter/return-notice regressions. The TypeScript/Vite build passed in 16.41 seconds, with scoped style/diff checks. Browser/camera/device behavior and simultaneous PostgreSQL contention were not exercised.
+
+The additive `2026_10_07_150000_create_secure_pickup_sources.php` migration installed locally in 183.04 ms. Counts and hashes of original columns in **16 existing tables** remained identical; all four new tables stayed empty, and PostgreSQL catalogue inspection confirmed their eight update/delete guard-operation rows. Existing hub hours remain unset until an owning company administrator records actual hours. Other environments need the additive migration and a running Laravel scheduler for `pickup:process-due`; a schedule definition does not establish that deployment cron is running.
+
+**Scoped assessment:** secure collection **2/10 -> 8/10**. The buyer and counter now share an enforceable private claim, deadline, identity and cash workflow. Overall Phase 0/2/3 and B14 remain open; controlled restricted-custody recovery and the actual admin oversight follow as authorized separate batches. Local commits:
+
+- `6477613` — `feat: retain secure pickup claims and counter cash evidence`
+- `a615b0d` — `feat: enforce verified pickup, holding expiry and buyer receipt`
+- `b5f4e05` — `feat: connect private buyer codes and actual counter release controls`
+
+The documentation commit has subject `docs: record verified secure pickup and remaining B14 gates`; its hash is reported in the handoff. No push or merge was performed.
