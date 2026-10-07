@@ -95,6 +95,7 @@ interface DynamicPrompt {
     expected_status: string;
     attempt_reference?: string | null;
     route_reference?: string | null;
+    claim_reference?: string | null;
     requires_confirmation: boolean;
     manifest_url: string | null;
 }
@@ -366,6 +367,7 @@ export default function ScanStation({
                     expected_status: lastResult.prompt.expected_status,
                     attempt_reference: lastResult.prompt.attempt_reference ?? undefined,
                     route_reference: lastResult.prompt.route_reference ?? undefined,
+                    claim_reference: lastResult.prompt.claim_reference ?? undefined,
                 }),
             });
             const data = await response.json();

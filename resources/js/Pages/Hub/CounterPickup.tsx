@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { 
     Store, 
@@ -22,6 +23,8 @@ interface CounterParcel {
     tracking_number: string;
     order_number: string;
     buyer_name: string;
+    buyer_id: number;
+    claim: { reference: string; status: string; expires_at: string; locked_until: string | null } | null;
     buyer_phone: string;
     status: string;
     destination_bin: string;
@@ -43,6 +46,7 @@ interface Props {
         code: string;
         tier: string;
         city_municipality: string;
+        operating_hours: string | null;
     } | null;
     counterParcels: CounterParcel[];
     recentlyCollected: Array<{
@@ -52,14 +56,24 @@ interface Props {
         collected_at: string;
     }>;
     search: string;
+    requestToken: string;
+    canConfigureHours: boolean;
 }
 
-export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search }: Props) {
+export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours }: Props) {
     const [searchTerm, setSearchTerm] = useState(search || '');
     const [selectedParcel, setSelectedParcel] = useState<CounterParcel | null>(null);
     const [recipientName, setRecipientName] = useState('');
     const [claimCode, setClaimCode] = useState('');
     const [notes, setNotes] = useState('');
+    const [barcode, setBarcode] = useState('');
+    const [identityConfirmed, setIdentityConfirmed] = useState(false);
+    const [cashConfirmed, setCashConfirmed] = useState(false);
+    const [cashReceived, setCashReceived] = useState('');
+    const [changeGiven, setChangeGiven] = useState('0');
+    const [errors, setErrors] = useState<Record<string,string>>({});
+    const pending = useRef(false);
+    const [hours, setHours] = useState(activeHub?.operating_hours ?? '');
     const [submitting, setSubmitting] = useState(false);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -75,19 +89,22 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
         setSelectedParcel(parcel);
         setRecipientName(parcel.buyer_name);
         setClaimCode('');
-        setNotes('');
+        setNotes(''); setBarcode(''); setIdentityConfirmed(false); setCashConfirmed(false); setCashReceived(''); setChangeGiven('0'); setErrors({});
     };
 
     const handleReleaseSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedParcel) return;
+        if (!selectedParcel || pending.current) return;
+        pending.current = true; setErrors({});
         setSubmitting(true);
 
         router.post(
             route('hub.release'),
             {
-                barcode: selectedParcel.tracking_number,
-                claim_code: claimCode.trim() || undefined,
+                barcode,
+                claim_code: claimCode,
+                buyer_id: selectedParcel.buyer_id, identity_confirmed: identityConfirmed, request_token: requestToken,
+                cash_received: cashReceived, change_given: changeGiven, cash_confirmed: cashConfirmed,
                 recipient_name: recipientName.trim() || selectedParcel.buyer_name,
                 hub_id: activeHub?.id,
                 notes: notes.trim() || undefined,
@@ -98,9 +115,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     setSelectedParcel(null);
                     setSubmitting(false);
                 },
-                onError: () => {
-                    setSubmitting(false);
-                },
+                onError: value => { setErrors(value); setSubmitting(false); },
+                onFinish: () => { pending.current = false; setSubmitting(false); },
             }
         );
     };
@@ -122,6 +138,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(route('hub.counter.hours'),{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
+                {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. TOP STATS TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -308,11 +326,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                             <button
                                                 type="button"
                                                 onClick={() => openReleaseModal(parcel)}
-                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-sans shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                                                disabled={!parcel.claim || parcel.claim.status !== 'ready' || Date.now() >= new Date(parcel.claim.expires_at).getTime()}
+                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-sans shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 <span>Release</span>
                                             </button>
+                                            {parcel.claim?.status === 'expired' && <Link href={route('hub.scan.station')} className="text-xs font-semibold text-[#E00D42]">Scan to start its return</Link>}
                                         </div>
                                     </div>
                                 ))}
@@ -385,6 +405,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <p className="text-xs text-[#E00D42] font-bold mt-0.5">
                                     {selectedParcel.tracking_number}
                                 </p>
+                                {selectedParcel.claim && <p className="mt-1 text-xs text-slate-700">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH')} · {selectedParcel.claim.status}</p>}
                             </div>
                             <button
                                 type="button"
@@ -396,6 +417,9 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         </div>
 
                         <form onSubmit={handleReleaseSubmit} className="space-y-3.5 mt-3.5">
+                            <label className="block text-sm font-semibold">Actual parcel waybill<input required value={barcode} onChange={event => setBarcode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
+                            <WaybillCamera onScan={setBarcode} disabled={submitting} />
+                            <label className="flex items-start gap-2 text-sm"><input type="checkbox" required checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-1 border-slate-300" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
                             <div>
                                 <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
                                     Recipient Name (ID Verified)
@@ -411,13 +435,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                             <div>
                                 <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
-                                    Claim Code (Optional)
+                                    One-time Claim Code
                                 </label>
                                 <input
                                     type="text"
                                     value={claimCode}
                                     onChange={(e) => setClaimCode(e.target.value)}
-                                    placeholder="e.g. CLAIM-8849"
+                                    required autoComplete="off" placeholder="Enter the buyer’s private claim code"
                                     className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
@@ -437,13 +461,17 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                             {selectedParcel.payment_method === 'cod' && (
                                 <div className="p-2.5 rounded-xs bg-amber-50 border border-amber-300 text-amber-900 text-xs">
-                                    <p className="font-bold text-[10px] uppercase">⚠️ Collect Cash on Delivery</p>
+                                    <p className="font-bold text-[10px] uppercase">Collect Cash on Delivery</p>
+                                    <label className="mt-2 block">Actual cash tender<input required inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
+                                    <label className="mt-2 block">Change returned<input required inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
+                                    <label className="mt-3 flex items-start gap-2"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} />I received the cash and returned any correct change.</label>
                                     <p className="text-sm font-black mt-0.5">
                                         ₱{selectedParcel.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
                             )}
 
+                            {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-sm text-red-700">{value}</p>)}
                             <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-200 font-sans">
                                 <button
                                     type="button"
