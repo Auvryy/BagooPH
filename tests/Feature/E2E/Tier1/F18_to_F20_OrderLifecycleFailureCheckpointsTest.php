@@ -142,8 +142,9 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
-        $this->assertTrue(Schema::hasTable('notifications'), 'Recorded return notifications remain a Phase 4 prerequisite.');
-        $this->assertSame(1, $order->shop->user->notifications()->count());
+        $this->assertTrue(Schema::hasTable('notifications'));
+        $this->assertEqualsCanonicalizing(['started', 'ready', 'received'], $order->shop->user->notifications()->get()->map(fn ($notice) => $notice->data['milestone'])->all());
+        $this->assertSame(3, $order->shop->user->notifications()->count());
     }
 
     // ==========================================

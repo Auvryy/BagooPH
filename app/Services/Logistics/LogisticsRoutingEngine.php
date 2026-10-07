@@ -9,6 +9,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\Order;
+use App\Models\PickupClaim;
 use App\Models\Shop;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -276,6 +277,17 @@ class LogisticsRoutingEngine
             } catch (DomainException $error) {
                 return ['action' => 'AWAIT_RETURN_REVIEW', 'prompt' => $error->getMessage(), 'next_status' => $status, 'color' => 'amber'];
             }
+        }
+
+        if ($hub?->id === $delivery->destination_bayan_hub_id && $status === 'ready_for_hub_pickup') {
+            $claim = PickupClaim::where('delivery_id', $delivery->id)->first();
+            if ($claim?->status === 'expired') {
+                return ['action' => 'START_EXPIRED_PICKUP_RETURN', 'prompt' => 'START THE RECORDED EXPIRED PICKUP RETURN',
+                    'next_status' => 'return_to_sender', 'color' => 'amber', 'claim_reference' => $claim->reference];
+            }
+
+            return ['action' => 'AWAIT_BUYER_PICKUP', 'prompt' => 'WAIT FOR SECURE BUYER VERIFICATION AT THE COUNTER',
+                'next_status' => $status, 'color' => 'green'];
         }
 
         // 1. Destination Bayan Hub inbound custody must be recorded before sorting.

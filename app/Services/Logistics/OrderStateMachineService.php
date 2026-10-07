@@ -88,6 +88,10 @@ class OrderStateMachineService
         User $actor,
         array $scanMetadata = []
     ): Delivery {
+        if (in_array(strtolower(trim($targetStatus)), [self::STATUS_READY_FOR_HUB_PICKUP, self::STATUS_CUSTOMER_COLLECTED], true)) {
+            throw new DomainException('Use the secure pickup staging and verified counter-release actions.');
+        }
+
         return DB::transaction(function () use ($delivery, $targetStatus, $actor, $scanMetadata) {
             // Match seller fulfillment/cancellation: lock the order before its parcel.
             $orderId = Delivery::whereKey($delivery->id)->value('order_id');

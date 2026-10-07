@@ -19,6 +19,7 @@ use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
+use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
@@ -39,12 +40,12 @@ use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
-use App\Http\Controllers\ShopVerificationDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Middleware\RoleMiddleware;
@@ -206,6 +207,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve']);
         Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof']);
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
+        Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
@@ -355,6 +357,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
+        Route::post('/orders/{order}/pickup-code', [PickupClaimController::class, 'issue'])->middleware('throttle:10,1')->name('orders.pickup-code');
+        Route::patch('/order-notices/{notification}/read', [OrderHistoryController::class, 'readNotice'])->name('orders.notice-read');
     });
 });
 
@@ -545,6 +549,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve'])->name('recovery.retry');
         Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof'])->name('recovery.proof');
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
+        Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours'])->name('counter.hours');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');

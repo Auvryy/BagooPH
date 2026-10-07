@@ -10,8 +10,11 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
+use App\Models\PickupClaim;
+use App\Models\PickupClaimEvent;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +42,29 @@ class DeliveryReturnService
             || $source->custody_after !== $custody || $parcel->current_hub_id !== $receipt->hub_id) {
             throw new DomainException('Return routing requires the actual non-retryable attempt and destination-hub receipt.');
         }
+
+        return $this->freeze($parcel, $actor, $source);
+    }
+
+    public function beginPickup(Delivery $parcel, User $actor, DeliveryCheckpoint $source, PickupClaim $claim, PickupClaimEvent $event): DeliveryReturnRoute
+    {
+        if (! $actor->canAccessPortal() || ! $actor->isLogistics() || ! $this->eligibility->canScan($actor, LogisticsHub::findOrFail($claim->hub_id))
+            || $claim->status !== 'expired' || now()->lessThan($claim->expires_at) || $claim->delivery_id !== $parcel->id
+            || $claim->tracking_number_snapshot !== $parcel->tracking_number || $claim->hub_id !== $parcel->destination_bayan_hub_id
+            || $event->pickup_claim_id !== $claim->id || $event->event_type !== 'return_started' || $event->actor_id !== $actor->id
+            || $source->delivery_id !== $parcel->id || $source->checkpoint_type !== 'expired_pickup_return_started'
+            || $source->hub_id !== $claim->hub_id || $source->scanned_by_id !== $actor->id || $source->barcode_scanned !== $event->barcode_scanned
+            || $source->custody_after !== DeliveryCheckpoint::lastCustody($parcel)
+            || $parcel->status !== 'return_to_sender' || $parcel->order->status !== 'delivery_failed' || $parcel->current_hub_id !== $claim->hub_id
+            || ! PickupClaimEvent::where('pickup_claim_id', $claim->id)->where('event_type', 'holding_expired')->exists()) {
+            throw new DomainException('Pickup return requires actual expired holding evidence and its authorized handler scan.');
+        }
+
+        return $this->freeze($parcel, $actor, $source);
+    }
+
+    private function freeze(Delivery $parcel, User $actor, DeliveryCheckpoint $source): DeliveryReturnRoute
+    {
         $route = $this->forwardRoute($parcel);
         $hubs = [$route['origin_bayan_hub_id'], $route['origin_mother_hub_id']];
         if ($route['destination_mother_hub_id'] !== $route['origin_mother_hub_id']) {
@@ -47,9 +73,12 @@ class DeliveryReturnService
         $hubs[] = $route['destination_bayan_hub_id'];
         $this->assertOutboundEvidence($parcel, $hubs, $route, $source->id);
 
-        return DeliveryReturnRoute::create(['delivery_id' => $parcel->id, 'source_checkpoint_id' => $source->id,
+        $frozen = DeliveryReturnRoute::create(['delivery_id' => $parcel->id, 'source_checkpoint_id' => $source->id,
             'actor_id' => $actor->id, 'tracking_number_snapshot' => $parcel->tracking_number,
             'forward_route' => $route, 'hub_ids' => array_reverse($hubs)]);
+        app(LifecycleNoticeService::class)->returned($frozen, 'started');
+
+        return $frozen;
     }
 
     public function route(Delivery $parcel): DeliveryReturnRoute
@@ -158,6 +187,8 @@ class DeliveryReturnService
                 evidence: ['source_state' => $source, 'target_state' => $source, 'custody_before' => $custody,
                     'custody_after' => $custody + ['seller_staging_reference' => $event->reference]]);
 
+            app(LifecycleNoticeService::class)->returned($route, 'ready');
+
             return $parcel;
         });
     }
@@ -211,6 +242,8 @@ class DeliveryReturnService
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
                     'custody_after' => ['kind' => 'seller', 'user_id' => $actor->id, 'shop_id' => $shop->id,
                         'return_route_reference' => $route->reference, 'seller_receipt_reference' => $event->reference]]);
+
+            app(LifecycleNoticeService::class)->returned($route, 'received');
 
             return $parcel;
         });

@@ -141,10 +141,18 @@ class Delivery extends Model
     {
         return $query->whereNot(function ($received) {
             $received->whereRaw("deliveries.status in ('delivery_failed', 'return_to_sender')")
-                ->whereExists(function ($evidence) {
-                    $evidence->selectRaw('1')->from('delivery_recovery_events')
-                        ->whereColumn('delivery_recovery_events.delivery_id', 'deliveries.id')
-                        ->whereColumn('delivery_recovery_events.hub_id', 'deliveries.destination_bayan_hub_id')->where('event_type', 'hub_return');
+                ->where(function ($sources) {
+                    $sources->whereExists(function ($evidence) {
+                        $evidence->selectRaw('1')->from('delivery_recovery_events')
+                            ->whereColumn('delivery_recovery_events.delivery_id', 'deliveries.id')
+                            ->whereColumn('delivery_recovery_events.hub_id', 'deliveries.destination_bayan_hub_id')->where('event_type', 'hub_return');
+                    })->orWhereExists(function ($evidence) {
+                        $evidence->selectRaw('1')->from('pickup_claim_events')
+                            ->join('pickup_claims', 'pickup_claims.id', '=', 'pickup_claim_events.pickup_claim_id')
+                            ->whereColumn('pickup_claims.delivery_id', 'deliveries.id')
+                            ->whereColumn('pickup_claims.hub_id', 'deliveries.destination_bayan_hub_id')
+                            ->where('pickup_claim_events.event_type', 'return_started');
+                    });
                 });
         });
     }

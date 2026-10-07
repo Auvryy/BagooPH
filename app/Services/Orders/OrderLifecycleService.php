@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Logistics\PickupClaimService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -184,7 +185,9 @@ class OrderLifecycleService
             if ($lockedOrder->status === 'completed') {
                 return $lockedOrder;
             }
-            if ($lockedOrder->status !== 'delivered' || $lockedOrder->delivery?->status !== 'delivered') {
+            $physical = $lockedOrder->delivery;
+            $collected = $physical?->status === 'customer_collected' && app(PickupClaimService::class)->hasCollectionEvidence($physical);
+            if ($lockedOrder->status !== 'delivered' || ($physical?->status !== 'delivered' && ! $collected)) {
                 throw new RuntimeException('Only a physically delivered parcel can be confirmed as received.');
             }
 

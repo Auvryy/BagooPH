@@ -2,26 +2,23 @@
 
 namespace Tests\Feature\Logistics;
 
-use App\Models\Category;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Product;
-use App\Models\Shop;
 use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\TestCase;
 
 class LogisticsHubSuiteTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesE2EOrders, RefreshDatabase, \Tests\Feature\E2E\Support\InteractsWithOrderActions, \Tests\Feature\E2E\Support\InteractsWithRoles;
 
     private User $logisticsUser;
 
@@ -515,81 +512,27 @@ class LogisticsHubSuiteTest extends TestCase
 
     public function test_counter_pickup_release_successfully_hands_over_parcel(): void
     {
-        HubHandler::create(['user_id' => $this->logisticsUser->id, 'hub_id' => $this->bayanHub->id, 'is_active' => true]);
-        $seller = User::factory()->create(['role' => 'seller', 'status' => 'active']);
-        $shop = Shop::create([
-            'user_id' => $seller->id,
-            'name' => 'Laguna Leathercrafts',
-            'slug' => 'laguna-leathercrafts',
-            'status' => 'active',
-        ]);
-
-        $category = Category::create([
-            'name' => 'Apparel',
-            'slug' => 'apparel',
-            'is_active' => true,
-        ]);
-
-        $product = Product::create([
-            'shop_id' => $shop->id,
-            'category_id' => $category->id,
-            'name' => 'Artisan Messenger Bag',
-            'slug' => 'artisan-messenger-bag',
-            'price' => 1850.00,
-            'stock' => 20,
-            'status' => 'active',
-        ]);
-
-        $buyer = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'name' => 'Juan Dela Cruz']);
-
-        $order = Order::factory()->create([
-            'buyer_id' => $buyer->id,
-            'order_number' => 'ORD-TEST-COUNTER-01',
-            'status' => 'shipped',
-            'subtotal' => 1850.00,
-            'total_amount' => 1850.00,
-            'delivery_type' => 'hub_self_pickup',
-            'shipping_fee' => 0.00,
-            'shipping_city' => 'Santa Cruz',
-            'destination_barangay' => 'Poblacion III',
-            'recipient_name' => 'Juan Dela Cruz',
-            'payment_method' => 'cod',
-            'payment_status' => 'pending',
-        ]);
-
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'shop_id' => $shop->id,
-            'quantity' => 1,
-            'unit_price' => 1850.00,
-            'subtotal' => 1850.00,
-        ]);
-
-        $delivery = Delivery::factory()->create([
-            'order_id' => $order->id,
-            'tracking_number' => 'BGX-TEST-PICKUP-01',
-            'logistics_company_id' => $this->company->id,
-            'status' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-            'delivery_type' => 'hub_self_pickup',
-            'current_hub_id' => $this->bayanHub->id,
-            'destination_bayan_hub_id' => $this->bayanHub->id,
-            'destination_bin' => 'SHELF-A1',
-        ]);
-
-        $response = $this->actingAs($this->logisticsUser)
-            ->post(route('hub.release'), [
-                'barcode' => $delivery->tracking_number,
-                'recipient_name' => 'Juan Dela Cruz',
-                'hub_id' => $this->bayanHub->id,
-                'notes' => 'Govt ID verified',
-            ]);
-
-        $response->assertRedirect();
-        $this->assertEquals(
-            OrderStateMachineService::STATUS_CUSTOMER_COLLECTED,
-            $delivery->fresh()->status
-        );
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => 'Bagoo Acceptance City']);
+        $this->flowNetwork($shop);
+        $hub = LogisticsHub::where('code', 'like', 'FLOW-BH-%')->where('city_municipality', 'Santa Cruz')->sole();
+        $hub->update(['allows_self_pickup' => true]);
+        $this->actingAs($hub->company->user)->postJson('/hub/counter/hours', ['hub_id' => $hub->id, 'operating_hours' => 'Monday to Saturday, 08:00 to 17:00'])->assertOk();
+        $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, shipping: ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id]);
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $handler = $this->flowHandler($hub);
+        $this->actingAs($handler)->postJson('/hub/scan', ['hub_id' => $hub->id, 'barcode' => $delivery->tracking_number,
+            'mode' => 'confirm', 'action' => 'STAGE_FOR_PICKUP', 'expected_status' => $delivery->status])->assertOk();
+        $code = $this->actingAs($order->buyer)->postJson('/buyer/orders/'.$order->id.'/pickup-code')->assertOk()->json('code');
+        $this->actingAs($handler)->post(route('hub.release'), [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'recipient_name' => $order->buyer->name,
+            'buyer_id' => $order->buyer_id, 'identity_confirmed' => true, 'claim_code' => $code,
+            'request_token' => (string) Str::uuid(), 'cash_received' => (string) $order->total_amount,
+            'change_given' => '0', 'cash_confirmed' => true, 'notes' => 'Buyer photo ID verified and actual COD counted.',
+        ])->assertRedirect()->assertSessionHas('success');
+        $this->assertSame(OrderStateMachineService::STATUS_CUSTOMER_COLLECTED, $delivery->fresh()->status);
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertDatabaseCount('cod_custody_entries', 1);
     }
 
     public function test_logistics_operator_can_view_enterprise_roadmap(): void
