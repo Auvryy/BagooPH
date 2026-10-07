@@ -29,6 +29,7 @@ class LogisticsHub extends Model
         'coverage_barangays',
         'allows_self_pickup',
         'is_active',
+        'operating_hours',
     ];
 
     protected $casts = [
