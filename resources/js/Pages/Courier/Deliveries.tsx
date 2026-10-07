@@ -31,11 +31,14 @@ interface FinalMileTask {
     payment: { method: string; codAmount: number | null };
     destinationHub: CourierPlace;
     assignedAt: string | null;
-    nextAction: 'start_delivery' | 'complete_delivery';
+    nextAction: 'start_delivery' | 'complete_delivery' | 'return_to_hub';
+    failureAttempts: number;
+    failureReason: string | null;
     canMessage: boolean;
 }
 
 interface Props {
+    recoveryRequestToken: string;
     scope?: CourierScope;
     isOnline?: boolean;
     stats?: { availablePickups?: number; activePickups?: number; activePickupLimit?: number; finalMileTasks?: number; completedToday?: number };
@@ -43,10 +46,10 @@ interface Props {
 }
 
 type Tab = 'pickup' | 'final_mile' | 'available';
-type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' };
-const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery' };
+type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
+const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
 
-export default function CourierDeliveries({ scope, isOnline = false, stats, queues }: Props) {
+export default function CourierDeliveries({ scope, isOnline = false, stats, queues, recoveryRequestToken }: Props) {
     const { auth } = usePage<PageProps>().props;
     const pickups = queues?.pickupTasks ?? [];
     const available = queues?.availablePickups ?? [];
@@ -58,6 +61,9 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const mapRegion = useRef<HTMLDivElement>(null);
     const [target, setTarget] = useState<ActionTarget | null>(null);
     const [notes, setNotes] = useState('');
+    const [failureReason, setFailureReason] = useState('');
+    const [attemptLocation, setAttemptLocation] = useState('');
+    const [requestToken, setRequestToken] = useState('');
     const [barcode, setBarcode] = useState('');
     const [proof, setProof] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -81,10 +87,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             };
         }) : tab === 'final_mile' ? matchingDeliveries.map((task) => ({
             key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
-            stage: task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
-            stopLabel: task.nextAction === 'start_delivery' ? 'Destination Bayan Hub' : 'Saved buyer destination',
-            place: task.nextAction === 'start_delivery' ? task.destinationHub : task.recipient, preview: false,
-            instruction: task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
+            stage: task.nextAction === 'return_to_hub' ? 'Return to destination hub' : task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
+            stopLabel: task.nextAction !== 'complete_delivery' ? 'Destination Bayan Hub' : 'Saved buyer destination',
+            place: task.nextAction !== 'complete_delivery' ? task.destinationHub : task.recipient, preview: false,
+            instruction: task.nextAction === 'return_to_hub' ? 'Return this parcel to the destination hub. Its handler must scan it back before retry or reverse routing.' : task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
         })) : [];
     const selectedMapJob = selectCourierMapJob(mapJobs, selectedMapKey);
     const showOnMap = (key: string) => {
@@ -114,6 +120,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const openAction = (id: number, trackingNumber: string, status: ActionTarget['status']) => {
         if (pending.current) return;
         setNotes(''); setBarcode(''); setProof(null); setErrors({});
+        setFailureReason(''); setAttemptLocation(''); setRequestToken(recoveryRequestToken);
         setTarget({ id, trackingNumber, status });
     };
     const claim = (id: number) => {
@@ -143,11 +150,11 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (!target || pending.current) return;
-        if (target.status === 'picked_up' && !barcode.trim()) {
+        if (target.status !== 'delivered' && !barcode.trim()) {
             setErrors({ barcode: 'Enter the code scanned from the parcel waybill.' });
             return;
         }
-        if (target.status === 'delivered' && !proof) {
+        if ((target.status === 'delivered' || target.status === 'delivery_failed') && !proof) {
             setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
             return;
         }
@@ -156,8 +163,11 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         setErrors({});
         router.post(courierPath(`/deliveries/${target.id}/status`), {
             _method: 'patch', status: target.status, courier_notes: notes.trim() || undefined,
-            barcode: target.status === 'picked_up' ? barcode : undefined,
-            proof_image_file: target.status === 'delivered' ? proof ?? undefined : undefined,
+            barcode: target.status !== 'delivered' ? barcode : undefined,
+            failure_reason: target.status === 'delivery_failed' ? failureReason : undefined,
+            location_name: target.status === 'delivery_failed' ? attemptLocation : undefined,
+            request_token: target.status === 'delivery_failed' ? requestToken : undefined,
+            proof_image_file: (target.status === 'delivered' || target.status === 'delivery_failed') ? proof ?? undefined : undefined,
         }, {
             forceFormData: true, preserveScroll: true,
             onSuccess: (page) => {
@@ -176,6 +186,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         ? deliveries.find((task) => selectedMapJob?.key === `final_mile-${task.id}`) : undefined;
     const collected = selectedPickup?.nextAction === 'await_origin_hub_scan';
     const departing = selectedDelivery?.nextAction === 'start_delivery';
+    const returning = selectedDelivery?.nextAction === 'return_to_hub';
     const isCod = selectedDelivery?.payment.method === 'COD';
 
     return (
@@ -199,10 +210,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         {tab === 'available' && <><button type="button" onClick={() => claim(selectedPickup.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full`}>{loadingId === selectedPickup.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="mt-2 text-sm leading-relaxed text-slate-600">{claimReason}</p>}</>}
                         {selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
                     </CourierCurrentJob>}
-                    {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile">
+                    {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile">
                         <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmount) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Delivery proof does not record cash remittance or settle the order.</p>}</div>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order: {selectedDelivery.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
-                        <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>
+                        {selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}
                     </CourierCurrentJob>}
                 </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : tab === 'available' ? 'No available pickups' : tab === 'pickup' ? 'No assigned pickups' : 'No assigned deliveries'}>{normalizedSearch ? 'Try another tracking number, name, or address.' : tab === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : tab === 'pickup' ? 'Pickups you claim will stay here until the origin hub records intake.' : 'Final-mile parcels appear after your destination hub assigns them to you.'}</CourierEmpty>}
                 <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('pickup')} />
@@ -212,24 +223,26 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             <CourierDialog open={target !== null} title={target ? actionLabels[target.status] : 'Parcel action'} onClose={() => { if (!pending.current) resetAction(); }} busy={loadingId !== null}>
                 {target && <form onSubmit={submit} className="space-y-4">
                     <p className="break-all text-sm font-semibold text-slate-700">{target.trackingNumber}</p>
-                    <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : 'Record the actual handoff with a proof photo. Only the buyer can confirm receipt and complete the order.'}</p>
+                    <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : target.status === 'delivery_failed' ? 'Record the actual attempt, then return the parcel to the destination Bayan Hub. A hub scan is required before recovery.' : 'Record the actual handoff with a proof photo. Only the buyer can confirm receipt and complete the order.'}</p>
                     <CourierFieldError message={errors.status} />
-                    {target.status === 'picked_up' && <div>
+                    {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="failure-reason">Failure reason<select id="failure-reason" required value={failureReason} disabled={loadingId !== null} onChange={event => setFailureReason(event.target.value)} className={courierInput}><option value="">Choose the actual reason</option><option value="customer_unreachable">Customer unreachable</option><option value="customer_unavailable">Customer unavailable or requested another date</option><option value="address_clarification">Wrong or incomplete address</option><option value="unsafe_conditions">Unsafe conditions or severe weather</option><option value="cod_unavailable">Exact COD payment unavailable</option><option value="customer_refused">Customer refused the parcel</option></select><CourierFieldError message={errors.failure_reason} /></label>}
+                    {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="attempt-location">Actual attempt location<input id="attempt-location" type="text" required maxLength={255} value={attemptLocation} disabled={loadingId !== null} onChange={event => setAttemptLocation(event.target.value)} className={courierInput} /><CourierFieldError message={errors.location_name} /></label>}
+                    {target.status !== 'delivered' && <div>
                         <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Scanned waybill code</label>
                         <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan or enter the tracking barcode attached to this parcel after checking its order and contents.</p>
                         <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode)} aria-describedby="waybill-help waybill-error" onChange={(event) => setBarcode(event.target.value)} className={courierInput} />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
                     </div>}
-                    {target.status === 'delivered' && <div>
-                        <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">Proof of delivery photo</label>
-                        <p id="proof-help" className="mt-1 text-sm text-slate-600">An image is required, up to 5 MB. Choosing a photo does not record delivery.</p>
-                        <input id="delivery-proof" type="file" accept="image/*" disabled={loadingId !== null} aria-invalid={Boolean(errors.proof_image_file)} aria-describedby="proof-help proof-error" onChange={(event) => { selectProof(event.target.files?.[0] ?? null); event.target.value = ''; }} className={`${courierInput} file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#FDF2F4] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#C20836]`} />
+                    {(target.status === 'delivered' || target.status === 'delivery_failed') && <div>
+                        <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">{target.status === 'delivery_failed' ? 'Attempt proof photo' : 'Proof of delivery photo'}</label>
+                        <p id="proof-help" className="mt-1 text-sm text-slate-600">{target.status === 'delivery_failed' ? 'Use a JPEG, PNG or WebP image up to 5 MB. Choosing a photo does not record the attempt.' : 'An image is required, up to 5 MB. Choosing a photo does not record delivery.'}</p>
+                        <input id="delivery-proof" type="file" accept={target.status === 'delivery_failed' ? 'image/jpeg,image/png,image/webp' : 'image/*'} disabled={loadingId !== null} aria-invalid={Boolean(errors.proof_image_file)} aria-describedby="proof-help proof-error" onChange={(event) => { selectProof(event.target.files?.[0] ?? null); event.target.value = ''; }} className={`${courierInput} file:mr-3 file:rounded-[8px] file:border-0 file:bg-[#FDF2F4] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#C20836]`} />
                         <CourierFieldError id="proof-error" message={errors.proof_image_file} />
                         {proof && <div className="mt-3 space-y-2">{preview && <img src={preview} alt="Selected delivery proof preview" className="max-h-56 w-full rounded-[8px] border border-slate-300 object-contain" />}<p className="break-words text-sm text-slate-600">{proof.name}</p><button type="button" disabled={loadingId !== null} onClick={() => selectProof(null)} className={courierButton}>Remove photo</button></div>}
                     </div>}
-                    <label className="block text-sm font-semibold text-slate-800" htmlFor="courier-notes">Optional note<textarea id="courier-notes" rows={3} maxLength={500} value={notes} disabled={loadingId !== null} aria-invalid={Boolean(errors.courier_notes)} aria-describedby="notes-help notes-error" onChange={(event) => setNotes(event.target.value)} className={`${courierInput} resize-y`} /></label>
+                    <label className="block text-sm font-semibold text-slate-800" htmlFor="courier-notes">{target.status === 'delivery_failed' ? 'Attempt notes' : 'Optional note'}<textarea required={target.status === 'delivery_failed'} id="courier-notes" rows={3} maxLength={500} value={notes} disabled={loadingId !== null} aria-invalid={Boolean(errors.courier_notes || errors.notes)} aria-describedby="notes-help notes-error" onChange={(event) => setNotes(event.target.value)} className={`${courierInput} resize-y`} /></label>
                     <p id="notes-help" className="text-sm text-slate-600">Up to 500 characters.{target.status === 'picked_up' ? ' Pickup notes are also sent to the seller.' : ''}</p>
-                    <CourierFieldError id="notes-error" message={errors.courier_notes} />
+                    <CourierFieldError id="notes-error" message={errors.courier_notes || errors.notes} />
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
                 </form>}
             </CourierDialog>

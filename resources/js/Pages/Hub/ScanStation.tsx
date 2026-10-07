@@ -93,6 +93,7 @@ interface DynamicPrompt {
     next_status: string;
     color: string;
     expected_status: string;
+    attempt_reference?: string | null;
     requires_confirmation: boolean;
     manifest_url: string | null;
 }
@@ -362,6 +363,7 @@ export default function ScanStation({
                     mode: 'confirm',
                     action: lastResult.prompt.action,
                     expected_status: lastResult.prompt.expected_status,
+                    attempt_reference: lastResult.prompt.attempt_reference ?? undefined,
                 }),
             });
             const data = await response.json();

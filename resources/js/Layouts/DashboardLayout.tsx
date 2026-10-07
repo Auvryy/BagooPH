@@ -484,6 +484,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <Truck className="h-4 w-4 shrink-0" />
                                     <span>Manifests</span>
                                 </Link>
+                                <Link href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</Link>
                                 <Link
                                     href={route('hub.deliveries')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
@@ -739,6 +740,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     <Truck className="h-4 w-4" />
                                                     <span>Manifests</span>
                                                 </Link>
+                                                <Link href={route('hub.recovery.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Delivery recovery</Link>
                                             </>
                                         )}
 
