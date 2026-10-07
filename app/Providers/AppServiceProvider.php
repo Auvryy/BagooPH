@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('rider-api', fn (Request $request) => Limit::perMinute(30)->by(hash('sha256', (string) $request->ip())));
+        RateLimiter::for('rider-login', fn (Request $request) => Limit::perMinute(5)->by(hash('sha256', (is_string($request->input('email')) ? strtolower($request->input('email')) : '').'|'.$request->ip())));
         Gate::define('buyer.existing-orders', fn (User $user) => app(BuyerAccessService::class)->hasExistingOrderEligibility($user));
 
         RateLimiter::for('public-tracking', fn (Request $request) => Limit::perMinute(30)

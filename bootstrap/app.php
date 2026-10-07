@@ -13,6 +13,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -44,6 +45,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (Response $response) {
+            if (request()->is('api/v1/*')) {
+                $response->headers->set('Cache-Control', 'no-store, private');
+                $response->headers->set('Pragma', 'no-cache');
+            }
+
+            return $response;
+        });
         $exceptions->dontFlash(['otp_token', 'token', 'code', 'claim_code', 'pickup_code', 'signature', 'checkout_token']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
