@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\E2E\Tier1;
 
-use App\Models\CommissionLedger;
-use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
+use App\Models\LogisticsHub;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -18,8 +18,9 @@ use Tests\TestCase;
 
 class F34_to_F35_E2EAndAdversarialTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Feature 34: E2E Testing Suite
@@ -47,9 +48,13 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $this->assertNotNull($buyer->id);
     }
 
-    public function test_t1_f34_05_exit_code_contract_adherence(): void
+    public function test_t1_f34_05_actual_lifecycle_records_buyer_completion(): void
     {
-        $this->assertTrue(true);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertSame('completed', $order->fresh()->status);
     }
 
     // ==========================================
@@ -58,35 +63,28 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
 
     public function test_t1_f35_01_state_skipping_barred(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-        $courier = $this->createApprovedUser('courier');
-
-        // Cannot jump directly from unassigned to delivered
-        $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
-        $delivery->refresh();
-        $this->assertNotEquals('delivered', $delivery->status);
+        Storage::fake('public');
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $this->actingAs($rider)->post(route('courier.claim', $delivery))->assertSessionHas('success');
+        $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHas('error');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
+        $this->assertCount(0, Storage::disk('public')->allFiles());
     }
 
     public function test_t1_f35_02_idor_protection_across_sellers(): void
     {
-        $seller1 = $this->createApprovedUser('seller');
-        $shop1 = $this->createE2EShop($seller1);
-        $buyer = $this->createApprovedUser('buyer');
-        $order1 = $this->createE2EOrder($buyer, $shop1, [], 'placed');
-
-        $seller2 = $this->createApprovedUser('seller');
-        $this->createE2EShop($seller2);
-
-        $response = $this->actingAs($seller2)->post(route('seller.orders.pack', $order1->id));
-        $this->assertEquals(403, $response->status());
+        $order = $this->newFlowOrder('confirmed');
+        $otherSeller = $this->createApprovedUser('seller');
+        $otherShop = $this->createE2EShop($otherSeller);
+        $before = [$order->getRawOriginal(), $order->delivery->checkpoints()->get()->toArray()];
+        $this->actingAs($otherSeller)->withSession(['active_seller_shop_id' => $otherShop->id])->post(route('seller.orders.pack', $order))->assertForbidden();
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $order->delivery->checkpoints()->get()->toArray()]);
     }
 
     public function test_t1_f35_03_centavo_precision_accounting(): void
@@ -102,43 +100,29 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
 
     public function test_t1_f35_04_double_settlement_idempotency(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'out_for_delivery', $courier);
-
-        // First delivery completion
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
-        // Second delivery completion attempt
-        $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
-            'status' => 'delivered',
-            'proof_image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500',
-        ]);
-
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'delivered');
+        $this->completeFlowOrder($order);
+        $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
+        $rider = User::findOrFail($delivery->assigned_rider_id);
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
+        $this->assertSame('completed', $order->fresh()->status);
+        // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.
         $this->assertLedgerIdempotent($order);
     }
 
-    public function test_t1_f35_05_concurrent_claim_race_condition_prevention(): void
+    public function test_t1_f35_05_sequential_competing_claims_preserve_first_owner(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $courierA = $this->createApprovedUser('courier');
-        $courierB = $this->createApprovedUser('courier');
-
-        $this->actingAs($courierA)->post(route('courier.claim', $delivery->id));
-        $this->actingAs($courierB)->post(route('courier.claim', $delivery->id));
-
-        $delivery->refresh();
-        $this->assertEquals($courierA->id, $delivery->courier_id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $first = $this->flowRider($hub);
+        $second = $this->flowRider($hub, $this->createApprovedUser('courier'));
+        $this->actingAs($first)->post(route('courier.claim', $delivery))->assertSessionHas('success');
+        $before = $delivery->fresh()->getRawOriginal();
+        $this->actingAs($second)->post(route('courier.claim', $delivery))->assertSessionHas('error');
+        $this->assertSame($first->id, $delivery->fresh()->courier_id);
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 }

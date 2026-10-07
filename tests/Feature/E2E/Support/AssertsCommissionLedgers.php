@@ -8,7 +8,7 @@ use PHPUnit\Framework\Assert;
 
 trait AssertsCommissionLedgers
 {
-    public function assertCommissionSplit(Order $order, ?float $expectedGross = null): CommissionLedger
+    public function assertCommissionSplit(Order $order, ?float $expectedGross = null, ?float $recordedDeliveryFee = null): CommissionLedger
     {
         $ledger = CommissionLedger::where('order_id', $order->id)->first();
 
@@ -20,12 +20,12 @@ trait AssertsCommissionLedgers
         $gross = $expectedGross !== null ? (float) $expectedGross : (float) $order->subtotal;
         $expectedSeller = round($gross * 0.90, 2);
         $expectedPlatform = round($gross * 0.10, 2);
-        $expectedDelivery = 60.00;
+        Assert::assertNotNull($recordedDeliveryFee, 'A recorded logistics charge is required; shipping is not an invented flat rider fee.');
 
         Assert::assertEquals(
             $gross,
             (float) $ledger->gross_amount,
-            "Gross amount in CommissionLedger does not match expected gross."
+            'Gross amount in CommissionLedger does not match expected gross.'
         );
 
         Assert::assertEquals(
@@ -41,9 +41,9 @@ trait AssertsCommissionLedgers
         );
 
         Assert::assertEquals(
-            $expectedDelivery,
+            $recordedDeliveryFee,
             (float) $ledger->delivery_fee,
-            "Courier delivery fee in CommissionLedger must be ₱60.00."
+            'The logistics amount must match its recorded charge, separately from product proceeds.'
         );
 
         Assert::assertEquals(

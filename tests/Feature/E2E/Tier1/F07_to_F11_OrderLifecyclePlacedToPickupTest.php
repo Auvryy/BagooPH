@@ -2,14 +2,13 @@
 
 namespace Tests\Feature\E2E\Tier1;
 
-use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
-use App\Models\Product;
+use App\Models\LogisticsHub;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
@@ -17,8 +16,9 @@ use Tests\TestCase;
 
 class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
 {
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
+    use InteractsWithOrderActions;
     use RefreshDatabase;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
 
     // ==========================================
     // Feature 7: PLACED (Stage 1)
@@ -31,7 +31,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $shop = $this->createE2EShop($seller);
         $product = $this->createE2EProduct($shop, ['stock' => 10, 'price' => 250.00]);
 
-        $order = $this->createE2EOrder($buyer, $shop, [
+        $order = $this->checkoutFlowOrder($buyer, $shop, [
             ['product' => $product, 'quantity' => 2, 'unit_price' => 250.00],
         ], 'placed');
 
@@ -47,32 +47,26 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'placed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $this->assertNotNull($delivery->tracking_number);
-        $this->assertStringStartsWith('BGO-TRK-', $delivery->tracking_number);
+        $this->assertStringStartsWith('BGO-', $delivery->tracking_number);
         $this->assertEquals('unassigned', $delivery->status);
     }
 
-    public function test_t1_f07_03_initial_checkpoint_creation(): void
+    public function test_t1_f07_03_checkout_retains_original_order_evidence(): void
     {
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'placed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'order_placed',
-            'location_name' => $shop->city ?? 'Manila',
-            'barcode_scanned' => $delivery->tracking_number,
-            'notes' => 'Order placed by buyer and delivery generated.',
-            'scanned_by_id' => $buyer->id,
-        ]);
-
-        $this->assertCheckpointLogged($delivery, 'order_placed');
+        $this->assertDatabaseCount('checkout_submissions', 1);
+        $this->assertSame('placed', $order->fresh()->status);
+        $this->assertSame($order->id, $delivery->order_id);
+        $this->assertSame(0, $delivery->checkpoints()->count());
     }
 
     public function test_t1_f07_04_multi_item_single_merchant_order(): void
@@ -83,7 +77,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $prod1 = $this->createE2EProduct($shop, ['price' => 100.00]);
         $prod2 = $this->createE2EProduct($shop, ['price' => 200.00]);
 
-        $order = $this->createE2EOrder($buyer, $shop, [
+        $order = $this->checkoutFlowOrder($buyer, $shop, [
             ['product' => $prod1, 'quantity' => 1, 'unit_price' => 100.00],
             ['product' => $prod2, 'quantity' => 2, 'unit_price' => 200.00],
         ], 'placed');
@@ -97,7 +91,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'placed');
 
         $response = $this->actingAs($buyer)->get(route('buyer.orders.show', $order->id));
         $response->assertOk();
@@ -119,29 +113,23 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'placed');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'placed');
 
-        $order->update(['status' => 'confirmed']);
+        $this->actingAs($seller)->post(route('seller.orders.accept', $order))->assertSessionHas('success');
         $this->assertEquals('confirmed', $order->fresh()->status);
     }
 
-    public function test_t1_f08_03_confirmed_checkpoint(): void
+    public function test_t1_f08_03_confirmation_retry_preserves_order_and_parcel(): void
     {
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'confirmed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'order_confirmed',
-            'location_name' => $shop->name,
-            'scanned_by_id' => $seller->id,
-            'notes' => 'Seller confirmed stock availability',
-        ]);
-
-        $this->assertCheckpointLogged($delivery, 'order_confirmed');
+        $before = [$order->getRawOriginal(), $delivery->getRawOriginal()];
+        $this->actingAs($seller)->post(route('seller.orders.accept', $order))->assertSessionHas('error');
+        $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal()]);
     }
 
     public function test_t1_f08_04_delivery_updated(): void
@@ -149,8 +137,8 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'confirmed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $this->assertEquals('unassigned', $delivery->status);
         $this->assertNotNull($delivery->id);
@@ -161,7 +149,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'confirmed');
 
         $response = $this->actingAs($buyer)->get(route('buyer.orders.show', $order->id));
         $response->assertOk();
@@ -176,14 +164,14 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'confirmed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        $response = $this->actingAs($seller)->post(route('seller.orders.pack', $order->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response = $this->actingAs($seller)->post(route('seller.orders.pack', $order->id))->assertSessionHas('success');
+        $response->assertSessionHasNoErrors()->assertSessionHas('success');
 
         $order->refresh();
-        $this->assertTrue(in_array($order->status, ['preparing', 'processing']));
+        $this->assertSame('preparing', $order->status);
     }
 
     public function test_t1_f09_02_packing_checkpoint_logged(): void
@@ -191,18 +179,10 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'confirmed');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'confirmed');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        $this->actingAs($seller)->post(route('seller.orders.pack', $order->id));
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'seller_pack',
-            'location_name' => $shop->name,
-            'scanned_by_id' => $seller->id,
-            'notes' => 'Parcel packed by seller',
-        ]);
+        $this->actingAs($seller)->post(route('seller.orders.pack', $order->id))->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertCheckpointLogged($delivery, 'seller_pack');
@@ -213,8 +193,8 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'preparing');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $this->assertNotNull($delivery->tracking_number);
         $this->assertNotEmpty($delivery->pickup_store_name);
@@ -225,7 +205,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'preparing');
 
         $this->assertGreaterThan(0, $order->items()->count());
     }
@@ -235,7 +215,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'preparing');
 
         $response = $this->actingAs($buyer)->get(route('buyer.orders.show', $order->id));
         $response->assertOk();
@@ -250,11 +230,11 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'preparing');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        $response = $this->actingAs($seller)->post(route('seller.orders.ready', $order->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response = $this->actingAs($seller)->post(route('seller.orders.ready', $order->id))->assertSessionHas('success');
+        $response->assertSessionHasNoErrors()->assertSessionHas('success');
 
         $order->refresh();
         $this->assertEquals('ready_for_pickup', $order->status);
@@ -265,18 +245,10 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'preparing');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'preparing');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
-        $this->actingAs($seller)->post(route('seller.orders.ready', $order->id));
-
-        DeliveryCheckpoint::create([
-            'delivery_id' => $delivery->id,
-            'checkpoint_type' => 'ready_for_pickup',
-            'location_name' => $shop->name,
-            'scanned_by_id' => $seller->id,
-            'notes' => 'Parcel staged for courier collection',
-        ]);
+        $this->actingAs($seller)->post(route('seller.orders.ready', $order->id))->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertCheckpointLogged($delivery, 'ready_for_pickup');
@@ -287,12 +259,13 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $courier = $this->createApprovedUser('courier');
-        $response = $this->actingAs($courier)->get(route('courier.deliveries'));
-        $response->assertOk();
+        $this->flowRider(LogisticsHub::findOrFail($delivery->origin_bayan_hub_id), $courier);
+        $this->actingAs($courier)->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page
+            ->has('queues.availablePickups', 1)->where('queues.availablePickups.0.id', $delivery->id));
     }
 
     public function test_t1_f10_04_waybill_barcode_available(): void
@@ -300,8 +273,8 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $this->assertNotNull($delivery->tracking_number);
     }
@@ -322,12 +295,13 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'unassigned');
 
         $courier = $this->createApprovedUser('courier');
+        $this->flowRider(LogisticsHub::findOrFail($delivery->origin_bayan_hub_id), $courier);
         $response = $this->actingAs($courier)->post(route('courier.claim', $delivery->id));
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response->assertSessionHasNoErrors()->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertEquals($courier->id, $delivery->courier_id);
@@ -338,15 +312,15 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
         $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
+        $delivery = $this->flowDelivery($order, 'assigned_pickup', $courier);
 
         $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
             'courier_notes' => 'Scanned barcode at store',
         ]);
-        $this->assertTrue(in_array($response->status(), [200, 302]));
+        $response->assertSessionHasNoErrors()->assertSessionHas('success');
     }
 
     public function test_t1_f11_03_state_transition_to_picked_up(): void
@@ -354,14 +328,14 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
         $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
+        $delivery = $this->flowDelivery($order, 'assigned_pickup', $courier);
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
             'courier_notes' => 'Collected from seller',
-        ]);
+        ])->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertEquals('picked_up', $delivery->status);
@@ -372,14 +346,14 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
         $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
+        $delivery = $this->flowDelivery($order, 'assigned_pickup', $courier);
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
             'courier_notes' => 'Collected',
-        ]);
+        ])->assertSessionHas('success');
 
         $delivery->refresh();
         $this->assertCheckpointLogged($delivery, 'courier_pickup');
@@ -390,15 +364,17 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
+        $order = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
         $courier = $this->createApprovedUser('courier');
-        $delivery = $this->createE2EDelivery($order, 'assigned', $courier);
+        $delivery = $this->flowDelivery($order, 'assigned_pickup', $courier);
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
-        ]);
+        ])->assertSessionHas('success');
 
         $delivery->refresh();
-        $this->assertNotNull($delivery->courier_id);
+        $this->assertSame('picked_up', $delivery->status);
+        $this->actingAs($courier)->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page
+            ->has('queues.availablePickups', 0)->where('queues.pickupTasks.0.id', $delivery->id));
     }
 }

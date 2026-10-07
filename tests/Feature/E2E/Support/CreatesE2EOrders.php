@@ -35,7 +35,7 @@ trait CreatesE2EOrders
 
     public function createE2EProduct(Shop $shop, array $attributes = []): Product
     {
-        $category = Category::first() ?? Category::factory()->create();
+        $category = $shop->rootCategory ?? Category::factory()->create();
 
         return Product::factory()->create(array_merge([
             'shop_id' => $shop->id,
@@ -46,6 +46,7 @@ trait CreatesE2EOrders
         ], $attributes));
     }
 
+    /** Legacy/invalid-record fixtures only; use checkoutFlowOrder for transaction evidence. */
     public function createE2EOrder(User $buyer, Shop $shop, array $items = [], string $status = 'pending'): Order
     {
         $subtotal = 0;
@@ -97,7 +98,7 @@ trait CreatesE2EOrders
             'shipping_fee' => $shippingFee,
             'total_amount' => $totalAmount,
             'payment_method' => 'cod',
-            'payment_status' => $status === 'delivered' ? 'paid' : 'pending',
+            'payment_status' => 'pending',
             'status' => $status,
             'recipient_name' => $buyer->name,
             'recipient_phone' => $buyer->phone ?? '+63 917 123 4567',
@@ -123,6 +124,7 @@ trait CreatesE2EOrders
         return $order->fresh(['items.product', 'buyer']);
     }
 
+    /** Read-only/invalid-record fixtures do not establish custody or stored proof. */
     public function createE2EDelivery(Order $order, string $status = 'unassigned', ?User $courier = null, array $attributes = []): Delivery
     {
         $shop = $order->items->first()?->product?->shop;
@@ -143,7 +145,7 @@ trait CreatesE2EOrders
             'assigned_at' => in_array($status, ['assigned', 'assigned_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(4) : null,
             'picked_up_at' => in_array($status, ['picked_up', 'in_transit', 'out_for_delivery', 'delivered']) ? now()->subHours(3) : null,
             'delivered_at' => $status === 'delivered' ? now() : null,
-            'proof_image' => $status === 'delivered' ? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500' : null,
+            'proof_image' => null,
         ], $attributes));
     }
 

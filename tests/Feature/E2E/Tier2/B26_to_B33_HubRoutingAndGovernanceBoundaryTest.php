@@ -2,61 +2,83 @@
 
 namespace Tests\Feature\E2E\Tier2;
 
-use App\Models\CourierProfile;
 use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\AccountRestrictionService;
+use App\Services\Logistics\LogisticsRoutingEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\InteractsWithKycReviews;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithPortals;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\Feature\E2E\Support\SimulatesOrderLifecycle;
 use Tests\TestCase;
-use Tests\Concerns\InteractsWithKycReviews;
 
 class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
 {
-    use RefreshDatabase;
+    use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use InteractsWithKycReviews;
-    use InteractsWithRoles, CreatesE2EOrders, SimulatesOrderLifecycle, AssertsDeliveryCheckpoints, AssertsCommissionLedgers, InteractsWithPortals;
+    use InteractsWithOrderActions;
+    use RefreshDatabase;
 
     // ==========================================
     // Boundary 26: Partitioning Edge Cases & Ambiguous Addresses
     // ==========================================
 
-    public function test_t2_b26_01_empty_address_fallback(): void
+    public function test_t2_b26_01_empty_address_rejects_without_fallback(): void
     {
-        $address = '';
-        $area = empty($address) ? 'Area A' : 'Area A';
-        $this->assertEquals('Area A', $area);
+        $buyer = $this->createApprovedUser('buyer');
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop);
+        $payload = $this->flowCheckoutPayload($buyer, [['product' => $product]]);
+        $payload['shipping_address'] = '';
+        $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHasErrors('shipping_address');
+        $this->assertDatabaseCount('orders', 0);
     }
 
     public function test_t2_b26_02_cross_boundary_municipality_resolution(): void
     {
-        $city = 'Boundary between Santa Cruz and Pagsanjan';
-        $this->assertNotEmpty($city);
+        $buyer = $this->createApprovedUser('buyer');
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop);
+        $payload = $this->flowCheckoutPayload($buyer, [['product' => $product]]);
+        $payload['shipping_city'] = 'Boundary between Santa Cruz and Pagsanjan';
+        $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHas('error');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertSame(50, $product->fresh()->stock);
     }
 
     public function test_t2_b26_03_special_characters_in_address(): void
     {
-        $address = "123 O'Connor St., #04-12, Sta. Cruz, Laguna & Sons";
-        $this->assertStringContainsString('Sta. Cruz', $address);
+        $buyer = $this->createApprovedUser('buyer');
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop);
+        $payload = $this->flowCheckoutPayload($buyer, [['product' => $product]]);
+        $payload['shipping_address'] = "123 O'Connor Street, #04-12, Market & Sons";
+        $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+        $this->assertSame($payload['shipping_address'], Order::firstOrFail()->shipping_address);
     }
 
-    public function test_t2_b26_04_non_laguna_provincial_address_fallback(): void
+    public function test_t2_b26_04_unserved_province_has_no_fallback(): void
     {
-        $city = 'Davao City';
-        $defaultArea = 'Area A';
-        $this->assertEquals('Area A', $defaultArea);
+        $order = $this->newFlowOrder();
+        $this->assertNull(app(LogisticsRoutingEngine::class)->resolveDestinationBayanHub('Davao del Sur', 'Davao City', $order->destination_barangay));
     }
 
     public function test_t2_b26_05_missing_postal_code_handling(): void
     {
-        $postal = null;
-        $this->assertNull($postal);
+        $buyer = $this->createApprovedUser('buyer');
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop);
+        $payload = $this->flowCheckoutPayload($buyer, [['product' => $product]]);
+        $payload['shipping_postal_code'] = null;
+        $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHasErrors('shipping_postal_code');
+        $this->assertDatabaseCount('orders', 0);
     }
 
     // ==========================================
@@ -66,81 +88,66 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
     public function test_t2_b27_01_multiple_parcels_to_same_bin(): void
     {
         $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order1 = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $order2 = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery1 = $this->createE2EDelivery($order1, 'in_transit');
-        $delivery2 = $this->createE2EDelivery($order2, 'in_transit');
-        $logistics = $this->createApprovedUser('logistics');
-
-        $res1 = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery1->id,
-            'bin' => 'BIN-A1',
-            'barangay' => 'Barangay A',
-        ]);
-        $res2 = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery2->id,
-            'bin' => 'BIN-A1',
-            'barangay' => 'Barangay A',
-        ]);
-
-        $res1->assertOk();
-        $res2->assertOk();
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $first = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
+        $second = $this->checkoutFlowOrder($buyer, $shop, [], 'ready_for_pickup');
+        foreach ([$first, $second] as $order) {
+            $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+            $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+            $this->actingAs($this->flowHandler($hub))->postJson(route('hub.sort'), [
+                'delivery_id' => $delivery->id, 'barangay' => $order->destination_barangay, 'bin' => 'BIN-A1',
+            ])->assertOk();
+            $this->assertSame('BIN-A1', $delivery->fresh()->destination_bin);
+            $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'sorted_to_barangay_bin')->count());
+        }
+        $this->assertSame(2, Delivery::where('destination_bin', 'BIN-A1')->count());
     }
 
     public function test_t2_b27_02_missing_area_field_in_sort(): void
     {
-        $logistics = $this->createApprovedUser('logistics');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-
-        $response = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'bin' => 'BIN-1',
-        ]);
-        $response->assertOk();
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $this->actingAs($handler)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'bin' => 'BIN-A1'])->assertOk();
+        $this->assertSame('BIN-A1', $delivery->fresh()->destination_bin);
+        $this->assertCheckpointLogged($delivery, 'sorted_to_barangay_bin', $order->destination_barangay);
     }
 
     public function test_t2_b27_03_bin_format_string_validation(): void
     {
-        $bin = 'BIN-A-01';
-        $this->assertStringStartsWith('BIN-', $bin);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($handler)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'bin' => 'BIN-α
+HIDDEN'])
+            ->assertUnprocessable()->assertJsonValidationErrors('bin');
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 
     public function test_t2_b27_04_sorting_already_sorted_parcel(): void
     {
-        $logistics = $this->createApprovedUser('logistics');
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'shipped');
-        $delivery = $this->createE2EDelivery($order, 'in_transit');
-
-        $res1 = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'bin' => 'BIN-A1',
-        ]);
-        $res2 = $this->actingAs($logistics)->postJson(route('hub.sort'), [
-            'delivery_id' => $delivery->id,
-            'bin' => 'BIN-A2',
-        ]);
-
-        $res1->assertOk();
-        $res2->assertOk();
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $this->actingAs($handler)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'bin' => 'BIN-A1'])->assertOk();
+        $before = [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()];
+        $this->actingAs($handler)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'bin' => 'BIN-A2'])->assertUnprocessable();
+        $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
     }
 
     public function test_t2_b27_05_sorting_non_hub_user_barred(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $response = $this->actingAs($buyer)->postJson(route('hub.sort'), [
-            'delivery_id' => 1,
-            'bin' => 'BIN-1',
-        ]);
-        $this->assertTrue(in_array($response->status(), [302, 403]));
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($order->buyer)->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'bin' => 'BIN-A1'])->assertForbidden();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 
     // ==========================================
@@ -149,35 +156,63 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
 
     public function test_t2_b28_01_area_a_parcel_to_area_b_rider_rejected(): void
     {
-        $courierA = $this->createApprovedUser('courier');
-        $courierB = $this->createApprovedUser('courier');
-        $this->assertNotEquals($courierA->id, $courierB->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $rider->courierProfile->update(['assigned_barangay' => 'San Antonio']);
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertUnprocessable();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
+        $this->assertNull($delivery->fresh()->assigned_rider_id);
     }
 
     public function test_t2_b28_02_area_b_parcel_to_area_c_rider_rejected(): void
     {
-        $courierB = $this->createApprovedUser('courier');
-        $courierC = $this->createApprovedUser('courier');
-        $this->assertNotEquals($courierB->id, $courierC->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $rider->courierProfile->update(['assigned_barangay' => 'San Jose']);
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertUnprocessable();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
+        $this->assertNull($delivery->fresh()->assigned_rider_id);
     }
 
     public function test_t2_b28_03_area_c_parcel_to_area_a_rider_rejected(): void
     {
-        $courierC = $this->createApprovedUser('courier');
-        $courierA = $this->createApprovedUser('courier');
-        $this->assertNotEquals($courierC->id, $courierA->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->flowRider($hub);
+        $rider->courierProfile->update(['assigned_barangay' => 'San Juan']);
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertUnprocessable();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
+        $this->assertNull($delivery->fresh()->assigned_rider_id);
     }
 
     public function test_t2_b28_04_rider_without_area_assignment_rejected(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $this->assertNotNull($courier->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'sorted_to_barangay_bin');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $rider = $this->createApprovedUser('courier');
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $rider->id])->assertUnprocessable();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 
     public function test_t2_b28_05_reassignment_across_areas_rejected(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $this->assertNotNull($courier->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $second = $this->flowRider($hub, $this->createApprovedUser('courier'));
+        $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()];
+        $this->actingAs($this->flowHandler($hub))->postJson(route('hub.assignRider', $delivery), ['rider_id' => $second->id])->assertUnprocessable();
+        $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
     }
 
     // ==========================================
@@ -352,44 +387,67 @@ class B26_to_B33_HubRoutingAndGovernanceBoundaryTest extends TestCase
 
     public function test_t2_b32_01_suspended_rider_cannot_claim_deliveries(): void
     {
-        $suspendedCourier = $this->createApprovedUser('courier', ['status' => 'suspended']);
-        $buyer = $this->createApprovedUser('buyer');
-        $seller = $this->createApprovedUser('seller');
-        $shop = $this->createE2EShop($seller);
-        $order = $this->createE2EOrder($buyer, $shop, [], 'ready_for_pickup');
-        $delivery = $this->createE2EDelivery($order, 'unassigned');
-
-        $response = $this->actingAs($suspendedCourier)->post(route('courier.claim', $delivery->id));
-        $this->assertTrue(in_array($response->status(), [302, 403]));
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $courier = $this->flowRider($hub);
+        $this->restrictFlowAccount($courier, 'suspend');
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($courier->fresh())->postJson(route('courier.claim', $delivery))->assertForbidden();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 
     public function test_t2_b32_02_suspended_rider_dispatch_blocked(): void
     {
-        $suspendedCourier = $this->createApprovedUser('courier', ['status' => 'suspended']);
-        $this->assertEquals('suspended', $suspendedCourier->status);
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'assigned_to_rider');
+        $courier = User::findOrFail($delivery->assigned_rider_id);
+        $this->restrictFlowAccount($courier, 'suspend');
+        $before = $delivery->getRawOriginal();
+        $this->actingAs($courier->fresh())->patchJson(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertForbidden();
+        $this->assertSame($before, $delivery->fresh()->getRawOriginal());
     }
 
     public function test_t2_b32_03_reactivation_restores_dispatch(): void
     {
-        $courier = $this->createApprovedUser('courier', ['status' => 'suspended']);
-        $courier->update(['status' => 'active']);
-
-        $this->assertEquals('active', $courier->fresh()->status);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $courier = $this->flowRider($hub);
+        $this->restrictFlowAccount($courier, 'suspend');
+        $this->restrictFlowAccount($courier, 'reactivate');
+        $this->actingAs($courier->fresh())->post(route('courier.claim', $delivery))->assertSessionHas('success');
+        $this->assertSame($courier->id, $delivery->fresh()->courier_id);
+        $this->assertDatabaseCount('restriction_decisions', 2);
     }
 
     public function test_t2_b32_04_non_admin_toggling_status_barred(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
-        $this->assertNotNull($buyer->id);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $courier = $this->flowRider($hub);
+        $before = $courier->getRawOriginal();
+        $this->actingAs($order->buyer)->postJson(route('admin.users.activity.store', $courier), ['action' => 'suspend', 'reason' => 'Review the account.'])->assertForbidden();
+        $this->assertSame($before, $courier->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('restriction_decisions', 0);
     }
 
     public function test_t2_b32_05_double_suspension_idempotency(): void
     {
-        $courier = $this->createApprovedUser('courier');
-        $courier->update(['status' => 'suspended']);
-        $courier->update(['status' => 'suspended']);
-
-        $this->assertEquals('suspended', $courier->fresh()->status);
+        $order = $this->newFlowOrder('ready_for_pickup');
+        $delivery = $order->delivery;
+        $hub = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $courier = $this->flowRider($hub);
+        $service = app(AccountRestrictionService::class);
+        $admin = $this->createApprovedUser('admin');
+        $payload = ['action' => 'suspend', 'reason' => 'Review the current rider responsibilities.', 'affected_work_confirmed' => true,
+            'source_token' => $service->token($service->state($courier->fresh()))];
+        $this->actingAs($admin)->postJson(route('admin.users.activity.store', $courier), $payload)->assertOk();
+        $before = $courier->fresh()->getRawOriginal();
+        $this->actingAs($admin)->postJson(route('admin.users.activity.store', $courier), $payload)->assertOk();
+        $this->assertSame($before, $courier->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('restriction_decisions', 1);
     }
 
     // ==========================================

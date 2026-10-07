@@ -45,6 +45,8 @@ Scoped B13 acceptance audit: October 6, 2026. Deferred buyer/seller modules are 
 
 Scoped Phase 0 commerce repair: October 6, 2026. Checkout and saved addresses now share canonical input rules, successful checkout confirmations retain their original orders, and optional address saving participates in the checkout transaction. The fresh full-suite comparison retains the same 48 failures; overall phase and cross-role ratings remain unchanged.
 
+Scoped B13 cross-role fixture follow-up: October 6, 2026. Real requests now establish normal order/custody evidence. The final full suite has 47 failures: 15 retained failed cases and 32 newly exposed missing-gate cases, with 33 baseline failures resolved. Phase 0 and later prerequisites remain incomplete; the exact comparison and owners are recorded below.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -1073,6 +1075,172 @@ Local implementation commits:
 The evidence commit has subject `docs: record commerce repair acceptance and remaining gates`; its generated hash is reported in the handoff. The machine-local task guide and verification artifacts remain ignored and untracked. No push or merge was performed.
 
 **Next boundary.** Stop this supplemental branch for user review and publication. The next separate acceptance delivery is `test/phase0-cross-role-fixtures`, using this checkout after its dependency is reviewed/merged. It owns the identified contradictory fixtures and nominally passing setup-only checks while preserving required recovery/accounting assertions. B14 still waits for applicable role-owned sources and gates.
+
+
+
+### B13 Cross-Role Fixture Follow-Up: October 6, 2026
+
+**Decision: The bounded fixture correction and evidence delivery is complete; Phase 0 acceptance remains incomplete.** Branch `test/phase0-cross-role-fixtures` starts from merged commerce repair `e50c995` (`Fix/phase0 commerce inputs and replay (#62)`). It implements the second supplemental delivery in the [B13 follow-up plan](admin-plan/13-phase0-acceptance.md#follow-up-ownership-for-an-incomplete-decision). This updates the earlier 48-failure audit; it does not implement B14 or clear role-owned custody, recovery, notification or financial gates.
+
+**Result and evidence boundary.** This is backend acceptance-test work, with no application, migration, frontend or deployment change. Tests now follow a real Shopping Bag submission, owned seller acceptance/preparation, eligible pickup, Origin Bayan Hub, Mother Hub and Destination Bayan Hub scans, final-mile assignment, stored proof upload and the owning buyer's receipt confirmation. Users gain stronger regression evidence for those existing actions; no new screen or runtime feature is claimed.
+
+[InteractsWithOrderActions](../tests/Feature/E2E/Support/InteractsWithOrderActions.php) creates initial approved accounts, products and eligible facility/personnel fixtures, then invokes the existing request boundaries to establish order and custody evidence. Approval fixtures do not prove the approval writer. Every normal transition checks its response and persisted state. The multi-shop cases use one Bag submission, retain distinct parcels, check stock consumption and separate shipping, and never invent direct Bayan-to-Bayan custody. Positive provincial fixtures stay in Laguna and retain at least one Mother Hub; the old Metro Manila label is corrected rather than claiming regional coverage from Laguna facilities.
+
+Repeated scans, rider actions and buyer confirmation preserve existing rows, proof and history. Seller cancellation uses its owned endpoint, restores stock once before custody and rejects after claim; buyer cancellation remains unavailable. Wrong sellers use their own valid selected shop so a stale selection cannot hide the ownership check. Eligible competing claims, duty changes, suspension and reactivation use real requests with exact outcomes. These are sequential checks, not simultaneous PostgreSQL race evidence.
+
+Nominally passing tests were inspected as well as baseline failures. Direct returned/rescheduled statuses, invented custody checkpoints, hand-edited completion and a manually inserted settled ledger no longer stand in for production writers in the repaired cases. The raw legacy/invalid-record helpers remain for read-only or rejection fixtures; they no longer automatically mark delivered COD paid or attach an external image URL as proof. Configuration checks, arithmetic examples, legacy-list fixtures, bare portal responses and the explicitly named courier vehicle-metadata fixture are limited evidence, not transaction, reviewed fleet, retry-limit, notification or financial acceptance. In particular, the remaining static attempt-cap/option examples do not certify a persisted three-attempt review workflow.
+
+**Required future contracts remain failing.** The reason-coded failure requests use canonical `delivery_failed`, a legitimately assigned rider and normal outbound history. The current HTTP controller rejects that status before reason/source/actor checks; the latter failures do not demonstrate an ownership bypass. Return/retry cases retain destination receipt, reverse Mother Hub custody, authenticated seller receipt, stock-once and final-state requirements. The breakdown case proves ordinary assignment/inspection cannot transfer outbound custody and retains the requirement for recorded replacement responsibility and actual delivery. These are failing prerequisite checks, not complete future end-to-end scenarios: the owning Phase 3 work must extend them with real review, retry, reverse-route, seller-receipt and recovery commands before certifying those paths. No future route or scan-action code was invented.
+
+Delivery and buyer completion retain pending COD. Financial cases keep their eventual ledger, paid/settled, product-only 90/10 and idempotency assertions behind the missing source-backed workflow. The Phase 5 owner must add actual collection, handoff, remittance/reconciliation and settlement actions; buyer receipt alone is not a financial trigger. [AssertsCommissionLedgers](../tests/Feature/E2E/Support/AssertsCommissionLedgers.php) removes the invented PHP 60 logistics charge and requires an independently recorded charge argument. No real recorded charge source is supplied yet. Shipping and rider/logistics charges must not be guessed or fabricated to satisfy it. The uncollected-return case covers pending accounting, not reversal of already collected or settled cash. Deferred post-delivery disputes remain unavailable and are not certified by an admin-page response.
+
+**Verification.** Docker PHP checks used explicit `APP_ENV=testing`, `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`, empty `DB_URL`, array cache/session/mail and `--do-not-cache-result`. No PostgreSQL database was reset or used. A fresh full baseline was captured before tracked edits. The final normal-flow selection passes **94 tests, 3,634 assertions**. Changed files pass Pint and `git diff --check`. No frontend build or rendered/device check is claimed for this test-only change.
+
+| Full isolated suite | Tests | Assertions | Failures | Errors | Skipped |
+|---|---:|---:|---:|---:|---:|
+| Fresh baseline at `e50c995` | 2,241 | 17,544 | 48 | 0 | 0 |
+| Final branch | 2,241 | 30,146 | 47 | 0 | 0 |
+
+The full suite is **red**. Comparison used each JUnit class/method and failure context, matching renamed cases by their unchanged tier/feature/case identifier. All 2,241 cases remain; none were removed, skipped or declared expected failures. **33 baseline failures now pass, 15 baseline failed cases remain failing and 32 previously passing cases expose missing safeguards/workflows.** Twenty-four names change to describe actual coverage. A one-failure net reduction is not the readiness assessment.
+
+| Gate code | Current evidence, exact owner and consequence | Remaining cases |
+|---|---|---:|
+| O | The assigned destination handler can submit a bin containing non-ASCII/control text and a barangay containing a line break; requests return 200 instead of a field-specific 422. [LogisticsHubWorkstationController](../app/Http/Controllers/Logistics/LogisticsHubWorkstationController.php) only applies generic strings. **Role-owned logistics mutation / Phase 0 operational input safety** must apply the documented field rules without changing routing or custody. Phase 0 remains incomplete. | 2 |
+| A | A checkpoint produced by a real pickup can have notes edited, be deleted through the model, or have its creation time rewritten through a raw SQL update. [DeliveryCheckpoint](../app/Models/DeliveryCheckpoint.php) and its persistence need append-only protection. **Role-owned Phase 2 custody/manifest audit** owns this safeguard; retry preservation does not prove storage immutability. The durable custody gate remains incomplete. | 3 |
+| R | Canonical failure status is rejected before reason validation and legitimate failure/recovery mutations. The normal outbound setup now passes, but recorded attempts, review/date, reverse route, seller receipt, repeat-restock protection and accountable replacement handoff are absent from the exercised boundaries. **Role-owned Phase 3 attempts/RTS/recovery**, then **B14 oversight**, owns the real action chain. No return/retry or recovery acceptance is claimed. | 25 |
+| N | The real assigned-rider dispatch succeeds, but persistent event notification storage and a recorded buyer notice are missing. **Role-owned Phase 4 order events**, then **B15 governance notices**, owns the prerequisite. A tracking page is not durable notification evidence. | 1 |
+| F | Real proof and buyer receipt succeed, with COD pending and no settlement ledger. The required cash custody, recorded fees, remittance/reconciliation and settlement actions remain absent. **Phase 5 B16 COD / B17 seller settlement**, then **B18 finance**, must establish recorded sources and extend these cases through the actual workflow. No accounting gate is waived. | 16 |
+
+**Exact final failure identities.** “Retained” means the same stable case was failing in the baseline; its repaired setup may now fail at a later missing prerequisite. “Exposed” means it passed in the baseline but its stronger request/evidence check now fails. Class links identify the current executable file.
+
+| Current test class | Exact current method | Comparison | Gate |
+|---|---|---|---|
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f15_04_buyer_live_notification` | Exposed | N |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f16_04_payment_status_settled` | Retained | F |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f16_05_commission_ledger_generation` | Retained | F |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f17_04_seller_settlement_finalized` | Exposed | F |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f18_01_courier_reports_delivery_failure` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f18_02_state_transition_to_delivery_failed` | Retained | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f18_03_delivery_failed_checkpoint` | Retained | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f18_04_buyer_exception_view` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f18_05_hub_exception_queue` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f19_01_return_execution_from_hub` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f19_02_state_transition_to_returned` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f19_03_return_checkpoint_logged` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f19_04_inventory_reversal` | Exposed | R |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f19_05_seller_return_notice` | Exposed | R |
+| [F21_to_F25_CourierOperationsTest](../tests/Feature/E2E/Tier1/F21_to_F25_CourierOperationsTest.php) | `test_t1_f25_02_reschedule_action` | Exposed | R |
+| [F21_to_F25_CourierOperationsTest](../tests/Feature/E2E/Tier1/F21_to_F25_CourierOperationsTest.php) | `test_t1_f25_03_reschedule_checkpoint` | Exposed | R |
+| [F21_to_F25_CourierOperationsTest](../tests/Feature/E2E/Tier1/F21_to_F25_CourierOperationsTest.php) | `test_t1_f25_04_return_action` | Exposed | R |
+| [F34_to_F35_E2EAndAdversarialTest](../tests/Feature/E2E/Tier1/F34_to_F35_E2EAndAdversarialTest.php) | `test_t1_f35_04_double_settlement_idempotency` | Retained | F |
+| [B12_to_B17_LifecycleHubToCompletedBoundaryTest](../tests/Feature/E2E/Tier2/B12_to_B17_LifecycleHubToCompletedBoundaryTest.php) | `test_t2_b13_02_invalid_destination_area_rejected` | Exposed | O |
+| [B12_to_B17_LifecycleHubToCompletedBoundaryTest](../tests/Feature/E2E/Tier2/B12_to_B17_LifecycleHubToCompletedBoundaryTest.php) | `test_t2_b17_05_post_completion_settlement_bounds` | Exposed | F |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b18_01_empty_failure_reason_rejected` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b18_02_under_5_chars_reason_rejected` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b18_03_invalid_failure_code_rejected` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b18_04_reporting_failure_on_non_active_delivery_barred` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b18_05_non_assigned_courier_reporting_failure_barred` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_01_inventory_double_restoration_guard` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_03_uncollected_return_keeps_accounting_pending` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_05_return_status_immutability` | Exposed | R |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b20_01_updating_existing_checkpoint_barred` | Exposed | A |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b20_02_deleting_checkpoint_record_barred` | Exposed | A |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b20_05_tampering_with_created_at` | Exposed | A |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b27_03_bin_format_string_validation` | Exposed | O |
+| [B34_to_B35_E2EAndAdversarialBoundaryTest](../tests/Feature/E2E/Tier2/B34_to_B35_E2EAndAdversarialBoundaryTest.php) | `test_t2_b35_03_delivery_retry_preserves_required_single_settlement` | Retained | F |
+| [B34_to_B35_E2EAndAdversarialBoundaryTest](../tests/Feature/E2E/Tier2/B34_to_B35_E2EAndAdversarialBoundaryTest.php) | `test_t2_b35_05_zero_duplicate_ledger_records` | Exposed | F |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_12_cod_payment_settlement_automated_split` | Retained | F |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_13_buyer_confirmation_seller_settlement` | Exposed | F |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_14_doorstep_delivery_failure_reason_logging` | Retained | R |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_15_reschedule_option_selection_queue` | Exposed | R |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_16_return_option_selection_merchant_restock` | Exposed | R |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_27_voucher_discount_centavo_commission` | Exposed | F |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_34_double_delivery_attempt_immutable_ledger` | Retained | F |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_18_platform_governance_and_financial_audit` | Retained | F |
+| [RealWorldLogisticsRoutingTest](../tests/Feature/E2E/Tier4/RealWorldLogisticsRoutingTest.php) | `test_t4_07_seller_merchant_onboarding_and_first_sale` | Retained | F |
+| [RealWorldLogisticsRoutingTest](../tests/Feature/E2E/Tier4/RealWorldLogisticsRoutingTest.php) | `test_t4_08_cod_financial_lifecycle_and_remittance` | Retained | F |
+| [RealWorldLogisticsRoutingTest](../tests/Feature/E2E/Tier4/RealWorldLogisticsRoutingTest.php) | `test_t4_10_post_delivery_dispute_and_admin_governance` | Retained | F |
+| [RealWorldLogisticsRoutingTest](../tests/Feature/E2E/Tier4/RealWorldLogisticsRoutingTest.php) | `test_t4_11_courier_breakdown_hub_reassignment` | Retained | R |
+| [RealWorldStandardLifecycleTest](../tests/Feature/E2E/Tier4/RealWorldStandardLifecycleTest.php) | `test_t4_01_standard_delivery_through_mother_hub_and_buyer_confirmation` | Retained | F |
+
+**Exact resolved baseline cases.** Each case remains in the suite and now passes through legitimate placement, the real actions and the preserved ownership/state/stock/evidence contract. Renames below retain the stable case identity.
+
+| Test class | Baseline failed method | Current passing method |
+|---|---|---|
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f10_01_seller_marks_ready` | `test_t1_f10_01_seller_marks_ready` |
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f11_01_courier_claims_pickup` | `test_t1_f11_01_courier_claims_pickup` |
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f11_03_state_transition_to_picked_up` | `test_t1_f11_03_state_transition_to_picked_up` |
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f11_04_courier_pickup_checkpoint` | `test_t1_f11_04_courier_pickup_checkpoint` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f12_01_hub_intake_barcode_scan` | `test_t1_f12_01_hub_intake_barcode_scan` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f12_02_state_transition_to_at_sorting_center` | `test_t1_f12_02_state_transition_to_at_sorting_center` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f12_03_hub_intake_checkpoint` | `test_t1_f12_03_hub_intake_checkpoint` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f13_01_area_sorting_submission` | `test_t1_f13_01_area_sorting_submission` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f13_04_sorted_checkpoint_logged` | `test_t1_f13_04_sorted_checkpoint_logged` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f15_02_state_transition_to_out_for_delivery` | `test_t1_f15_02_state_transition_to_out_for_delivery` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f16_02_state_transition_to_delivered` | `test_t1_f16_02_state_transition_to_delivered` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f16_03_doorstep_handover_checkpoint` | `test_t1_f16_03_doorstep_handover_checkpoint` |
+| [F12_to_F17_OrderLifecycleHubToCompletedTest](../tests/Feature/E2E/Tier1/F12_to_F17_OrderLifecycleHubToCompletedTest.php) | `test_t1_f17_02_state_transition_to_completed` | `test_t1_f17_02_state_transition_to_completed` |
+| [F26_to_F33_HubRoutingAndGovernanceTest](../tests/Feature/E2E/Tier1/F26_to_F33_HubRoutingAndGovernanceTest.php) | `test_t1_f27_01_hub_operator_sorts_area_a` | `test_t1_f27_01_hub_operator_sorts_area_a` |
+| [F26_to_F33_HubRoutingAndGovernanceTest](../tests/Feature/E2E/Tier1/F26_to_F33_HubRoutingAndGovernanceTest.php) | `test_t1_f27_02_hub_operator_sorts_area_b` | `test_t1_f27_02_hub_operator_sorts_area_b` |
+| [F26_to_F33_HubRoutingAndGovernanceTest](../tests/Feature/E2E/Tier1/F26_to_F33_HubRoutingAndGovernanceTest.php) | `test_t1_f27_03_hub_operator_sorts_area_c` | `test_t1_f27_03_hub_operator_sorts_area_c` |
+| [F34_to_F35_E2EAndAdversarialTest](../tests/Feature/E2E/Tier1/F34_to_F35_E2EAndAdversarialTest.php) | `test_t1_f35_05_concurrent_claim_race_condition_prevention` | `test_t1_f35_05_sequential_competing_claims_preserve_first_owner` |
+| [B07_to_B11_LifecyclePlacedToPickupBoundaryTest](../tests/Feature/E2E/Tier2/B07_to_B11_LifecyclePlacedToPickupBoundaryTest.php) | `test_t2_b11_03_double_claim_race_condition` | `test_t2_b11_03_sequential_competing_claims_preserve_first_owner` |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b27_01_multiple_parcels_to_same_bin` | `test_t2_b27_01_multiple_parcels_to_same_bin` |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b27_02_missing_area_field_in_sort` | `test_t2_b27_02_missing_area_field_in_sort` |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b27_04_sorting_already_sorted_parcel` | `test_t2_b27_04_sorting_already_sorted_parcel` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_06_courier_pickup_claim_and_collection_scan` | `test_t3_06_courier_pickup_claim_and_collection_scan` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_07_first_mile_delivery_to_hub_intake_scan` | `test_t3_07_first_mile_delivery_to_hub_intake_scan` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_08_hub_sorting_destination_area_and_bin` | `test_t3_08_hub_sorting_destination_area_and_bin` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_11_doorstep_handover_proof_photo_tracking_update` | `test_t3_11_doorstep_handover_proof_photo_tracking_update` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_18_fcfs_concurrency_lock_protection` | `test_t3_18_sequential_fcfs_claims_preserve_first_assignment` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_33_complete_13_stage_linear_lifecycle_walkthrough` | `test_t3_33_complete_13_stage_linear_lifecycle_walkthrough` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_14_unmapped_address_fallback_and_override` | `test_t4_14_unmapped_address_rejects_without_hub_override` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_15_courier_duty_cycle_and_shift` | `test_t4_15_courier_duty_cycle_and_shift` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_16_order_cancellation_pre_vs_post_pickup` | `test_t4_16_order_cancellation_pre_vs_post_pickup` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_17_hub_sorting_dock_morning_rush` | `test_t4_17_hub_sorting_dock_morning_rush` |
+| [RealWorldStandardLifecycleTest](../tests/Feature/E2E/Tier4/RealWorldStandardLifecycleTest.php) | `test_t4_02_provincial_laguna_delivery_with_area_b_sorting` | `test_t4_02_provincial_laguna_delivery_with_area_b_sorting` |
+| [RealWorldStandardLifecycleTest](../tests/Feature/E2E/Tier4/RealWorldStandardLifecycleTest.php) | `test_t4_06_merchant_self_managed_packaging_with_waybill` | `test_t4_06_merchant_self_managed_packaging_with_waybill` |
+
+**Complete rename map.** Names are corrected for real evidence rather than leaving stronger claims such as concurrency, a fallback override, or a financially settled return on a narrower check. Delivery/confirmation checkpoints use the actual writer's types. `f20_05` covers request retry preservation; the three `b20` persistence mutations expose the still-missing append-only guard separately. Optional notes and generated bins follow the existing supported contract; non-existent IDs are tested as IDs. Broader cash reversal, region coverage, reviewed fleet changes and simultaneous race gates remain unverified.
+
+| Test class | Previous name | Current name |
+|---|---|---|
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f07_03_initial_checkpoint_creation` | `test_t1_f07_03_checkout_retains_original_order_evidence` |
+| [F07_to_F11_OrderLifecyclePlacedToPickupTest](../tests/Feature/E2E/Tier1/F07_to_F11_OrderLifecyclePlacedToPickupTest.php) | `test_t1_f08_03_confirmed_checkpoint` | `test_t1_f08_03_confirmation_retry_preserves_order_and_parcel` |
+| [F18_to_F20_OrderLifecycleFailureCheckpointsTest](../tests/Feature/E2E/Tier1/F18_to_F20_OrderLifecycleFailureCheckpointsTest.php) | `test_t1_f20_05_immutable_historical_audit` | `test_t1_f20_05_scan_retry_preserves_original_history` |
+| [F26_to_F33_HubRoutingAndGovernanceTest](../tests/Feature/E2E/Tier1/F26_to_F33_HubRoutingAndGovernanceTest.php) | `test_t1_f26_05_default_area_fallback` | `test_t1_f26_05_unmapped_destination_has_no_fallback_hub` |
+| [F34_to_F35_E2EAndAdversarialTest](../tests/Feature/E2E/Tier1/F34_to_F35_E2EAndAdversarialTest.php) | `test_t1_f34_05_exit_code_contract_adherence` | `test_t1_f34_05_actual_lifecycle_records_buyer_completion` |
+| [F34_to_F35_E2EAndAdversarialTest](../tests/Feature/E2E/Tier1/F34_to_F35_E2EAndAdversarialTest.php) | `test_t1_f35_05_concurrent_claim_race_condition_prevention` | `test_t1_f35_05_sequential_competing_claims_preserve_first_owner` |
+| [B07_to_B11_LifecyclePlacedToPickupBoundaryTest](../tests/Feature/E2E/Tier2/B07_to_B11_LifecyclePlacedToPickupBoundaryTest.php) | `test_t2_b08_05_concurrency_during_confirmation` | `test_t2_b08_05_accept_and_pack_retry_preserves_evidence` |
+| [B07_to_B11_LifecyclePlacedToPickupBoundaryTest](../tests/Feature/E2E/Tier2/B07_to_B11_LifecyclePlacedToPickupBoundaryTest.php) | `test_t2_b11_03_double_claim_race_condition` | `test_t2_b11_03_sequential_competing_claims_preserve_first_owner` |
+| [B12_to_B17_LifecycleHubToCompletedBoundaryTest](../tests/Feature/E2E/Tier2/B12_to_B17_LifecycleHubToCompletedBoundaryTest.php) | `test_t2_b13_03_re_sorting_parcel_updates_bin` | `test_t2_b13_03_re_sorting_rejects_and_preserves_bin` |
+| [B12_to_B17_LifecycleHubToCompletedBoundaryTest](../tests/Feature/E2E/Tier2/B12_to_B17_LifecycleHubToCompletedBoundaryTest.php) | `test_t2_b13_04_missing_bin_identifier_rejected` | `test_t2_b13_04_unknown_delivery_identifier_rejected` |
+| [B12_to_B17_LifecycleHubToCompletedBoundaryTest](../tests/Feature/E2E/Tier2/B12_to_B17_LifecycleHubToCompletedBoundaryTest.php) | `test_t2_b15_05_missing_courier_notes_validation` | `test_t2_b15_05_owned_dispatch_allows_optional_notes` |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_02_return_without_delivery_failure_barred` | `test_t2_b19_02_outbound_inspection_does_not_authorize_return` |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_03_commission_ledger_reversal_on_return` | `test_t2_b19_03_uncollected_return_keeps_accounting_pending` |
+| [B18_to_B20_FailureAndCheckpointsBoundaryTest](../tests/Feature/E2E/Tier2/B18_to_B20_FailureAndCheckpointsBoundaryTest.php) | `test_t2_b19_04_non_hub_return_execution_barred` | `test_t2_b19_04_buyer_cannot_scan_return_custody` |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b26_01_empty_address_fallback` | `test_t2_b26_01_empty_address_rejects_without_fallback` |
+| [B26_to_B33_HubRoutingAndGovernanceBoundaryTest](../tests/Feature/E2E/Tier2/B26_to_B33_HubRoutingAndGovernanceBoundaryTest.php) | `test_t2_b26_04_non_laguna_provincial_address_fallback` | `test_t2_b26_04_unserved_province_has_no_fallback` |
+| [B34_to_B35_E2EAndAdversarialBoundaryTest](../tests/Feature/E2E/Tier2/B34_to_B35_E2EAndAdversarialBoundaryTest.php) | `test_t2_b35_03_multiple_concurrent_settlements` | `test_t2_b35_03_delivery_retry_preserves_required_single_settlement` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_18_fcfs_concurrency_lock_protection` | `test_t3_18_sequential_fcfs_claims_preserve_first_assignment` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_30_buyer_cancellation_instant_restock` | `test_t3_30_buyer_cancellation_stays_unavailable_without_restock` |
+| [CrossFeatureCombinationsTest](../tests/Feature/E2E/Tier3/CrossFeatureCombinationsTest.php) | `test_t3_31_courier_profile_vehicle_update_metadata` | `test_t3_31_courier_profile_vehicle_metadata_fixture` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_13_flash_sale_inventory_contention` | `test_t4_13_sequential_flash_sale_exhaustion_rejects_sixth_checkout` |
+| [RealWorldExceptionsAndFleetTest](../tests/Feature/E2E/Tier4/RealWorldExceptionsAndFleetTest.php) | `test_t4_14_unmapped_address_fallback_and_override` | `test_t4_14_unmapped_address_rejects_without_hub_override` |
+| [RealWorldStandardLifecycleTest](../tests/Feature/E2E/Tier4/RealWorldStandardLifecycleTest.php) | `test_t4_01_metro_manila_standard_delivery_lifecycle` | `test_t4_01_standard_delivery_through_mother_hub_and_buyer_confirmation` |
+| [RealWorldStandardLifecycleTest](../tests/Feature/E2E/Tier4/RealWorldStandardLifecycleTest.php) | `test_t4_05_peak_hour_simultaneous_checkout_and_dispatch` | `test_t4_05_sequential_checkout_and_pickup_batch_preserves_stock` |
+
+**Scoped assessment:** Normal cross-role acceptance evidence **3/10 -> 8/10**. Actual requests, valid source states, full Mother Hub routing, stored proof, buyer-only completion and rejection/retry snapshots replace contradictory setup and fabricated success. This rating concerns test evidence; no runtime/admin/UI rating is raised. PostgreSQL contention, rendered UI, optional/future role workflows, the 47 red cases and broader adversarial coverage remain outside the passing claim.
+
+**Next boundary:** This follow-up stops for user review. Prioritize the two operational text checks under the role-owned Phase 0 logistics mutation, then durable Phase 2 custody/manifests and append-only history, Phase 3 attempts/RTS/secure counter/recovery, and Phase 4 recorded order events. B14 waits for its verified Phase 0/2/3 prerequisites; B15 consumes its recorded notification source. B16+B17 may form a later explicitly selected batch after their gates pass, with distinct task records, acceptance checks and commits. Neither that batch nor another numbered branch is started here. The October 4-November 20 delivery window is unchanged.
+
+Local implementation commits:
+
+- `3a3d64a test: verify checkout seller and pickup actions through real requests`
+- `8ca0f47 test: verify Mother Hub custody delivery proof and buyer receipt`
+- `9b44864 test: expose missing recovery audit and settlement gates`
+
+The documentation/evidence commit has subject `docs: record cross-role fixture evidence and remaining gates`; its generated hash is reported in the handoff. The machine-local guide and test artifacts remain ignored and untracked. Current tracked content, reachable branch history and commit messages were checked for private task-service wording. Only this branch's tracking and related task notes were updated; other sessions' rider-mobile work/timers were left untouched. No push or merge was performed.
 
 ## Delivery Phases
 
