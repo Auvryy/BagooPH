@@ -94,6 +94,7 @@ interface DynamicPrompt {
     color: string;
     expected_status: string;
     requires_confirmation: boolean;
+    manifest_url: string | null;
 }
 
 interface ScannedDeliveryResult {
@@ -776,6 +777,8 @@ export default function ScanStation({
                                             {lastResult.prompt.prompt}
                                         </div>
                                     </div>
+
+                                    {lastResult.prompt.manifest_url && <div className="rounded-xs border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
 
                                     {lastResult.prompt.requires_confirmation && (
                                         <div className="rounded-xs border border-amber-300 bg-amber-50 p-3.5">

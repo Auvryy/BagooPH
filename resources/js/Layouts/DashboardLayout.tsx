@@ -478,6 +478,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     Operations
                                 </p>
                                 <Link
+                                    href={route('hub.manifests.index')}
+                                    className={'flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition ' + (component === 'Hub/Manifests' ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
+                                >
+                                    <Truck className="h-4 w-4 shrink-0" />
+                                    <span>Manifests</span>
+                                </Link>
+                                <Link
                                     href={route('hub.deliveries')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries')
@@ -727,6 +734,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 >
                                                     <Building2 className="w-4 h-4 text-slate-400" />
                                                     <span>Facility Network</span>
+                                                </Link>
+                                                <Link href={route('hub.manifests.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-[#E00D42]">
+                                                    <Truck className="h-4 w-4" />
+                                                    <span>Manifests</span>
                                                 </Link>
                                             </>
                                         )}
