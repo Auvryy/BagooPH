@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { PageProps, Category } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
+import NotificationLink from '@/Components/NotificationLink';
 import { 
     Search, 
     ShoppingBag, 
@@ -309,6 +310,7 @@ export default function BuyerLayout({
                             </Link>
 
                             {/* BAG BUTTON */}
+                            <NotificationLink />
                             <Link 
                                 href={route('buyer.cart')} 
                                 className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
