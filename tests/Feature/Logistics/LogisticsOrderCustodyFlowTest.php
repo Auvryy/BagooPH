@@ -161,6 +161,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         $this->actingAs($pickupRider)
             ->patch(route('courier.updateStatus', $delivery), [
                 'status' => 'picked_up',
+                'barcode' => $delivery->tracking_number,
             ])
             ->assertSessionHas('success');
 

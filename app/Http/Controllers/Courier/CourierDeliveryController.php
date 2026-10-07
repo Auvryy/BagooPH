@@ -11,6 +11,7 @@ use App\Services\Courier\CourierOperationsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\WaybillScanInputService;
 use App\Services\ProfileInputService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -134,13 +135,17 @@ class CourierDeliveryController extends Controller
 
     public function updateStatus(Request $request, Delivery $delivery): RedirectResponse
     {
+        $inputs = app(WaybillScanInputService::class);
+        $scanInput = $inputs->normalize(['barcode' => $request->input('barcode'), 'notes' => $request->input('courier_notes')]);
+        $request->merge(['barcode' => $scanInput['barcode'], 'courier_notes' => $scanInput['notes']]);
         $validated = $request->validate([
             'status' => ['required', Rule::in([
                 OrderStateMachineService::STATUS_PICKED_UP,
                 OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
                 OrderStateMachineService::STATUS_DELIVERED,
             ])],
-            'courier_notes' => ['nullable', 'string', 'max:500'],
+            'barcode' => $inputs->barcodeRules($request->input('status') === OrderStateMachineService::STATUS_PICKED_UP),
+            'courier_notes' => $inputs->notesRules(500),
             'proof_image_file' => [
                 Rule::requiredIf(
                     $request->input('status') === OrderStateMachineService::STATUS_DELIVERED
@@ -175,6 +180,7 @@ class CourierDeliveryController extends Controller
                 $rider,
                 $courierNote,
                 $proofPath,
+                $validated,
             ) {
                 $updatedDelivery = app(OrderStateMachineService::class)->transition(
                     delivery: $delivery,
@@ -182,6 +188,7 @@ class CourierDeliveryController extends Controller
                     actor: $rider,
                     scanMetadata: [
                         'rider_id' => $rider->id,
+                        'barcode' => $validated['barcode'] ?? null,
                         'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
                             ? ($delivery->pickup_store_name ?? 'Merchant store')
                             : ($delivery->delivery_address ?? 'Buyer destination'),
@@ -210,11 +217,18 @@ class CourierDeliveryController extends Controller
                 }
 
                 if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
+                    $source = $updatedDelivery->checkpoints()->where('checkpoint_type', OrderStateMachineService::STATUS_PICKED_UP)->whereNull('source_checkpoint_id')->firstOrFail();
                     DeliveryCheckpoint::firstOrCreate(
                         ['delivery_id' => $updatedDelivery->id, 'checkpoint_type' => 'courier_pickup'],
                         [
                             'location_name' => $updatedDelivery->pickup_store_name ?? 'Merchant store',
-                            'barcode_scanned' => $updatedDelivery->tracking_number,
+                            'barcode_scanned' => $source->barcode_scanned,
+                            'scan_provenance' => 'source_alias',
+                            'source_checkpoint_id' => $source->id,
+                            'source_state' => $source->source_state,
+                            'target_state' => $source->target_state,
+                            'custody_before' => $source->custody_before,
+                            'custody_after' => $source->custody_after,
                             'notes' => $courierNote !== ''
                                 ? $courierNote
                                 : 'Pickup rider matched the waybill and collected the seller parcel.',

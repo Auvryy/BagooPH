@@ -206,7 +206,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $this->assertFalse(app(LogisticsEligibilityService::class)->canScan($this->handler, $this->hub));
         $delivery = $this->pickup();
         $delivery->update(['status' => 'picked_up', 'courier_id' => $this->rider->id]);
-        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $this->handler, ['hub_id' => $this->hub->id]));
+        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $this->handler, ['hub_id' => $this->hub->id, 'barcode' => $delivery->tracking_number]));
         $this->assertSame('picked_up', $delivery->fresh()->status);
     }
 
@@ -218,10 +218,10 @@ class LogisticsResourceEligibilityTest extends TestCase
         $delivery = $this->pickup();
         app(CourierOperationsService::class)->claimPickup($this->rider, $delivery);
         app(CourierOperationsService::class)->setAvailability($this->rider, false);
-        app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider);
+        app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider, ['barcode' => $delivery->tracking_number]);
         $other = $this->pickup();
         $this->deny(fn () => app(CourierOperationsService::class)->claimPickup($this->rider, $other));
-        app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $this->handler, ['hub_id' => $this->hub->id]);
+        app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $this->handler, ['hub_id' => $this->hub->id, 'barcode' => $delivery->tracking_number]);
         $this->assertSame('arrived_at_origin_hub', $delivery->fresh()->status);
         $this->assertSame('verified', $this->rider->fresh()->kyc_status);
         $this->assertFalse($this->rider->courierProfile->fresh()->is_available);
@@ -232,10 +232,10 @@ class LogisticsResourceEligibilityTest extends TestCase
         $delivery = $this->pickup();
         app(CourierOperationsService::class)->claimPickup($this->rider, $delivery);
         $this->vehicle->update(['status' => 'maintenance']);
-        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider));
+        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider, ['barcode' => $delivery->tracking_number]));
         $this->vehicle->update(['status' => 'active']);
         $this->company->update(['status' => 'suspended']);
-        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider));
+        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'picked_up', $this->rider, ['barcode' => $delivery->tracking_number]));
         $this->deny(fn () => app(CourierOperationsService::class)->setAvailability($this->rider, true));
         app(CourierOperationsService::class)->setAvailability($this->rider, false);
         $this->assertSame('assigned_pickup', $delivery->fresh()->status);
@@ -399,7 +399,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $admin = $this->account('admin');
         $this->actingAs($admin)->get(route('admin.logistics'))->assertOk();
         $this->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $this->hub->id])->assertForbidden();
-        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $admin, ['hub_id' => $this->hub->id]));
+        $this->deny(fn () => app(OrderStateMachineService::class)->transition($delivery, 'arrived_at_origin_hub', $admin, ['hub_id' => $this->hub->id, 'barcode' => $delivery->tracking_number]));
         $this->assertSame('assigned_pickup', $delivery->fresh()->status);
     }
 

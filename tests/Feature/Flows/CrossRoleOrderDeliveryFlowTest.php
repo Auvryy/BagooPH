@@ -103,6 +103,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertSame($pickupRider->id, $delivery->fresh()->courier_id);
         $this->actingAs($pickupRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
             'courier_notes' => 'Seller waybill matched the parcel at pickup.',
         ])->assertSessionHas('success');
         $this->assertSame(OrderStateMachineService::STATUS_PICKED_UP, $delivery->fresh()->status);

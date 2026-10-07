@@ -200,7 +200,7 @@ trait InteractsWithOrderActions
         if ($stage === 'assigned_pickup') {
             return $delivery->fresh();
         }
-        $this->actingAs($pickup)->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up'])
+        $this->actingAs($pickup)->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         if ($stage === 'picked_up') {
             return $delivery->fresh();

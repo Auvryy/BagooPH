@@ -12,6 +12,7 @@ use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class OrderStateMachineService
 {
@@ -105,13 +106,27 @@ class OrderStateMachineService
             $this->assertActiveActor($actor);
             $this->assertActorMayTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata);
 
+            $inputs = app(WaybillScanInputService::class);
+            $scanMetadata = $inputs->normalize($scanMetadata);
+            Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
+            $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
+                self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,
+                self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB], true);
+            $barcode = $scanRequired || isset($scanMetadata['barcode'])
+                ? $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery, allowOrderNumber: $hub !== null)
+                : null;
+
             if ($lockedDelivery->status === $targetStatus) {
                 $existing = DeliveryCheckpoint::query()
                     ->where('delivery_id', $lockedDelivery->id)
                     ->where('checkpoint_type', $targetStatus)
                     ->when($hub, fn ($query) => $query->where('hub_id', $hub->id))
-                    ->exists();
+                    ->first();
                 if ($existing) {
+                    if ($existing->scanned_by_id !== $actor->id) {
+                        throw new DomainException('This custody action was already recorded by another actor. Refresh the parcel before continuing.');
+                    }
+
                     return $lockedDelivery;
                 }
             }
@@ -154,6 +169,8 @@ class OrderStateMachineService
             }
 
             $previousStatus = $lockedDelivery->status;
+            $sourceState = DeliveryCheckpoint::state($lockedDelivery);
+            $custodyBefore = DeliveryCheckpoint::lastCustody($lockedDelivery);
             $lockedDelivery->status = $targetStatus;
             $this->applyTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata);
             $lockedDelivery->save();
@@ -170,7 +187,10 @@ class OrderStateMachineService
                 facilityCode: $hub?->code,
                 latitude: $scanMetadata['latitude'] ?? null,
                 longitude: $scanMetadata['longitude'] ?? null,
-                manifestNumber: $scanMetadata['manifest_number'] ?? null
+                manifestNumber: $scanMetadata['manifest_number'] ?? null,
+                barcodeScanned: $barcode,
+                evidence: ['source_state' => $sourceState, 'target_state' => DeliveryCheckpoint::state($lockedDelivery),
+                    'custody_before' => $custodyBefore, 'custody_after' => $this->custodyAfter($lockedDelivery, $targetStatus, $actor, $hub, $barcode, $custodyBefore)],
             );
 
             return $lockedDelivery;
@@ -182,6 +202,19 @@ class OrderStateMachineService
         if (! $actor->canAccessPortal()) {
             throw new DomainException('Only active and approved accounts may change parcel custody.');
         }
+    }
+
+    private function custodyAfter(Delivery $delivery, string $status, User $actor, ?LogisticsHub $hub, ?string $barcode, array $before): array
+    {
+        return match ($status) {
+            self::STATUS_PICKED_UP => ['kind' => 'courier', 'user_id' => $actor->id],
+            self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB => ['kind' => 'hub', 'hub_id' => $hub->id],
+            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB => ['kind' => 'unknown', 'reason' => 'Durable manifest custody is not yet recorded.'],
+            self::STATUS_OUT_FOR_DELIVERY => $barcode ? ['kind' => 'courier', 'user_id' => $actor->id] : ['kind' => 'unknown', 'reason' => 'Final-mile handoff lacks a submitted waybill.'],
+            self::STATUS_DELIVERED => $barcode ? ['kind' => 'buyer', 'user_id' => $delivery->order->buyer_id] : ['kind' => 'unknown', 'reason' => 'Recipient handoff lacks a submitted waybill.'],
+            self::STATUS_CUSTOMER_COLLECTED => ['kind' => 'unknown', 'reason' => 'Secure counter evidence remains required.'],
+            default => $before,
+        };
     }
 
     private function assertActorMayTransition(

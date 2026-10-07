@@ -9,11 +9,13 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\WaybillScanInputService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -834,19 +836,21 @@ class LogisticsHubWorkstationController extends Controller
     {
         abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may scan parcel custody.');
 
+        $inputs = app(WaybillScanInputService::class);
+        $request->merge($inputs->normalize($request->only(['barcode', 'notes', 'action', 'expected_status'])));
         $validated = $request->validate([
-            'barcode' => 'required|string',
-            'hub_id' => 'nullable|exists:logistics_hubs,id',
-            'notes' => 'nullable|string',
+            'barcode' => $inputs->barcodeRules(),
+            'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
+            'notes' => $inputs->notesRules(),
             'mode' => 'nullable|in:inspect,confirm',
-            'action' => 'required_if:mode,confirm|nullable|string',
-            'expected_status' => 'required_if:mode,confirm|nullable|string',
+            'action' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[A-Z_]+\z/',
+            'expected_status' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[a-z_]+\z/',
         ]);
 
         $barcode = trim($validated['barcode']);
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
-        $delivery = Delivery::with([
+        $matches = Delivery::with([
             'order.items.product',
             'order.buyer',
             'order.shop',
@@ -859,7 +863,11 @@ class LogisticsHubWorkstationController extends Controller
             ->useWritePdo()
             ->where('tracking_number', $barcode)
             ->orWhereHas('order', fn ($q) => $q->where('order_number', $barcode))
-            ->first();
+            ->limit(2)->get();
+        if ($matches->count() > 1) {
+            throw ValidationException::withMessages(['barcode' => 'This code matches more than one parcel and needs review. Use its unique tracking barcode.']);
+        }
+        $delivery = $matches->first();
 
         if (! $delivery) {
             if ($request->wantsJson()) {
@@ -922,6 +930,7 @@ class LogisticsHubWorkstationController extends Controller
                 actor: $request->user(),
                 scanMetadata: [
                     'hub_id' => $hub?->id,
+                    'barcode' => $barcode,
                     'location_name' => $hub ? "{$hub->name} ({$hub->code})" : 'Sorting Hub Terminal',
                     'facility_code' => $hub?->code,
                     'scan_action' => $requestedAction,

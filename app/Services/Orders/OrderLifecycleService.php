@@ -89,6 +89,9 @@ class OrderLifecycleService
             throw new RuntimeException('Pack the parcel and prepare its waybill before marking it ready for pickup.');
         }
 
+        $sourceState = DeliveryCheckpoint::state($order->delivery->setRelation('order', $order));
+        $custodyBefore = DeliveryCheckpoint::lastCustody($order->delivery);
+        $custodyAfter = ['kind' => 'seller', 'user_id' => $seller->id, 'shop_id' => $shop->id];
         $order->update(['status' => $targetStatus]);
 
         if ($targetStatus === 'preparing') {
@@ -99,6 +102,11 @@ class OrderLifecycleService
                     'barcode_scanned' => $order->delivery->tracking_number,
                     'notes' => 'Seller packed the parcel and prepared its waybill.',
                     'scanned_by_id' => $seller->id,
+                    'scan_provenance' => 'prepared_waybill',
+                    'source_state' => $sourceState,
+                    'target_state' => DeliveryCheckpoint::state($order->delivery),
+                    'custody_before' => $custodyBefore,
+                    'custody_after' => $custodyAfter,
                 ]
             );
         }
@@ -117,6 +125,11 @@ class OrderLifecycleService
                     'barcode_scanned' => $order->delivery->tracking_number,
                     'notes' => 'Seller attached the waybill and staged the parcel for rider pickup.',
                     'scanned_by_id' => $seller->id,
+                    'scan_provenance' => 'prepared_waybill',
+                    'source_state' => $sourceState,
+                    'target_state' => DeliveryCheckpoint::state($order->delivery),
+                    'custody_before' => $custodyBefore,
+                    'custody_after' => $custodyAfter,
                 ]
             );
         }
@@ -175,14 +188,21 @@ class OrderLifecycleService
                 throw new RuntimeException('Only a physically delivered parcel can be confirmed as received.');
             }
 
+            $sourceState = DeliveryCheckpoint::state($lockedOrder->delivery->setRelation('order', $lockedOrder));
+            $custody = DeliveryCheckpoint::lastCustody($lockedOrder->delivery);
             $lockedOrder->update(['status' => 'completed']);
             DeliveryCheckpoint::firstOrCreate(
                 ['delivery_id' => $lockedOrder->delivery->id, 'checkpoint_type' => 'buyer_completed'],
                 [
                     'location_name' => 'Buyer Destination',
-                    'barcode_scanned' => $lockedOrder->delivery->tracking_number,
+                    'barcode_scanned' => null,
+                    'scan_provenance' => 'not_scanned',
                     'notes' => 'Buyer confirmed receipt. The commercial order is completed.',
                     'scanned_by_id' => $buyer->id,
+                    'source_state' => $sourceState,
+                    'target_state' => DeliveryCheckpoint::state($lockedOrder->delivery),
+                    'custody_before' => $custody,
+                    'custody_after' => $custody,
                 ]
             );
 

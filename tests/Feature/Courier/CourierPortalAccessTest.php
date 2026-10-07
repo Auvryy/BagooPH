@@ -39,7 +39,7 @@ class CourierPortalAccessTest extends TestCase
             $this->assertStringEndsWith('/pending-approval', $response->headers->get('Location'));
         }
         $this->post($prefix.'/deliveries/'.$delivery->id.'/claim')->assertRedirect();
-        $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up'])->assertRedirect();
+        $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])->assertRedirect();
         $this->post($prefix.'/profile/toggle-duty', ['is_available' => true])->assertRedirect();
         $this->post($prefix.'/messages/send', ['delivery_id' => $delivery->id, 'message' => 'Pickup note'])->assertRedirect();
         $this->patch($prefix.'/profile/account', ['name' => 'Changed Rider'])->assertRedirect();

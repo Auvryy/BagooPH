@@ -293,7 +293,7 @@ class CourierOperationsHardeningTest extends TestCase
         $this->actingAs($this->rider)->get($prefix.'/deliveries')->assertOk();
         $this->post($prefix.'/deliveries/'.$delivery->id.'/claim')->assertSessionHas('success');
         $this->post($prefix.'/profile/toggle-duty', ['is_available' => false])->assertSessionHas('success');
-        $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up'])->assertSessionHas('success');
+        $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
 
         $this->assertSame('picked_up', $delivery->fresh()->status);
         $this->assertSame('picked_up', $delivery->order->fresh()->status);
@@ -616,7 +616,7 @@ class CourierOperationsHardeningTest extends TestCase
         $otherRider = $this->createScopedRider($this->originHub);
 
         $this->actingAs($otherRider)
-            ->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up'])
+            ->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('error');
 
         $this->assertSame('assigned_pickup', $delivery->fresh()->status);
@@ -630,6 +630,7 @@ class CourierOperationsHardeningTest extends TestCase
         $this->actingAs($this->rider)
             ->patch(route('courier.updateStatus', $delivery), [
                 'status' => 'picked_up',
+                'barcode' => $delivery->tracking_number,
                 'courier_notes' => $note,
             ])
             ->assertSessionHas('success');
@@ -660,6 +661,7 @@ class CourierOperationsHardeningTest extends TestCase
         $this->actingAs($this->rider)
             ->patch(route('courier.updateStatus', $delivery), [
                 'status' => 'picked_up',
+                'barcode' => $delivery->tracking_number,
                 'courier_notes' => $note,
             ])
             ->assertSessionHas('success');
@@ -726,7 +728,7 @@ class CourierOperationsHardeningTest extends TestCase
         foreach (['cancelled', 'completed', 'returned'] as $terminalStatus) {
             $pickup = $this->createDelivery('assigned_pickup', $this->rider);
             $pickup->order->update(['status' => $terminalStatus]);
-            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $pickup), ['status' => 'picked_up'])->assertSessionHas('error');
+            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $pickup), ['status' => 'picked_up', 'barcode' => $pickup->tracking_number])->assertSessionHas('error');
             $this->assertSame('assigned_pickup', $pickup->fresh()->status);
 
             $drop = $this->createDelivery('out_for_delivery', $finalRider);
@@ -748,7 +750,7 @@ class CourierOperationsHardeningTest extends TestCase
         foreach (['placed', 'confirmed', 'preparing'] as $orderStatus) {
             $delivery = $this->createDelivery('assigned_pickup', $this->rider);
             $delivery->order->update(['status' => $orderStatus]);
-            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up'])->assertSessionHas('error');
+            $this->actingAs($this->rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
             $this->assertSame('assigned_pickup', $delivery->fresh()->status);
             $this->assertSame($orderStatus, $delivery->order->fresh()->status);
         }
@@ -842,7 +844,7 @@ class CourierOperationsHardeningTest extends TestCase
         $this->withoutExceptionHandling();
         try {
             $this->actingAs($this->rider)->patch(route('courier.updateStatus', $delivery), [
-                'status' => 'picked_up', 'courier_notes' => 'Parcel collected',
+                'status' => 'picked_up', 'barcode' => $delivery->tracking_number, 'courier_notes' => 'Parcel collected',
             ]);
             $this->fail('A failed transaction must not claim a successful pickup.');
         } catch (RuntimeException $exception) {
