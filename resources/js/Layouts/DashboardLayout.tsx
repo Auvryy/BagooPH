@@ -83,6 +83,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
+                { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
         }
@@ -431,6 +432,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
                                 ><ShieldAlert className="h-4 w-4 shrink-0" /><span>Resource activity</span></Link>}
                                 {user?.canManageResources && <Link href="/governance-history" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/History' || component === 'Governance/HistoryDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Governance history</span></Link>}
+                                {user?.canManageResources && <Link href="/exceptions" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Delivery exceptions</span></Link>}
                                 <Link
                                     href={route('hub.dashboard')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
