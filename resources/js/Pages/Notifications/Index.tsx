@@ -13,6 +13,7 @@ interface Notice {
     href: string | null;
 }
 interface Props {
+    accountUrl: string;
     available: boolean;
     filter: 'all' | 'unread';
     notices: { data: Notice[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null } | null;
@@ -20,7 +21,7 @@ interface Props {
 
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' });
 
-export default function Notifications({ available, filter, notices }: Props) {
+export default function Notifications({ available, filter, notices, accountUrl }: Props) {
     const { auth, notificationSummary } = usePage<PageProps>().props;
     const [reading, setReading] = useState<string | null>(null);
     const [error, setError] = useState('');
@@ -43,7 +44,7 @@ export default function Notifications({ available, filter, notices }: Props) {
                     <BagooLogo rounded="rounded-[8px]" />
                     <div className="flex items-center gap-3 text-sm">
                         <span className="hidden sm:inline">{auth.user?.name}</span>
-                        <Link href="/dashboard" className={button}><ArrowLeft className="h-4 w-4" aria-hidden="true" />My account</Link>
+                        <Link href={accountUrl} className={button}><ArrowLeft className="h-4 w-4" aria-hidden="true" />My account</Link>
                     </div>
                 </div>
             </header>

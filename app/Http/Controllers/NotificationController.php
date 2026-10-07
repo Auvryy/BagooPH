@@ -23,9 +23,11 @@ class NotificationController extends Controller
                 ->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString()
                 ->through(fn ($notice) => $service->present($notice, $user));
 
-            return Inertia::render('Notifications/Index', ['notices' => $notices, 'available' => true, 'filter' => $filter]);
+            return Inertia::render('Notifications/Index', ['notices' => $notices, 'available' => true, 'filter' => $filter,
+                'accountUrl' => $user->canAccessPortal() ? '/dashboard' : '/pending-approval']);
         } catch (QueryException) {
-            return Inertia::render('Notifications/Index', ['notices' => null, 'available' => false, 'filter' => $filter])
+            return Inertia::render('Notifications/Index', ['notices' => null, 'available' => false, 'filter' => $filter,
+                'accountUrl' => $user->canAccessPortal() ? '/dashboard' : '/pending-approval'])
                 ->toResponse($request)->setStatusCode(503);
         }
     }
