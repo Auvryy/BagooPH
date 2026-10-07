@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -134,6 +135,7 @@ class OrderLifecycleService
                 ]
             );
         }
+        app(LifecycleNoticeService::class)->order($order, $targetStatus);
     }
 
     public function cancelBySeller(Order $order, Shop $shop, User $seller, string $reason): Order
@@ -166,6 +168,7 @@ class OrderLifecycleService
 
             $lockedOrder->update(['status' => 'cancelled', 'notes' => $reason]);
             $lockedOrder->delivery?->update(['status' => 'cancelled']);
+            app(LifecycleNoticeService::class)->order($lockedOrder, 'cancelled');
 
             return $lockedOrder->fresh();
         });
@@ -208,6 +211,8 @@ class OrderLifecycleService
                     'custody_after' => $custody,
                 ]
             );
+
+            app(LifecycleNoticeService::class)->order($lockedOrder, 'completed');
 
             return $lockedOrder->fresh();
         });

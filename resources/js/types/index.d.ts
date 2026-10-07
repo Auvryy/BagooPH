@@ -274,6 +274,7 @@ export type PageProps<
     categories?: Category[];
     cartCount: number;
     unreadMessagesCount?: number;
+    notificationSummary?: { available: boolean; unread: number | null };
     flash: {
         success?: string | null;
         error?: string | null;

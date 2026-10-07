@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
+use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -301,6 +302,7 @@ class AccountClosureService
             }
             // Revoke only disposable authentication state; protected domain records and files are untouched.
             DB::table('sessions')->where('user_id', $subjectId)->delete();
+            app(GovernanceNoticeService::class)->record($closure);
 
             return $closure;
         }, 3);

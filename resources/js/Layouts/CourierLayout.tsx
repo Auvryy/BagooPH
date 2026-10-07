@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } f
 import { Link, router, usePage } from '@inertiajs/react';
 import { CalendarDays, ChevronRight, LogOut, RefreshCw, UserRound } from 'lucide-react';
 import CourierSidebar, { CourierSidebarToggle, courierNavItems } from '@/Components/CourierSidebar';
+import NotificationLink from '@/Components/NotificationLink';
 import { CourierDutySwitch, useCourierDutyControl } from '@/Components/CourierDutyControl';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierDayKey, courierDesktopMedia, courierInitials, courierPath, type CourierScope } from '@/utils/courier';
@@ -150,6 +151,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
+                            <NotificationLink />
                             <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} compact={isChat} onChange={requestDutyChange} />
                             <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'h-12 w-12 border-transparent p-0 hover:border-slate-300')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
                             <div ref={menu} className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleClose(); }}>

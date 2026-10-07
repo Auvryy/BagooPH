@@ -35,6 +35,8 @@ The authorized B06+B07 batch is one bounded exception to the task-to-branch mapp
 
 The selected B10-B12 batch uses `admin/moderation-audit-and-overview` from merged B08/B09. Verify B10's moderation and commerce gate before B11, then B11's context/privacy gate before B12. Preserve separate task records and logical commits, followed by combined regression and build checks. Stop after B12; user review and merge precede the separate B13 acceptance gate.
 
+The October 7 B15 selection includes its shared Phase 4 prerequisite on `feat/persistent-notifications`, starting from merged B14. Verify durable delivery, lifecycle recipients, and owned unread/read access before stacking `admin/governance-notifications` on the verified foundation commits. Keep separate task records, focused acceptance gates, and logical commits, with a fresh pre-selection full-suite baseline and combined final regression/build comparison. The shared prerequisite is additional to the numbered admin allocation. Stop after B15; B16-B18 remain separately selected work, and the user publishes and merges the local stack.
+
 | ID | Git branch | Focus and plan | Minimum dependency | Delivery phase |
 |---|---|---|---|---|
 | B01 | `admin/seller-category-approval` | [14 master categories, registration, correction, and original-shop KYC](01-seller-category-approval.md) | Foundation merged | 0 |

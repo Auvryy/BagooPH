@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\PickupClaim;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +46,9 @@ class OrderHistoryController extends Controller
             'pickupClaim' => $ownedBuyerOrder && $order->delivery ? PickupClaim::where('delivery_id', $order->delivery->id)->first()?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null,
             'pickupHub' => $ownedBuyerOrder && $order->delivery ? $order->delivery->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null,
             'pickupCodeUrl' => $ownedBuyerOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
-            'orderNotices' => $ownedBuyerOrder ? $user->notifications()->where('data->order_id', $order->id)->latest()->get()->map(fn ($notice) => ['id' => $notice->id, 'data' => $notice->data, 'read_at' => $notice->read_at, 'created_at' => $notice->created_at]) : [],
+            'orderNotices' => $ownedBuyerOrder ? $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
+                ->where('data->order_id', $order->id)->latest()->get()
+                ->map(fn ($notice) => app(NotificationCenterService::class)->present($notice, $user)) : [],
         ]);
     }
 
@@ -53,9 +56,9 @@ class OrderHistoryController extends Controller
     {
         $user = app(BuyerAccessService::class)->requireExistingOrders($request->user());
         $notice = $user->notifications()->whereKey($notification)->firstOrFail();
-        $order = Order::findOrFail($notice->data['order_id']);
+        $order = Order::findOrFail($notice->data['order_id'] ?? 0);
         app(BuyerAccessService::class)->requireExistingOrders($user, $order);
-        $notice->markAsRead();
+        app(NotificationCenterService::class)->acknowledge($user, $notice->id);
 
         return $request->expectsJson() ? response()->json(['read' => true]) : back();
     }

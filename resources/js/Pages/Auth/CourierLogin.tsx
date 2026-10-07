@@ -36,8 +36,8 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
             localStorage.removeItem('bagoo_courier_email');
         }
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
+        post('/login', {
+            onError: () => reset('password'),
         });
     };
 

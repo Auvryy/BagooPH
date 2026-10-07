@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
+import NotificationLink from '@/Components/NotificationLink';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     ShoppingBag, 
@@ -621,6 +622,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     {/* Topbar Actions & User Avatar */}
                     <div className="flex items-center gap-3 shrink-0">
                         {actions}
+                        <NotificationLink />
 
                         {/* Merchant / Admin User Avatar Interactive Dropdown */}
                         <div 

@@ -13,6 +13,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -46,6 +47,20 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (Response $response) {
+            $request = request();
+            if ($response->getStatusCode() === 419 && $request->header('X-Inertia') && $request->is('login', 'custody-recovery/sign-in')) {
+                $path = $request->is('custody-recovery/sign-in') ? '/custody-recovery/sign-in' : '/login';
+                $referrer = parse_url($request->header('Referer', ''));
+                if (($referrer['host'] ?? null) === $request->getHost()
+                    && in_array($referrer['path'] ?? null, ['/login', '/seller/login', '/courier/login', '/admin/login', '/hub/login', '/custody-recovery/sign-in'], true)) {
+                    $path = $referrer['path'];
+                }
+                $destination = redirect($path)->withErrors(['email' => 'Your sign-in page expired. Please try again.']);
+                $destination->setTargetUrl($path);
+
+                return Inertia::location($destination);
+            }
+
             if (request()->is('api/v1/*')) {
                 $response->headers->set('Cache-Control', 'no-store, private');
                 $response->headers->set('Pragma', 'no-cache');

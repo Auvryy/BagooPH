@@ -204,7 +204,7 @@ RTS must preserve the original waybill and append reverse checkpoints. It must n
 Self-pickup follows the same seller, pickup-rider, origin Bayan Hub, Mother Hub, and destination Bayan Hub route. It diverges only after destination-hub intake.
 
 1. Parcel becomes internally `ready_for_hub_pickup` and is placed on a controlled shelf.
-2. Buyer receives a persistent notification containing hub details, operating hours, expiry date, and a one-time claim code.
+2. Buyer receives a persistent notification containing hub details, operating hours, expiry date, and a link to private one-time claim-code access. The code itself never appears in a notification, following the validation contract.
 3. Counter handler scans the waybill and enters the claim code.
 4. The system verifies delivery type, destination hub, ready status, unexpired code, and claimant identity.
 5. For COD, the counter handler records the exact cash received before release.
@@ -227,7 +227,7 @@ Notifications are persistent records with unread/read state and a link to the re
 | Assigned to delivery rider | Assigned rider | Delivery task in queue |
 | Out for delivery | Buyer | Rider and COD amount reminder |
 | Delivery failed | Buyer and destination hub | Reason and next action |
-| Ready for hub pickup | Buyer | Claim code, hub, and expiry |
+| Ready for hub pickup | Buyer | Private claim-code access link, hub, and expiry |
 | Delivered/collected | Buyer | Confirm receipt |
 | Completed | Seller | Settlement eligibility |
 | RTS started/returned | Buyer and seller | Return progress and final result |

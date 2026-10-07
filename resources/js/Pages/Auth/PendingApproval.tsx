@@ -2,6 +2,7 @@ import React, { FormEventHandler, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import NotificationLink from '@/Components/NotificationLink';
 import ApplicationFields, { ApplicationDetails, ApplicationValues } from '@/Components/ApplicationFields';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
@@ -120,6 +121,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
             <Head title="Account Verification Status — BagooPH" />
 
             <div className="space-y-6 font-sans text-xs">
+                <div className="flex items-center justify-between gap-3"><Link href="/notifications" className="font-semibold text-[#E00D42]">View your account updates</Link><NotificationLink /></div>
                 {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || application.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">
                         <p className="font-semibold text-slate-900">Correct your application before review</p>

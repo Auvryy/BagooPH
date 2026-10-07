@@ -259,7 +259,7 @@ class SecureHubPickupTest extends TestCase
         $this->assertDatabaseCount('delivery_attempts', 0);
         $this->assertDatabaseCount('cod_custody_entries', 0);
         $this->assertSame('pending', $parcel->order->fresh()->payment_status);
-        $this->assertSame(3, $parcel->order->shop->user->notifications()->count());
+        $this->assertSame(3, $parcel->order->shop->user->notifications()->where('type', 'parcel-return')->count());
     }
 
     public function test_counter_audit_failure_rolls_back_consumption_cash_and_handoff(): void
@@ -312,7 +312,7 @@ class SecureHubPickupTest extends TestCase
     {
         $parcel = $this->staged();
         $owner = $parcel->order->buyer;
-        $notice = $owner->notifications()->sole();
+        $notice = $owner->notifications()->where('type', 'hub-pickup')->sole();
         $source = $notice->data;
         $this->actingAs($this->createApprovedUser('buyer'))->patchJson('http://localhost/buyer/order-notices/'.$notice->id.'/read')->assertNotFound();
         $this->actingAs($owner)->patchJson('http://localhost/buyer/order-notices/'.$notice->id.'/read')->assertOk();

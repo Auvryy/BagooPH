@@ -143,8 +143,11 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
         $this->assertTrue(Schema::hasTable('notifications'));
-        $this->assertEqualsCanonicalizing(['started', 'ready', 'received'], $order->shop->user->notifications()->get()->map(fn ($notice) => $notice->data['milestone'])->all());
-        $this->assertSame(3, $order->shop->user->notifications()->count());
+        $returnNotices = $order->shop->user->notifications()->where('type', 'parcel-return')
+            ->where('data->delivery_id', $delivery->id)->get();
+        $this->assertEqualsCanonicalizing(['started', 'ready', 'received'], $returnNotices->map(fn ($notice) => $notice->data['milestone'])->all());
+        $this->assertCount(3, $returnNotices);
+        $this->assertTrue($order->shop->user->notifications()->where('type', 'order-event')->exists());
     }
 
     // ==========================================

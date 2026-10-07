@@ -34,8 +34,9 @@ class RestrictedCustodyRecoveryController extends Controller
             return back()->withErrors(['email' => 'This account has no current owned recovery authorization. Contact the logistics manager.']);
         }
         $request->session()->regenerate();
+        Inertia::clearHistory();
 
-        return redirect()->route('custody-recovery.own');
+        return Inertia::location(redirect()->route('custody-recovery.own'));
     }
 
     public function own(Request $request, RestrictedCustodyRecoveryService $service)

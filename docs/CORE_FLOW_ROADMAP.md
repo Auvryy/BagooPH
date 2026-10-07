@@ -74,7 +74,7 @@ Scoped B14 source and oversight review: October 7, 2026. Verified manifests, att
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
 | Hub self-pickup | Implemented; scoped verified | Actual destination receipt and configured counter hours precede a hashed one-time buyer claim, identity/waybill verification and source-backed exact COD collection. Seven-calendar-day holding, day-three/day-six notices, lock/retry behavior and actual expiry-return initiation are verified below. Codes remain private; only the owning buyer completes a genuine collection. |
-| Persistent notifications | Partial | Secure holding, expiry and seller-return notices are retained from actual source execution, with original hub details and no codes. Broader dispatch/governance notices and a complete notification center remain B15/Phase 4 work. |
+| Persistent notifications | Implemented; scoped verified | A durable event/recipient outbox delivers real order, custody, failure, pickup, return and governance notices into one owned paginated center. Read acknowledgement and current linked authorization are checked independently. Financial notices still require the later reconciliation/settlement source events; the combined full comparison is recorded in the October 7 B15 review below. |
 | COD reconciliation | Partial | Actual counter collection identifies its collecting handler and exact amount. Normal delivery and collection remain financially pending. Rider collection/remittance, discrepancy handling, platform reconciliation and seller settlement remain B16/B17/Phase 5 work. |
 | Buyer-only completion | Implemented | Only the owning buyer advances genuine doorstep delivery or source-backed counter collection to COMPLETED. A legacy collected label lacks authority. Completion remains separate from pending COD reconciliation and settlement. |
 | Admin governance and audit | Partial | KYC, shops, fixed-role/resource eligibility, reasoned restrictions, reviewed corrections/closure, product moderation and scoped retained history are implemented. B14 now links actual restriction, attempt, manifest and counter sources to retained follow-up responsibility and evidence-based resolution. Platform cross-company and Company Admin own-company scope are verified; physical scans and buyer completion remain actor-owned. Broader Phase 0, notice and finance gates remain open. |
@@ -1381,14 +1381,14 @@ Acceptance: custody always returns to the hub after failure; expired or invalid 
 
 ### Phase 4: Basic In-App Notifications
 
-**State: Missing.**
+**State: Implemented; selected lifecycle and governance scope verified.**
 
-- Persist unread/read notifications linked to orders, deliveries, and tasks.
-- Cover meaningful order, custody, failure, pickup, completion, and RTS events.
-- Connect recorded review, restriction, correction, and accountable recovery decisions through B15 after the persistent notification foundation; decision retries must not duplicate notices.
-- Keep rider boards and assignment queues as operational task notifications.
+- Persist owned unread/read notifications linked to actual order, delivery, decision, placement, and recovery sources; stable pagination and owned idempotent acknowledgement are implemented.
+- Cover meaningful order, custody, failure, pickup, buyer completion, and RTS events without implying early reconciliation or settlement.
+- B15 connects recorded review, restriction, correction, applicable closure, moderation, placement, and accountable recovery decisions after the persistent notification foundation. Source/recipient uniqueness and immutable intent retain the original event through retries.
+- Rider boards and assignment queues remain operational task notifications. Remittance/reconciliation notices depend on their later Phase 5 source events.
 
-Acceptance: each event produces one notification for the correct recipient without duplicates.
+Acceptance: the focused real-source, ownership, rollback, outage/retry, privacy, and current-link checks pass. The combined full comparison retains every original case and finds no added failures, errors or skips. Install the additive notification migration and run the existing scheduler for unattended retries.
 
 ### Phase 5: COD and Admin Reconciliation
 
@@ -1623,3 +1623,53 @@ The integrated Rider account adapter also received a bounded expiry/CORS review 
 
 
 The B13 audit deliverable was reconciled against its recorded requirements matrix and the current full run during final prerequisite review. All 927 tests in the inspected authentication, restriction/resource, closure, identity correction, product/history, checkout-replay and Challenger audit groups passed. The preceding B01-B12 work and the source batches are verified; B13's existing incomplete wider phase/release decision remains conservative. The audit is complete as an audit, while the 17 dispatch/financial failures, unresolved source-specific recovery and deployment/concurrency limits remain explicit gates. This reconciliation completes the existing audit record without changing those obligations or claiming whole-project readiness.
+
+### B15 Prerequisite Persistent Order Notices: October 7, 2026
+
+The selected Phase 4 foundation starts from merged B14 at `0132562` on `feat/persistent-notifications`. Actual checkout, seller milestones, pickup claims, canonical hub custody, dispatch, delivery, buyer completion, secure pickup, and reverse-custody events now record a durable per-recipient intent in the business transaction. Delivery to the existing `notifications` table runs after commit. A notice or logging outage preserves the committed source and leaves bounded scheduled retries; event/recipient uniqueness and retained payload identity prevent duplicate or rewritten success notices. Existing secure pickup and return keys are preserved; no historical backfill, external provider, financial event, or Flutter change is included.
+
+The shared notification page supports owned pagination, all/unread filters, accurate counts, and idempotent acknowledgement retaining the original read time. Approved roles and known pending/restricted accounts can read their own notices without acquiring portal or transactional permissions. Shared header links expose the page. Links use fixed existing destinations and current ownership/eligibility; payloads are projected through an allowlist. Empty and unavailable storage have distinct states. The older pickup wording conflicted with the validation contract's code prohibition; the buyer/logistics contracts now explicitly direct users to private one-time code access instead of putting a code in a notice.
+
+Verification: the affected checkout-replay, fulfillment, attempts, returns, pickup, notification, and chat run recorded **147 tests / 6,765 assertions**, with one new test expecting a denial where the existing buyer guard correctly redirects to holding. The corrected case and original Phase 4 dispatch failure pass separately (**2 tests / 88 assertions**). The final foundation notification/pickup gate passes (**36 tests / 1,716 assertions**); the added logging-outage case confirms retry survives a failed log writer. The production TypeScript/Vite build passed, with scoped PHP style and whitespace checks. The fresh full baseline is **2,560 tests / 46,538 assertions / 17 failures / zero errors**. The combined foundation+B15 and requested web-auth repair finishes at **2,625 tests / 47,987 assertions / 16 unchanged financial failures / zero errors**. Every original case remains, all 65 added cases pass, and there are no skips or changed failure contexts; the original buyer-dispatch notice failure is resolved.
+
+Scoped persistent order-notice assessment: **2/10 -> 8/10**. Saved lifecycle updates and an owned center replace the former pickup/return-only records. Governance integration is the following verified local batch, and financial notices remain dependent on B16/B17 source events. Apply the additive `2026_10_07_180000_create_notification_deliveries.php` migration before serving the updated business writers. The existing Laravel scheduler must run for unattended retries; immediate post-commit delivery works independently. No production scheduler, deployed browser, device, or simultaneous PostgreSQL concurrency claim is made.
+
+
+### B15 Persistent Governance Notices and Web Session Repair: October 7, 2026
+
+The selected stack starts from merged B14 at `0132562`. The separately verified Phase 4 foundation is `feat/persistent-notifications` through `50596c9`; `admin/governance-notifications` is deliberately stacked on that base and includes the foundation for review. This selection stops after B15. B16-B18 financial work, publication and merge remain separate.
+
+Real immutable KYC/shop review, account/resource restriction, identity correction, product moderation, logistics placement, exception responsibility and custody grant/receipt sources now record one durable notice per event and recipient. Linked original-shop and correction reviews reuse their account event. Closure dispatch happens after the deletion/retention outcome, so a notice cannot turn an otherwise deletable identity into a retained account. Closed accounts gain no access from the retained record.
+
+The shared center projects safe message fields, derives links from current ownership/authorization, and allows permitted own holding/recovery reads without opening checkout or privileged work. Account-status controls return restricted applicants to holding. The authorized handover screen exposes the same owned notice center. Raw review reasons, private evidence paths, tokens, claim codes, and foreign company context are excluded.
+
+| B15 acceptance | Executable evidence |
+|---|---|
+| Committed review/restriction and correct recipient | `GovernanceNotificationTest` exercises actual root/subdomain review requests across four applicant roles, real account actions, independent shop review, resource decisions, moderation and placement. |
+| Rollback and original event preservation | Rolled-back source transactions retain neither decision nor delivery intent; repeated review/correction/activity requests preserve original decision and notice identity. |
+| Notice outage and durable retry | A real committed review survives a notice-table insert outage. The retry command later delivers the original intent once; repeated delivery and review requests add no second notice. |
+| Owned lists/read, foreign ID, empty/unavailable | `NotificationCenterTest` covers all roles, stable pagination/filtering, idempotent read time, foreign acknowledgement denial, guests/closed accounts and unavailable storage. |
+| Restricted applicant and current linked access | A real rejected applicant reads/acknowledges holding while checkout remains gated. Recovery tests use actual restricted-rider sign-in, acknowledgement and hub receipt; changed manager authorization removes a sensitive link and the destination request denies access. |
+| Privacy, custody and money separation | Projected payloads contain no source secrets or foreign private context. Recovery notices preserve the rider restriction and original physical workflow; buyer completion does not settle cash. |
+
+Verification: all **73 focused PHP tests / 1,473 assertions** passed, including **41 notification cases** and **32 authentication cases**. All **37 frontend tests** passed, and the final TypeScript/Vite production build passed. The first full run retained the original **16 financial failures** with unchanged identities/types/assertion context and resolved the old buyer-dispatch notice failure; it found one legacy seller-return test reading every notice as a return event. That test now checks the actual parcel's `parcel-return` records while confirming order notices coexist, and its focused rerun passed (**1 test / 124 assertions**). The final combined suite records **2,625 tests / 47,987 assertions / 16 failures / zero errors**, compared with **2,560 tests / 46,538 assertions / 17 failures / zero errors** on unchanged merged B14. Exact class/method/data-set, failure kind/type and stable assertion-context comparison shows all 65 added cases passing, no removed cases, new failures, changed failure contexts or skips, and the resolved `F12_to_F17_OrderLifecycleHubToCompletedTest::test_t1_f15_04_buyer_live_notification`. The remaining 16 financial failures are disclosed; this is not a passing full suite. The selected lifecycle/governance gate passes. Scoped PHP style and whitespace checks pass.
+
+The additive notification migration was applied only to local PostgreSQL. Counts and complete row fingerprints across **48 pre-existing domain tables** were unchanged; the new outbox retention trigger is installed. This catalogue verification does not prove simultaneous PostgreSQL contention. Registered pickup and notification schedules were inspected, but a live scheduler process and deployed browser result remain unverified.
+
+Scoped governance-notice engineering assessment: **2/10 -> 8/10**. Recorded decisions now reach the correct person's saved updates, with retry and access controls shared with real order notices. This does not raise finance, overall admin, or deployed-runtime readiness.
+
+The additionally requested web login/logout problem was traced to HTTPS pages generating HTTP authentication URLs while the deployed environment was set to local. Browser route generation now uses the actual origin; login requests stay on that origin, current-host Inertia redirects retain it, and successful session changes request a fresh document. Wrong-password and expired sign-in feedback preserve the account/role/CSRF gates. Buyer logout feedback follows confirmed server state. `WebSessionTransitionTest` verifies real requests across the five roles on root and worker hosts, session rotation, logout, holding/restriction, validation, expired CSRF, and redirect edge cases. The frontend test uses the actual route generator with HTTPS pages and an HTTP upstream. Scoped HTTPS authentication repair assessment: **3/10 -> 8/10** for the verified implementation; production settings and the user's live retest remain pending.
+
+The missing-products report is a visibility diagnosis, not evidence of erased data: local PostgreSQL retains **17 products**, with zero sale-eligible products and a legacy seeded shop lacking its category and approved review state; the user's deployed read reports **18 products**. Deployed eligibility still requires the read-only check. No seed rerun, stock rewrite, invented approval or database reset was performed. [Web authentication deployment](WEB_AUTH_DEPLOYMENT.md) records the environment/cache steps, migration/scheduler requirements and controlled shop-review path for this handoff. The user deferred those live steps until after this branch is finished.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `d38be1f` | `feat(notifications): retain durable lifecycle delivery and owned reads` |
+| `0cadbdc` | `feat(notifications): expose shared account notification center` |
+| `50596c9` | `docs(notifications): record foundation gate and selected B15 stack` |
+| `58dd993` | `feat(admin): retain owned governance decision notifications` |
+| `68e3e49` | `feat(admin): link owned notices from account and recovery screens` |
+| `6e59b53` | `fix(auth): preserve browser origin and refresh session transitions` |
+| `d6e125b` | `test(notifications): scope seller return checks to the original parcel` |
