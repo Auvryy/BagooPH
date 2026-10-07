@@ -451,7 +451,7 @@ class ResourceRestrictionTest extends TestCase
         $parcel->update(['status' => 'arrived_at_origin_hub']);
         $this->decide('handler');
         try {
-            app(OrderStateMachineService::class)->transition($parcel, 'in_transit_to_mother_hub', $this->handlerUser, ['hub_id' => $this->hub->id]);
+            app(OrderStateMachineService::class)->transition($parcel, 'in_transit_to_mother_hub', $this->handlerUser, ['hub_id' => $this->hub->id, 'barcode' => $parcel->tracking_number]);
             $this->fail('A restricted handler cannot dispatch work.');
         } catch (DomainException) {
         }

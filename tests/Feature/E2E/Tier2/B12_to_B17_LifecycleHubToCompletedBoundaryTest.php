@@ -203,7 +203,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $rider = $this->flowRider($hub, $this->createApprovedUser('courier'));
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('error');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
         $this->assertSame($before, $this->snapshot($delivery));
     }
 
@@ -213,7 +213,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $rider = $this->flowRider($hub, $this->createApprovedUser('courier'));
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('error');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
         $this->assertSame($before, $this->snapshot($delivery));
     }
 
@@ -223,7 +223,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $rider = User::findOrFail($delivery->assigned_rider_id);
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
         $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'out_for_delivery')->count());
         $this->assertSame($before, $this->snapshot($delivery));
     }
@@ -234,7 +234,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $rider = $this->flowRider($hub, $this->createApprovedUser('courier'));
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('error');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
         $this->assertSame($before, $this->snapshot($delivery));
     }
 
@@ -244,7 +244,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $rider = User::findOrFail($delivery->assigned_rider_id);
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
         $this->assertCheckpointLogged($delivery, 'out_for_delivery');
     }

@@ -201,7 +201,7 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     {
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         $this->assertNull($delivery->fresh()->current_hub_id);
     }
@@ -210,7 +210,7 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     {
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
         $this->assertSame('out_for_delivery', $order->fresh()->status);
@@ -220,7 +220,7 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     {
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         $this->assertCheckpointLogged($delivery, 'out_for_delivery');
         $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'out_for_delivery', 'scanned_by_id' => $delivery->assigned_rider_id]);
@@ -230,7 +230,7 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     {
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         // A tracking page is not evidence of a persistent event notice (Phase 4).
         $this->assertTrue(Schema::hasTable('notifications'), 'Phase 4: persistent event notification storage is missing.');
@@ -241,7 +241,7 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     {
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'assigned_to_rider');
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])
             ->assertSessionHas('success');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->get(route('courier.deliveries'))->assertInertia(fn (Assert $page) => $page
             ->has('queues.finalMileTasks', 1)->where('queues.finalMileTasks.0.status', 'out_for_delivery'));

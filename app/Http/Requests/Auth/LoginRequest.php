@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -58,6 +59,12 @@ class LoginRequest extends FormRequest
         $host = $this->getHost();
         $appDomain = env('APP_DOMAIN', 'bagooph.shop');
         $roleMismatch = null;
+
+        if ($this->is('custody-recovery/sign-in') && app(RestrictedCustodyRecoveryService::class)->ownGrants($user)) {
+            RateLimiter::clear($this->throttleKey());
+
+            return;
+        }
 
         if (str_starts_with($host, 'seller.')) {
             if ($user->role !== 'seller') {

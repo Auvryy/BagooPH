@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Shop;
+use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\ShopEligibilityService;
+use DomainException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -68,6 +72,19 @@ class SellerOrderController extends Controller
         }
 
         $orderItems = $query->paginate(10)->withQueryString();
+        foreach ($orderItems->items() as $item) {
+            $delivery = $item->order->delivery;
+            if ($delivery && in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned'], true)) {
+                $returns = app(DeliveryReturnService::class);
+                try {
+                    $route = $returns->route($delivery);
+                    $delivery->setAttribute('return_route_reference', $route->reference);
+                    $delivery->setAttribute('return_ready_for_receipt', $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
+                } catch (DomainException $error) {
+                    $delivery->setAttribute('return_ready_for_receipt', false);
+                }
+            }
+        }
 
         return Inertia::render('Seller/Orders', [
             'orderItems' => $orderItems,
@@ -75,7 +92,23 @@ class SellerOrderController extends Controller
             'shop' => $shop,
             'currentStatus' => $status,
             'counts' => $counts,
+            'returnReceiptToken' => (string) Str::uuid(),
         ]);
+    }
+
+    public function receiveReturn(Request $request, Order $order): JsonResponse|RedirectResponse
+    {
+        abort_unless($order->delivery, 404);
+        try {
+            $parcel = app(DeliveryReturnService::class)->sellerReceive($order->delivery, $request->user(), $this->getShop($request),
+                $request->only(['barcode', 'route_reference', 'notes', 'request_token']));
+        } catch (DomainException $error) {
+            return $request->expectsJson() ? response()->json(['message' => $error->getMessage()], 409)
+                : back()->withErrors(['return_receipt' => $error->getMessage()]);
+        }
+
+        return $request->expectsJson() ? response()->json(['status' => $parcel->status])
+            : back()->with('success', 'Your original parcel receipt was recorded. The order is now returned.');
     }
 
     public function accept(Request $request, Order $order): RedirectResponse

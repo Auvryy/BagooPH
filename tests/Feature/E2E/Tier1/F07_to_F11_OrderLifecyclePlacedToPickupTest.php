@@ -318,6 +318,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
 
         $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
             'courier_notes' => 'Scanned barcode at store',
         ]);
         $response->assertSessionHasNoErrors()->assertSessionHas('success');
@@ -334,6 +335,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
             'courier_notes' => 'Collected from seller',
         ])->assertSessionHas('success');
 
@@ -352,6 +354,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
             'courier_notes' => 'Collected',
         ])->assertSessionHas('success');
 
@@ -370,6 +373,7 @@ class F07_to_F11_OrderLifecyclePlacedToPickupTest extends TestCase
 
         $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
         ])->assertSessionHas('success');
 
         $delivery->refresh();

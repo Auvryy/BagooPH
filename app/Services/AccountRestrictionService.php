@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\RestrictionAffectedWork;
 use App\Models\RestrictionDecision;
@@ -66,7 +69,7 @@ class AccountRestrictionService
             'actions' => $subject->closed_at === null ? $this->actions($subject->status) : [], 'state' => $state,
             'affected_work' => $state['work'], 'history' => $this->history('account', $subject->id),
             'legacy_activity' => $subject->restriction_version === 0,
-            'cash_note' => 'Cash custody and reconciliation are not recorded yet. Payment labels and commission rows do not prove who holds money.',
+            'cash_note' => 'Counter collection records identify the collecting handler. Other cash holders and reconciliation need their own evidence; payment labels and commission rows do not prove custody.',
         ];
     }
 
@@ -246,7 +249,8 @@ class AccountRestrictionService
         match ($subject->role) {
             'buyer' => $query->where('buyer_id', $subject->id),
             'seller' => $query->whereHas('items.shop', fn ($shop) => $shop->where('user_id', $subject->id)),
-            'courier' => $query->whereHas('delivery', fn ($parcel) => $parcel->where(fn ($q) => $q->where('courier_id', $subject->id)->orWhere('assigned_rider_id', $subject->id))),
+            'courier' => $query->whereHas('delivery', fn ($parcel) => $parcel->where(fn ($q) => $q->where('courier_id', $subject->id)->orWhere('assigned_rider_id', $subject->id)
+                ->orWhereIn('id', LogisticsManifestParcel::whereHas('manifest', fn ($manifest) => $manifest->where('driver_id', $subject->id))->select('delivery_id')))),
             'logistics' => $query->whereHas('delivery', function ($parcel) use ($subject) {
                 $companies = LogisticsCompany::where('user_id', $subject->id)->pluck('id');
                 $hubs = HubHandler::where('user_id', $subject->id)->pluck('hub_id');
@@ -284,6 +288,9 @@ class AccountRestrictionService
                     'order_id' => $order->id, 'order_number' => $order->order_number, 'order_status' => $order->status,
                     'parcel' => $parcel?->only(['id', 'status', 'courier_id', 'assigned_rider_id', 'logistics_company_id', 'current_hub_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id', 'shuttle_manifest_number', 'truck_manifest_number']),
                     'last_checkpoint' => $checkpoint?->only(['id', 'checkpoint_type', 'hub_id', 'scanned_by_id', 'manifest_number']),
+                    'custody' => $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null,
+                    'manifests' => $parcel ? LogisticsManifest::where('logistics_company_id', $parcel->logistics_company_id)->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id))->orderBy('id')->get()
+                        ->map(fn ($manifest) => $manifest->state())->all() : [],
                     'proof_recorded' => filled($parcel?->proof_image),
                     'cash' => ['method' => $order->payment_method, 'payment_label' => $order->payment_status,
                         'expected_amount' => $order->total_amount, 'ledger_id' => $order->commissionLedger?->id,

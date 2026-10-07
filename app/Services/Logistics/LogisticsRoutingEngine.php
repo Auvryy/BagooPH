@@ -3,9 +3,13 @@
 namespace App\Services\Logistics;
 
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
+use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\Order;
+use App\Models\PickupClaim;
 use App\Models\Shop;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -229,6 +233,63 @@ class LogisticsRoutingEngine
         $hub = $currentHub ?? $delivery->currentHub;
         $status = strtolower($delivery->status);
 
+        if ($hub?->id === $delivery->destination_bayan_hub_id && $status === 'delivery_failed') {
+            $attempt = DeliveryAttempt::where('delivery_id', $delivery->id)->latest('attempt_number')->first();
+            if ($delivery->current_hub_id === null) {
+                return ['action' => 'RECEIVE_FAILED_DELIVERY', 'prompt' => 'RECEIVE FAILED DELIVERY FROM RIDER',
+                    'next_status' => 'delivery_failed', 'color' => 'amber', 'attempt_reference' => $attempt?->reference];
+            }
+            $approval = $attempt ? app(DeliveryRecoveryService::class)->event($attempt, 'retry_approved') : null;
+            if ($approval && ! $approval->retry_at->isFuture()) {
+                return ['action' => 'RELEASE_APPROVED_RETRY', 'prompt' => 'RELEASE APPROVED RETRY FOR BARANGAY SORTING',
+                    'next_status' => 'arrived_at_destination_hub', 'color' => 'amber', 'attempt_reference' => $attempt->reference];
+            }
+
+            return ['action' => 'AWAIT_RETRY_REVIEW', 'prompt' => 'WAIT FOR COMPANY RETRY REVIEW OR THE APPROVED DATE',
+                'next_status' => 'delivery_failed', 'color' => 'amber'];
+        }
+
+        if ($hub && in_array($status, ['return_to_sender', 'return_in_transit'], true)) {
+            $returns = app(DeliveryReturnService::class);
+            try {
+                $route = $returns->route($delivery);
+                if ($status === 'return_in_transit') {
+                    $custody = DeliveryCheckpoint::lastCustody($delivery);
+                    $manifest = LogisticsManifest::find($custody['manifest_id'] ?? null);
+                    if ($manifest?->direction === 'return' && $manifest->destination_hub_id === $hub->id) {
+                        return ['action' => 'RECEIVE_RETURN_MANIFEST', 'prompt' => 'RECEIVE ON THE ACTUAL RETURN MANIFEST',
+                            'next_status' => 'return_to_sender', 'color' => 'amber'];
+                    }
+                } elseif ($delivery->current_hub_id === $hub->id) {
+                    if ($returns->event($route, 'seller_staged')) {
+                        return ['action' => 'AWAIT_SELLER_RECEIPT', 'prompt' => 'WAIT FOR THE OWNING SELLER TO SCAN RECEIPT',
+                            'next_status' => $status, 'color' => 'amber'];
+                    }
+                    if ($returns->readyForSeller($delivery)) {
+                        return ['action' => 'STAGE_SELLER_RETURN', 'prompt' => 'STAGE THE ORIGINAL PARCEL FOR SELLER RECEIPT',
+                            'next_status' => $status, 'color' => 'amber', 'route_reference' => $route->reference];
+                    }
+                    $returns->nextHub($delivery);
+
+                    return ['action' => 'DISPATCH_RETURN_MANIFEST', 'prompt' => 'LOAD THE NEXT LEG ON A RETURN MANIFEST',
+                        'next_status' => 'return_in_transit', 'color' => 'amber'];
+                }
+            } catch (DomainException $error) {
+                return ['action' => 'AWAIT_RETURN_REVIEW', 'prompt' => $error->getMessage(), 'next_status' => $status, 'color' => 'amber'];
+            }
+        }
+
+        if ($hub?->id === $delivery->destination_bayan_hub_id && $status === 'ready_for_hub_pickup') {
+            $claim = PickupClaim::where('delivery_id', $delivery->id)->first();
+            if ($claim?->status === 'expired') {
+                return ['action' => 'START_EXPIRED_PICKUP_RETURN', 'prompt' => 'START THE RECORDED EXPIRED PICKUP RETURN',
+                    'next_status' => 'return_to_sender', 'color' => 'amber', 'claim_reference' => $claim->reference];
+            }
+
+            return ['action' => 'AWAIT_BUYER_PICKUP', 'prompt' => 'WAIT FOR SECURE BUYER VERIFICATION AT THE COUNTER',
+                'next_status' => $status, 'color' => 'green'];
+        }
+
         // 1. Destination Bayan Hub inbound custody must be recorded before sorting.
         if ($hub && $hub->id === $delivery->destination_bayan_hub_id && $status === OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB) {
             return [
@@ -311,12 +372,13 @@ class LogisticsRoutingEngine
                 ];
             }
 
-            $destHubCode = $delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB';
+            $nextMother = $hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id;
+            $destHubCode = $nextMother ? ($delivery->destinationMotherHub?->code ?? 'DEST-MOTHER-HUB') : ($delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB');
 
             return [
                 'action' => 'DISPATCH_LINE_HAUL',
                 'prompt' => "LOAD TO DESTINATION MANIFEST -> [{$destHubCode}]",
-                'next_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                'next_status' => $nextMother ? OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB : OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
                 'color' => 'indigo',
             ];
         }

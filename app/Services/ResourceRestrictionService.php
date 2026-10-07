@@ -7,6 +7,7 @@ use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\RestrictionDecision;
 use App\Models\Shop;
@@ -103,7 +104,7 @@ class ResourceRestrictionService
             'reactivation_status' => $type === 'fleet' ? $this->fleetRestoreStatus($resource) : 'active',
             'reactivation_mode_recorded' => $type === 'fleet' && $this->fleetRecordedMode($resource) !== null,
             'work_note' => $type === 'fleet'
-                ? 'Rider assignments identify linked work. Feeder and linehaul manifest references are also listed for review within this company and facility; the records do not establish which vehicle carried them.'
+                ? 'Rider assignments and recorded manifests identify linked work. Legacy feeder and linehaul labels are retained for review; a label alone does not prove which vehicle carried a parcel.'
                 : ($type === 'handler' ? 'Current facility work and recorded scans need review. A facility assignment does not establish personal parcel or cash custody.' : null),
             'cash_note' => 'Cash custody and reconciliation are not recorded yet. Payment labels and commission rows do not prove who holds money.',
         ];
@@ -246,7 +247,8 @@ class ResourceRestrictionService
                     } else {
                         $drivers = CourierProfile::where('vehicle_id', $resource->id)->pluck('user_id')->push($resource->assigned_driver_id)->filter()->unique();
                         $parcel->where('logistics_company_id', $resource->logistics_company_id)->where(function ($q) use ($resource, $drivers) {
-                            $q->whereIn('courier_id', $drivers)->orWhereIn('assigned_rider_id', $drivers);
+                            $q->whereIn('courier_id', $drivers)->orWhereIn('assigned_rider_id', $drivers)
+                                ->orWhereIn('id', LogisticsManifestParcel::whereHas('manifest', fn ($manifest) => $manifest->where('vehicle_id', $resource->id))->select('delivery_id'));
                             if (in_array($resource->vehicle_type, ['l300_van', 'wing_truck'], true)) {
                                 $q->orWhere(fn ($manifest) => $manifest
                                     ->where(fn ($m) => $m->whereNotNull('shuttle_manifest_number')->orWhereNotNull('truck_manifest_number'))

@@ -2,13 +2,24 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
+use App\Services\ProfileInputService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
+    public function authorize(): bool
+    {
+        return $this->user()?->fresh()?->canAccessPortal() ?? false;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($user = $this->user()) {
+            $this->merge(app(ProfileInputService::class)->normalize($this->all(), $user));
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -16,16 +27,6 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
-            ],
-        ];
+        return app(ProfileInputService::class)->rules($this->user(), ['name', 'email']);
     }
 }

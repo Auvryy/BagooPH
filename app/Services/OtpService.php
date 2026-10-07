@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\OtpVerificationMail;
 use App\Models\EmailOtp;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -153,23 +154,25 @@ class OtpService
      */
     public function validateAndBurnToken(string $email, string $token, string $purpose = 'registration'): bool
     {
-        $normalizedEmail = strtolower(trim($email));
+        return DB::transaction(function () use ($email, $token, $purpose) {
+            $normalizedEmail = strtolower(trim($email));
 
-        $otp = EmailOtp::where('email', $normalizedEmail)
-            ->where('token', $token)
-            ->where('purpose', $purpose)
-            ->whereNotNull('verified_at')
-            ->where('verified_at', '>=', now()->subHours(2))
-            ->first();
+            $otp = EmailOtp::where('email', $normalizedEmail)
+                ->where('token', $token)
+                ->where('purpose', $purpose)
+                ->whereNotNull('verified_at')
+                ->where('verified_at', '>=', now()->subHours(2))
+                ->lockForUpdate()->first();
 
-        if (! $otp) {
-            return false;
-        }
+            if (! $otp) {
+                return false;
+            }
 
-        // Single-use token: burn upon consumption
-        $otp->update(['token' => null]);
+            // Single-use token: burn upon consumption
+            $otp->update(['token' => null]);
 
-        return true;
+            return true;
+        });
     }
 
     /**

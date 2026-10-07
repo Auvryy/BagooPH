@@ -70,7 +70,7 @@ class SellerProfileTest extends TestCase
 
         $this->seller->refresh();
         $this->assertSame($originalName, $this->seller->name);
-        $this->assertSame('+63 912 345 6789', $this->seller->phone);
+        $this->assertSame('+639123456789', $this->seller->phone);
         $this->assertNotNull($this->seller->avatar);
         $this->assertStringStartsWith('/storage/avatars/', $this->seller->avatar);
 

@@ -27,12 +27,29 @@ interface Props {
     order: Order;
     canUsePortal: boolean;
     canConfirmReceipt: boolean;
+    pickupClaim: { reference: string; status: string; expires_at: string; code_issued_at: string | null; locked_until: string | null } | null;
+    pickupHub: {name: string; address: string; operating_hours: string | null} | null;
+    pickupCodeUrl: string | null;
+    orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceipt }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
+    const [pickupCode,setPickupCode] = useState<string | null>(null);
+    const [codeError,setCodeError] = useState('');
+    const [codeBusy,setCodeBusy] = useState(false);
+    const showPickupCode = async () => {
+        if (!pickupCodeUrl || codeBusy) return;
+        setCodeBusy(true); setCodeError('');
+        try { const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+            const response = await fetch(pickupCodeUrl,{method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
+            const result = await response.json(); if (!response.ok) throw new Error(result.message ?? 'Unable to show the pickup code.');
+            setPickupCode(result.code);
+        } catch (error) { setCodeError(error instanceof Error ? error.message : 'Unable to show the pickup code.'); }
+        finally { setCodeBusy(false); }
+    };
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(order.items?.[0]?.product_id || null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -165,6 +182,17 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
     return (
         <BuyerOrderAccessLayout canUsePortal={canUsePortal}>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
+            {pickupClaim && <section className="mb-5 space-y-3 rounded-lg border border-slate-300 bg-white p-4">
+                <h2 className="font-bold text-slate-900">Your hub pickup</h2><p className="text-sm text-slate-700">{pickupHub?.name} · {pickupHub?.address}</p><p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
+                <p className="text-sm text-slate-700">Collect before {new Date(pickupClaim.expires_at).toLocaleString('en-PH')}. Bring your valid photo ID and exact COD payment.</p>
+                {pickupClaim.status === 'ready' && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
+                {pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
+                {pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Contact the hub if it was lost.</p>}
+                {pickupClaim.status !== 'ready' && <p className="text-sm font-semibold capitalize text-slate-700">Pickup {pickupClaim.status}</p>}
+                {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
+            </section>}
+            {orderNotices.length > 0 && <section className="mb-5 rounded-lg border border-slate-300 bg-white p-4"><h2 className="font-bold">Order notices</h2><ul className="mt-3 space-y-2">{orderNotices.map(notice => <li key={notice.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 py-2 text-sm"><span>{notice.data.title} · {new Date(notice.created_at).toLocaleString('en-PH')}</span>{!notice.read_at && <button className="font-semibold text-[#E00D42]" onClick={() => router.patch(route('buyer.orders.notice-read',notice.id),{},{preserveScroll:true})}>Mark read</button>}</li>)}</ul></section>}
+
 
             <div className="w-full space-y-6">
                 

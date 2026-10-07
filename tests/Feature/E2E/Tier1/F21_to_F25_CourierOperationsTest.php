@@ -295,7 +295,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         $this->reportFlowFailure($delivery);
         $this->receiveFailureFlow($delivery);
-        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
+        $this->retryFailureFlow($delivery);
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
     }
 
@@ -305,7 +305,7 @@ class F21_to_F25_CourierOperationsTest extends TestCase
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         $this->reportFlowFailure($delivery);
         $this->receiveFailureFlow($delivery);
-        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
+        $this->retryFailureFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'delivery_rescheduled');
     }
 
@@ -313,9 +313,9 @@ class F21_to_F25_CourierOperationsTest extends TestCase
     {
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
-        $this->reportFlowFailure($delivery);
+        $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
-        // The owning Phase 3 branch must supply the reviewed retry or reverse-route actions before this final gate passes.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $delivery->fresh()->status);
     }

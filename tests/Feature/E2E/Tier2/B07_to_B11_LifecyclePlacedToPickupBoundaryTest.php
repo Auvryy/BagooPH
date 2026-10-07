@@ -294,6 +294,7 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $this->flowRider(LogisticsHub::findOrFail($delivery->origin_bayan_hub_id), $courier);
         $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
         ]);
 
         $delivery->refresh();
@@ -386,6 +387,7 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $this->flowRider(LogisticsHub::findOrFail($delivery->origin_bayan_hub_id), $courier);
         $response = $this->actingAs($courier)->patch(route('courier.updateStatus', $delivery->id), [
             'status' => 'picked_up',
+            'barcode' => $delivery->tracking_number,
         ]);
 
         $delivery->refresh();

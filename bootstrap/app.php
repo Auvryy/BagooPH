@@ -13,6 +13,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,7 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
-            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops', 'seller/shops/*/resubmit', 'shops', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject', 'admin/products/*/moderation', 'products/*/moderation', 'buyer/addresses'))]);
+            || ($request->isMethod('POST') && $request->is('api/v1/rider/applications', 'api/v1/rider/registration/email/verify', 'register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops', 'seller/shops/*/resubmit', 'shops', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject', 'admin/products/*/moderation', 'products/*/moderation', 'buyer/addresses', 'hub/sort', 'sort', 'buyer/profile', 'seller/profile', 'profile', 'cart', 'hub/scan', 'scan', 'hub/manifests', 'hub/manifests/*', 'manifests', 'manifests/*', 'hub/release', 'release', 'hub/counter/hours', 'counter/hours', 'custody-recovery/*', 'exceptions/*'))
+            || ($request->isMethod('PATCH') && $request->is('profile', 'courier/profile/account', 'profile/account', 'cart/*', 'courier/deliveries/*/status', 'deliveries/*/status'))]);
 
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
 
@@ -43,6 +45,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (Response $response) {
+            if (request()->is('api/v1/*')) {
+                $response->headers->set('Cache-Control', 'no-store, private');
+                $response->headers->set('Pragma', 'no-cache');
+            }
+
+            return $response;
+        });
         $exceptions->dontFlash(['otp_token', 'token', 'code', 'claim_code', 'pickup_code', 'signature', 'checkout_token']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

@@ -81,7 +81,7 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $product->fresh()->stock, 'Hub receipt alone must not restock the seller.');
-        // Phase 3 must add the reviewed reverse Mother Hub route and actual seller receipt before these gates pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertSame('returned', $delivery->fresh()->status);
         $this->assertSame('returned', $order->fresh()->status);
     }
@@ -96,7 +96,7 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $product->fresh()->stock, 'Hub receipt alone must not restock the seller.');
-        // Phase 3 must add the reviewed reverse Mother Hub route and actual seller receipt before these gates pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertSame('returned', $delivery->fresh()->status);
     }
 
@@ -110,7 +110,7 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $product->fresh()->stock, 'Hub receipt alone must not restock the seller.');
-        // Phase 3 must add the reviewed reverse Mother Hub route and actual seller receipt before these gates pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
     }
 
@@ -124,9 +124,9 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $product->fresh()->stock, 'Hub receipt alone must not restock the seller.');
-        // Phase 3 must add the reviewed reverse Mother Hub route and actual seller receipt before these gates pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
-        $this->assertSame($stock + $quantity, $product->fresh()->stock);
+        $this->assertSame($stock, $product->fresh()->stock);
     }
 
     public function test_t1_f19_05_seller_return_notice(): void
@@ -139,11 +139,12 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $product->fresh()->stock, 'Hub receipt alone must not restock the seller.');
-        // Phase 3 must add the reviewed reverse Mother Hub route and actual seller receipt before these gates pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
-        $this->assertTrue(Schema::hasTable('notifications'), 'Recorded return notifications remain a Phase 4 prerequisite.');
-        $this->assertSame(1, $order->shop->user->notifications()->count());
+        $this->assertTrue(Schema::hasTable('notifications'));
+        $this->assertEqualsCanonicalizing(['started', 'ready', 'received'], $order->shop->user->notifications()->get()->map(fn ($notice) => $notice->data['milestone'])->all());
+        $this->assertSame(3, $order->shop->user->notifications()->count());
     }
 
     // ==========================================

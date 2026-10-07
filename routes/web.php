@@ -19,13 +19,18 @@ use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
+use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\ExceptionOversightController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
+use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
+use App\Http\Controllers\Logistics\LogisticsManifestController;
+use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
@@ -36,13 +41,13 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
-use App\Http\Controllers\Seller\SellerVoucherController;
-use App\Http\Controllers\ShopVerificationDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerVoucherController;
+use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Middleware\RoleMiddleware;
@@ -68,9 +73,24 @@ Route::middleware('auth')->get('/verification-documents/{user}/{document}', [Ver
     ->name('verification-documents.show');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/exceptions', [ExceptionOversightController::class, 'index'])->name('exceptions.index');
+    Route::get('/exceptions/attempt/{id}/proof', [ExceptionOversightController::class, 'proof'])->whereNumber('id')->name('exceptions.proof');
+    Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');
+    Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
     Route::post('/account/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.store');
     Route::get('/identity-correction-documents/{correction}/{document}', [IdentityCorrectionController::class, 'document'])->name('identity-correction-documents.show');
+});
+
+Route::get('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'login'])->name('custody-recovery.login');
+Route::post('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'signIn'])->middleware('throttle:10,1')->name('custody-recovery.sign-in');
+Route::middleware(['auth', 'verified'])->prefix('custody-recovery')->name('custody-recovery.')->group(function () {
+    Route::get('/', [RestrictedCustodyRecoveryController::class, 'own'])->name('own');
+    Route::get('/receiving', [RestrictedCustodyRecoveryController::class, 'receiving'])->name('receiving');
+    Route::get('/work/{work}', [RestrictedCustodyRecoveryController::class, 'review'])->name('review');
+    Route::post('/work/{work}', [RestrictedCustodyRecoveryController::class, 'grant'])->name('grant');
+    Route::post('/{grant}/handover', [RestrictedCustodyRecoveryController::class, 'acknowledge'])->name('acknowledge');
+    Route::post('/{grant}/receipt', [RestrictedCustodyRecoveryController::class, 'receive'])->name('receive');
 });
 
 Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
@@ -107,6 +127,7 @@ $registerSellerRoutes = function () {
         Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
         Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover']);
         Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel']);
+        Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn']);
         Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady']);
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
         Route::post('/vouchers', [SellerVoucherController::class, 'store']);
@@ -193,8 +214,17 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes) {
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
+        Route::get('/manifests', [LogisticsManifestController::class, 'index']);
+        Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
+        Route::post('/manifests', [LogisticsManifestController::class, 'store']);
+        Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
+        Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index']);
+        Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve']);
+        Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof']);
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter']);
+        Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
@@ -344,6 +374,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
+        Route::post('/orders/{order}/pickup-code', [PickupClaimController::class, 'issue'])->middleware('throttle:10,1')->name('orders.pickup-code');
+        Route::patch('/order-notices/{notification}/read', [OrderHistoryController::class, 'readNotice'])->name('orders.notice-read');
     });
 });
 
@@ -429,6 +461,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
     Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover'])->name('orders.handover');
     Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn'])->name('orders.return-receipt');
     Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady'])->name('orders.batchReady');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
@@ -523,8 +556,17 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
+        Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
+        Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
+        Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
+        Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
+        Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index'])->name('recovery.index');
+        Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve'])->name('recovery.retry');
+        Route::get('/delivery-attempts/{attempt}/proof', [DeliveryRecoveryController::class, 'proof'])->name('recovery.proof');
         Route::get('/counter', [LogisticsHubWorkstationController::class, 'counter'])->name('counter');
+        Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours'])->name('counter.hours');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use App\Services\ShopEligibilityService;
@@ -71,7 +72,7 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'nullable|integer|min:1|max:99',
+            'quantity' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:99'],
             'color' => 'nullable|string|max:50',
             'size' => 'nullable|string|max:50',
         ]);
@@ -166,7 +167,7 @@ class CartController extends Controller
         }
 
         $request->validate([
-            'quantity' => 'required|integer|min:1|max:99',
+            'quantity' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'min:1', 'max:99'],
         ]);
 
         $quantity = (int) $request->input('quantity');

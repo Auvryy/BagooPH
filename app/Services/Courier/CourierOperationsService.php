@@ -59,6 +59,8 @@ class CourierOperationsService
                 throw new DomainException('This pickup job is outside your assigned company or origin hub.');
             }
 
+            $sourceState = DeliveryCheckpoint::state($lockedDelivery);
+            $custody = DeliveryCheckpoint::lastCustody($lockedDelivery);
             $lockedDelivery->update([
                 'courier_id' => $rider->id,
                 'status' => 'assigned_pickup',
@@ -70,7 +72,9 @@ class CourierOperationsService
                 type: 'assigned_pickup',
                 location: $lockedDelivery->pickup_store_name ?? 'Merchant store',
                 notes: "Pickup job claimed by {$rider->name}",
-                actor: $rider
+                actor: $rider,
+                evidence: ['source_state' => $sourceState, 'target_state' => DeliveryCheckpoint::state($lockedDelivery),
+                    'custody_before' => $custody, 'custody_after' => $custody],
             );
 
             return $lockedDelivery->fresh(['order']);

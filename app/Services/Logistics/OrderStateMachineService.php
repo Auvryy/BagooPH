@@ -4,14 +4,17 @@ namespace App\Services\Logistics;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class OrderStateMachineService
 {
@@ -57,10 +60,14 @@ class OrderStateMachineService
 
     public const STATUS_RETURN_TO_SENDER = 'return_to_sender';
 
+    public const STATUS_RETURN_IN_TRANSIT = 'return_in_transit';
+
     private const ALLOWED_FROM = [
+        self::STATUS_RETURN_IN_TRANSIT => [self::STATUS_RETURN_TO_SENDER],
+        self::STATUS_RETURN_TO_SENDER => [self::STATUS_RETURN_IN_TRANSIT],
         self::STATUS_PICKED_UP => ['assigned_pickup'],
         self::STATUS_ARRIVED_AT_ORIGIN_HUB => [self::STATUS_PICKED_UP],
-        self::STATUS_IN_TRANSIT_TO_MOTHER_HUB => [self::STATUS_ARRIVED_AT_ORIGIN_HUB],
+        self::STATUS_IN_TRANSIT_TO_MOTHER_HUB => [self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_SORTED_TO_LINE_HAUL],
         self::STATUS_ARRIVED_AT_MOTHER_HUB => [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB],
         self::STATUS_SORTED_TO_LINE_HAUL => [self::STATUS_ARRIVED_AT_MOTHER_HUB],
         self::STATUS_IN_TRANSIT_TO_DEST_HUB => [self::STATUS_SORTED_TO_LINE_HAUL],
@@ -81,6 +88,10 @@ class OrderStateMachineService
         User $actor,
         array $scanMetadata = []
     ): Delivery {
+        if (in_array(strtolower(trim($targetStatus)), [self::STATUS_READY_FOR_HUB_PICKUP, self::STATUS_CUSTOMER_COLLECTED], true)) {
+            throw new DomainException('Use the secure pickup staging and verified counter-release actions.');
+        }
+
         return DB::transaction(function () use ($delivery, $targetStatus, $actor, $scanMetadata) {
             // Match seller fulfillment/cancellation: lock the order before its parcel.
             $orderId = Delivery::whereKey($delivery->id)->value('order_id');
@@ -103,15 +114,37 @@ class OrderStateMachineService
             $hub = $this->resolveHub($scanMetadata['hub_id'] ?? null);
 
             $this->assertActiveActor($actor);
-            $this->assertActorMayTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata);
+            $transport = in_array($targetStatus, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB,
+                self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true)
+                ? $this->requireManifestScan($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata) : null;
+            $this->assertActorMayTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata, $transport);
+            if ($transport) {
+                $scanMetadata['manifest_number'] = $transport->manifest->reference;
+                $scanMetadata['manifest_type'] = $transport->manifest->type;
+            }
+
+            $inputs = app(WaybillScanInputService::class);
+            $scanMetadata = $inputs->normalize($scanMetadata);
+            Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
+            $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERY_FAILED, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
+                self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,
+                self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true);
+            $barcode = $scanRequired || isset($scanMetadata['barcode'])
+                ? $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery, allowOrderNumber: $hub !== null)
+                : null;
 
             if ($lockedDelivery->status === $targetStatus) {
                 $existing = DeliveryCheckpoint::query()
                     ->where('delivery_id', $lockedDelivery->id)
                     ->where('checkpoint_type', $targetStatus)
                     ->when($hub, fn ($query) => $query->where('hub_id', $hub->id))
-                    ->exists();
+                    ->when($transport, fn ($query) => $query->where('manifest_number', $transport->manifest->reference))
+                    ->latest('id')->first();
                 if ($existing) {
+                    if ($existing->scanned_by_id !== $actor->id) {
+                        throw new DomainException('This custody action was already recorded by another actor. Refresh the parcel before continuing.');
+                    }
+
                     return $lockedDelivery;
                 }
             }
@@ -136,10 +169,32 @@ class OrderStateMachineService
                 self::STATUS_PICKED_UP => self::STATUS_READY_FOR_PICKUP,
                 self::STATUS_OUT_FOR_DELIVERY => self::STATUS_ASSIGNED_TO_RIDER,
                 self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED => self::STATUS_OUT_FOR_DELIVERY,
+                self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER => self::STATUS_DELIVERY_FAILED,
                 default => null,
             };
             if ($requiredOrderStatus && $lockedOrder->status !== $requiredOrderStatus) {
                 throw new DomainException("Order is {$lockedOrder->status}; this scan requires {$requiredOrderStatus}.");
+            }
+
+            if ($targetStatus === self::STATUS_OUT_FOR_DELIVERY) {
+                $custody = DeliveryCheckpoint::lastCustody($lockedDelivery);
+                if ($lockedDelivery->current_hub_id !== $lockedDelivery->destination_bayan_hub_id
+                    || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $lockedDelivery->destination_bayan_hub_id) {
+                    throw new DomainException('The assigned parcel needs actual destination-hub custody before departure.');
+                }
+            }
+            if ($targetStatus === self::STATUS_DELIVERY_FAILED) {
+                $attempt = isset($scanMetadata['attempt_id']) && is_int($scanMetadata['attempt_id'])
+                    ? DeliveryAttempt::find($scanMetadata['attempt_id']) : null;
+                $departure = $lockedDelivery->checkpoints()->where('checkpoint_type', self::STATUS_OUT_FOR_DELIVERY)->latest('id')->first();
+                if (! $attempt || $attempt->delivery_id !== $lockedDelivery->id || $attempt->rider_id !== $actor->id
+                    || $attempt->departure_checkpoint_id !== $departure?->id || $attempt->attempt_number !== $lockedDelivery->failure_attempts + 1
+                    || $attempt->attempt_number > 3 || $attempt->barcode_scanned !== $barcode
+                    || $attempt->source_state !== DeliveryCheckpoint::state($lockedDelivery)) {
+                    throw new DomainException('Use the recorded attempt action with actual reason, notes and proof.');
+                }
+                $scanMetadata['reason'] = $attempt->reason_code;
+                $scanMetadata['notes'] = $attempt->notes.' Attempt evidence: '.$attempt->reference;
             }
 
             if ($targetStatus === self::STATUS_DELIVERED) {
@@ -154,6 +209,8 @@ class OrderStateMachineService
             }
 
             $previousStatus = $lockedDelivery->status;
+            $sourceState = DeliveryCheckpoint::state($lockedDelivery);
+            $custodyBefore = DeliveryCheckpoint::lastCustody($lockedDelivery);
             $lockedDelivery->status = $targetStatus;
             $this->applyTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata);
             $lockedDelivery->save();
@@ -170,7 +227,11 @@ class OrderStateMachineService
                 facilityCode: $hub?->code,
                 latitude: $scanMetadata['latitude'] ?? null,
                 longitude: $scanMetadata['longitude'] ?? null,
-                manifestNumber: $scanMetadata['manifest_number'] ?? null
+                manifestNumber: $scanMetadata['manifest_number'] ?? null,
+                barcodeScanned: $barcode,
+                evidence: ['source_state' => $sourceState, 'target_state' => DeliveryCheckpoint::state($lockedDelivery),
+                    'custody_before' => $custodyBefore, 'custody_after' => $this->custodyAfter($lockedDelivery, $targetStatus, $actor, $hub, $barcode, $custodyBefore, $transport)],
+                scanProvenance: $transport?->event_type === 'parcel_dispatched' ? 'manifest_load_event' : null,
             );
 
             return $lockedDelivery;
@@ -184,12 +245,78 @@ class OrderStateMachineService
         }
     }
 
+    private function custodyAfter(Delivery $delivery, string $status, User $actor, ?LogisticsHub $hub, ?string $barcode, array $before, ?LogisticsManifestEvent $transport = null): array
+    {
+        return match ($status) {
+            self::STATUS_PICKED_UP => ['kind' => 'courier', 'user_id' => $actor->id],
+            self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_TO_SENDER => ['kind' => 'hub', 'hub_id' => $hub->id]
+                + ($transport ? ['manifest_scan_reference' => $transport->reference] : []),
+            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => ['kind' => 'manifest',
+                'manifest_id' => $transport->manifest_id, 'manifest_reference' => $transport->manifest->reference,
+                'vehicle_id' => $transport->manifest->vehicle_id, 'driver_id' => $transport->manifest->driver_id,
+                'manifest_scan_reference' => $transport->reference, 'source_scan_reference' => $transport->payload['source_scan_reference']],
+            self::STATUS_OUT_FOR_DELIVERY => $barcode ? ['kind' => 'courier', 'user_id' => $actor->id] : ['kind' => 'unknown', 'reason' => 'Final-mile handoff lacks a submitted waybill.'],
+            self::STATUS_DELIVERED => $barcode ? ['kind' => 'buyer', 'user_id' => $delivery->order->buyer_id] : ['kind' => 'unknown', 'reason' => 'Recipient handoff lacks a submitted waybill.'],
+            self::STATUS_CUSTOMER_COLLECTED => ['kind' => 'unknown', 'reason' => 'Secure counter evidence remains required.'],
+            default => $before,
+        };
+    }
+
+    private function requireManifestScan(Delivery $delivery, string $status, User $actor, ?LogisticsHub $hub, array $metadata): LogisticsManifestEvent
+    {
+        if (! isset($metadata['manifest_scan_event_id']) || ! is_int($metadata['manifest_scan_event_id'])) {
+            throw new DomainException('Use the recorded manifest load, dispatch and receipt actions for hub transport.');
+        }
+        $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->find($metadata['manifest_scan_event_id']);
+        $departure = in_array($status, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT], true);
+        $manifest = $scan?->manifest;
+        if (! $scan || ! $manifest || $scan->event_type !== ($departure ? 'parcel_dispatched' : 'parcel_received')
+            || $scan->actor_id !== $actor->id || $scan->hub_id !== $hub?->id || $scan->parcel?->delivery_id !== $delivery->id
+            || ! $scan->parcel->included || $scan->parcel->active_delivery_id !== $delivery->id
+            || $manifest->logistics_company_id !== $delivery->logistics_company_id || ! in_array($manifest->status, ['dispatched', 'received'], true)
+            || $this->inputsBarcode($metadata, $delivery) !== $scan->barcode_scanned) {
+            throw new DomainException('A current authorized manifest scan is required for this parcel and facility.');
+        }
+        $service = app(LogisticsManifestService::class);
+        $expected = $departure ? $service->transitStatus($manifest)
+            : $service->receiptStatus($manifest);
+        if ($status !== $expected || $service->direction($delivery) !== $manifest->direction || $service->route($delivery) !== $scan->parcel->route_snapshot) {
+            throw new DomainException('This scan does not match the recorded parcel route and manifest leg.');
+        }
+        $existing = $delivery->checkpoints()->where('checkpoint_type', $status)->where('manifest_number', $manifest->reference)->first();
+        if ($existing && ($existing->custody_after['manifest_scan_reference'] ?? null) === $scan->reference && $delivery->status === $status) {
+            return $scan;
+        }
+        if ($delivery->status !== ($scan->source_state['delivery_status'] ?? null)) {
+            throw new DomainException('The manifest scan source state changed. Refresh the current parcel.');
+        }
+        if ($departure) {
+            if ($delivery->current_hub_id !== $manifest->source_hub_id || $service->nextHub($delivery) !== $manifest->destination_hub_id) {
+                throw new DomainException('The manifest cannot skip or replace the next required Mother Hub leg.');
+            }
+        } else {
+            $custody = DeliveryCheckpoint::lastCustody($delivery);
+            if ($hub?->id !== $manifest->destination_hub_id || $delivery->status !== $service->transitStatus($manifest)
+                || ($custody['kind'] ?? null) !== 'manifest' || ($custody['manifest_id'] ?? null) !== $manifest->id) {
+                throw new DomainException('This parcel is not in the arriving manifest custody.');
+            }
+        }
+
+        return $scan;
+    }
+
+    private function inputsBarcode(array $metadata, Delivery $delivery): string
+    {
+        return app(WaybillScanInputService::class)->matchedBarcode($metadata['barcode'] ?? null, $delivery, allowOrderNumber: true);
+    }
+
     private function assertActorMayTransition(
         Delivery $delivery,
         string $targetStatus,
         User $actor,
         ?LogisticsHub $hub,
-        array $metadata
+        array $metadata,
+        ?LogisticsManifestEvent $transport = null
     ): void {
         if ($targetStatus === self::STATUS_PICKED_UP) {
             $this->eligibility->assertBayanHub((int) $delivery->origin_bayan_hub_id);
@@ -238,12 +365,10 @@ class OrderStateMachineService
         }
 
         $expectedHubId = match ($targetStatus) {
-            self::STATUS_ARRIVED_AT_ORIGIN_HUB,
-            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB => $delivery->origin_bayan_hub_id,
-            self::STATUS_ARRIVED_AT_MOTHER_HUB,
-            self::STATUS_SORTED_TO_LINE_HAUL,
-            self::STATUS_IN_TRANSIT_TO_DEST_HUB => $delivery->origin_mother_hub_id,
-            self::STATUS_ARRIVED_AT_DEST_HUB,
+            self::STATUS_ARRIVED_AT_ORIGIN_HUB => $delivery->origin_bayan_hub_id,
+            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => $transport?->manifest->source_hub_id,
+            self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_TO_SENDER => $transport?->manifest->destination_hub_id,
+            self::STATUS_SORTED_TO_LINE_HAUL => in_array($delivery->current_hub_id, [$delivery->origin_mother_hub_id, $delivery->destination_mother_hub_id], true) ? $delivery->current_hub_id : null,
             self::STATUS_SORTED_TO_BARANGAY_BIN,
             self::STATUS_READY_FOR_HUB_PICKUP,
             self::STATUS_ASSIGNED_TO_RIDER,
@@ -254,8 +379,9 @@ class OrderStateMachineService
         if (! $expectedHubId || $hub->id !== $expectedHubId) {
             throw new DomainException('The parcel is not expected at this facility for the requested scan.');
         }
-        $tier = in_array($targetStatus, [self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_SORTED_TO_LINE_HAUL, self::STATUS_IN_TRANSIT_TO_DEST_HUB], true)
-            ? 'regional_mother_hub' : 'local_bayan_hub';
+        $tier = $transport ? ($hub->id === $transport->manifest->source_hub_id ? $transport->manifest->sourceHub->tier : $transport->manifest->destinationHub->tier)
+            : (in_array($targetStatus, [self::STATUS_SORTED_TO_LINE_HAUL], true)
+            ? 'regional_mother_hub' : 'local_bayan_hub');
         if ($hub->tier !== $tier) {
             throw new DomainException('The facility tier does not match the requested custody operation.');
         }
@@ -305,6 +431,12 @@ class OrderStateMachineService
         $order = $delivery->order;
 
         switch ($targetStatus) {
+            case self::STATUS_RETURN_IN_TRANSIT:
+                $delivery->current_hub_id = null;
+                break;
+            case self::STATUS_RETURN_TO_SENDER:
+                $delivery->current_hub_id = $hub->id;
+                break;
             case self::STATUS_PICKED_UP:
                 $delivery->picked_up_at = now();
                 $delivery->current_hub_id = null;
@@ -317,16 +449,16 @@ class OrderStateMachineService
                 $order->status = 'at_sorting_center';
                 break;
             case self::STATUS_IN_TRANSIT_TO_MOTHER_HUB:
+            case self::STATUS_IN_TRANSIT_TO_DEST_HUB:
                 $delivery->current_hub_id = null;
-                $delivery->shuttle_manifest_number = $metadata['manifest_number'] ?? 'FEEDER-'.now()->format('Ymd-His').'-'.$delivery->id;
+                if ($metadata['manifest_type'] === 'line_haul') {
+                    $delivery->truck_manifest_number = $metadata['manifest_number'];
+                } else {
+                    $delivery->shuttle_manifest_number = $metadata['manifest_number'];
+                }
                 $order->status = 'at_sorting_center';
                 break;
             case self::STATUS_SORTED_TO_LINE_HAUL:
-                $order->status = 'at_sorting_center';
-                break;
-            case self::STATUS_IN_TRANSIT_TO_DEST_HUB:
-                $delivery->current_hub_id = null;
-                $delivery->truck_manifest_number = $metadata['manifest_number'] ?? 'LINEHAUL-'.now()->format('Ymd-His').'-'.$delivery->id;
                 $order->status = 'at_sorting_center';
                 break;
             case self::STATUS_SORTED_TO_BARANGAY_BIN:
@@ -363,9 +495,6 @@ class OrderStateMachineService
                 $delivery->failure_attempts++;
                 $delivery->failure_reason = $metadata['reason'];
                 $order->status = self::STATUS_DELIVERY_FAILED;
-                if ($delivery->failure_attempts >= 3) {
-                    $delivery->status = self::STATUS_RETURN_TO_SENDER;
-                }
                 break;
         }
     }

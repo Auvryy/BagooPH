@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import WaybillCamera from '@/Components/WaybillCamera';
 import Barcode from '@/Components/Barcode';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -75,11 +76,12 @@ interface Props {
     }>;
     shop: Shop;
     shopEligible: boolean;
+    returnReceiptToken: string;
     currentStatus?: string;
     counts?: Counts;
 }
 
-export default function SellerOrders({ orderItems, shop, shopEligible, currentStatus = 'all', counts }: Props) {
+export default function SellerOrders({ orderItems, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts }: Props) {
     const [selectedOrderForWaybill, setSelectedOrderForWaybill] = useState<any | null>(null);
     const [selectedOrderForQr, setSelectedOrderForQr] = useState<any | null>(null);
     const [orderToAcceptAndPack, setOrderToAcceptAndPack] = useState<any | null>(null);
@@ -94,6 +96,25 @@ export default function SellerOrders({ orderItems, shop, shopEligible, currentSt
     const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
     const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [returnOrder, setReturnOrder] = useState<any | null>(null);
+    const [returnBarcode, setReturnBarcode] = useState('');
+    const [returnNotes, setReturnNotes] = useState('');
+    const [returnErrors, setReturnErrors] = useState<Record<string, string>>({});
+    const returnPending = useRef(false);
+    const receiveReturn = (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!returnOrder || returnPending.current) return;
+        returnPending.current = true;
+        setIsSubmitting(true);
+        setReturnErrors({});
+        router.post(route('seller.orders.return-receipt', returnOrder.id), {
+            barcode: returnBarcode, notes: returnNotes, route_reference: returnOrder.delivery.return_route_reference,
+            request_token: returnReceiptToken,
+        }, { preserveScroll: true, onError: setReturnErrors,
+            onSuccess: () => { setReturnOrder(null); setReturnBarcode(''); setReturnNotes(''); },
+            onFinish: () => { returnPending.current = false; setIsSubmitting(false); } });
+    };
 
     // Infinite scroll & tab loading state
     const [items, setItems] = useState<any[]>(orderItems.data || []);
@@ -711,7 +732,9 @@ export default function SellerOrders({ orderItems, shop, shopEligible, currentSt
                                                 </button>
                                             ) : null}
 
-                                            {orderStatus === 'ready_for_pickup' && (
+                                            {item.order?.delivery?.return_ready_for_receipt && <button type="button" disabled={!shopEligible || isSubmitting} onClick={() => { setReturnOrder(item.order); setReturnErrors({}); setReturnBarcode(''); setReturnNotes(''); }} className="rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">Receive returned parcel</button>}
+                                            {item.order?.delivery?.status === 'return_in_transit' && <span className="text-xs text-slate-700">Returning through the hubs</span>}
+                                            {orderStatus === 'ready_for_pickup'  && (
                                                 <span className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold flex items-center gap-1.5 font-sans text-xs">
                                                     <Clock className="w-3.5 h-3.5" />
                                                     <span>Awaiting Rider Scan</span>
@@ -747,6 +770,18 @@ export default function SellerOrders({ orderItems, shop, shopEligible, currentSt
                         })}
                     </div>
                 )}
+
+                {returnOrder && <div role="dialog" aria-modal="true" aria-labelledby="return-receipt-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <form onSubmit={receiveReturn} className="max-h-[90dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border border-slate-300 bg-white p-5">
+                        <h2 id="return-receipt-title" className="text-lg font-bold text-slate-900">Receive your returned parcel</h2>
+                        <p className="text-sm text-slate-700">Scan the original waybill after receiving the parcel from the origin hub. This confirms receipt and marks the order returned.</p>
+                        <label className="block text-sm font-semibold">Actual waybill<input required autoFocus value={returnBarcode} onChange={event => setReturnBarcode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
+                        <WaybillCamera onScan={setReturnBarcode} disabled={isSubmitting} />
+                        <label className="block text-sm font-semibold">Receipt notes<textarea required maxLength={1000} value={returnNotes} onChange={event => setReturnNotes(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
+                        {Object.entries(returnErrors).map(([key, value]) => <p key={key} role="alert" className="text-sm text-red-700">{value}</p>)}
+                        <div className="flex justify-end gap-3"><button type="button" disabled={isSubmitting} onClick={() => setReturnOrder(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Close</button><button disabled={isSubmitting || !returnBarcode.trim() || !returnNotes.trim()} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirm parcel receipt</button></div>
+                    </form>
+                </div>}
 
                 {/* Infinite Scroll Sentinel & Loading Indicator */}
                 <div ref={sentinelRef} className="py-2">

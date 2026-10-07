@@ -60,7 +60,7 @@ class RealWorldExceptionsAndFleetTest extends TestCase
         $rider = User::findOrFail($delivery->assigned_rider_id);
         $this->actingAs($rider)->post(route('courier.toggleDuty'), ['is_available' => false])->assertSessionHas('success');
         $this->assertFalse($rider->fresh()->courierProfile->is_available);
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery'])->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
         Storage::fake('public');
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('duty-proof.jpg', 20, 'image/jpeg'),

@@ -8,6 +8,7 @@ use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\LogisticsPlacementRecord;
 use App\Models\User;
 use DomainException;
@@ -86,7 +87,7 @@ class LogisticsPlacementService
             if ($profile->assigned_hub_id !== $expectedHubId) {
                 throw new DomainException('The courier placement changed. Check its current facility before trying again.');
             }
-            if (Delivery::riderHasActiveWork($courier->id)) {
+            if (Delivery::riderHasActiveWork($courier->id) || LogisticsManifest::where('driver_id', $courier->id)->where('status', 'dispatched')->exists()) {
                 throw new DomainException('Finish or recover the courier’s existing parcel custody before changing placement.');
             }
             $oldVehicle = $profile->vehicle_id ? $fleet->get($profile->vehicle_id) : null;

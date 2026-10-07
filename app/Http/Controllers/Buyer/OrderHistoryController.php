@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\PickupClaim;
 use App\Services\BuyerAccessService;
+use App\Services\Logistics\PickupClaimService;
 use App\Services\Orders\OrderLifecycleService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,8 +40,24 @@ class OrderHistoryController extends Controller
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,
             'canUsePortal' => $user->isBuyer() && $user->canAccessPortal(),
-            'canConfirmReceipt' => $ownedBuyerOrder && $order->status === 'delivered' && $order->delivery?->status === 'delivered',
+            'canConfirmReceipt' => $ownedBuyerOrder && $order->status === 'delivered' && ($order->delivery?->status === 'delivered'
+                || ($order->delivery?->status === 'customer_collected' && app(PickupClaimService::class)->hasCollectionEvidence($order->delivery))),
+            'pickupClaim' => $ownedBuyerOrder && $order->delivery ? PickupClaim::where('delivery_id', $order->delivery->id)->first()?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null,
+            'pickupHub' => $ownedBuyerOrder && $order->delivery ? $order->delivery->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null,
+            'pickupCodeUrl' => $ownedBuyerOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
+            'orderNotices' => $ownedBuyerOrder ? $user->notifications()->where('data->order_id', $order->id)->latest()->get()->map(fn ($notice) => ['id' => $notice->id, 'data' => $notice->data, 'read_at' => $notice->read_at, 'created_at' => $notice->created_at]) : [],
         ]);
+    }
+
+    public function readNotice(Request $request, string $notification): JsonResponse|RedirectResponse
+    {
+        $user = app(BuyerAccessService::class)->requireExistingOrders($request->user());
+        $notice = $user->notifications()->whereKey($notification)->firstOrFail();
+        $order = Order::findOrFail($notice->data['order_id']);
+        app(BuyerAccessService::class)->requireExistingOrders($user, $order);
+        $notice->markAsRead();
+
+        return $request->expectsJson() ? response()->json(['read' => true]) : back();
     }
 
     public function confirmReceived(Request $request, Order $order): RedirectResponse

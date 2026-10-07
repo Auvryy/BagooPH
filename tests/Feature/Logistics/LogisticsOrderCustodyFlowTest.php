@@ -20,7 +20,7 @@ use Tests\TestCase;
 
 class LogisticsOrderCustodyFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, \Tests\Feature\E2E\Support\CreatesE2EOrders, \Tests\Feature\E2E\Support\InteractsWithOrderActions, \Tests\Feature\E2E\Support\InteractsWithRoles;
 
     protected function setUp(): void
     {
@@ -122,7 +122,8 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
             ->assertJsonPath('prompt.action', 'DISPATCH_TO_FEEDER')
             ->assertJsonPath('prompt.expected_status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
-            ->assertJsonPath('prompt.requires_confirmation', true);
+            ->assertJsonPath('prompt.requires_confirmation', false)
+            ->assertJsonPath('prompt.manifest_url', '/hub/manifests');
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
 
         $this->actingAs($originHandler)->postJson(route('hub.scan'), [
@@ -131,10 +132,10 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'mode' => 'confirm',
             'action' => 'DISPATCH_TO_FEEDER',
             'expected_status' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
-        ])->assertOk()
-            ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB)
-            ->assertJsonPath('prompt.action', 'INSPECT_WAYBILL')
-            ->assertJsonPath('prompt.requires_confirmation', false);
+        ])->assertConflict();
+        $this->assertSame(OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB, $delivery->fresh()->status);
+        $this->confirmFlowManifest($delivery, $originHub, true, $originHandler);
+        $this->assertSame(OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB, $delivery->fresh()->status);
     }
 
     public function test_origin_hub_can_scan_immediately_after_rider_pickup_without_navigation(): void
@@ -161,6 +162,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         $this->actingAs($pickupRider)
             ->patch(route('courier.updateStatus', $delivery), [
                 'status' => 'picked_up',
+                'barcode' => $delivery->tracking_number,
             ])
             ->assertSessionHas('success');
 
@@ -178,29 +180,14 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
     public function test_destination_intake_immediately_returns_the_sorting_step(): void
     {
-        $destinationHandler = User::where('email', 'logistics@bagoo.test')->firstOrFail();
-        $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
-        $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
-        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
-        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
-        $order = $this->createOrder('at_sorting_center', 'Poblacion III');
-        $delivery = Delivery::factory()->create([
-            'order_id' => $order->id,
-            'logistics_company_id' => $company->id,
-            'origin_bayan_hub_id' => $originHub->id,
-            'origin_mother_hub_id' => $motherHub->id,
-            'destination_mother_hub_id' => $motherHub->id,
-            'destination_bayan_hub_id' => $destinationHub->id,
-            'current_hub_id' => null,
-            'status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
-        ]);
-
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'in_transit_to_destination_hub');
+        $destinationHub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $destinationHandler = $this->flowHandler($destinationHub);
+        $this->confirmFlowManifest($delivery, $destinationHub, false, $destinationHandler);
+        $this->assertSame(OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB, $delivery->fresh()->status);
         $this->actingAs($destinationHandler)->postJson(route('hub.scan'), [
-            'barcode' => $delivery->tracking_number,
-            'hub_id' => $destinationHub->id,
-            'mode' => 'confirm',
-            'action' => 'RECEIVE_AT_DESTINATION_HUB',
-            'expected_status' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
+            'barcode' => $delivery->tracking_number, 'hub_id' => $destinationHub->id, 'mode' => 'inspect',
         ])->assertOk()
             ->assertJsonPath('delivery.status', OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB)
             ->assertJsonPath('prompt.action', 'AWAIT_BARANGAY_SORT')
@@ -271,21 +258,12 @@ class LogisticsOrderCustodyFlowTest extends TestCase
     #[DataProvider('courierApprovals')]
     public function test_hub_sorts_then_assigns_before_only_the_selected_rider_can_dispatch(string $approval): void
     {
-        $logistics = User::where('email', 'logistics@bagoo.test')->firstOrFail();
-        $assignedRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
+        $order = $this->newFlowOrder();
+        $delivery = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        $destinationHub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
+        $logistics = $this->flowHandler($destinationHub);
+        $assignedRider = $this->flowRider($destinationHub);
         $assignedRider->update(['kyc_status' => $approval]);
-        $destinationHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
-        $company = LogisticsCompany::where('code', 'BGX')->firstOrFail();
-        $order = $this->createOrder('at_sorting_center', 'Poblacion III');
-        $delivery = Delivery::factory()->create([
-            'order_id' => $order->id,
-            'logistics_company_id' => $company->id,
-            'destination_bayan_hub_id' => $destinationHub->id,
-            'current_hub_id' => $destinationHub->id,
-            'delivery_type' => 'doorstep',
-            'destination_bin' => 'BIN: BRGY-POBLACION-III',
-            'status' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-        ]);
 
         $this->actingAs($logistics)->postJson(route('hub.sort'), [
             'delivery_id' => $delivery->id,
@@ -322,11 +300,13 @@ class LogisticsOrderCustodyFlowTest extends TestCase
 
         $this->actingAs($otherRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ]);
         $this->assertSame(OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER, $delivery->fresh()->status);
 
         $this->actingAs($assignedRider)->patch(route('courier.updateStatus', $delivery), [
             'status' => 'out_for_delivery',
+            'barcode' => $delivery->tracking_number,
         ]);
 
         $this->assertSame(OrderStateMachineService::STATUS_OUT_FOR_DELIVERY, $delivery->fresh()->status);
@@ -494,6 +474,12 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         string $action,
         string $expectedStatus
     ): void {
+        $this->assertSame($expectedStatus, $delivery->fresh()->status);
+        if (in_array($action, ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true)) {
+            $this->confirmFlowManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
+
+            return;
+        }
         $this->actingAs($operator)->postJson(route('hub.scan'), [
             'barcode' => $delivery->tracking_number,
             'hub_id' => $hub->id,

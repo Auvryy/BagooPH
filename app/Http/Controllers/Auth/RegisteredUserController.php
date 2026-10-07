@@ -4,24 +4,16 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\ApplicationRegistrationService;
+use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
-use App\Services\OtpService;
 use App\Services\VerificationDocumentService;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rules;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -67,136 +59,19 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $role = $request->input('role', 'buyer');
-        if (! is_string($role)) {
-            throw ValidationException::withMessages(['role' => 'Choose a supported account role.']);
-        }
-        $birthDates = app(BirthDateEligibility::class);
-
-        // Merge composite name if first_name or last_name is provided without a full name
-        if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
-            foreach (['first_name', 'middle_name', 'last_name'] as $field) {
-                if ($request->filled($field) && ! is_string($request->input($field))) {
-                    throw ValidationException::withMessages([$field => 'Enter a valid name.']);
-                }
-            }
-            $compositeName = trim(
-                ($request->input('first_name', '').' '.
-                ($request->input('middle_name') ? $request->input('middle_name').' ' : '').
-                $request->input('last_name', ''))
-            );
-            $request->merge(['name' => $compositeName]);
-        }
-
-        $applications = app(ApplicationValidationService::class);
-        $request->merge($applications->registrationValues($request->all(), $role));
-        $rules = $applications->rules($role) + [
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => 'nullable|string|in:buyer,seller,courier,logistics',
-            'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
-        ];
-        foreach (['user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'] as $field) {
-            $rules[$field] = ['prohibited'];
-        }
-        $files = match ($role) {
-            'seller' => ['id_document', 'business_permit'],
-            'courier' => ['id_document', 'driver_license', 'or_cr_document'],
-            'logistics' => ['business_permit'],
-            default => [],
-        };
-        foreach ($files as $field) {
-            $rules[$field] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-        }
-        if ($role === 'logistics') {
-            $rules['franchise_document'] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
-        }
-        $validated = $request->validate($rules);
-
-        $paths = app(VerificationDocumentService::class)->storeUploads($validated);
-        $idPath = $paths['id_document_path'] ?? null;
-        $permitPath = $paths['business_permit_path'] ?? null;
-        $licensePath = $paths['driver_license_path'] ?? null;
-        $orCrPath = $paths['or_cr_path'] ?? null;
-        $franchisePath = $paths['franchise_document_path'] ?? null;
-
-        $isBuyer = ($role === 'buyer');
-
-        $birthday = $validated['birthday'] ?? null;
-        $age = $birthDates->age($birthday);
-
-        // Verify and burn OTP token if provided
-        $otpToken = $request->input('otp_token');
-        $emailVerifiedAt = null;
-        if ($otpToken) {
-            $otpService = app(OtpService::class);
-            if ($otpService->validateAndBurnToken($validated['email'], $otpToken, 'registration')) {
-                $emailVerifiedAt = now();
-            }
-        }
-
-        // Create User with appropriate role status
-        $account = [
-            'name' => $validated['name'],
-            'email_verified_at' => $emailVerifiedAt,
-            'first_name' => $validated['first_name'] ?? null,
-            'last_name' => $validated['last_name'] ?? null,
-            'middle_name' => $validated['middle_name'] ?? null,
-            'sex' => $validated['sex'] ?? null,
-            'birthday' => $birthday,
-            'age' => $age,
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => $role,
-            'phone' => $validated['phone'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'city' => $validated['city'] ?? $validated['municipality'] ?? null,
-            'province' => $validated['province'] ?? null,
-            'municipality' => $validated['municipality'] ?? null,
-            'barangay' => $validated['barangay'] ?? null,
-            'postal_code' => $validated['postal_code'] ?? null,
-            'status' => $isBuyer ? 'active' : 'pending_approval',
-            'kyc_status' => $isBuyer ? ($idPath ? 'pending_approval' : 'none') : 'pending_approval',
-            'id_document_path' => $idPath,
-            'business_permit_path' => $permitPath,
-            'driver_license_path' => $licensePath,
-            'or_cr_path' => $orCrPath,
-            'kyc_submitted_at' => $idPath ? now() : ($isBuyer ? null : now()),
-        ];
-
-        try {
-            $user = app(ApplicationRegistrationService::class)->register($account + ['_franchise_path' => $franchisePath], $validated);
-        } catch (\Throwable $exception) {
-            Storage::disk('local')->delete(array_values($paths));
-            if ($exception instanceof QueryException && in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
-                $detail = $exception->errorInfo[2] ?? '';
-                if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email')) {
-                    throw ValidationException::withMessages(['email' => 'This email address is already registered.']);
-                }
-                if (str_contains($detail, 'logistics_companies_code') || str_contains($detail, 'logistics_companies.code')) {
-                    throw ValidationException::withMessages(['company_code' => 'This company code is already registered.']);
-                }
-            }
-            throw $exception;
-        }
-
-        try {
-            event(new Registered($user));
-        } catch (\Throwable $exception) {
-            Log::warning('Failed to dispatch registration verification mail.', [
-                'user_id' => $user->id,
-                'exception' => $exception::class,
-            ]);
-            if (! $isBuyer) {
+        $result = app(AccountRegistrationService::class)->submit($request);
+        $user = $result['user'];
+        if (! $result['verification_email_sent']) {
+            if (! $user->isBuyer()) {
                 Auth::login($user);
             }
 
-            return redirect($isBuyer ? route('login') : '/pending-approval')->withErrors([
+            return redirect($user->isBuyer() ? route('login') : '/pending-approval')->withErrors([
                 'email' => 'Your account was created, but we could not send the verification email. Please sign in and request it again.',
             ]);
         }
-
-        if ($isBuyer) {
-            if ($emailVerifiedAt) {
+        if ($user->isBuyer()) {
+            if ($user->email_verified_at) {
                 Auth::login($user);
 
                 return app(BuyerAccessService::class)->signInDestination($request)->with('success', 'Your account was created. Submit your identity application for review.');
@@ -204,7 +79,6 @@ class RegisteredUserController extends Controller
 
             return redirect()->route('login')->with('status', 'Registration successful! Please sign in to your new account.');
         }
-
         Auth::login($user);
 
         return redirect('/pending-approval');
