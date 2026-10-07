@@ -5,7 +5,7 @@ import WaybillCamera from '@/Components/WaybillCamera';
 
 interface Hub { id: number; name: string; code: string; tier: string }
 interface Manifest {
-    id: number; reference: string; type: string; status: string; version: number; included_count: number;
+    id: number; reference: string; type: string; direction: string; status: string; version: number; included_count: number;
     source: Hub; destination: Hub; vehicle_plate: string; driver_name: string;
     dispatched_at: string | null; received_at: string | null;
 }
@@ -26,7 +26,7 @@ const words = (value: string) => value.replaceAll('_', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles }: Props) {
-    const creation = useForm({ source_hub_id: '', destination_hub_id: '', vehicle_id: '', creation_token: creationToken ?? '' });
+    const creation = useForm({ source_hub_id: '', destination_hub_id: '', vehicle_id: '', direction: 'outbound', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
     const [notes, setNotes] = useState('');
     const [kind, setKind] = useState('missing');
@@ -65,6 +65,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                 <h2 className="text-lg font-semibold text-slate-900">Prepare a draft</h2>
                 <p className="mt-1 text-sm text-slate-600">Choose the next hub on the parcel route. An assigned handler scans the actual parcels before you seal the list.</p>
                 <form onSubmit={create} className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <label className="text-sm font-semibold text-slate-800 sm:col-span-3">Transfer direction<select value={creation.data.direction} className={inputClass} onChange={event => creation.setData('direction', event.target.value)}><option value="outbound">Delivery to buyer</option><option value="return">Return to seller</option></select>{fieldError(creation.errors.direction)}</label>
                     <label className="text-sm font-semibold text-slate-800">Sending hub<select required value={creation.data.source_hub_id} className={inputClass} onChange={(event) => creation.setData({ ...creation.data, source_hub_id: event.target.value, vehicle_id: '' })}><option value="">Select sending hub</option>{hubs.map(hub => <option key={hub.id} value={hub.id}>{hub.code} — {hub.name}</option>)}</select>{fieldError(creation.errors.source_hub_id)}</label>
                     <label className="text-sm font-semibold text-slate-800">Receiving hub<select required value={creation.data.destination_hub_id} className={inputClass} onChange={(event) => creation.setData({ ...creation.data, destination_hub_id: event.target.value, vehicle_id: '' })}><option value="">Select receiving hub</option>{hubs.filter(hub => String(hub.id) !== creation.data.source_hub_id).map(hub => <option key={hub.id} value={hub.id}>{hub.code} — {hub.name}</option>)}</select>{fieldError(creation.errors.destination_hub_id)}</label>
                     <label className="text-sm font-semibold text-slate-800">Vehicle and driver<select required value={creation.data.vehicle_id} className={inputClass} onChange={(event) => creation.setData('vehicle_id', event.target.value)}><option value="">Select source-hub vehicle</option>{vehicles.filter(vehicle => String(vehicle.hub_id) === creation.data.source_hub_id && vehicle.vehicle_type === requiredVehicleType).map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicle.plate_number} — {vehicle.driver_name}</option>)}</select>{fieldError(creation.errors.vehicle_id)}</label>
@@ -76,12 +77,12 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                     <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-slate-900">Recorded transfers</h2>{selected && <Link href={basePath} className="text-sm font-semibold text-[#E00D42]">All manifests</Link>}</div>
                     {!manifests.data.length && <p className="mt-4 text-sm text-slate-600">No manifests have been recorded within your scope.</p>}
                     <div className="mt-3 space-y-2">{manifests.data.map(manifest => <Link key={manifest.id} href={basePath + '/' + manifest.id} className={'block rounded-lg border p-3 ' + (selected?.id === manifest.id ? 'border-[#E00D42] bg-[#FFFAFB]' : 'border-slate-300 hover:bg-slate-50')}>
-                        <p className="break-all text-sm font-semibold text-slate-900">{manifest.reference}</p><p className="mt-1 text-sm text-slate-700">{manifest.source.code} → {manifest.destination.code}</p><p className="mt-1 text-xs capitalize text-slate-600">{words(manifest.status)} · {manifest.included_count} parcels · {manifest.vehicle_plate}</p>
+                        <p className="break-all text-sm font-semibold text-slate-900">{manifest.reference}</p><p className="mt-1 text-sm text-slate-700">{manifest.source.code} → {manifest.destination.code}</p><p className="mt-1 text-xs capitalize text-slate-600">{words(manifest.direction)} · {words(manifest.status)} · {manifest.included_count} parcels · {manifest.vehicle_plate}</p>
                     </Link>)}</div>
                     <nav aria-label="Manifest pages" className="mt-4 flex flex-wrap gap-2">{manifests.links.filter(link => link.url).map((link, index) => <Link key={index} href={link.url!} aria-current={link.active ? 'page' : undefined} className={buttonClass}>{link.label.replace(/&laquo;|&raquo;/g, '').trim()}</Link>)}</nav>
                 </section>
                 {selected ? <section className="min-w-0 space-y-4 rounded-lg border border-slate-300 bg-white p-5">
-                    <div><p className="text-sm font-semibold capitalize text-[#E00D42]">{words(selected.status)} · {words(selected.type)}</p><h2 className="mt-1 break-all text-lg font-semibold text-slate-900">{selected.reference}</h2><p className="mt-2 text-sm text-slate-700">{selected.source.name} → {selected.destination.name}</p><p className="mt-1 text-sm text-slate-600">{selected.vehicle_plate} · {selected.driver_name}</p>{selected.dispatched_at && <p className="mt-1 text-sm text-slate-600">Departed {date(selected.dispatched_at)}</p>}{selected.received_at && <p className="mt-1 text-sm text-slate-600">All parcels received {date(selected.received_at)}</p>}</div>
+                    <div><p className="text-sm font-semibold capitalize text-[#E00D42]">{words(selected.status)} · {words(selected.direction)} · {words(selected.type)}</p><h2 className="mt-1 break-all text-lg font-semibold text-slate-900">{selected.reference}</h2><p className="mt-2 text-sm text-slate-700">{selected.source.name} → {selected.destination.name}</p><p className="mt-1 text-sm text-slate-600">{selected.vehicle_plate} · {selected.driver_name}</p>{selected.dispatched_at && <p className="mt-1 text-sm text-slate-600">Departed {date(selected.dispatched_at)}</p>}{selected.received_at && <p className="mt-1 text-sm text-slate-600">All parcels received {date(selected.received_at)}</p>}</div>
                     {Object.entries(errors).map(([key, message]) => <p key={key} role="alert" className="text-sm text-red-700">{message}</p>)}
                     {((selected.status === 'draft' && selected.canLoad) || (['dispatched', 'received'].includes(selected.status) && selected.canReceive)) && <WaybillCamera key={selected.id + ':' + selected.status} onScan={setBarcode} disabled={busy} />}
                     {selected.status === 'draft' && selected.canLoad && <form onSubmit={event => { event.preventDefault(); command('load', { barcode }); }} className="flex flex-wrap items-end gap-3">
