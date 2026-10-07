@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -1123,16 +1124,11 @@ class LogisticsHubWorkstationController extends Controller
     /**
      * Dispatch parcel into designated barangay delivery bin.
      */
-    public function sortBarangay(Request $request): JsonResponse|RedirectResponse
+    public function sortBarangay(Request $request, LogisticsSortingInputService $inputs): JsonResponse|RedirectResponse
     {
         abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may sort parcels.');
 
-        $validated = $request->validate([
-            'delivery_id' => 'required|exists:deliveries,id',
-            'barangay' => 'nullable|string',
-            'bin' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $inputs->validate($request->all());
 
         $delivery = Delivery::with('order')->findOrFail($validated['delivery_id']);
         [$activeHub] = $this->getActiveHub($request, $request->user());
@@ -1159,8 +1155,7 @@ class LogisticsHubWorkstationController extends Controller
 
         $stateMachine = app(OrderStateMachineService::class);
 
-        $barangay = $validated['barangay'] ?? ($delivery->order?->destination_barangay ?? 'GENERAL');
-        $bin = $validated['bin'] ?? ($delivery->destination_bin ?? ('BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay))));
+        ['barangay' => $barangay, 'bin' => $bin] = $inputs->destination($delivery, $validated);
 
         $locationName = "Hub Sorting Bay ({$barangay} / {$bin})";
 
