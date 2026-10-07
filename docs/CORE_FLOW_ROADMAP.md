@@ -70,7 +70,7 @@ Scoped profile/Shopping Bag repair: October 7, 2026. Existing profile writers sh
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
-| Failed delivery and RTS | Partial | Failure count and a third-attempt trigger exist; attempt records, hub-return custody, retry dates, reverse manifests, and seller receipt are missing. |
+| Failed delivery and RTS | Partial | Retained attempts, private proof, actual destination-hub returns, reviewed future retry dates and the three-attempt loop are implemented and scoped verified below. Third failure/refusal enters the reverse queue only after hub receipt. Reverse manifests, seller receipt and restricted recovery remain open. |
 | Hub self-pickup | Partial | Counter staging and release screens exist; the claim code is optional and lacks secure hashing, expiry, reuse prevention, identity enforcement, and COD custody. |
 | Persistent notifications | Missing | Rider boards provide operational tasks, but persistent buyer/seller lifecycle notifications and notification-center records are absent. |
 | COD reconciliation | Partial | Normal delivery no longer marks COD paid or creates settled commission entries. Append-only custody, remittance, discrepancy, and platform reconciliation records are still missing. |
@@ -1368,7 +1368,7 @@ Acceptance: same-region and cross-region parcels cannot skip their required Moth
 
 ### Phase 3: Delivery Exceptions and Self-Pickup
 
-**State: Partial.** Basic failure counting and counter screens exist; the required attempt, retry, reverse-custody, and secure claim contracts remain.
+**State: Partial.** Durable attempt records, actual destination-hub returns and reviewed retries are scoped verified. Reverse transport, authenticated seller receipt, secure claims and their required notice/cash/restricted-recovery foundations remain open.
 
 - Record each delivery attempt with rider, number, reason, notes, proof, attempt time, hub return, and retry date.
 - Allow retries after attempts one and two; begin reverse routing after the third failure.
@@ -1461,3 +1461,32 @@ Deployment: migrations `2026_10_07_110000_create_durable_logistics_manifests.php
 - `793c990` — `feat: manage and scan hub manifests through the logistics portal`
 
 The evidence commit has subject `docs: record verified manifest custody and remaining B14 prerequisites`; its generated hash is reported in the handoff. No push or merge was performed. The next approved bounded batches establish actual attempts/retry, reverse-route seller receipt, secure seven-day pickup and buyer receipt confirmation, together with only their necessary source notices/cash/restricted recovery foundations. B14 oversight follows those source writers; broader governance notices, finance reconciliation/settlement and later numbered branches are not selected.
+
+
+### B14 Prerequisite Delivery Attempts and Reviewed Retry: October 7, 2026
+
+**The scoped attempt and retry writers are implemented; B14 and reverse/secure-pickup prerequisites remain open.** Branch `feat/delivery-attempt-recovery` is stacked on manifest evidence commit `b70a427`. This batch does not claim seller return, counter release, recipient/COD collection, restricted recovery or admin exception completion.
+
+Each failed attempt retains its server reference, numbered attempt, assigned rider and role, actual submitted waybill, allowlisted reason, useful notes, submitted location, private image/hash and server time. The record links the real final-mile departure checkpoint and original request. Model and database guards retain attempts and recovery events; foreign-key retention protects their parents. Direct status-only failure has no authority to manufacture an attempt. Original matching requests preserve the record; changed evidence or an additional failure for the same departure is rejected. Private proof routes enforce actor/facility scope and do not serialize file paths or request credentials. Each upload uses an independent server filename, and rejection/rollback removes only the new unused proof.
+
+Final-mile departure now requires the rider's actual waybill and real destination-hub custody. Failure retains rider custody even on the third attempt. Only an assigned destination handler's matching return scan ends that custody and releases the rider's assignment/work. The event retains the original rider and source/target state. A non-retryable refusal or third failure enters `return_to_sender` at this actual receipt; the customer order remains `delivery_failed` until a later authenticated seller receipt. No stock or payment mutation substitutes for that path.
+
+A company administrator reviews a retryable first/second failure only after actual hub receipt and chooses a future Asia/Manila date. The due date gates the handler's scan back into the sorting queue; ordinary barangay sorting, eligible assignment and another actual departure follow. Immutable attempt references prevent a stale receipt/retry/review from acting on a later failure that happens to have the same status. The original approval retains its reviewer, date, notes and time on identical requests. Riders cannot self-schedule or exceed three total attempts.
+
+The rider form collects actual scan, reason, location, notes and proof and keeps a failed parcel visible until hub receipt. The owning hub recovery page shows real history/private proof and offers review only to its company administrator. Floor scans distinguish inbound return, waiting review/date and due retry. Both portal URL variants use the same rules. Existing positive final-mile tests submit actual scans; one old status-only custody fixture now reaches destination custody through real checkout and manifest actions while retaining its approval/ownership assertions.
+
+**Verification:** affected checks pass **49 tests / 3,368 assertions**, including **32 new acceptance cases**. After fixture refinement, focused attempt/rejection checks pass **37 / 3,189**, and the attempt plus newly exercised legacy retry cases pass **35 / 3,106**. The wider regression run has **104 tests / 4,576 assertions / eight known later-flow failures / zero errors**. The final full isolated SQLite `:memory:` comparison has **2,494 tests / 40,893 assertions / 28 failures / zero errors**, against **2,462 / 37,665 / 42 / zero** beforehand. All 32 new cases pass; 14 old failure/retry gates are resolved, with no new failures and no removed or skipped cases. This is a scoped gate with disclosed later-flow failures, not a passing full suite. The production TypeScript/Vite build and scoped 23-file style/diff checks pass; rendered/device behavior was not exercised.
+
+The checks cover both portals and the full three-attempt loop, wrong riders/hubs/reviewers, invalid reasons/notes/proof, stale attempt references, future/past/impossible dates, repeated submissions, proof cleanup, audit rollback, raw history mutation and private proof access. Existing F25 reschedule and combination cases now call the actual reviewed retry chain and its `delivery_rescheduled` scan. Invalid-code tests submit otherwise valid uploads, so unrelated missing fields cannot satisfy their rejection assertions. A shared fixture initializes private proof storage once per test instead of erasing earlier attempts.
+
+The first full run found seven older requests/expectations that omitted the required departure scan or treated canonical failure as an unsupported alias. Those tests now submit the scan and distinguish real legacy aliases from a canonical failure forbidden on pickup work, preserving their ownership, state and evidence assertions. Ten remaining reverse-flow failures advance beyond the former unsupported failure request to the still-missing `returned`/`parcel_returned` evidence gate: F19 cases 01-05, F25 case 04, B19 cases 01/03/05 and combination case 16. Exact class/method, kind/type and assertion contexts were compared and retained locally. Their changed failure location is recorded as progress into an unfinished source contract; it is not hidden or classified as a new passing return path.
+
+Migration `2026_10_07_130000_create_delivery_attempt_evidence.php` applied additively locally. Counts and complete row hashes of 12 checked existing tables, including custody and manifest history, stayed identical. The two new tables are empty; PostgreSQL catalogue inspection confirms their two immutable triggers. No synthetic development delivery/cash records or destructive PostgreSQL tests were used. Apply the prerequisite migrations before this migration elsewhere. SQLite tests and catalogue inspection do not certify simultaneous PostgreSQL contention or rendered/device behavior.
+
+**Scoped assessment:** recorded attempts and reviewed retry **3/10 -> 8/10**. Actual evidence now explains each failed visit, hub return and approved retry, and the three-attempt boundary is enforced. Overall Phase 0/2/3, B14 and project readiness remain open. Reverse manifest transport, seller-return staging/receipt and secure counter handling follow in separate authorized batches. Local implementation commits:
+
+- `d10016f` — `feat: retain immutable delivery attempts and recovery events`
+- `dd3414b` — `feat: require recorded delivery attempts and reviewed retries`
+- `326acc4` — `feat: show failed deliveries and reviewed hub recovery`
+
+The evidence commit has subject `docs: record verified attempts and remaining return prerequisites`; its generated hash is reported in the handoff. No push or merge was performed.
