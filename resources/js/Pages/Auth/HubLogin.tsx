@@ -43,7 +43,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
         }
 
         post('/login', {
-            onFinish: () => reset('password'),
+            onError: () => reset('password'),
         });
     };
 

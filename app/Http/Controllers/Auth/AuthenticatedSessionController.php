@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -78,7 +79,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): HttpResponse
     {
         $request->authenticate();
 
@@ -86,43 +87,50 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->isBuyer()) {
-            return app(BuyerAccessService::class)->signInDestination($request);
+        $destination = $user->isBuyer()
+            ? app(BuyerAccessService::class)->signInDestination($request)
+            : app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {
+                $host = $request->getHost();
+
+                if (str_starts_with($host, 'courier.')) {
+                    return redirect()->intended('/deliveries');
+                }
+                if (str_starts_with($host, 'seller.') || str_starts_with($host, 'hub.') || str_starts_with($host, 'admin.')) {
+                    return redirect()->intended('/dashboard');
+                }
+
+                $targetRoute = match ($request->user()->role) {
+                    'admin' => route('admin.dashboard', absolute: false),
+                    'seller' => route('seller.dashboard', absolute: false),
+                    'courier' => route('courier.deliveries', absolute: false),
+                    'logistics' => route('hub.index', absolute: false),
+                    default => route('buyer.index', absolute: false),
+                };
+
+                return redirect()->intended($targetRoute);
+            });
+
+        if (! $destination instanceof RedirectResponse) {
+            return $destination;
         }
 
-        return app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {
-            $host = $request->getHost();
+        Inertia::clearHistory();
 
-            if (str_starts_with($host, 'courier.')) {
-                return redirect()->intended('/deliveries');
-            }
-            if (str_starts_with($host, 'seller.') || str_starts_with($host, 'hub.') || str_starts_with($host, 'admin.')) {
-                return redirect()->intended('/dashboard');
-            }
-
-            $targetRoute = match ($request->user()->role) {
-                'admin' => route('admin.dashboard', absolute: false),
-                'seller' => route('seller.dashboard', absolute: false),
-                'courier' => route('courier.deliveries', absolute: false),
-                'logistics' => route('hub.index', absolute: false),
-                default => route('buyer.index', absolute: false),
-            };
-
-            return redirect()->intended($targetRoute);
-        });
+        return Inertia::location($destination);
     }
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request): HttpResponse
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+        Inertia::clearHistory();
 
-        return redirect('/')->with('success', 'You have been signed out successfully.');
+        return Inertia::location(redirect('/')->with('success', 'You have been signed out successfully.'));
     }
 }

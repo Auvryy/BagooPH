@@ -56,21 +56,14 @@ export default function BuyerLayout({
     const [logoutFeedback, setLogoutFeedback] = useState<string | null>(null);
 
     React.useEffect(() => {
-        // 1. Check flash message from backend redirect
-        if (flash?.success && /sign(ed)?\s*out|logg(ed)?\s*out/i.test(flash.success)) {
+        sessionStorage.removeItem('bagoo_just_logged_out');
+        if (!auth.user && flash?.success && /sign(ed)?\s*out|logg(ed)?\s*out/i.test(flash.success)) {
+            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
             setLogoutFeedback(flash.success);
             const timer = setTimeout(() => setLogoutFeedback(null), 6000);
             return () => clearTimeout(timer);
         }
-
-        // 2. Check client-side session flag
-        if (typeof window !== 'undefined' && sessionStorage.getItem('bagoo_just_logged_out') === '1') {
-            sessionStorage.removeItem('bagoo_just_logged_out');
-            setLogoutFeedback('You have been signed out successfully.');
-            const timer = setTimeout(() => setLogoutFeedback(null), 6000);
-            return () => clearTimeout(timer);
-        }
-    }, [flash?.success]);
+    }, [auth.user?.id, flash?.success]);
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState(() => {
@@ -433,12 +426,6 @@ export default function BuyerLayout({
                                                         href={route('logout')} 
                                                         method="post" 
                                                         as="button" 
-                                                        onClick={() => {
-                                                            if (typeof window !== 'undefined') {
-                                                                sessionStorage.setItem('bagoo_just_logged_out', '1');
-                                                                sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
-                                                            }
-                                                        }}
                                                         className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                                                     >
                                                         <LogOut className="w-4 h-4" />

@@ -9,8 +9,10 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\ShopEligibilityService;
 use App\Services\VerificationDocumentService;
+use Closure;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -20,6 +22,34 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $response = parent::handle($request, $next);
+
+        if ($request->header('X-Inertia')) {
+            foreach (['Location', 'X-Inertia-Location'] as $header) {
+                $target = $response->headers->get($header);
+                if ($target && parse_url($target, PHP_URL_HOST) === $request->getHost()
+                    && (parse_url($target, PHP_URL_PORT) === null || parse_url($target, PHP_URL_PORT) === $request->getPort())) {
+                    // Keep redirects on the browser's origin when HTTPS terminates before PHP.
+                    $path = parse_url($target, PHP_URL_PATH) ?: '/';
+                    if (str_starts_with($path, '//') || str_starts_with($path, '/\\')) {
+                        continue;
+                    }
+                    $query = parse_url($target, PHP_URL_QUERY);
+                    $fragment = parse_url($target, PHP_URL_FRAGMENT);
+                    $response->headers->set($header, $path.($query !== null ? '?'.$query : '').($fragment !== null ? '#'.$fragment : ''));
+                }
+            }
+        }
+
+        if ($request->user() || $request->header('X-Inertia') || $request->is('login', '*/login', 'logout')) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
+
+        return $response;
+    }
 
     /**
      * Determine the current asset version.

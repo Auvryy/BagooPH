@@ -36,8 +36,8 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
             localStorage.removeItem('bagoo_admin_email');
         }
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
+        post('/login', {
+            onError: () => reset('password'),
         });
     };
 

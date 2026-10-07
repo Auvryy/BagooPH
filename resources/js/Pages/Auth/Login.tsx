@@ -40,8 +40,8 @@ export default function Login({ status, canResetPassword }: Props) {
             sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
         }
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
+        post('/login', {
+            onError: () => reset('password'),
         });
     };
 
