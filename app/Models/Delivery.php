@@ -141,11 +141,10 @@ class Delivery extends Model
     {
         return $query->whereNot(function ($received) {
             $received->whereRaw("deliveries.status in ('delivery_failed', 'return_to_sender')")
-                ->whereColumn('current_hub_id', 'destination_bayan_hub_id')
                 ->whereExists(function ($evidence) {
                     $evidence->selectRaw('1')->from('delivery_recovery_events')
                         ->whereColumn('delivery_recovery_events.delivery_id', 'deliveries.id')
-                        ->whereColumn('delivery_recovery_events.hub_id', 'deliveries.current_hub_id')->where('event_type', 'hub_return');
+                        ->whereColumn('delivery_recovery_events.hub_id', 'deliveries.destination_bayan_hub_id')->where('event_type', 'hub_return');
                 });
         });
     }

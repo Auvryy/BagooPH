@@ -118,10 +118,13 @@ class DeliveryRecoveryService
             }
             $parcel->save();
             $event = $this->record($parcel, $attempt, $actor, $hub, 'hub_return', $source, ['barcode_scanned' => $barcode]);
-            DeliveryCheckpoint::record($parcel, 'failed_delivery_hub_return', actor: $actor, hub: $hub, barcodeScanned: $barcode,
+            $checkpoint = DeliveryCheckpoint::record($parcel, 'failed_delivery_hub_return', actor: $actor, hub: $hub, barcodeScanned: $barcode,
                 notes: 'Failed attempt returned to the destination hub. Evidence: '.$event->reference,
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel),
                     'custody_before' => $custody, 'custody_after' => ['kind' => 'hub', 'hub_id' => $hub->id, 'recovery_reference' => $event->reference]]);
+            if ($parcel->status === 'return_to_sender') {
+                app(DeliveryReturnService::class)->begin($parcel, $actor, $checkpoint);
+            }
 
             return $parcel;
         });

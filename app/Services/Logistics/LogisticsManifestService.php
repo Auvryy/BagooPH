@@ -56,11 +56,13 @@ class LogisticsManifestService
         if (! $actor->isLogistics() || ! $actor->canAccessPortal() || ! $company) {
             throw new AuthorizationException('Only the current company administrator may prepare its manifests.');
         }
+        $input += ['direction' => 'outbound'];
         $input = Validator::make($input, [
             'source_hub_id' => [...$this->idRules(), 'exists:logistics_hubs,id'],
             'destination_hub_id' => [...$this->idRules(), 'exists:logistics_hubs,id'],
             'vehicle_id' => [...$this->idRules(), 'exists:logistics_fleet,id'],
             'creation_token' => ['required', 'string', 'uuid'],
+            'direction' => ['required', Rule::in(['outbound', 'return'])],
         ])->validate();
         $fingerprint = $this->fingerprint($input);
 
@@ -73,7 +75,10 @@ class LogisticsManifestService
             }
             $existing = LogisticsManifest::where('created_by_id', $actor->id)->where('creation_token', $input['creation_token'])->first();
             if ($existing) {
-                if (! hash_equals($existing->creation_fingerprint, $fingerprint)) {
+                $legacyInput = array_diff_key($input, ['direction' => true]);
+                $legacyOutboundRetry = $existing->direction === 'outbound' && $input['direction'] === 'outbound'
+                    && hash_equals($existing->creation_fingerprint, $this->fingerprint($legacyInput));
+                if (! hash_equals($existing->creation_fingerprint, $fingerprint) && ! $legacyOutboundRetry) {
                     throw new DomainException('This creation request already prepared another manifest. Refresh before creating a new one.');
                 }
 
@@ -89,7 +94,7 @@ class LogisticsManifestService
             $manifest = LogisticsManifest::create([
                 'logistics_company_id' => $company->id, 'source_hub_id' => $source->id, 'destination_hub_id' => $destination->id,
                 'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'created_by_id' => $actor->id,
-                'creation_token' => $input['creation_token'], 'creation_fingerprint' => $fingerprint, 'type' => $type,
+                'creation_token' => $input['creation_token'], 'creation_fingerprint' => $fingerprint, 'type' => $type, 'direction' => $input['direction'],
                 'status' => 'draft', 'version' => 1,
             ]);
             $this->event($manifest, $actor, 'created', [], $manifest->state(), ['vehicle_plate' => $vehicle->plate_number, 'vehicle_type' => $vehicle->vehicle_type], hubId: $source->id);
@@ -154,7 +159,7 @@ class LogisticsManifestService
                 case 'load':
                     $this->requireStatus($manifest, 'draft');
                     $delivery = $deliveries->get($candidate->id);
-                    if (! $delivery || $this->nextHub($delivery) !== $manifest->destination_hub_id || $delivery->current_hub_id !== $manifest->source_hub_id
+                    if (! $delivery || $this->direction($delivery) !== $manifest->direction || $this->nextHub($delivery) !== $manifest->destination_hub_id || $delivery->current_hub_id !== $manifest->source_hub_id
                         || $delivery->logistics_company_id !== $manifest->logistics_company_id) {
                         throw new DomainException('This parcel is not expected on this source and destination route.');
                     }
@@ -238,8 +243,7 @@ class LogisticsManifestService
                     if (! $manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
                         $manifest->fill(['status' => 'received', 'received_at' => now(), 'receiver_id' => $actor->id])->save();
                     }
-                    $target = LogisticsHub::findOrFail($hubId)->isMotherHub()
-                        ? OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB : OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB;
+                    $target = $this->receiptStatus($manifest);
                     $scan = $this->event($manifest, $actor, 'parcel_received', DeliveryCheckpoint::state($delivery),
                         ['delivery_status' => $target], [], $parcel, $input['barcode'], $hubId, $input['notes']);
                     app(OrderStateMachineService::class)->transition($delivery, $target, $actor, [
@@ -353,6 +357,9 @@ class LogisticsManifestService
 
     public function nextHub(Delivery $delivery): int
     {
+        if ($this->direction($delivery) === 'return') {
+            return app(DeliveryReturnService::class)->nextHub($delivery);
+        }
         $delivery->loadMissing('order');
         $custody = DeliveryCheckpoint::lastCustody($delivery);
         $source = LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($delivery->current_hub_id);
@@ -392,13 +399,34 @@ class LogisticsManifestService
 
     public function transitStatus(LogisticsManifest $manifest): string
     {
+        if ($manifest->direction === 'return') {
+            return 'return_in_transit';
+        }
+
         return LogisticsHub::findOrFail($manifest->destination_hub_id)->isMotherHub()
             ? OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB : OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB;
     }
 
     public function route(Delivery $delivery): array
     {
-        return $delivery->only(['order_id', 'logistics_company_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id']);
+        $route = app(DeliveryReturnService::class)->forwardRoute($delivery);
+        if ($this->direction($delivery) === 'return') {
+            $return = app(DeliveryReturnService::class)->route($delivery);
+            $route += ['return_route_reference' => $return->reference, 'return_hub_ids' => $return->hub_ids];
+        }
+
+        return $route;
+    }
+
+    public function direction(Delivery $delivery): string
+    {
+        return in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned'], true) ? 'return' : 'outbound';
+    }
+
+    public function receiptStatus(LogisticsManifest $manifest): string
+    {
+        return $manifest->direction === 'return' ? 'return_to_sender'
+            : ($manifest->destinationHub->isMotherHub() ? OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB : OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB);
     }
 
     private function authorizeCommand(LogisticsManifest $manifest, User $actor, string $action): void
@@ -450,7 +478,7 @@ class LogisticsManifestService
         }
         foreach ($parcels as $parcel) {
             $delivery = $deliveries->get($parcel->delivery_id);
-            if (! $delivery || $parcel->active_delivery_id !== $delivery->id || $delivery->current_hub_id !== $manifest->source_hub_id
+            if (! $delivery || $this->direction($delivery) !== $manifest->direction || $parcel->active_delivery_id !== $delivery->id || $delivery->current_hub_id !== $manifest->source_hub_id
                 || $this->route($delivery) !== $parcel->route_snapshot || $this->nextHub($delivery) !== $manifest->destination_hub_id
                 || ! $manifest->events()->where('manifest_parcel_id', $parcel->id)->where('event_type', 'load')->exists()) {
                 throw new DomainException('The current parcel route, source custody or outbound scan changed. Review the draft.');
@@ -461,8 +489,8 @@ class LogisticsManifestService
     private function verifyRecordedLeg(LogisticsManifest $manifest, LogisticsManifestParcel $parcel): void
     {
         $route = $parcel->route_snapshot;
-        $sourceTier = ($parcel->source_state['delivery_status'] ?? null) === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
-            ? 'local_bayan_hub' : 'regional_mother_hub';
+        $sourceTier = in_array($manifest->source_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
+            ? 'regional_mother_hub' : 'local_bayan_hub';
         $destinationTier = in_array($manifest->destination_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
             ? 'regional_mother_hub' : 'local_bayan_hub';
         if ($manifest->sourceHub->tier !== $sourceTier || $manifest->destinationHub->tier !== $destinationTier

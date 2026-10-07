@@ -60,7 +60,11 @@ class OrderStateMachineService
 
     public const STATUS_RETURN_TO_SENDER = 'return_to_sender';
 
+    public const STATUS_RETURN_IN_TRANSIT = 'return_in_transit';
+
     private const ALLOWED_FROM = [
+        self::STATUS_RETURN_IN_TRANSIT => [self::STATUS_RETURN_TO_SENDER],
+        self::STATUS_RETURN_TO_SENDER => [self::STATUS_RETURN_IN_TRANSIT],
         self::STATUS_PICKED_UP => ['assigned_pickup'],
         self::STATUS_ARRIVED_AT_ORIGIN_HUB => [self::STATUS_PICKED_UP],
         self::STATUS_IN_TRANSIT_TO_MOTHER_HUB => [self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_SORTED_TO_LINE_HAUL],
@@ -107,7 +111,7 @@ class OrderStateMachineService
 
             $this->assertActiveActor($actor);
             $transport = in_array($targetStatus, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB,
-                self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB], true)
+                self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true)
                 ? $this->requireManifestScan($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata) : null;
             $this->assertActorMayTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata, $transport);
             if ($transport) {
@@ -120,7 +124,7 @@ class OrderStateMachineService
             Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
             $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERY_FAILED, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
                 self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,
-                self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB], true);
+                self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true);
             $barcode = $scanRequired || isset($scanMetadata['barcode'])
                 ? $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery, allowOrderNumber: $hub !== null)
                 : null;
@@ -161,6 +165,7 @@ class OrderStateMachineService
                 self::STATUS_PICKED_UP => self::STATUS_READY_FOR_PICKUP,
                 self::STATUS_OUT_FOR_DELIVERY => self::STATUS_ASSIGNED_TO_RIDER,
                 self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED => self::STATUS_OUT_FOR_DELIVERY,
+                self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER => self::STATUS_DELIVERY_FAILED,
                 default => null,
             };
             if ($requiredOrderStatus && $lockedOrder->status !== $requiredOrderStatus) {
@@ -240,9 +245,9 @@ class OrderStateMachineService
     {
         return match ($status) {
             self::STATUS_PICKED_UP => ['kind' => 'courier', 'user_id' => $actor->id],
-            self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB => ['kind' => 'hub', 'hub_id' => $hub->id]
+            self::STATUS_ARRIVED_AT_ORIGIN_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_TO_SENDER => ['kind' => 'hub', 'hub_id' => $hub->id]
                 + ($transport ? ['manifest_scan_reference' => $transport->reference] : []),
-            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB => ['kind' => 'manifest',
+            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => ['kind' => 'manifest',
                 'manifest_id' => $transport->manifest_id, 'manifest_reference' => $transport->manifest->reference,
                 'vehicle_id' => $transport->manifest->vehicle_id, 'driver_id' => $transport->manifest->driver_id,
                 'manifest_scan_reference' => $transport->reference, 'source_scan_reference' => $transport->payload['source_scan_reference']],
@@ -259,7 +264,7 @@ class OrderStateMachineService
             throw new DomainException('Use the recorded manifest load, dispatch and receipt actions for hub transport.');
         }
         $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->find($metadata['manifest_scan_event_id']);
-        $departure = in_array($status, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB], true);
+        $departure = in_array($status, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT], true);
         $manifest = $scan?->manifest;
         if (! $scan || ! $manifest || $scan->event_type !== ($departure ? 'parcel_dispatched' : 'parcel_received')
             || $scan->actor_id !== $actor->id || $scan->hub_id !== $hub?->id || $scan->parcel?->delivery_id !== $delivery->id
@@ -270,8 +275,8 @@ class OrderStateMachineService
         }
         $service = app(LogisticsManifestService::class);
         $expected = $departure ? $service->transitStatus($manifest)
-            : ($manifest->destinationHub->isMotherHub() ? self::STATUS_ARRIVED_AT_MOTHER_HUB : self::STATUS_ARRIVED_AT_DEST_HUB);
-        if ($status !== $expected || $service->route($delivery) !== $scan->parcel->route_snapshot) {
+            : $service->receiptStatus($manifest);
+        if ($status !== $expected || $service->direction($delivery) !== $manifest->direction || $service->route($delivery) !== $scan->parcel->route_snapshot) {
             throw new DomainException('This scan does not match the recorded parcel route and manifest leg.');
         }
         $existing = $delivery->checkpoints()->where('checkpoint_type', $status)->where('manifest_number', $manifest->reference)->first();
@@ -357,8 +362,8 @@ class OrderStateMachineService
 
         $expectedHubId = match ($targetStatus) {
             self::STATUS_ARRIVED_AT_ORIGIN_HUB => $delivery->origin_bayan_hub_id,
-            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB => $transport?->manifest->source_hub_id,
-            self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB => $transport?->manifest->destination_hub_id,
+            self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => $transport?->manifest->source_hub_id,
+            self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_TO_SENDER => $transport?->manifest->destination_hub_id,
             self::STATUS_SORTED_TO_LINE_HAUL => in_array($delivery->current_hub_id, [$delivery->origin_mother_hub_id, $delivery->destination_mother_hub_id], true) ? $delivery->current_hub_id : null,
             self::STATUS_SORTED_TO_BARANGAY_BIN,
             self::STATUS_READY_FOR_HUB_PICKUP,
@@ -422,6 +427,12 @@ class OrderStateMachineService
         $order = $delivery->order;
 
         switch ($targetStatus) {
+            case self::STATUS_RETURN_IN_TRANSIT:
+                $delivery->current_hub_id = null;
+                break;
+            case self::STATUS_RETURN_TO_SENDER:
+                $delivery->current_hub_id = $hub->id;
+                break;
             case self::STATUS_PICKED_UP:
                 $delivery->picked_up_at = now();
                 $delivery->current_hub_id = null;
