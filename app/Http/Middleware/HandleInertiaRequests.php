@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\Message;
 use App\Models\Shop;
 use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\Notifications\NotificationCenterService;
 use App\Services\ShopEligibilityService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\Request;
@@ -92,6 +93,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'cartCount' => $cartCount,
             'unreadMessagesCount' => $unreadMessagesCount,
+            'notificationSummary' => app(NotificationCenterService::class)->summary($user),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

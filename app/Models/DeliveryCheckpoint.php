@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Notifications\LifecycleNoticeService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -81,7 +82,7 @@ class DeliveryCheckpoint extends Model
         array $evidence = [],
         ?string $scanProvenance = null,
     ): self {
-        return self::create([
+        $checkpoint = self::create([
             'delivery_id' => $delivery->id,
             'hub_id' => $hub?->id ?? $delivery->current_hub_id,
             'facility_code' => $facilityCode ?? $hub?->code,
@@ -96,6 +97,10 @@ class DeliveryCheckpoint extends Model
             'scanned_by_id' => $actor?->id,
             'proof_image' => $proofImage,
         ] + array_intersect_key($evidence, array_flip(['source_state', 'target_state', 'custody_before', 'custody_after', 'source_checkpoint_id'])));
+
+        app(LifecycleNoticeService::class)->checkpoint($checkpoint);
+
+        return $checkpoint;
     }
 
     public function delivery(): BelongsTo

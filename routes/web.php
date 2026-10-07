@@ -32,6 +32,7 @@ use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
@@ -40,12 +41,12 @@ use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
-use App\Http\Controllers\Seller\SellerShopController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
@@ -380,6 +381,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::get('/governance-history', [GovernanceHistoryController::class, 'index'])->name('governance-history.index');
     Route::get('/governance-history/{source}/{decisionId}', [GovernanceHistoryController::class, 'show'])->whereNumber('decisionId')->name('governance-history.show');
 });

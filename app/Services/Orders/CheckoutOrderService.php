@@ -18,6 +18,7 @@ use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -207,6 +208,7 @@ class CheckoutOrderService
                 } catch (DomainException $exception) {
                     throw new CheckoutException($exception->getMessage(), previous: $exception);
                 }
+                app(LifecycleNoticeService::class)->order($order, 'placed');
                 $orders->push($order->load('delivery', 'items'));
             }
 
