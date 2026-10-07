@@ -6,6 +6,8 @@ The selected B06+B07 batch uses one `admin/governance-restrictions` branch. Comp
 
 The selected B10-B12 batch uses `admin/moderation-audit-and-overview` after B08/B09 is merged. Complete B10's focused moderation/commerce checks before B11 and B11's audit/privacy checks before B12. Keep individual task records and logical commits. Use a fresh pre-batch full-suite baseline, combined final comparison and production build; stop after B12 for review and merge before B13. This grouping does not waive the Phase 0 acceptance gate or authorize B14-B18.
 
+The October 7 selection includes B14's required role-owned prerequisites in separate batches before exception oversight. Start the logistics sorting-input repair from reviewed, merged cross-role fixtures. Verify each batch before dependent implementation. Later local branches may be deliberately stacked on the preceding verified local commits; record their bases and dependency diffs for review. This selection permits prerequisite work without expanding the B14 admin branch into a catch-all or authorizing B15-B18. The user still publishes and merges each delivery; a local stack is not evidence of publication, merge or release.
+
 ## 1. Finish and publish the foundation checkpoint
 
 Review the foundation diff against `main`, the recorded focused checks, the full-suite baseline, deployment requirements, and known gaps. Preserve the implemented role, KYC, and birth-date safeguards. Planning documents do not raise runtime readiness.

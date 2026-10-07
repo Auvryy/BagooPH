@@ -47,6 +47,8 @@ Scoped Phase 0 commerce repair: October 6, 2026. Checkout and saved addresses no
 
 Scoped B13 cross-role fixture follow-up: October 6, 2026. Real requests now establish normal order/custody evidence. The final full suite has 47 failures: 15 retained failed cases and 32 newly exposed missing-gate cases, with 33 baseline failures resolved. Phase 0 and later prerequisites remain incomplete; the exact comparison and owners are recorded below.
 
+Scoped logistics sorting repair: October 7, 2026. Both operational sorting failures are fixed; 45 new cases pass. The final full suite has 45 unchanged later-gate failures, with no removed cases or new failures. Wider Phase 0 acceptance and custody/recovery prerequisites still require their own verification before B14.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -1241,6 +1243,29 @@ Local implementation commits:
 - `9b44864 test: expose missing recovery audit and settlement gates`
 
 The documentation/evidence commit has subject `docs: record cross-role fixture evidence and remaining gates`; its generated hash is reported in the handoff. The machine-local guide and test artifacts remain ignored and untracked. Current tracked content, reachable branch history and commit messages were checked for private task-service wording. Only this branch's tracking and related task notes were updated; other sessions' rider-mobile work/timers were left untouched. No push or merge was performed.
+
+### B14 Prerequisite Selection and Logistics Sorting Repair: October 7, 2026
+
+The selected B14 objective now includes its required role-owned prerequisites in separate verified batches before admin exception oversight. The first batch, `fix/logistics-operational-inputs`, starts from merged cross-role fixtures at `4e3a66d` (PR #63). Subsequent batches may be stacked locally on verified predecessor commits, with explicit review dependencies. This does not authorize B15-B18, establish release readiness, or remove the user-only publication/merge boundary.
+
+**Prerequisite audit:** A fresh isolated selection of custody, courier hardening, failure/checkpoint and real-world exception suites has **105 tests, 3,686 assertions, 22 failures and zero errors**. All 22 class/method/failure-type identities match the recorded cross-role fixture result. Eighteen exercised failure/return cases stop at unsupported `delivery_failed`; three persistence cases demonstrate checkpoint mutation/deletion; one financial case lacks the later settlement ledger. Code inspection also finds generated manifest-number strings without durable manifest records and optional, unverified counter claims. These are missing prerequisites, not implemented B14 oversight or proof of a foreign-actor bypass.
+
+**Sorting behavior:** `LogisticsSortingInputService` validates raw controls before normalization, canonical location text, bounded plain notes, positive existing parcel IDs, and visible ASCII bin identifiers. The root and subdomain sorting URLs retain controls for the validator instead of silently trimming them away. A supplied barangay must match the recorded destination case-insensitively. Omitted fields still use that destination and a generated bin; a missing/unsafe legacy destination or bin fails visibly instead of inventing `GENERAL`. Generated bin identifiers transliterate permitted location names to ASCII. Invalid requests preserve the order, parcel and custody history; stale sorting and checkpoint-write failure cannot create partial work.
+
+**Focused verification:** **85 tests, 4,321 assertions pass**, including 45 new sorting cases and the existing routing/governance boundary suite. New cases exercise both portal URLs, Greek/full-width/control/markup/overlong values, normalized locations, valid ASCII separators, optional defaults, destination matching, wrong facility/role, stale state, legacy missing destination and audit rollback. Pint and whitespace checks pass. Tests use SQLite `:memory:` with explicit testing environment overrides; no PostgreSQL reset, frontend change or rendered/device check is claimed.
+
+The fresh full-suite baseline at `4e3a66d` has **2,241 tests, 30,146 assertions, 47 failures and zero errors**. The final run has **2,286 tests, 33,419 assertions, 45 failures and zero errors**. All 45 added cases pass; every original case remains. Exact class/method/failure-type and stable assertion-context comparison finds **two resolved failures, 45 unchanged failures and no new failures**. The resolved cases are `B12_to_B17_LifecycleHubToCompletedBoundaryTest::test_t2_b13_02_invalid_destination_area_rejected` and `B26_to_B33_HubRoutingAndGovernanceBoundaryTest::test_t2_b27_03_bin_format_string_validation`. The operational sorting-input gate passes; the full suite remains red for retained custody-history, recovery, notification and finance contracts. No broader Phase 0, custody, recovery, counter, notification or financial gate is certified yet.
+
+**Scoped assessment:** Logistics sorting input safety **3/10 -> 8/10** for the verified field, destination, rejection and rollback behavior. Overall admin/cross-role readiness remains unchanged. Current code preserves normal sorting while preventing malformed or misleading bin/area records; PostgreSQL contention, legacy data review, physical transfer evidence and later workflows remain separate requirements.
+
+Local implementation commits:
+
+- `dab7fa2 fix: validate logistics sorting inputs before custody changes`
+- `31cd5a1 fix: keep sorting bin identifiers in visible ASCII`
+
+The documentation/evidence commit has subject `docs: record logistics sorting repair and selected B14 prerequisites`; its generated hash is reported in the handoff. Local links, code fences and whitespace checks pass. No new migration, frontend rebuild, push or merge was performed.
+
+**Next boundary:** Re-evaluate the wider Phase 0 entry-point matrix against these repairs before certifying that gate. Then verify Phase 2 submitted-waybill handoff evidence, durable draft/sealed/dispatched/received/closed manifests and retained checkpoint history. Phase 3 attempts, reviewed retry, reverse-route seller receipt, secure seven-day pickup and accountable recovery follow their source writers. B14 may assign responsibility and resolve cases only against those verified records; assigning a reviewer does not transfer parcel or cash custody. Required source notices/counter collection remain bounded prerequisite work, not permission for broader governance notifications, reconciliation, settlement or finance screens.
 
 ## Delivery Phases
 
