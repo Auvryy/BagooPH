@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
+use App\Services\ProfileInputService;
 use App\Services\ShopEligibilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -246,10 +247,7 @@ class SellerDashboardController extends Controller
         return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
             $user = $request->user();
 
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'phone' => 'nullable|string|max:50',
-                'email' => 'required|email|max:255|unique:users,email,'.$user->id,
+            $validated = app(ProfileInputService::class)->validate($request, ['name', 'phone', 'email'], [
                 'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:3072',
                 'remove_avatar' => 'nullable|boolean',
             ]);

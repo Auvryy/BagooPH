@@ -11,6 +11,7 @@ use App\Services\Courier\CourierOperationsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\ProfileInputService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -379,35 +380,12 @@ class CourierDeliveryController extends Controller
     public function updateProfile(Request $request): RedirectResponse
     {
         return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
-            $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:100',
-                    'regex:/^[\\pL][\\pL .\'-]*$/u',
-                ],
-                'phone' => [
-                    'nullable',
-                    'string',
-                    'max:30',
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        if ($value === null || trim((string) $value) === '') {
-                            return;
-                        }
-
-                        $digits = preg_replace('/[^0-9]/', '', (string) $value);
-                        if (! preg_match('/^(?:0?9|639)\\d{9}$/', $digits)) {
-                            $fail('Enter a valid Philippine mobile number.');
-                        }
-                    },
-                ],
-            ]);
+            $validated = app(ProfileInputService::class)->validate($request, ['name', 'phone']);
 
             app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $validated);
             $request->user()->update([
-                'name' => trim($validated['name']),
-                'phone' => $this->normalizePhilippineMobile($validated['phone'] ?? null),
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
             ]);
 
             return back()->with('success', 'Account contact details updated.');
@@ -452,25 +430,6 @@ class CourierDeliveryController extends Controller
             'isAssigned' => (bool) ($profile?->logistics_company_id && $profile?->assigned_hub_id),
             'isOperational' => app(LogisticsEligibilityService::class)->isOperational($profile),
         ];
-    }
-
-    private function normalizePhilippineMobile(?string $phone): ?string
-    {
-        if ($phone === null || trim($phone) === '') {
-            return null;
-        }
-
-        $digits = preg_replace('/[^0-9]/', '', $phone);
-
-        if (str_starts_with($digits, '09')) {
-            return '+63'.substr($digits, 1);
-        }
-
-        if (str_starts_with($digits, '639')) {
-            return '+'.$digits;
-        }
-
-        return '+63'.$digits;
     }
 
     private function pickupPayload(Delivery $delivery, bool $isAvailable): array

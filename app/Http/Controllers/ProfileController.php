@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\AccountClosureService;
 use App\Services\BuyerAccessService;
 use App\Services\IdentityCorrectionService;
+use App\Services\ProfileInputService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,9 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response|RedirectResponse
     {
+        $user = $request->user()->fresh();
+        abort_unless($user?->canAccessPortal(), 403);
+        $request->setUserResolver(fn () => $user);
         if ($request->user()->isBuyer()) {
             app(BuyerAccessService::class)->requirePortal($request->user());
         }
@@ -46,8 +50,9 @@ class ProfileController extends Controller
             if ($request->user()->isBuyer()) {
                 app(BuyerAccessService::class)->requirePortal($request->user());
             }
-            app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $request->validated());
-            $request->user()->fill($request->validated());
+            $validated = app(ProfileInputService::class)->validate($request, ['name', 'email']);
+            app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $validated);
+            $request->user()->fill($validated);
 
             if ($request->user()->isDirty('email')) {
                 $request->user()->email_verified_at = null;

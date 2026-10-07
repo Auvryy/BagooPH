@@ -10,6 +10,7 @@ use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\IdentityCorrectionService;
+use App\Services\ProfileInputService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,8 +57,6 @@ class BuyerProfileController extends Controller
             $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
             $rules = [
-                'name' => 'required|string|max:255',
-                'phone' => 'nullable|string|max:30',
                 'birthday' => ['nullable', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],
                 'gender' => 'nullable|string|in:male,female,other',
                 'remove_avatar' => 'nullable|boolean',
@@ -69,7 +68,7 @@ class BuyerProfileController extends Controller
                 $rules['avatar_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
             }
 
-            $validated = $request->validate($rules);
+            $validated = app(ProfileInputService::class)->validate($request, ['name', 'phone'], $rules);
 
             app(IdentityCorrectionService::class)->protectReviewedIdentity($user, $validated);
 
