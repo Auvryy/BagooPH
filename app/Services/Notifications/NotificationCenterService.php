@@ -4,14 +4,22 @@ namespace App\Services\Notifications;
 
 use App\Enums\UserRole;
 use App\Models\Order;
+use App\Models\RestrictionAffectedWork;
 use App\Models\User;
 use App\Services\BuyerAccessService;
+use App\Services\ExceptionOversightService;
+use App\Services\GovernanceHistoryService;
+use App\Services\Logistics\RestrictedCustodyRecoveryService;
+use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Notifications\DatabaseNotification;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return'];
+    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event'];
 
     public function current(User $actor): User
     {
@@ -83,6 +91,46 @@ class NotificationCenterService
         }
         if ($target === 'hub-recovery' && $user->isLogistics() && $user->canAccessPortal()) {
             return '/hub/delivery-recovery';
+        }
+        if ($target === 'account-status') {
+            return '/pending-approval';
+        }
+        if ($target === 'identity-correction' && $user->isKycApproved()) {
+            return '/account/identity-corrections';
+        }
+        if ($target === 'seller-products' && $user->isSeller() && $user->canAccessPortal()) {
+            return '/seller/products';
+        }
+        try {
+            if ($target === 'exception') {
+                app(ExceptionOversightService::class)->detail($user, $data['exception_kind'], (int) $data['exception_id'], false);
+
+                return '/exceptions/'.$data['exception_kind'].'/'.(int) $data['exception_id'];
+            }
+            if ($target === 'governance-history') {
+                app(GovernanceHistoryService::class)->detail($user, $data['governance_source'], (int) $data['governance_id']);
+
+                return '/governance-history/'.$data['governance_source'].'/'.(int) $data['governance_id'];
+            }
+            if ($target === 'custody-own') {
+                $grants = app(RestrictedCustodyRecoveryService::class)->ownGrants($user);
+                if (collect($grants)->contains('id', $data['grant_id'])) {
+                    return '/custody-recovery';
+                }
+            }
+            if ($target === 'custody-receiving') {
+                app(RestrictedCustodyRecoveryService::class)->receiving($user);
+
+                return '/custody-recovery/receiving';
+            }
+            if ($target === 'custody-work') {
+                $work = RestrictionAffectedWork::findOrFail($data['work_id']);
+                app(RestrictedCustodyRecoveryService::class)->proposal($user, $work);
+
+                return '/custody-recovery/work/'.(int) $data['work_id'];
+            }
+        } catch (AuthorizationException|HttpException|ModelNotFoundException|DomainException) {
+            // A saved notice does not retain a permission which has since been revoked.
         }
 
         return null;
