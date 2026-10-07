@@ -69,7 +69,7 @@ class AccountRestrictionService
             'actions' => $subject->closed_at === null ? $this->actions($subject->status) : [], 'state' => $state,
             'affected_work' => $state['work'], 'history' => $this->history('account', $subject->id),
             'legacy_activity' => $subject->restriction_version === 0,
-            'cash_note' => 'Cash custody and reconciliation are not recorded yet. Payment labels and commission rows do not prove who holds money.',
+            'cash_note' => 'Counter collection records identify the collecting handler. Other cash holders and reconciliation need their own evidence; payment labels and commission rows do not prove custody.',
         ];
     }
 

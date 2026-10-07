@@ -3,7 +3,13 @@
 namespace Tests\Feature\E2E\Tier4;
 
 use App\Models\LogisticsHub;
+use App\Models\RestrictionAffectedWork;
+use App\Models\User;
+use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithKycReviews;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
@@ -91,7 +97,31 @@ class RealWorldLogisticsRoutingTest extends TestCase
             'barcode' => $delivery->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect',
         ])->assertConflict();
         $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
+        $original = User::findOrFail($delivery->assigned_rider_id);
+        $this->restrictFlowAccount($original, 'suspend');
+        $work = RestrictionAffectedWork::where('delivery_id', $delivery->id)->latest('id')->firstOrFail();
+        $manager = $hub->company->user;
+        $detail = $this->actingAs($manager)->getJson('/exceptions/restriction/'.$work->id)->assertOk()->json('exception');
+        $this->postJson('/exceptions/restriction/'.$work->id, ['action' => 'assign', 'responsible_user_id' => $replacement->id,
+            'source_token' => $detail['sourceToken'], 'request_token' => (string) Str::uuid(), 'reason' => 'Arrange an actual hub handover after the rider breakdown.'])->assertOk();
+        $this->assertSame($original->id, $delivery->fresh()->assigned_rider_id);
+        $service = app(RestrictedCustodyRecoveryService::class);
+        $proposal = $service->proposal($manager, $work);
+        $grant = $service->grant($manager, $work, ['source_token' => $proposal['source_token'], 'request_token' => (string) Str::uuid(),
+            'reason' => 'Return the original parcel to the assigned destination hub.']);
+        $receipt = ['barcode' => $delivery->tracking_number, 'request_token' => (string) Str::uuid(), 'notes' => 'Actual breakdown parcel handed to the original hub handler.'];
+        $this->actingAs($original)->postJson('/custody-recovery/'.$grant->id.'/handover', $receipt)->assertOk();
+        $this->actingAs($this->flowHandler($hub))->postJson('/custody-recovery/'.$grant->id.'/receipt', array_replace($receipt, ['request_token' => (string) Str::uuid()]))->assertOk();
+        $this->postJson(route('hub.sort'), ['delivery_id' => $delivery->id, 'barangay' => $order->destination_barangay])->assertOk();
+        $this->postJson(route('hub.assignRider', $delivery), ['rider_id' => $replacement->id])->assertOk();
         $this->assertSame($replacement->id, $delivery->fresh()->assigned_rider_id, 'A recorded recovery handoff must establish the replacement responsibility.');
+        $this->actingAs($replacement)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
+        Storage::fake('public');
+        $this->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('recovery-delivery.jpg')])->assertSessionHas('success');
+        $detail = $this->actingAs($manager)->getJson('/exceptions/restriction/'.$work->id)->assertOk()->json('exception');
+        $this->postJson('/exceptions/restriction/'.$work->id, ['action' => 'resolve', 'source_token' => $detail['sourceToken'], 'request_token' => (string) Str::uuid(),
+            'reason' => 'Original hub receipt and actual replacement delivery are retained.'])->assertOk();
+        $this->assertSame('suspended', $original->fresh()->status);
         $this->assertSame('delivered', $delivery->fresh()->status, 'Actual recovery handoff and replacement-rider delivery remain required.');
     }
 

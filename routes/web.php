@@ -23,6 +23,7 @@ use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\ExceptionOversightController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
@@ -72,6 +73,10 @@ Route::middleware('auth')->get('/verification-documents/{user}/{document}', [Ver
     ->name('verification-documents.show');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/exceptions', [ExceptionOversightController::class, 'index'])->name('exceptions.index');
+    Route::get('/exceptions/attempt/{id}/proof', [ExceptionOversightController::class, 'proof'])->whereNumber('id')->name('exceptions.proof');
+    Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');
+    Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
     Route::post('/account/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.store');
     Route::get('/identity-correction-documents/{correction}/{document}', [IdentityCorrectionController::class, 'document'])->name('identity-correction-documents.show');
