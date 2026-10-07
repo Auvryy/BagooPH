@@ -29,6 +29,7 @@ use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
+use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
@@ -39,12 +40,12 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
-use App\Http\Controllers\Seller\SellerVoucherController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
@@ -74,6 +75,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
     Route::post('/account/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.store');
     Route::get('/identity-correction-documents/{correction}/{document}', [IdentityCorrectionController::class, 'document'])->name('identity-correction-documents.show');
+});
+
+Route::get('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'login'])->name('custody-recovery.login');
+Route::post('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'signIn'])->middleware('throttle:10,1')->name('custody-recovery.sign-in');
+Route::middleware(['auth', 'verified'])->prefix('custody-recovery')->name('custody-recovery.')->group(function () {
+    Route::get('/', [RestrictedCustodyRecoveryController::class, 'own'])->name('own');
+    Route::get('/receiving', [RestrictedCustodyRecoveryController::class, 'receiving'])->name('receiving');
+    Route::get('/work/{work}', [RestrictedCustodyRecoveryController::class, 'review'])->name('review');
+    Route::post('/work/{work}', [RestrictedCustodyRecoveryController::class, 'grant'])->name('grant');
+    Route::post('/{grant}/handover', [RestrictedCustodyRecoveryController::class, 'acknowledge'])->name('acknowledge');
+    Route::post('/{grant}/receipt', [RestrictedCustodyRecoveryController::class, 'receive'])->name('receive');
 });
 
 Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
