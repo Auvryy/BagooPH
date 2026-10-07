@@ -109,6 +109,7 @@ $registerSellerRoutes = function () {
         Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
         Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover']);
         Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel']);
+        Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn']);
         Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady']);
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
         Route::post('/vouchers', [SellerVoucherController::class, 'store']);
@@ -439,6 +440,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
     Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover'])->name('orders.handover');
     Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn'])->name('orders.return-receipt');
     Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady'])->name('orders.batchReady');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');

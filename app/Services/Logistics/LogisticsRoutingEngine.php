@@ -4,8 +4,10 @@ namespace App\Services\Logistics;
 
 use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
+use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\Shop;
 use DomainException;
@@ -244,6 +246,36 @@ class LogisticsRoutingEngine
 
             return ['action' => 'AWAIT_RETRY_REVIEW', 'prompt' => 'WAIT FOR COMPANY RETRY REVIEW OR THE APPROVED DATE',
                 'next_status' => 'delivery_failed', 'color' => 'amber'];
+        }
+
+        if ($hub && in_array($status, ['return_to_sender', 'return_in_transit'], true)) {
+            $returns = app(DeliveryReturnService::class);
+            try {
+                $route = $returns->route($delivery);
+                if ($status === 'return_in_transit') {
+                    $custody = DeliveryCheckpoint::lastCustody($delivery);
+                    $manifest = LogisticsManifest::find($custody['manifest_id'] ?? null);
+                    if ($manifest?->direction === 'return' && $manifest->destination_hub_id === $hub->id) {
+                        return ['action' => 'RECEIVE_RETURN_MANIFEST', 'prompt' => 'RECEIVE ON THE ACTUAL RETURN MANIFEST',
+                            'next_status' => 'return_to_sender', 'color' => 'amber'];
+                    }
+                } elseif ($delivery->current_hub_id === $hub->id) {
+                    if ($returns->event($route, 'seller_staged')) {
+                        return ['action' => 'AWAIT_SELLER_RECEIPT', 'prompt' => 'WAIT FOR THE OWNING SELLER TO SCAN RECEIPT',
+                            'next_status' => $status, 'color' => 'amber'];
+                    }
+                    if ($returns->readyForSeller($delivery)) {
+                        return ['action' => 'STAGE_SELLER_RETURN', 'prompt' => 'STAGE THE ORIGINAL PARCEL FOR SELLER RECEIPT',
+                            'next_status' => $status, 'color' => 'amber', 'route_reference' => $route->reference];
+                    }
+                    $returns->nextHub($delivery);
+
+                    return ['action' => 'DISPATCH_RETURN_MANIFEST', 'prompt' => 'LOAD THE NEXT LEG ON A RETURN MANIFEST',
+                        'next_status' => 'return_in_transit', 'color' => 'amber'];
+                }
+            } catch (DomainException $error) {
+                return ['action' => 'AWAIT_RETURN_REVIEW', 'prompt' => $error->getMessage(), 'next_status' => $status, 'color' => 'amber'];
+            }
         }
 
         // 1. Destination Bayan Hub inbound custody must be recorded before sorting.

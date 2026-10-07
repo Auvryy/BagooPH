@@ -89,7 +89,7 @@ class LogisticsManifestController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token']),
+            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction']),
                 $request->session()->get('manifest_creation_token'));
             $request->session()->forget('manifest_creation_token');
         } catch (DomainException $error) {

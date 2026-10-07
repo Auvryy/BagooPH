@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -849,6 +850,7 @@ class LogisticsHubWorkstationController extends Controller
             'action' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[A-Z_]+\z/',
             'expected_status' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[a-z_]+\z/',
             'attempt_reference' => ['nullable', 'string', 'max:64'],
+            'route_reference' => ['nullable', 'string', 'max:64'],
         ]);
 
         $barcode = trim($validated['barcode']);
@@ -900,7 +902,7 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         if (($validated['mode'] ?? 'inspect') !== 'confirm') {
-            $requiresConfirmation = ! in_array($prompt['action'], ['AWAIT_BARANGAY_SORT', 'AWAIT_RETRY_REVIEW'], true);
+            $requiresConfirmation = ! in_array($prompt['action'], ['AWAIT_BARANGAY_SORT', 'AWAIT_RETRY_REVIEW', 'AWAIT_SELLER_RECEIPT', 'AWAIT_RETURN_REVIEW'], true);
 
             return $this->scanResponse($this->scanPayload(
                 delivery: $delivery,
@@ -921,7 +923,7 @@ class LogisticsHubWorkstationController extends Controller
             return $this->operationError($request, 'The requested scan action is not a recognized custody handoff.', 422);
         }
 
-        if (! in_array($requestedAction, ['RECEIVE_FAILED_DELIVERY', 'RELEASE_APPROVED_RETRY'], true)
+        if (! in_array($requestedAction, ['RECEIVE_FAILED_DELIVERY', 'RELEASE_APPROVED_RETRY', 'STAGE_SELLER_RETURN'], true)
             && $delivery->status === $expectedStatus && ($prompt['action'] !== $requestedAction || $prompt['next_status'] !== $targetStatus)) {
             return $this->operationError($request, 'The scan instruction no longer matches the parcel route. Scan the waybill again.', 409);
         }
@@ -931,6 +933,7 @@ class LogisticsHubWorkstationController extends Controller
         try {
             $recovery = app(DeliveryRecoveryService::class);
             $updatedDelivery = match ($requestedAction) {
+                'STAGE_SELLER_RETURN' => app(DeliveryReturnService::class)->stage($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['route_reference'] ?? ''),
                 'RECEIVE_FAILED_DELIVERY' => $recovery->receive($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
                 'RELEASE_APPROVED_RETRY' => $recovery->beginRetry($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
                 default => $stateMachine->transition(
@@ -965,6 +968,8 @@ class LogisticsHubWorkstationController extends Controller
         $requiresNextConfirmation = ! in_array($nextPrompt['action'], [
             'AWAIT_BARANGAY_SORT',
             'AWAIT_RETRY_REVIEW',
+            'AWAIT_SELLER_RECEIPT',
+            'AWAIT_RETURN_REVIEW',
             'INSPECT_WAYBILL',
         ], true);
 
@@ -996,7 +1001,7 @@ class LogisticsHubWorkstationController extends Controller
     ): array {
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub']);
         $custodyHub = $delivery->currentHub;
-        $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true);
+        $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB', 'DISPATCH_RETURN_MANIFEST', 'RECEIVE_RETURN_MANIFEST'], true);
 
         return [
             'success' => true,
@@ -1063,6 +1068,7 @@ class LogisticsHubWorkstationController extends Controller
             'STAGE_FOR_PICKUP' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
             'RECEIVE_FAILED_DELIVERY' => OrderStateMachineService::STATUS_DELIVERY_FAILED,
             'RELEASE_APPROVED_RETRY' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+            'STAGE_SELLER_RETURN' => OrderStateMachineService::STATUS_RETURN_TO_SENDER,
             default => null,
         };
     }

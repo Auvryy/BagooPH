@@ -176,10 +176,10 @@ class CrossFeatureCombinationsTest extends TestCase
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $order->items->first()->product->fresh()->stock, 'Stock cannot be restored before authenticated seller receipt.');
         $this->assertNotSame('returned', $order->fresh()->status);
-        // Phase 3 still needs reverse scans and authenticated seller receipt before these final requirements can pass.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
-        $this->assertSame($stock + $order->items->first()->quantity, $order->items->first()->product->fresh()->stock);
+        $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
     }
 
     public function test_t3_17_split_courier_tab_state_isolation(): void

@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\AccountRestrictionService;
+use App\Services\Logistics\DeliveryReturnService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -194,7 +195,7 @@ trait InteractsWithOrderActions
         $delivery->refresh();
     }
 
-    public function confirmFlowManifest(Delivery $delivery, LogisticsHub $hub, bool $departure, ?User $handler = null): void
+    public function confirmFlowManifest(Delivery $delivery, LogisticsHub $hub, bool $departure, ?User $handler = null, string $direction = 'outbound', string $base = '/hub'): void
     {
         $delivery->refresh();
         $company = LogisticsCompany::findOrFail($delivery->logistics_company_id);
@@ -202,9 +203,9 @@ trait InteractsWithOrderActions
         $handler ??= $this->flowHandler($hub);
         if ($departure) {
             $this->assertSame($hub->id, $delivery->current_hub_id);
-            $destinationId = $delivery->status === 'arrived_at_origin_hub' ? $delivery->origin_mother_hub_id
+            $destinationId = $direction === 'return' ? app(DeliveryReturnService::class)->nextHub($delivery) : ($delivery->status === 'arrived_at_origin_hub' ? $delivery->origin_mother_hub_id
                 : ($hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id
-                    ? $delivery->destination_mother_hub_id : $delivery->destination_bayan_hub_id);
+                    ? $delivery->destination_mother_hub_id : $delivery->destination_bayan_hub_id));
             $driver = $this->createApprovedUser('courier');
             $vehicle = LogisticsFleet::create(['logistics_company_id' => $company->id, 'hub_id' => $hub->id,
                 'plate_number' => 'FLOW-'.str_pad((string) (LogisticsFleet::count() + 1), 4, '0', STR_PAD_LEFT),
@@ -213,20 +214,20 @@ trait InteractsWithOrderActions
                 'assigned_driver_id' => $driver->id, 'status' => 'active']);
             $driver->courierProfile->update(['logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id,
                 'vehicle_id' => $vehicle->id, 'is_available' => true]);
-            $this->actingAs($manager)->get('/hub/manifests')->assertOk();
-            $response = $this->postJson('/hub/manifests', ['source_hub_id' => $hub->id, 'destination_hub_id' => $destinationId,
-                'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
+            $this->actingAs($manager)->get($base.'/manifests')->assertOk();
+            $response = $this->postJson($base.'/manifests', ['source_hub_id' => $hub->id, 'destination_hub_id' => $destinationId,
+                'direction' => $direction, 'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
             $manifest = LogisticsManifest::findOrFail($response->json('manifest.id'));
-            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
-            $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
-            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         } else {
             $custody = DeliveryCheckpoint::lastCustody($delivery);
             $this->assertSame('manifest', $custody['kind']);
             $manifest = LogisticsManifest::findOrFail($custody['manifest_id']);
             $this->assertSame($hub->id, $manifest->destination_hub_id);
-            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
-            $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
             $this->actingAs($handler)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
                 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk();
         }
@@ -393,6 +394,32 @@ trait InteractsWithOrderActions
         ])->assertOk()->assertJsonPath('confirmed', true);
         $this->assertSame($hub->id, $delivery->fresh()->current_hub_id);
         $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
+    }
+
+    public function returnToSellerFlow(Delivery $delivery): void
+    {
+        $returns = app(DeliveryReturnService::class);
+        $route = $returns->route($delivery->fresh());
+        foreach (array_slice($route->hub_ids, 1) as $hubId) {
+            $this->confirmFlowManifest($delivery, LogisticsHub::findOrFail($delivery->fresh()->current_hub_id), true, direction: 'return');
+            $this->assertSame('delivery_failed', $delivery->order->fresh()->status);
+            $this->confirmFlowManifest($delivery, LogisticsHub::findOrFail($hubId), false, direction: 'return');
+        }
+        $origin = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
+        $this->actingAs($this->flowHandler($origin));
+        $prompt = $this->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $origin->id, 'mode' => 'inspect'])
+            ->assertOk()->assertJsonPath('prompt.action', 'STAGE_SELLER_RETURN')->json('prompt');
+        $this->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number, 'hub_id' => $origin->id, 'mode' => 'confirm',
+            'action' => $prompt['action'], 'expected_status' => $prompt['expected_status'], 'route_reference' => $prompt['route_reference']])->assertOk();
+        $seller = $delivery->order->shop->user;
+        $receipt = ['barcode' => $delivery->tracking_number, 'route_reference' => $route->reference,
+            'notes' => 'I received the original parcel from the origin hub.', 'request_token' => (string) Str::uuid()];
+        $this->actingAs($seller)->withSession(['active_seller_shop_id' => $delivery->order->shop->id])
+            ->postJson(route('seller.orders.return-receipt', $delivery->order), $receipt)->assertOk()->assertJsonPath('status', 'returned');
+        $count = $delivery->checkpoints()->count();
+        $this->postJson(route('seller.orders.return-receipt', $delivery->order), $receipt)->assertOk();
+        $this->assertSame($count, $delivery->checkpoints()->count());
+        $delivery->refresh();
     }
 
     public function retryFailureFlow(Delivery $delivery): void

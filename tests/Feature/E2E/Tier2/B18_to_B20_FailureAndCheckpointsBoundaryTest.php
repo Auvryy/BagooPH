@@ -3,6 +3,7 @@
 namespace Tests\Feature\E2E\Tier2;
 
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\LogisticsHub;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -91,11 +92,11 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
-        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
         $quantity = $order->items->sum('quantity');
-        $this->assertSame($stock + $quantity, $order->items->first()->product->fresh()->stock);
+        $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
         $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'parcel_returned')->count());
     }
 
@@ -118,7 +119,7 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
-        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
         $this->assertNull($order->fresh()->commissionLedger);
@@ -144,11 +145,11 @@ class B18_to_B20_FailureAndCheckpointsBoundaryTest extends TestCase
         $this->reportFlowFailure($delivery, 'Customer refused');
         $this->receiveFailureFlow($delivery);
         $this->assertSame($stock, $order->items->first()->product->fresh()->stock);
-        // Reviewed reverse-route actions and seller receipt are still required; never write a return directly.
+        $this->returnToSellerFlow($delivery);
         $this->assertCheckpointLogged($delivery, 'parcel_returned');
         $this->assertSame('returned', $order->fresh()->status);
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
+        $this->actingAs(User::findOrFail(DeliveryAttempt::where('delivery_id', $delivery->id)->latest('attempt_number')->firstOrFail()->rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
     }
 
