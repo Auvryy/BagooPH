@@ -17,7 +17,7 @@ class EnsureRiderAccountToken
         $plain = $request->bearerToken();
         $token = $plain ? PersonalAccessToken::findToken($plain) : null;
         $user = $token?->tokenable;
-        if (! $token || ! $user instanceof User || ! $token->expires_at || $token->expires_at->isPast()
+        if (! $token || ! $user instanceof User || ! $token->expires_at || now()->greaterThanOrEqualTo($token->expires_at)
             || ! $token->can($purpose === 'logout' ? 'rider:logout' : 'rider:account')) {
             return response()->json(['message' => 'Please sign in to your rider account.'], 401);
         }

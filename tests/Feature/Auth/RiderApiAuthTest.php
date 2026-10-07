@@ -67,6 +67,42 @@ class RiderApiAuthTest extends TestCase
         $this->login($this->rider(['kyc_status' => 'unknown']))->assertForbidden();
     }
 
+    public function test_exact_expiry_deadline_denies_both_account_reads_and_logout(): void
+    {
+        $this->freezeTime();
+        $token = $this->login($this->rider())->json('data.token');
+        $deadline = PersonalAccessToken::firstOrFail()->expires_at;
+        $this->travelTo($deadline->copy()->subSecond());
+        $this->withToken($token)->getJson('/api/v1/rider/me')->assertOk();
+        $this->travelTo($deadline);
+        $this->withToken($token)->getJson('/api/v1/rider/me')->assertUnauthorized();
+        $this->withToken($token)->deleteJson('/api/v1/auth/tokens/current')->assertUnauthorized();
+    }
+
+    public function test_browser_origins_require_explicit_entries_and_no_credentialed_preflight(): void
+    {
+        $original = $_ENV['RIDER_BROWSER_ORIGINS'] ?? null;
+        try {
+            $_ENV['RIDER_BROWSER_ORIGINS'] = ' *, https://rider.example.test , https://*.example.test';
+            $cors = require base_path('config/cors.php');
+            $this->assertSame(['https://rider.example.test'], $cors['allowed_origins']);
+            config(['cors' => $cors]);
+            $headers = ['Origin' => 'https://rider.example.test', 'Access-Control-Request-Method' => 'POST', 'Access-Control-Request-Headers' => 'authorization,content-type'];
+            $this->call('OPTIONS', '/api/v1/auth/tokens', server: $this->transformHeadersToServerVars($headers))
+                ->assertNoContent()->assertHeader('Access-Control-Allow-Origin', 'https://rider.example.test')->assertHeaderMissing('Access-Control-Allow-Credentials');
+            $headers['Origin'] = 'https://foreign.example.test';
+            // A single configured origin may be returned unconditionally; browsers reject a different requesting origin.
+            $this->call('OPTIONS', '/api/v1/auth/tokens', server: $this->transformHeadersToServerVars($headers))
+                ->assertHeader('Access-Control-Allow-Origin', 'https://rider.example.test')->assertHeaderMissing('Access-Control-Allow-Credentials');
+        } finally {
+            if ($original === null) {
+                unset($_ENV['RIDER_BROWSER_ORIGINS']);
+            } else {
+                $_ENV['RIDER_BROWSER_ORIGINS'] = $original;
+            }
+        }
+    }
+
     public function test_expiry_password_change_and_account_restriction_are_checked_on_each_read(): void
     {
         $user = $this->rider();
