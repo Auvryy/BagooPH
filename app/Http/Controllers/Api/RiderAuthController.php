@@ -18,7 +18,7 @@ class RiderAuthController extends Controller
 {
     private function denyManagedInputs(Request $request): void
     {
-        $request->validate(array_fill_keys(['role', 'status', 'kyc_status', 'user_id', 'hub_id', 'assigned_hub_id', 'company_id', 'logistics_company_id', 'email_verified_at', 'is_available'], 'prohibited'));
+        $request->validate(array_fill_keys(['role', 'status', 'kyc_status', 'user_id', 'shop_id', 'vehicle_id', 'hub_id', 'assigned_hub_id', 'company_id', 'logistics_company_id', 'email_verified_at', 'is_available'], 'prohibited'));
     }
 
     public function login(Request $request, RiderAccountService $accounts): JsonResponse
@@ -71,7 +71,7 @@ class RiderAuthController extends Controller
 
     public function verifyCode(Request $request, OtpService $otp): JsonResponse
     {
-        $data = $request->validate(['email' => 'required|string|email|max:255', 'code' => 'required|string|regex:/^[0-9]{6}$/']);
+        $data = $request->validate(['email' => 'required|string|email|max:255', 'code' => 'required|string|regex:/\A[0-9]{6}\z/']);
         $result = $otp->verifyOtp($data['email'], $data['code'], 'registration');
 
         return response()->json($result, $result['success'] ? 200 : 422);

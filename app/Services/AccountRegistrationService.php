@@ -6,7 +6,6 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
@@ -41,6 +40,7 @@ class AccountRegistrationService
         $request->merge($applications->registrationValues($request->all(), $role));
         $rules = $applications->rules($role) + [
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'otp_token' => ['nullable', 'string', 'max:128'],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
@@ -90,7 +90,7 @@ class AccountRegistrationService
             'birthday' => $birthday,
             'age' => $age,
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => $role,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,

@@ -3,9 +3,11 @@
 namespace Tests\Feature\Auth;
 
 use App\Mail\OtpVerificationMail;
+use App\Models\EmailOtp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -168,5 +170,44 @@ class RiderApiAuthTest extends TestCase
         $response->assertJsonValidationErrors('email');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_native_registration_keeps_controls_visible_to_the_shared_validator(): void
+    {
+        Storage::fake('local');
+        $email = 'controls@example.test';
+        $token = $this->verification($email);
+        $data = $this->application($email, $token);
+        $data['name'] = "\tTest Rider";
+        $this->postJson('/api/v1/rider/applications', $data)->assertJsonValidationErrors('name');
+        $data = $this->application($email, $token);
+        $data['vehicle_id'] = 1;
+        $this->postJson('/api/v1/rider/applications', $data)->assertJsonValidationErrors('vehicle_id');
+        $this->postJson('/api/v1/rider/registration/email/verify', ['email' => $email, 'code' => "123456\n"])->assertJsonValidationErrors('code');
+        $this->assertDatabaseCount('users', 0);
+        $this->assertCount(0, Storage::disk('local')->allFiles());
+    }
+
+    public function test_account_failure_preserves_verified_email_token_and_removes_new_private_files(): void
+    {
+        Storage::fake('local');
+        $email = 'rollback@example.test';
+        $token = $this->verification($email);
+        Event::listen('eloquent.created: '.User::class, fn () => throw new \RuntimeException('Simulated account persistence failure'));
+        $this->withoutExceptionHandling();
+        try {
+            $this->postJson('/api/v1/rider/applications', $this->application($email, $token));
+            $this->fail('A failed account creation succeeded.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Simulated account persistence failure', $exception->getMessage());
+        } finally {
+            Event::forget('eloquent.created: '.User::class);
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->assertNotNull(EmailOtp::where('email', $email)->sole()->token);
+        $this->assertCount(0, Storage::disk('local')->allFiles());
+        $this->postJson('/api/v1/rider/applications', $this->application($email, $token))->assertCreated();
+        $this->assertNull(EmailOtp::where('email', $email)->sole()->token);
     }
 }
