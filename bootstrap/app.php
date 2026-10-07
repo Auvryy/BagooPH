@@ -24,8 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
-            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops', 'seller/shops/*/resubmit', 'shops', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject', 'admin/products/*/moderation', 'products/*/moderation', 'buyer/addresses', 'hub/sort', 'sort', 'buyer/profile', 'seller/profile', 'profile'))
-            || ($request->isMethod('PATCH') && $request->is('profile', 'courier/profile/account', 'profile/account'))]);
+            || ($request->isMethod('POST') && $request->is('register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops', 'seller/shops/*/resubmit', 'shops', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject', 'admin/products/*/moderation', 'products/*/moderation', 'buyer/addresses', 'hub/sort', 'sort', 'buyer/profile', 'seller/profile', 'profile', 'cart'))
+            || ($request->isMethod('PATCH') && $request->is('profile', 'courier/profile/account', 'profile/account', 'cart/*'))]);
 
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
 

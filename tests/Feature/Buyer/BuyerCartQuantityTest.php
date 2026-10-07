@@ -8,11 +8,57 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class BuyerCartQuantityTest extends TestCase
 {
     use RefreshDatabase;
+
+    public static function invalidQuantityFormats(): array
+    {
+        return ['sign' => ['+2'], 'boolean' => [true], 'control' => ["\t2\n"], 'exponent' => ['2e0'], 'decimal' => ['2.0'], 'lookalike' => ['２'],
+            'negative' => [-1], 'zero' => [0], 'fraction' => [2.5], 'array' => [[2]], 'maximum exceeded' => [100]];
+    }
+
+    #[DataProvider('invalidQuantityFormats')]
+    public function test_quantity_format_is_strict_before_bag_changes(mixed $quantity): void
+    {
+        [$buyer, $product, $cart] = $this->buyerProductAndCart(stock: 20);
+        $item = $cart->items()->create(['product_id' => $product->id, 'quantity' => 3, 'unit_price' => $product->price]);
+        $before = [$item->fresh()->getRawOriginal(), $product->fresh()->getRawOriginal()];
+        $this->actingAs($buyer)->postJson(route('cart.store'), ['product_id' => $product->id, 'quantity' => $quantity])
+            ->assertUnprocessable()->assertJsonValidationErrors('quantity');
+        $this->patchJson(route('cart.update', $item), ['quantity' => $quantity])
+            ->assertUnprocessable()->assertJsonValidationErrors('quantity');
+        $this->assertSame($before, [$item->fresh()->getRawOriginal(), $product->fresh()->getRawOriginal()]);
+        $this->assertSame(1, $cart->items()->count());
+    }
+
+    public function test_optional_add_quantity_defaults_to_one_and_ascii_strings_work_at_the_limit(): void
+    {
+        [$buyer, $product, $cart] = $this->buyerProductAndCart(stock: 120);
+        $this->actingAs($buyer)->postJson(route('cart.store'), ['product_id' => $product->id])->assertRedirect()->assertSessionHasNoErrors();
+        $item = $cart->items()->sole();
+        $this->assertSame(1, $item->quantity);
+        $this->postJson(route('cart.store'), ['product_id' => $product->id, 'quantity' => null])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(2, $item->fresh()->quantity);
+        $this->patchJson(route('cart.update', $item), ['quantity' => '99'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(99, $item->fresh()->quantity);
+        $this->postJson(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+        $this->assertSame(99, $item->fresh()->quantity);
+        $this->assertSame(120, $product->fresh()->stock);
+    }
+
+    public function test_foreign_bag_line_is_not_changed_by_a_valid_quantity(): void
+    {
+        [$buyer, $product, $cart] = $this->buyerProductAndCart(stock: 20);
+        $item = $cart->items()->create(['product_id' => $product->id, 'quantity' => 3, 'unit_price' => $product->price]);
+        $before = $item->fresh()->getRawOriginal();
+        $this->actingAs(User::factory()->buyer()->create())->patchJson(route('cart.update', $item), ['quantity' => 2])->assertForbidden();
+        $this->assertSame($before, $item->fresh()->getRawOriginal());
+        $this->assertSame(20, $product->fresh()->stock);
+    }
 
     public function test_add_rejects_a_quantity_above_the_remaining_stock_without_false_success(): void
     {
