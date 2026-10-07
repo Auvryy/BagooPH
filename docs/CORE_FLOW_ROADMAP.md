@@ -1537,3 +1537,42 @@ The additive `2026_10_07_150000_create_secure_pickup_sources.php` migration inst
 - `b5f4e05` — `feat: connect private buyer codes and actual counter release controls`
 
 The documentation commit has subject `docs: record verified secure pickup and remaining B14 gates`; its hash is reported in the handoff. No push or merge was performed.
+## Native Rider account access — October 7, 2026
+
+Scoped implementation on `feat/rider-mobile-auth-api`, based on reviewed main
+`4e3a66d843e368f158c0f888500c439147751ca7`. Native login and logout previously had
+no executable adapter. The new account API shares registration, validators,
+private document storage, users and courier profiles with the website. It issues
+expiring narrow bearer sessions and constructs own-account JSON; it cannot grant
+approval, placement, duty or parcel authority. Pending/rejected accounts receive
+own holding information, while restricted/unknown/wrong-role accounts are denied.
+
+`docs/RIDER_ACCOUNT_API.md` is the wire contract. Native signup requires the web
+form's email-code verification step and private ID/license/vehicle documents.
+Web redirects, cookie sessions and verification-email fallback are preserved.
+The schema addition is the personal token table, with expiry and a password
+fingerprint; browser cookies do not substitute for a bearer. Password changes
+and current account restrictions invalidate native access. No existing PostgreSQL
+data was migrated or reset during local verification.
+
+Verification: the focused native plus existing registration/KYC set passed
+**20 tests / 180 assertions**. The immutable clean baseline passed 2,194 of
+2,241 tests, with 47 existing failures; the account adapter's full run had
+2,249 tests / 30,222 assertions and the same 47 failed identities and
+failure/error types/causes. Randomly generated BGO order codes were normalized
+when comparing failure messages. No new failure identity or cause appeared.
+The initial run without frontend artifacts was discarded and rerun against
+pristine source with its required manifest available.
+
+Real local HTTP checks passed existing rider login/me/logout/revocation, native
+registration with SMTP delivery/private uploads followed by web login, and web
+registration followed by native login/logout. A separate synthetic SQLite demo
+and loopback SMTP inbox provide repeatable acceptance without production data
+or real external recipient delivery. No backend web browser automation was used.
+
+Scoped account-integration assessment: **0/10 before** (no native adapter),
+**8/10 for local acceptance after** (shared account/process and negative checks
+verified). This does not improve overall lifecycle or operational readiness.
+Physical Android, deployed HTTPS/mail/token pruning and production-account
+acceptance remain required before native release. Existing Phase 0/financial
+fixture failures and later parcel endpoints remain owned by their prior gates.
