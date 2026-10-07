@@ -46,7 +46,7 @@ At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. Afte
 
 ## 3. Hub Self-Pickup
 
-The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and one-time claim code. Reminders are sent on days three and six.
+The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and a link to private one-time claim-code access. The code is shown only through the owned order action and never included in a notification. Reminders are sent on days three and six.
 
 At the counter, the buyer presents the claim code and identity confirmation and pays COD if required. Collection maps the order to `DELIVERED`; the buyer then confirms receipt to complete it.
 

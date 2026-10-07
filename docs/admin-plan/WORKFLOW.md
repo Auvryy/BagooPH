@@ -10,6 +10,8 @@ The October 7 selection includes B14's required role-owned prerequisites in sepa
 
 ## 1. Finish and publish the foundation checkpoint
 
+The October 7 B15 selection follows merged B14 with the shared Phase 4 foundation on `feat/persistent-notifications`, then the governance integration on `admin/governance-notifications`. Verify the prerequisite's focused delivery, lifecycle, ownership, and frontend checks before starting governance integration. Preserve separate task records and logical commits; use the fresh pre-selection full-suite baseline for the combined final comparison. Record the stacked base explicitly. This selection stops after B15 and does not authorize finance work, publication, or changes to the separate Flutter project.
+
 Review the foundation diff against `main`, the recorded focused checks, the full-suite baseline, deployment requirements, and known gaps. Preserve the implemented role, KYC, and birth-date safeguards. Planning documents do not raise runtime readiness.
 
 The user publishes `admin/governance-improvements` and opens its review. The review description must explain actual changes, verification, legacy compatibility, and remaining failures. It must not call the complete admin flow finished. Merge according to the project's review decision, then update local `main`.
