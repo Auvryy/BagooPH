@@ -16,11 +16,4 @@ trait HasSellerShop
 
         return app(ShopEligibilityService::class)->context($request, history: $history);
     }
-
-    protected function getAvailableShops(Request $request)
-    {
-        return Shop::with('rootCategory:id,name,slug')->where('user_id', $request->user()->id)
-            ->orderByDesc('is_default')->orderBy('id')->get()
-            ->map(fn ($shop) => [...$shop->toArray(), 'eligible' => app(ShopEligibilityService::class)->isEligible($shop)]);
-    }
 }

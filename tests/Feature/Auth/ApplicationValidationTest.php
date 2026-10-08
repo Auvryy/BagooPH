@@ -220,7 +220,7 @@ class ApplicationValidationTest extends TestCase
         $user->update(['status' => 'suspended']);
         $shop = $user->shop;
         $shop->update(['status' => 'suspended']);
-        $extra = Shop::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
+        $extra = Shop::factory()->create(['status' => 'pending']);
         $admin = $this->admin();
         $this->inspectKycEvidence($admin, $user);
         $oldPayload = $this->kycPayload($user);

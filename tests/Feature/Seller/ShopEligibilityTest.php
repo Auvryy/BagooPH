@@ -36,15 +36,19 @@ class ShopEligibilityTest extends TestCase
         $this->assertDatabaseCount('shops', 0);
     }
 
-    public function test_an_explicit_stale_or_foreign_shop_never_falls_back(): void
+    public function test_old_shop_selections_cannot_override_the_sellers_only_shop(): void
     {
         $seller = User::factory()->seller()->create();
-        Shop::factory()->create(['user_id' => $seller->id]);
-        $foreign = Shop::factory()->create();
+        $owned = Shop::factory()->approved()->create(['user_id' => $seller->id]);
+        $product = Product::factory()->create(['shop_id' => $owned->id]);
+        $foreign = Product::factory()->create();
 
-        foreach ([$foreign->id, 999999] as $id) {
+        foreach ([$foreign->shop_id, 999999, ['invalid']] as $id) {
             $this->actingAs($seller)->withSession(['active_seller_shop_id' => $id])
-                ->get('/seller/products')->assertForbidden();
+                ->get('/seller/products')->assertOk()->assertSessionMissing('active_seller_shop_id')
+                ->assertInertia(fn (Assert $page) => $page->where('shop.id', $owned->id)
+                    ->where('auth.user.shop.id', $owned->id)->missing('auth.user.sellerShops')->missing('availableShops')
+                    ->has('products.data', 1)->where('products.data.0.id', $product->id));
         }
         $this->assertDatabaseCount('shops', 2);
     }
@@ -54,46 +58,45 @@ class ShopEligibilityTest extends TestCase
         $seller = User::factory()->seller()->create();
         $category = Category::create(['name' => 'Pet Supplies', 'slug' => 'pet-supplies', 'is_active' => true]);
 
-        $this->actingAs($seller)->post('/seller/shops', [
-            'name' => 'Pet Corner', 'root_category_id' => $category->id,
-            'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
-            'status' => 'active', 'review_status' => 'approved',
-        ])->assertSessionHasErrors(['status', 'review_status']);
-
+        foreach (['/seller/shops', 'http://seller.localhost/shops'] as $url) {
+            $this->actingAs($seller)->post($url, [
+                'name' => 'Pet Corner', 'root_category_id' => $category->id,
+                'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
+                'status' => 'active', 'review_status' => 'approved',
+            ])->assertStatus(405);
+        }
         $this->assertDatabaseCount('shops', 0);
     }
 
-    public function test_valid_additional_shop_is_canonical_and_pending_without_changing_the_selected_shop(): void
+    public function test_valid_additional_shop_input_cannot_create_another_shop_or_save_an_upload(): void
     {
         Storage::fake('local');
         $seller = User::factory()->seller()->create();
         $current = Shop::factory()->approved()->create(['user_id' => $seller->id]);
-        $this->actingAs($seller)->withSession(['active_seller_shop_id' => $current->id])->post('/seller/shops', [
-            'name' => '  Pet Corner  ', 'phone' => '0917 123 4567', 'address' => '123 Rizal Street', 'city' => 'Manila',
-            'root_category_id' => $current->root_category_id,
-            'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nShop permit\n%%EOF"),
-        ])->assertRedirect('/seller/shops')->assertSessionHasNoErrors()->assertSessionHas('active_seller_shop_id', $current->id);
-        $shop = Shop::latest('id')->first();
-        $this->assertSame('Pet Corner', $shop->name);
-        $this->assertSame('+639171234567', $shop->phone);
-        $this->assertSame('pending', $shop->status);
-        $this->assertSame('pending_approval', $shop->review_status);
-        $this->assertFalse(app(ShopEligibilityService::class)->isEligible($shop));
-        Storage::disk('local')->assertExists($shop->business_permit_path);
-        $this->assertNull($shop->description);
+        $before = $current->fresh()->getAttributes();
+        foreach (['/seller/shops', 'http://seller.localhost/shops'] as $url) {
+            $this->actingAs($seller)->post($url, [
+                'name' => 'Pet Corner', 'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
+                'root_category_id' => $current->root_category_id,
+                'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nShop permit\n%%EOF"),
+            ])->assertStatus(405);
+        }
+        $this->assertSame($before, $current->fresh()->getAttributes());
+        $this->assertDatabaseCount('shops', 1);
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_only_an_owned_reviewed_active_shop_can_be_selected(): void
+    public function test_shop_switching_is_unavailable_even_with_an_owned_or_foreign_shop_id(): void
     {
         $seller = User::factory()->seller()->create();
-        $approved = Shop::factory()->approved()->create(['user_id' => $seller->id]);
-        $pending = Shop::factory()->create(['user_id' => $seller->id, 'status' => 'pending']);
+        $owned = Shop::factory()->approved()->create(['user_id' => $seller->id]);
         $foreign = Shop::factory()->approved()->create();
-        $this->actingAs($seller)->post('/seller/shops/switch', ['shop_id' => $approved->id])
-            ->assertRedirect('/seller/dashboard')->assertSessionHas('active_seller_shop_id', $approved->id);
-        foreach ([$pending->id, $foreign->id, 999999] as $id) {
-            $this->post('/seller/shops/switch', ['shop_id' => $id])->assertForbidden()->assertSessionHas('active_seller_shop_id', $approved->id);
+        foreach (['/seller/shops/switch', 'http://seller.localhost/shops/switch'] as $url) {
+            foreach ([$owned->id, $foreign->id, 999999] as $id) {
+                $this->actingAs($seller)->post($url, ['shop_id' => $id])->assertNotFound();
+            }
         }
+        $this->assertDatabaseCount('shops', 2);
     }
 
     #[DataProvider('blockedShopStates')]
@@ -164,15 +167,16 @@ class ShopEligibilityTest extends TestCase
     public function test_restricted_owned_order_history_is_visible_without_changing_the_work_context(): void
     {
         $seller = User::factory()->seller()->create();
-        $current = Shop::factory()->approved()->create(['user_id' => $seller->id]);
+        $current = Shop::factory()->approved()->create();
         $restricted = Shop::factory()->create(['user_id' => $seller->id, 'status' => 'suspended']);
         $product = Product::factory()->create(['shop_id' => $restricted->id]);
         $item = OrderItem::factory()->create(['shop_id' => $restricted->id, 'product_id' => $product->id]);
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $current->id])
-            ->get('/seller/orders?shop_id='.$restricted->id)->assertOk()->assertSessionHas('active_seller_shop_id', $current->id)
+            ->get('/seller/orders?shop_id='.$restricted->id)->assertOk()->assertSessionMissing('active_seller_shop_id')
             ->assertInertia(fn (Assert $page) => $page->where('shop.id', $restricted->id)->where('shopEligible', false)->where('orderItems.data.0.id', $item->id));
         $this->get('/seller/orders?shop_id='.Shop::factory()->create()->id)->assertForbidden();
-        $this->post('/seller/orders/'.$item->order_id.'/accept')->assertForbidden();
+        $this->post('/seller/orders/'.$item->order_id.'/accept')->assertRedirect()->assertSessionHas('error');
+        $this->assertSame($item->order->status, $item->order->fresh()->status);
         $this->assertSame('suspended', $restricted->fresh()->status);
     }
 
@@ -263,17 +267,21 @@ class ShopEligibilityTest extends TestCase
         Storage::disk('local')->put('kyc_documents/kept.pdf', "%PDF-1.4\nPreviously retained evidence\n%%EOF");
         $seller = User::factory()->seller()->create();
         $category = Category::create(['name' => 'Pet Supplies', 'slug' => 'pet-supplies', 'is_active' => true]);
-        Event::listen('eloquent.created: '.Shop::class, fn () => throw new RuntimeException('Shop write failed'));
+        $shop = Shop::factory()->create(['user_id' => $seller->id, 'root_category_id' => $category->id]);
+        $before = $shop->fresh()->getAttributes();
+        Event::listen('eloquent.updated: '.Shop::class, fn () => throw new RuntimeException('Shop write failed'));
         try {
-            $this->actingAs($seller)->post('/seller/shops', [
+            $this->actingAs($seller)->post('/seller/shops/'.$shop->id.'/resubmit', [
+                'review_token' => app(ShopReviewService::class)->token(app(ShopReviewService::class)->submission($shop)),
                 'name' => 'Pet Corner', 'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
                 'root_category_id' => $category->id,
                 'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nNew shop permit\n%%EOF"),
             ])->assertServerError();
         } finally {
-            Event::forget('eloquent.created: '.Shop::class);
+            Event::forget('eloquent.updated: '.Shop::class);
         }
-        $this->assertDatabaseCount('shops', 0);
+        $this->assertDatabaseCount('shops', 1);
+        $this->assertSame($before, $shop->fresh()->getAttributes());
         $this->assertSame(['kyc_documents/kept.pdf'], Storage::disk('local')->allFiles('kyc_documents'));
     }
 
@@ -283,12 +291,14 @@ class ShopEligibilityTest extends TestCase
         $seller = User::factory()->seller()->create();
         $category = Category::create(['name' => 'Pet Supplies', 'slug' => 'pet-supplies', 'is_active' => true]);
         $child = Category::factory()->create(['parent_id' => $category->id]);
-        $data = ['name' => 'Pet Corner', 'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
+        $shop = Shop::factory()->create(['user_id' => $seller->id, 'root_category_id' => $category->id]);
+        $data = ['review_token' => app(ShopReviewService::class)->token(app(ShopReviewService::class)->submission($shop)),
+            'name' => 'Pet Corner', 'phone' => '09171234567', 'address' => '123 Rizal Street', 'city' => 'Manila',
             'root_category_id' => $category->id, 'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nShop permit\n%%EOF")];
         foreach ([['phone', '123', 'shop_phone'], ['name', "Pet Corner\n", 'shop_name'], ['root_category_id', $child->id, 'root_category_id'], ['address', '', 'shop_address']] as [$field, $value, $error]) {
-            $this->actingAs($seller)->post('/seller/shops', array_replace($data, [$field => $value]))->assertSessionHasErrors($error);
+            $this->actingAs($seller)->post('/seller/shops/'.$shop->id.'/resubmit', array_replace($data, [$field => $value]))->assertSessionHasErrors($error);
         }
-        $this->assertDatabaseCount('shops', 0);
+        $this->assertDatabaseCount('shops', 1);
         $this->assertSame([], Storage::disk('local')->allFiles('kyc_documents'));
     }
 
@@ -299,7 +309,7 @@ class ShopEligibilityTest extends TestCase
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->get('/seller/products')->assertRedirect('/seller/shops');
         $this->assertFalse(app(ShopEligibilityService::class)->isEligible($shop));
         $shop->update(['root_category_id' => Category::factory()->create()->id]);
-        $this->post('/seller/shops/switch', ['shop_id' => $shop->id])->assertForbidden();
+        $this->get('/seller/products')->assertRedirect('/seller/shops');
         $this->assertDatabaseCount('shop_review_decisions', 0);
     }
 
@@ -307,10 +317,11 @@ class ShopEligibilityTest extends TestCase
     {
         $seller = User::factory()->seller()->create();
         $approved = Shop::factory()->approved()->create(['user_id' => $seller->id]);
-        $pending = Shop::factory()->create(['user_id' => $seller->id, 'root_category_id' => $approved->root_category_id]);
+        $pending = Shop::factory()->create(['root_category_id' => $approved->root_category_id]);
         $service = app(ShopReviewService::class);
         $data = $pending->only(ShopEligibilityService::DETAILS) + ['review_token' => $service->token($service->submission($pending->fresh()))];
         $this->actingAs($seller)->post('/seller/shops/'.$approved->id.'/resubmit', $data)->assertConflict();
+        $this->actingAs($pending->user);
         $pending->update(['city' => 'Updated Shop City']);
         $this->post('/seller/shops/'.$pending->id.'/resubmit', $data)->assertConflict();
         $foreign = Shop::factory()->create();

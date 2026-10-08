@@ -62,7 +62,7 @@ class ShopReviewTest extends TestCase
     public function test_current_inspected_shop_gets_its_own_approval_without_changing_the_account_or_other_shops(): void
     {
         [$admin, $seller, $shop] = $this->application();
-        $other = Shop::factory()->create(['user_id' => $seller->id, 'status' => 'pending']);
+        $other = Shop::factory()->create(['status' => 'pending']);
         $before = $seller->fresh()->getAttributes();
         $this->approve($admin, $shop);
 
@@ -84,7 +84,7 @@ class ShopReviewTest extends TestCase
     {
         [$admin, $seller, $shop] = $this->application();
         $seller->update(['status' => 'pending_approval', 'kyc_status' => 'pending_approval']);
-        $extra = Shop::factory()->create(['user_id' => $seller->id, 'status' => 'pending']);
+        $extra = Shop::factory()->create(['status' => 'pending']);
         $this->actingAs($admin)->post('/admin/kyc/'.$seller->id.'/approve', $this->prepareKycReview($admin, $seller))->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertSame($shop->id, ShopReviewDecision::sole()->shop_id);
@@ -227,7 +227,7 @@ class ShopReviewTest extends TestCase
         $product = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id]);
         $item = OrderItem::factory()->create(['product_id' => $product->id, 'shop_id' => $shop->id]);
         $this->assertFalse(app(ShopEligibilityService::class)->isEligible($shop));
-        $this->actingAs($seller)->get('/seller/shops')->assertInertia(fn (Assert $page) => $page->component('Seller/Shops')->where('shops.0.review_status', null)->where('shops.0.can_submit', true));
+        $this->actingAs($seller)->get('/seller/shops')->assertInertia(fn (Assert $page) => $page->component('Seller/Shops')->where('shop.review_status', null)->where('shop.can_submit', true));
         $data = $shop->only(ShopEligibilityService::DETAILS) + $this->payload($shop) + [
             'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nCurrent legacy shop permit\n%%EOF"),
         ];

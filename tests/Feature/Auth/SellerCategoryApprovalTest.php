@@ -208,7 +208,7 @@ class SellerCategoryApprovalTest extends TestCase
         $user = $this->applicant($old, $kyc, $status);
         $original = $user->shop;
         $original->update(['status' => 'suspended']);
-        $extra = Shop::factory()->create(['user_id' => $user->id, 'root_category_id' => $old->id, 'status' => 'pending']);
+        $extra = Shop::factory()->create(['root_category_id' => $old->id, 'status' => 'pending']);
         $files = [$user->id_document_path, $user->business_permit_path];
         $token = $this->kycPayload($user)['review_token'];
         $this->travel(1)->seconds();

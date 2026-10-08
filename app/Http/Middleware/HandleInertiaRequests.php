@@ -7,7 +7,6 @@ use App\Models\Message;
 use App\Models\Shop;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
-use App\Services\ShopEligibilityService;
 use App\Services\VerificationDocumentService;
 use Closure;
 use Illuminate\Http\Request;
@@ -102,16 +101,7 @@ class HandleInertiaRequests extends Middleware
                     'kyc_submitted_at' => $user->kyc_submitted_at ? $user->kyc_submitted_at->toIso8601String() : null,
                     'kyc_reviewed_at' => $user->kyc_reviewed_at ? $user->kyc_reviewed_at->toIso8601String() : null,
                     ...app(VerificationDocumentService::class)->links($user),
-                    'shop' => $user->isSeller() ? (function () use ($user, $request) {
-                        $activeId = $request->session()->get('active_seller_shop_id');
-                        $query = Shop::with('rootCategory')->where('user_id', $user->id)->eligible();
-
-                        return $activeId !== null ? $query->whereKey(is_scalar($activeId) ? $activeId : 0)->first()
-                            : $query->orderByDesc('is_default')->orderBy('id')->first();
-                    })() : null,
-                    'sellerShops' => $user->isSeller() ? Shop::with('rootCategory:id,name,slug')
-                        ->where('user_id', $user->id)->orderByDesc('is_default')->orderBy('id')->get()
-                        ->map(fn ($shop) => [...$shop->toArray(), 'eligible' => app(ShopEligibilityService::class)->isEligible($shop)]) : [],
+                    'shop' => $user->isSeller() ? Shop::with('rootCategory:id,name,slug')->where('user_id', $user->id)->first() : null,
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile?->attributesToArray() : null,
                     'logisticsCompany' => $activeHub?->company,
                     'canSwitchHubs' => $activeHub && $eligibility->isCompanyAdministrator($user),

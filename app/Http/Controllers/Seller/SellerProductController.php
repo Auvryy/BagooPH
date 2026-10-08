@@ -65,7 +65,6 @@ class SellerProductController extends Controller
             'products' => $products,
             'categories' => $categories,
             'shop' => $shop,
-            'availableShops' => $this->getAvailableShops($request),
             'filters' => [
                 'search' => $search,
             ],

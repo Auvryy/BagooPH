@@ -101,7 +101,7 @@ class IdentityCorrectionService
         $rules = app(ApplicationValidationService::class)->form($subject);
 
         return ['id' => $subject->id, 'name' => $subject->name, 'role' => $subject->role,
-            'shop_id' => $shop?->id, 'shops' => $subject->isSeller() ? Shop::where('user_id', $subject->id)->orderBy('id')->get(['id', 'name'])->toArray() : [],
+            'shop_id' => $shop?->id,
             'source_token' => $this->restrictions->token($source),
             'values' => array_intersect_key($source['values'], array_flip($this->fields($subject))),
             'fields' => array_values(array_filter($rules['fields'], fn ($field) => in_array($field['key'], $this->fields($subject), true))),

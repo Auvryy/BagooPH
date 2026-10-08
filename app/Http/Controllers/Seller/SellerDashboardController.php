@@ -89,7 +89,6 @@ class SellerDashboardController extends Controller
             'dailySales' => $this->salesMetrics->sevenDayCompletedSales($shop->id),
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
-            'availableShops' => $this->getAvailableShops($request),
             'categories' => Category::where('is_active', true)->select('id', 'name', 'slug')->get(),
         ]);
     }
@@ -157,7 +156,6 @@ class SellerDashboardController extends Controller
 
         return Inertia::render('Seller/Settings', [
             'shop' => $shop,
-            'availableShops' => $this->getAvailableShops($request),
         ]);
     }
 
@@ -238,7 +236,6 @@ class SellerDashboardController extends Controller
         return Inertia::render('Seller/Profile', [
             'user' => $user,
             'shop' => $shop,
-            'availableShops' => $this->getAvailableShops($request),
         ]);
     }
 

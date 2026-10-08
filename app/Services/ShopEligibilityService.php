@@ -58,27 +58,26 @@ class ShopEligibilityService
     {
         $user = User::whereKey($request->user()->id)->when($lock, fn ($q) => $q->lockForUpdate())->firstOrFail();
         abort_unless($user->isSeller() && $user->canAccessPortal(), 403);
-        $id = $history && $request->has('shop_id') ? $request->input('shop_id') : $request->session()->get('active_seller_shop_id');
-        $query = Shop::where('user_id', $user->id)->with('rootCategory');
-        if ($id !== null) {
-            abort_unless(is_scalar($id) && preg_match('/\A[1-9][0-9]*\z/', (string) $id), 403);
-            $shop = $query->whereKey($id)->when($lock, fn ($q) => $q->lockForUpdate())->first();
-            abort_unless($shop, 403, 'The selected shop is no longer available to your account. Choose a shop on the Shops page.');
-        } else {
-            $shop = $query->when(! $history, fn ($q) => $q->eligible())->orderByDesc('is_default')->orderBy('id')
-                ->when($lock, fn ($q) => $q->lockForUpdate())->first();
-            if (! $shop) {
-                throw new HttpResponseException(redirect()->route('seller.shops.index')->with('info', 'Submit or select an approved shop to continue.'));
-            }
+        // Old shop-picker sessions cannot change the account's sole shop or its authority.
+        $request->session()->forget('active_seller_shop_id');
+        $shops = Shop::where('user_id', $user->id)->with('rootCategory')->orderBy('id')
+            ->when($lock, fn ($q) => $q->lockForUpdate())->limit(2)->get();
+        abort_if($shops->count() > 1, 409, 'This account has conflicting shop ownership. Contact an administrator before continuing.');
+        $shop = $shops->first();
+        if (! $shop) {
+            throw new HttpResponseException(redirect()->route('seller.shops.index')->with('info', 'Your registered shop is missing. Contact an administrator.'));
+        }
+        if ($request->has('shop_id')) {
+            $id = $request->input('shop_id');
+            abort_unless(is_scalar($id) && preg_match('/\A[1-9][0-9]*\z/', (string) $id) && (string) $id === (string) $shop->id, 403);
         }
         if (! $history) {
             if ($lock) {
                 $this->lockCategories();
             }
             if (! $this->isEligible($shop)) {
-                throw new HttpResponseException(redirect()->route('seller.shops.index')->with('info', 'This shop cannot accept new work. Review its approval and activity on the Shops page.'));
+                throw new HttpResponseException(redirect()->route('seller.shops.index')->with('info', 'Your shop cannot accept new work. Review its approval and activity on the Shop page.'));
             }
-            $request->session()->put('active_seller_shop_id', $shop->id);
         }
 
         return $shop;
