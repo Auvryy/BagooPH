@@ -34,6 +34,13 @@ class EnsureRiderAccountToken
                 throw $exception;
             }
         }
+        if (str_starts_with($purpose, 'settings:')) {
+            abort_unless($user->isEligibleCourier(), 403, 'An approved active rider account is required for settings.');
+            abort_unless(app(RiderAccountService::class)->settingsAvailable(), 503, 'Account settings are temporarily unavailable.');
+            $ability = 'rider:'.$purpose;
+            app(RiderAccountService::class)->assertSettingsToken($request, $user, $ability);
+            $request->attributes->set('rider_settings_ability', $ability);
+        }
         $token->forceFill(['last_used_at' => now()])->save();
         $request->setUserResolver(fn () => $user->withAccessToken($token));
 

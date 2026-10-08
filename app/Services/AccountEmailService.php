@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AccountEmail;
 use App\Models\EmailOtp;
 use App\Models\User;
+use App\Rules\AccountCurrentPassword;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -16,12 +17,14 @@ class AccountEmailService
 {
     public function presentation(User $user): array
     {
-        return ['original' => $user->email, 'can_manage' => $user->canAccessPortal(), 'addresses' => $user->accountEmails()
-            ->orderByDesc('is_original')->orderBy('id')->get()->map(fn (AccountEmail $email) => [
-                'id' => $email->id, 'email' => $email->is_original ? $user->email : $email->email,
-                'is_original' => $email->is_original, 'verified' => $email->verified_at !== null,
-                'preferred' => $user->preferred_contact_email_id ? $user->preferred_contact_email_id === $email->id : $email->is_original,
-            ])->all()];
+        $addresses = $user->accountEmails()->orderByDesc('is_original')->orderBy('id')->get();
+        $preferred = $addresses->first(fn (AccountEmail $email) => $email->id === $user->preferred_contact_email_id && $email->verified_at !== null);
+
+        return ['original' => $user->email, 'can_manage' => $user->canAccessPortal(), 'addresses' => $addresses->map(fn (AccountEmail $email) => [
+            'id' => $email->id, 'email' => $email->is_original ? $user->email : $email->email,
+            'is_original' => $email->is_original, 'verified' => $email->verified_at !== null,
+            'preferred' => $preferred ? $preferred->id === $email->id : $email->is_original,
+        ])->all()];
     }
 
     public function recoveryOwner(string $email, bool $lock = false): ?User
@@ -41,9 +44,7 @@ class AccountEmailService
 
     private function actor(Request $request, bool $lock = false): User
     {
-        $user = User::whereKey($request->user()->id)->when($lock, fn ($query) => $query->lockForUpdate())->firstOrFail();
-        abort_unless($user->canAccessPortal(), 403);
-        $request->setUserResolver(fn () => $user);
+        $user = app(AccountSettingsService::class)->actor($request, $lock);
         if ($lock && ! Hash::check((string) $request->input('current_password'), $user->password)) {
             throw ValidationException::withMessages(['current_password' => 'The current password is incorrect.']);
         }
@@ -53,9 +54,9 @@ class AccountEmailService
 
     private function credentials(Request $request, array $rules = []): array
     {
-        $this->actor($request);
+        $user = $this->actor($request);
 
-        return $request->validate($rules + ['current_password' => ['required', 'string', 'current_password'], 'user_id' => 'prohibited', 'is_original' => 'prohibited', 'verified_at' => 'prohibited']);
+        return $request->validate($rules + ['current_password' => ['required', 'string', 'max:4096', new AccountCurrentPassword($user)], 'user_id' => 'prohibited', 'is_original' => 'prohibited', 'verified_at' => 'prohibited']);
     }
 
     private function address(Request $request): string
@@ -132,7 +133,9 @@ class AccountEmailService
                 app(PasswordBroker::class)->getRepository()->delete($user);
                 $address->delete();
             } else {
-                abort_unless($address->verified_at !== null, 422, 'Verify this address before choosing it for contact.');
+                if ($address->verified_at === null) {
+                    throw ValidationException::withMessages(['email' => 'Verify this address before choosing it for contact.']);
+                }
                 $user->forceFill(['preferred_contact_email_id' => $address->id])->save();
             }
         }, 3);

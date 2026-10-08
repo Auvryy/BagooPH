@@ -4,9 +4,37 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class RiderAccountService
 {
+    public const SETTINGS_ABILITIES = ['rider:settings:read', 'rider:settings:profile', 'rider:settings:password', 'rider:settings:emails'];
+
+    public function settingsAvailable(): bool
+    {
+        return Schema::hasColumn('users', 'contact_settings_version') && Schema::hasTable('account_emails');
+    }
+
+    public function assertSettingsToken(Request $request, User $user, string $ability, bool $lock = false): PersonalAccessToken
+    {
+        $token = $request->bearerToken() ? PersonalAccessToken::findToken($request->bearerToken()) : null;
+        if ($lock && $token) {
+            $token = PersonalAccessToken::whereKey($token->id)->where('token', $token->token)->lockForUpdate()->first();
+        }
+        if (! $token || $token->tokenable_type !== $user->getMorphClass() || (string) $token->tokenable_id !== (string) $user->id
+            || ! $token->expires_at || now()->greaterThanOrEqualTo($token->expires_at)
+            || ! hash_equals((string) $token->getAttribute('credential_fingerprint'), hash('sha256', $user->getAuthPassword()))) {
+            throw new HttpResponseException(response()->json(['message' => 'Your session expired. Please sign in again.'], 401));
+        }
+        if (! $token->can($ability)) {
+            throw new HttpResponseException(response()->json(['message' => 'Sign in again to enable native account settings.'], 403));
+        }
+
+        return $token;
+    }
+
     public function assertAccessible(User $user): void
     {
         if (! $user->isCourier() || $user->closed_at !== null
@@ -19,7 +47,7 @@ class RiderAccountService
 
     public function resource(User $user): array
     {
-        return ['id' => (string) $user->id, 'name' => $user->name, 'email' => $user->email,
+        return ['id' => (string) $user->id, ...($this->settingsAvailable() ? ['settings_api_version' => 1] : []), 'name' => $user->name, 'email' => $user->email,
             'email_verified' => $user->email_verified_at !== null, 'role' => 'courier',
             'status' => $user->status, 'kyc_status' => $user->kyc_status, 'kyc_feedback' => $user->kyc_feedback,
             'can_access_portal' => $user->canAccessPortal(), 'access_state' => $user->canAccessPortal() ? 'approved' : 'holding'];
@@ -29,7 +57,7 @@ class RiderAccountService
     {
         $this->assertAccessible($user);
         $expires = now()->addMinutes(max(1, min(10080, (int) config('rider_auth.token_minutes'))));
-        $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout'], $expires);
+        $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout', ...($this->settingsAvailable() ? self::SETTINGS_ABILITIES : [])], $expires);
         $issued->accessToken->forceFill(['credential_fingerprint' => hash('sha256', $user->getAuthPassword())])->save();
 
         return ['token' => $issued->plainTextToken, 'token_type' => 'Bearer',
