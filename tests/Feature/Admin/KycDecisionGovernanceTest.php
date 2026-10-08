@@ -65,7 +65,7 @@ class KycDecisionGovernanceTest extends TestCase
     {
         $user = $this->applicant($role);
         $admin = $this->admin();
-        $extraShop = $role === 'seller' ? Shop::create(['user_id' => $user->id, 'name' => 'Additional Shop', 'slug' => 'additional', 'status' => 'pending']) : null;
+        $otherShop = $role === 'seller' ? Shop::create(['user_id' => User::factory()->seller()->pendingKyc()->create()->id, 'name' => 'Other Seller Shop', 'slug' => 'other-seller-shop', 'status' => 'pending']) : null;
         $this->inspectKycEvidence($admin, $user);
         $this->post($prefix.'/'.$user->id.'/approve', $this->kycPayload($user))->assertRedirect()->assertSessionHas('success');
         $decision = KycDecision::sole();
@@ -80,9 +80,9 @@ class KycDecisionGovernanceTest extends TestCase
             $this->assertTrue($decision->submission['documents'][$kind]['valid']);
             $this->assertNotNull($decision->submission['documents'][$kind]['sha256']);
         }
-        if ($extraShop) {
+        if ($otherShop) {
             $this->assertSame('active', $user->shop->fresh()->status);
-            $this->assertSame('pending', $extraShop->fresh()->status);
+            $this->assertSame('pending', $otherShop->fresh()->status);
         }
         if ($role === 'courier') {
             $this->assertFalse($user->courierProfile->fresh()->is_available);

@@ -230,6 +230,7 @@ class SharedPortalAccessTest extends TestCase
             $this->assertSame(7, $product->fresh()->stock);
         }
         $this->assertDatabaseCount('product_moderation_decisions', 2);
+        $this->assertSame(1, Shop::where('user_id', $applicant->id)->count());
         foreach (self::portalPrefixes('logistics') as $prefix) {
             $this->get($prefix.'/dashboard')->assertOk();
             $this->get($prefix.'/scan')->assertForbidden();
@@ -286,7 +287,8 @@ class SharedPortalAccessTest extends TestCase
 
     private function sellerProduct(User $seller): Product
     {
-        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'status' => 'active', 'is_default' => true]);
+        $shop = Shop::where('user_id', $seller->id)->first()
+            ?? Shop::factory()->approved()->create(['user_id' => $seller->id, 'status' => 'active', 'is_default' => true]);
 
         return Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'stock' => 7, 'status' => 'active']);
     }
