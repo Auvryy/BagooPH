@@ -230,7 +230,7 @@ class KycDecisionService
 
     public function lockProfile(User $user): void
     {
-        // Additional shops, fleet, assignments, facilities, and rider duty are never activated by KYC.
+        // Fleet, assignments, facilities, and rider duty are never activated by KYC.
         $user->setRelation('shop', $user->isSeller() ? Shop::where('user_id', $user->id)->orderBy('id')->lockForUpdate()->first() : null);
         $user->setRelation('courierProfile', $user->isCourier() ? CourierProfile::where('user_id', $user->id)->lockForUpdate()->first() : null);
         $user->setRelation('logisticsCompany', $user->isLogistics() ? LogisticsCompany::where('user_id', $user->id)->lockForUpdate()->first() : null);

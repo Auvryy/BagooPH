@@ -43,7 +43,8 @@ Buyer checkout
 
 The following rules apply across every portal:
 
-- A multi-shop Shopping Bag creates one independent order, parcel, waybill, logistics route, and shipping fee per shop.
+- One seller account owns one shop, created at registration with a chosen master root category. The initial Platform Admin application review covers that shop; products remain within its approved root and active descendants. Extra-shop creation and seller shop switching are unavailable.
+- A multi-shop Shopping Bag across different sellers creates one independent order, parcel, waybill, logistics route, and shipping fee per shop.
 - A shop voucher affects only its matching shop order. A platform voucher is divided proportionally among the generated orders without exceeding its calculated checkout discount.
 - Pickup and delivery riders are assignment phases of the same approved `courier` account, not separate account roles.
 - Every parcel passes through at least one Regional Mother Hub. Direct seller-to-buyer and Bayan-Hub-to-Bayan-Hub transport are prohibited.

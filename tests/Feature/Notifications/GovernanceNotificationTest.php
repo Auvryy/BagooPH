@@ -244,9 +244,9 @@ class GovernanceNotificationTest extends TestCase
 
     public function test_independent_shop_review_has_one_separate_owner_notice(): void
     {
-        $seller = $this->createApprovedUser('seller', ['birthday' => '1995-05-10']);
+        $seller = User::factory()->seller()->create(['birthday' => '1995-05-10']);
         $this->addKycEvidence($seller);
-        $shop = Shop::create(['user_id' => $seller->id, 'name' => 'Bagoo Additional Shop', 'slug' => 'additional-notice-shop',
+        $shop = Shop::create(['user_id' => $seller->id, 'name' => 'Bagoo Legacy Shop', 'slug' => 'legacy-notice-shop',
             'root_category_id' => $this->validMasterCategory()->id, 'phone' => '+639171234567', 'address' => 'Bagoo Test Street',
             'city' => 'Manila', 'status' => 'pending', 'review_status' => 'pending_approval', 'review_submitted_at' => now(),
             'business_permit_path' => $seller->getRawOriginal('business_permit_path')]);

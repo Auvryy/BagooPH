@@ -32,7 +32,7 @@ export default function MasterCategorySelect({ choices, value, onChange, error, 
                 {unavailable && <option value={value} disabled>{currentName || 'Previous category'} — choose an available category</option>}
                 {choices.map(category => <option key={category.id} value={String(category.id)}>{category.name}</option>)}
             </select>
-            <p className="text-xs text-slate-600">An admin reviews this category with your original shop application.</p>
+            <p className="text-xs text-slate-600">One seller account has one shop. Choose the master category that covers its products; an admin reviews it with your application.</p>
             {choices.length === 0 && <p className="text-xs text-amber-800">Categories are unavailable. Please contact support before submitting.</p>}
             <InputError message={error} />
         </div>

@@ -4,9 +4,11 @@ This document defines seller actions. Parcel custody and settlement follow `docs
 
 ## 1. Registration and Store Management
 
-Seller submits identity and business requirements. Platform Admin approval is required before transactional portal access. Pending/rejected applicants use their own review/resubmission holding screen. The account and selected shop must both be eligible; each shop keeps its approved root category and manages products, stock, variants, prices, images, and vouchers within that scope. An approved account or switching shops does not approve another shop automatically.
+One seller account owns one shop. Registration creates that shop together with the account and requires a choice from the 14 master root categories. The seller submits birth date, identity and business requirements; Platform Admin reviews the account and its registered shop together before transactional portal access. Pending/rejected applicants use their own review/resubmission holding screen.
 
-Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or selected shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.
+The seller opens their sole shop automatically after approval. There is no extra-shop creation or shop switcher. Products, stock, variants, prices, images and vouchers stay within the approved root category and its active descendants. A reviewed category change requires the existing identity/scope correction process. Legacy shops without recorded approval use the existing shop review path; approval is never inferred from an active flag.
+
+Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or their shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.
 
 ## 2. Order Fulfillment
 

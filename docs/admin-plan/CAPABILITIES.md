@@ -7,7 +7,7 @@ Use this document to understand why the [planned branches](README.md) exist. It 
 | Function | Admin value | Planned delivery | Boundary |
 |---|---|---|---|
 | Application readiness and category review | See exactly which verified prerequisite prevents approval | B01, B02 | Missing data is a blocker; uploads and email verification do not constitute approval. |
-| Independent shop approval | Review each seller shop/category separately | B03 | Account approval cannot approve additional shops. |
+| Seller shop approval | Review the one registered shop and its category with the seller application; retain legacy review | B03 | One shop per seller. Later category corrections and activity restrictions remain controlled. |
 | Company/facility/personnel eligibility | Apply the same parent and ownership checks throughout the network | B04 | Company placement never grants platform KYC or foreign-company authority. |
 | Buyer access and holding alignment | Give applicants a useful correction path while blocking new transactions | B05 | Preserve the narrow owned-order tracking/receipt exception. |
 | Reasoned account restrictions | Explain who restricted an account, why, and what work it affects | B06 | Preserve custody/cash; reactivation is a separate decision. |

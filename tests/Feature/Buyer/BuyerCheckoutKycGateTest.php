@@ -24,6 +24,7 @@ class BuyerCheckoutKycGateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
     }
 

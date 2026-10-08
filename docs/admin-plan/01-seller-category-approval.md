@@ -13,7 +13,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 ## Purpose
 
-Make the documented category requirement part of registration, applicant correction, and the current KYC decision. This branch establishes a valid root scope; it does not build the complete independent review system for additional shops.
+Make the documented category requirement part of registration, applicant correction, and the current KYC decision. This branch establishes the root scope of the sole shop created with each seller account. B03 governs its current shop review and access checks; it does not add extra shops.
 
 ## Contracts and inspection targets
 
@@ -41,12 +41,12 @@ Inspect these existing files before proposing schema or routes. The list is a st
 3. Provide owned pending/rejected applicants a category correction path. Treat a changed category as a changed application version and preserve existing files, restrictions, and earlier decisions.
 4. Require a valid active master root category for the original dependent shop in KYC readiness. Bind relevant category identity/eligibility to the current review snapshot so deactivation or correction invalidates a stale decision.
 5. Show the current category and a precise readiness blocker in the admin inspector. Require current evidence inspection after a submission change; frontend selection never establishes approval.
-6. Verify preserved legacy references, rejected retry behavior, and original-shop-only activation; record exact remaining independent-shop work for B03.
+6. Verify preserved legacy references, rejected retry behavior, and registered-shop activation; record remaining shop review and access work for B03.
 
 ## Decision and scope rules
 
 - Only one of the 14 documented master root categories is valid; a child, inactive category, foreign/nonexistent ID, or legacy non-master root cannot substitute.
-- An approved account does not approve additional shops. Keep the existing original dependent profile boundary until B03 delivers independent shop review.
+- Each seller owns one registered shop. Initial account review covers that shop; shop restrictions, missing legacy provenance and reviewed category corrections remain separately controlled.
 - Known category invalidity blocks a new approval. Identical completed-decision retries still return the original recorded result without re-running activation.
 - Applicant correction requires ownership and an allowed unreviewed source state. Reviewed identity/category changes require B08 rather than a generic self-edit.
 
@@ -58,7 +58,7 @@ Inspect these existing files before proposing schema or routes. The list is a st
 
 ## Exclusions
 
-- Independent additional-shop approvals/context selection (B03), complete shared text/contact validation (B02), and reviewed identity correction (B08).
+- Legacy shop review and sole-shop access enforcement (B03), complete shared text/contact validation (B02), and reviewed identity correction (B08).
 - Product category redesign, reclassification of existing products, public account role conversion, or changes to order/custody/commission rules.
 - Bulk production reseeding, arbitrary SQL data fixes, new category-count analytics, or a seller portal redesign.
 
@@ -74,7 +74,7 @@ Inspect these existing files before proposing schema or routes. The list is a st
 | Foreign or reviewed correction | Another seller's shop and reviewed identity cannot be changed through this path. |
 | Missing category at review | Approval fails without changing account/shop state or creating a decision. |
 | Category changes after inspection | Stale review conflicts; admin must inspect the current submission. |
-| Independent restriction and extra shop | Approval preserves suspension and does not activate other shops. |
+| Independent restriction and foreign shop | Approval preserves suspension and does not affect another seller's shop. |
 | Retry or partial failure | Identical completed decision stays unchanged; failed registration/review rolls back all scoped writes. |
 
 ## Verification and review

@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -83,7 +82,8 @@ class ShopReviewService
             'decision_history' => $shop->reviewDecisions()->orderByDesc('id')->get()->map(fn ($decision) => [
                 'id' => $decision->id, 'decision' => $decision->decision, 'reason' => $decision->reason,
                 'reviewer' => $decision->reviewer_name, 'reviewed_at' => $decision->reviewed_at->toISOString(),
-                'shop_status' => $decision->after_state['status'], 'source' => $decision->kyc_decision_id ? 'Original account application' : 'Independent shop review',
+                'shop_status' => $decision->after_state['status'], 'source' => ($decision->submission['source'] ?? null) === 'demo_fixture'
+                    ? 'Synthetic demo setup' : ($decision->kyc_decision_id ? 'Original account application' : 'Shop review'),
                 'documents' => $this->links($shop, $decision->submission, $decision),
             ])->all()];
     }
@@ -101,15 +101,15 @@ class ShopReviewService
         return $links;
     }
 
-    public function submit(Request $request, ?Shop $subject = null): Shop
+    public function submit(Request $request, Shop $subject): Shop
     {
         $data = $request->all();
         $data = array_replace($data, ['shop_name' => $data['name'] ?? null, 'shop_phone' => $data['phone'] ?? null,
             'shop_address' => $data['address'] ?? null, 'shop_city' => $data['city'] ?? null]);
         $data = app(ApplicationValidationService::class)->normalize($data, 'seller');
         $validated = Validator::make($data, $this->rules() + [
-            'description' => 'nullable|string|max:1000', 'business_permit' => [$subject ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-            'review_token' => [$subject ? 'required' : 'nullable', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+            'description' => 'nullable|string|max:1000', 'business_permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'review_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
             'status' => 'prohibited', 'review_status' => 'prohibited', 'approved' => 'prohibited', 'review_decision_id' => 'prohibited',
         ])->validate();
         $paths = $this->documents->storeUploads($validated);
@@ -117,32 +117,25 @@ class ShopReviewService
             return DB::transaction(function () use ($request, $subject, $validated, $paths) {
                 $owner = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
                 abort_unless($owner->isSeller() && $owner->canAccessPortal(), 403);
-                $shop = $subject ? Shop::where('user_id', $owner->id)->whereKey($subject->id)->lockForUpdate()->firstOrFail() : null;
+                $shop = Shop::where('user_id', $owner->id)->whereKey($subject->id)->lockForUpdate()->firstOrFail();
                 $this->eligibility->lockCategories();
                 app(MasterCategoryService::class)->requireEligible($validated['root_category_id']);
-                if ($shop) {
-                    abort_unless(in_array($shop->review_status, [null, 'pending_approval', 'rejected'], true), 409, 'Reviewed shop changes require a separate correction review.');
-                    abort_unless(hash_equals($this->token($this->submission($shop)), $validated['review_token']), 409, 'This shop changed. Reload its current details before submitting.');
-                }
-                $permit = $paths['business_permit_path'] ?? $shop?->business_permit_path;
+                abort_unless(in_array($shop->review_status, [null, 'pending_approval', 'rejected'], true), 409, 'Reviewed shop changes require a separate correction review.');
+                abort_unless(hash_equals($this->token($this->submission($shop)), $validated['review_token']), 409, 'This shop changed. Reload its current details before submitting.');
+                $permit = $paths['business_permit_path'] ?? $shop->business_permit_path;
                 if (! $permit) {
                     throw ValidationException::withMessages(['business_permit' => 'Upload the business permit for this shop.']);
                 }
                 $values = ['name' => $validated['shop_name'], 'phone' => $validated['shop_phone'], 'address' => $validated['shop_address'],
                     'city' => $validated['shop_city'], 'root_category_id' => $validated['root_category_id'],
                     'business_permit_path' => $permit, 'review_status' => 'pending_approval',
-                    'review_version' => ($shop?->review_version ?? 0) + 1,
+                    'review_version' => ($shop->review_version ?? 0) + 1,
                     'review_submitted_at' => now(), 'review_feedback' => null, 'reviewed_at' => null, 'review_decision_id' => null];
                 if (array_key_exists('description', $validated)) {
                     $values['description'] = $validated['description'];
                 }
-                if ($shop) {
-                    // Preserve activity restrictions, product references, and previous immutable reviews.
-                    $shop->update($values);
-                } else {
-                    $shop = Shop::create($values + ['user_id' => $owner->id, 'status' => 'pending',
-                        'is_default' => false, 'slug' => Str::slug(Str::limit($values['name'], 180, '')).'-'.$owner->id.'-'.Str::lower(Str::random(12))]);
-                }
+                // Preserve activity restrictions, product references, and previous immutable reviews.
+                $shop->update($values);
 
                 return $shop;
             }, 3);
@@ -223,7 +216,7 @@ class ShopReviewService
 
     public function recordOriginal(Shop $shop, User $owner, User $actor, KycDecision $kyc, ?array $before = null): ShopReviewDecision
     {
-        // The original permit was actually inspected during this account review; extra shops stay untouched.
+        // The registered shop's permit was inspected during this account review.
         $shop->update(['business_permit_path' => $kyc->submission['documents']['permit']['path'],
             'review_submitted_at' => $owner->kyc_submitted_at, 'review_version' => ($shop->review_version ?? 0) + 1]);
 

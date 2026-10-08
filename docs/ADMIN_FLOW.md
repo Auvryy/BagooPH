@@ -13,7 +13,7 @@ Platform Admin owns marketplace account approval. A logistics company's acceptan
 | Applicant or responsibility | Approval authority | Evidence and scope |
 |---|---|---|
 | Buyer | Active Platform Admin | Identity document and validated account details before transactional access |
-| Seller and shop | Active Platform Admin | Identity, business permit, shop details, and an approved root category from the 14 master categories; each shop needs its own valid scope |
+| Seller and shop | Active Platform Admin | Identity, business permit, shop details, and an approved root category from the 14 master categories; one registered shop per seller, reviewed with the account's application |
 | Courier | Active Platform Admin | Identity, driver's license, vehicle details, and OR/CR documents; company/hub placement does not replace this review |
 | Logistics company | Active Platform Admin | Company and contact details, business permit, and franchise evidence where applicable to the documented application; no additional accreditation module is implied |
 | Hub Handler | Platform Admin for account eligibility; approved Logistics Company Admin for facility assignment | An eligible `logistics` account with an active handler assignment at an active facility in that company; facility assignment alone cannot grant marketplace approval |
@@ -63,7 +63,7 @@ Every protected read and write applies the same server-side eligibility and acti
 
 New routing or assignment requires an eligible account, company, hub, handler/rider, and vehicle where applicable. Going off duty removes a courier from new work but permits the documented completion of existing assignments; suspension instead requires controlled recovery.
 
-Account approval does not automatically approve additional seller shops. Company approval does not authorize every future handler, rider placement, or facility assignment. Scope changes must be authorized and must preserve assignment and custody history. Service coverage stays within supported contiguous roads; no sea or air routing is permitted.
+A seller account has one registered shop. The initial application review covers that shop and its chosen master category; missing legacy shop provenance and later reviewed scope corrections need current evidence and a retained decision. Company approval does not authorize every future handler, rider placement, or facility assignment. Scope changes must be authorized and must preserve assignment and custody history. Service coverage stays within supported contiguous roads; no sea or air routing is permitted.
 
 ## 4. Suspension, Account Roles, and Deletion
 

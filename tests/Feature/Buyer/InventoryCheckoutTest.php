@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Factories\ShopFactory;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
@@ -22,6 +23,7 @@ class InventoryCheckoutTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
         $shop = Shop::whereHas('user', fn ($owner) => $owner->where('email', 'seller@bagoo.test'))->firstOrFail();
         $root = Category::where('name', "Men's Apparel")->whereNull('parent_id')->firstOrFail();

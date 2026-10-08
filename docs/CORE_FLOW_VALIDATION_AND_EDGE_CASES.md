@@ -148,8 +148,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 
 ### Account, Shop, Product, and Voucher
 
-- Seller actions require an approved active seller and an approved active shop selected from that seller's shops.
-- Shop switching changes scope only; it never changes ownership of products, vouchers, orders, or analytics.
+- Registration creates one shop per seller account with one active master root category from the 14 documented choices. A database uniqueness constraint enforces the ownership limit, including direct inserts and owner updates. Existing duplicate ownership blocks installation for reviewed resolution; records are not deleted or merged automatically.
+- Seller actions use the account's sole owned shop and require current account/shop approval and activity. Extra-shop creation and switching routes are unavailable. Old selection sessions cannot choose another shop; supplied foreign or malformed shop IDs deny access. A missing shop never creates an active fallback.
+- The initial seller application review records its registered shop's approval together. Legacy resubmission and later reviewed scope corrections retain current evidence, versions, restrictions and history. Existing owned orders remain readable under the documented shop restriction policy.
 - Product category must remain under the shop's approved root category.
 - Product price is at least PHP 0.01, stock is a non-negative integer, variants have unique valid combinations/SKUs, and client totals are ignored.
 - Product and voucher mutations verify shop ownership on every request, including bulk actions and direct URLs.

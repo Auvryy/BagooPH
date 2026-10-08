@@ -155,9 +155,9 @@ Every physical movement must correspond to an authenticated digital scan. Custod
 - **Quantity Validation:** Pickers may constrain quantities, but the server revalidates quantity and current stock.
 - **Atomic Checkout Decrement:** Checkout validates and decrements stock atomically. Authorized seller cancellation before pickup claim/custody restores stock once; no automatic unpaid-order expiry or restocking policy is added here.
 
-### Seller Category Enclosure & Multi-Shop Toggling
-- **Approved Shop Root Category:** Each shop sells within its approved root category from the 14 master categories. Account approval does not automatically approve another shop or category.
-- **Multi-Store Switcher:** Merchants wishing to sell across multiple categories do not need separate logins. From their dashboard, a dropdown toggle switches operational context between distinct, approved shop profiles under their master account.
+### One Shop per Seller and Category Scope
+- **Registered Shop:** One seller account owns one shop, created at registration with a choice from the 14 master categories. The initial Platform Admin application review covers that shop.
+- **Approved Category:** Products remain within that approved root and its active descendants. Reviewed category changes use the controlled correction process. Extra-shop creation and seller shop switching are outside this contract. Buyers may still purchase from different sellers' shops in one Shopping Bag.
 
 ### Address Validation
 - Validate the required recipient, phone, textual address, barangay, postal code, and supported road route on the server.

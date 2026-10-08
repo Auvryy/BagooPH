@@ -200,7 +200,8 @@ class ProductModerationTest extends TestCase
         $this->get('/seller/products')->assertInertia(fn (Assert $page) => $page->where('products.data.0.compliance_restricted', true)
             ->where('products.data.0.compliance_feedback.reason', $this->input($product)['reason'])
             ->missing('products.data.0.compliance_feedback.source_token'));
-        $this->actingAs(User::factory()->seller()->create())->post('/seller/products/'.$product->id, $data)->assertForbidden();
+        $otherShop = Shop::factory()->approved()->create();
+        $this->actingAs($otherShop->user)->post('/seller/products/'.$product->id, $data)->assertForbidden();
         $this->assertTrue($product->fresh()->compliance_restricted);
     }
 

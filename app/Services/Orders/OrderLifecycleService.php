@@ -226,14 +226,14 @@ class OrderLifecycleService
         }
         $shop = Shop::whereKey($shop->id)->lockForUpdate()->first();
         if (! $shop || $shop->user_id !== $seller->id) {
-            throw new AuthorizationException('The selected shop does not belong to this seller.');
+            throw new AuthorizationException('This shop does not belong to this seller.');
         }
         app(ShopEligibilityService::class)->lockCategories();
         app(ShopEligibilityService::class)->assertEligible($shop);
 
         $shopIds = $order->items->pluck('shop_id')->unique();
         if ($shopIds->count() !== 1 || (int) $shopIds->first() !== $shop->id) {
-            throw new AuthorizationException('This order does not belong to the selected shop.');
+            throw new AuthorizationException('This order does not belong to your shop.');
         }
     }
 

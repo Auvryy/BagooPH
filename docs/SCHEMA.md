@@ -24,13 +24,15 @@ This document defines the database tables and columns for the platform.
 
 ### 2. `shops` (Seller Profile)
 * `id` (PK)
-* `user_id` (FK -> users)
+* `user_id` (unique FK -> users; one shop per seller)
 * `name` (Business name)
-* `category_id` (FK -> categories, Line of business)
+* `root_category_id` (FK -> categories; approved master root chosen at registration)
 * `business_permit_path` (Uploaded permit)
 * `description`, `logo`, `banner`
 * `phone`, `address` (Pickup location)
 * `rating`, `status`, `timestamps`
+* `review_status`, `review_submitted_at`, `reviewed_at`, `review_feedback`, `review_version`
+* `review_decision_id` (current immutable `shop_review_decisions` reference)
 
 ### 3. `courier_profiles` (Courier Vehicle Info)
 * `id` (PK)
