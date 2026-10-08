@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Http\Middleware\EnsureRiderAccountToken;
 use App\Mail\OtpVerificationMail;
 use App\Models\CourierProfile;
 use App\Models\EmailOtp;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Services\AccountEmailService;
 use App\Services\AccountSettingsService;
 use App\Services\RiderAccountService;
+use App\Services\RiderSettingsService;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -478,6 +480,28 @@ class RiderSettingsApiTest extends TestCase
             $this->assertSame(401, $exception->getResponse()->getStatusCode());
         }
         $this->assertTrue(Hash::check('Password1234', $rider->fresh()->password));
+    }
+
+    public function test_withdrawn_account_ability_is_rechecked_inside_a_locked_settings_command(): void
+    {
+        $rider = $this->rider();
+        $token = $this->token($rider);
+        $this->withToken($token);
+        $request = Request::create(self::BASE.'/profile', 'PATCH', ['phone' => '09171234567', 'revision' => $this->snapshot()['revision']]);
+        $request->headers->set('Authorization', 'Bearer '.$token);
+
+        try {
+            app(EnsureRiderAccountToken::class)->handle($request, function (Request $request) use ($token) {
+                PersonalAccessToken::findToken($token)->update(['abilities' => ['rider:settings:profile']]);
+
+                return response()->json(['data' => app(RiderSettingsService::class)->updateContact($request)]);
+            }, 'settings:profile');
+            $this->fail('The locked command must recheck its required account authority.');
+        } catch (HttpResponseException $exception) {
+            $this->assertSame(403, $exception->getResponse()->getStatusCode());
+        }
+
+        $this->assertNull($rider->fresh()->phone);
     }
 
     #[DataProvider('acceptedPasswordLengths')]

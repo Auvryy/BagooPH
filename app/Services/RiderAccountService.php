@@ -43,7 +43,7 @@ class RiderAccountService
             || ! hash_equals((string) $token->getAttribute('credential_fingerprint'), hash('sha256', $user->getAuthPassword()))) {
             throw new HttpResponseException(response()->json(['message' => 'Your session expired. Please sign in again.'], 401));
         }
-        if (! $token->can($ability)) {
+        if (! $token->can('rider:account') || ! $token->can($ability)) {
             throw new HttpResponseException(response()->json(['message' => 'Sign in again to enable native account settings.'], 403));
         }
 
