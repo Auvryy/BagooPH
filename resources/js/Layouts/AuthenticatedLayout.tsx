@@ -69,7 +69,6 @@ export default function Authenticated({
                                         >
                                             Profile
                                         </Dropdown.Link>
-                                        <Dropdown.Link href="/account/identity-corrections">Identity corrections</Dropdown.Link>
                                         <Dropdown.Link
                                             href={route('logout')}
                                             method="post"

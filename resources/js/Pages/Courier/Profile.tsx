@@ -3,6 +3,8 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Building2, Eye, EyeOff, IdCard, MapPin, PencilLine, Save, ShieldCheck, Truck, UserRound } from 'lucide-react';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { CourierAvatar, CourierBadge, CourierFieldError, CourierPanel, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
+import AccountEmailSettings from '@/Components/AccountEmailSettings';
+import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import CourierLayout from '@/Layouts/CourierLayout';
 import { courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
@@ -14,6 +16,7 @@ interface Props {
     vehicle: { type: string | null; model: string | null; plate_number: string | null; fleet_status: string | null; license_number: string | null; registration_status: string | null };
     scope?: CourierScope;
     isOnline: boolean;
+    initialTab?: 'information' | 'edit';
 }
 
 const readable = (value?: string | null) => value?.replaceAll('_', ' ') || 'Not provided';
@@ -22,9 +25,9 @@ function ManagedDetails({ items }: { items: Array<[string, string | null]> }) {
     return <dl className="mt-5 grid gap-x-6 sm:grid-cols-2">{items.map(([label, value]) => <div key={label} className="border-b border-slate-100/80 py-4"><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-2 break-words text-sm font-medium leading-relaxed text-slate-900">{value || 'Not provided'}</dd></div>)}</dl>;
 }
 
-export default function CourierProfile({ rider, assignment, vehicle, scope, isOnline }: Props) {
+export default function CourierProfile({ rider, assignment, vehicle, scope, isOnline, initialTab = 'information' }: Props) {
     const { auth } = usePage<PageProps>().props;
-    const [tab, setTab] = useState<'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle'>('information');
+    const [tab, setTab] = useState<'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle'>(initialTab);
     const [visible, setVisible] = useState<Record<string, boolean>>({});
     const [contactResult, setContactResult] = useState('');
     const [passwordResult, setPasswordResult] = useState('');
@@ -44,7 +47,7 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
             onSuccess: (page) => {
                 const error = (page.props as PageProps).flash?.error;
                 if (error) contact.setError('name', error);
-                else setContactResult('Contact details saved.');
+                else { const saved = page.props.rider as Props['rider']; contact.setData({ name: saved.name, phone: saved.phone ?? '' }); contact.setDefaults({ name: saved.name, phone: saved.phone ?? '' }); setContactResult('Contact details saved.'); }
             },
             onFinish: () => { contactPending.current = false; },
         });
@@ -102,24 +105,26 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                     </aside>
                     <div className="min-w-0">
                     <section id="profile-information" aria-labelledby="profile-information-title" hidden={tab !== 'information'}>
-                        <CourierPanel className="p-4 sm:p-6"><h2 id="profile-information-title" className="text-lg font-semibold">Information</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Your saved account details and current review status.</p><ManagedDetails items={[["Full name", rider.name], ["Email address", rider.email], ["Mobile number", rider.phone], ["Account status", readable(rider.account_status)], ["Identity review", readable(rider.kyc_status)], ["Email status", rider.email_verified_at ? 'Verified' : 'Verification required']]} /><p className="courier-inset mt-5 rounded-[8px] p-4 text-sm leading-relaxed text-slate-600">Use Edit information to update your name or mobile number. Your logistics team manages assignment and vehicle records.</p></CourierPanel>
+                        <CourierPanel className="p-4 sm:p-6"><h2 id="profile-information-title" className="text-lg font-semibold">Information</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Your saved account details and current review status.</p><ManagedDetails items={[["Full name", rider.name], ["Email address", rider.email], ["Mobile number", rider.phone], ["Account status", readable(rider.account_status)], ["Identity review", readable(rider.kyc_status)], ["Email status", rider.email_verified_at ? 'Verified' : 'Verification required']]} /><p className="courier-inset mt-5 rounded-[8px] p-4 text-sm leading-relaxed text-slate-600">Use Edit information to update your mobile number or request an identity correction. Your logistics team manages assignment and vehicle records.</p></CourierPanel>
                     </section>
                     <section id="profile-edit" aria-labelledby="profile-edit-title" hidden={tab !== 'edit'}>
                     <CourierPanel className="p-4 sm:p-6">
                         <h2 id="profile-edit-title" className="text-lg font-semibold">Contact details</h2>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Keep your name and mobile number up to date so your delivery contacts can reach you.</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Update your mobile number directly. Reviewed identity and vehicle details need a correction review.</p>
                         <form onSubmit={saveContact} className="mt-5 space-y-4">
-                            <div><label htmlFor="rider-name" className="text-sm font-semibold">Full name</label><input id="rider-name" type="text" autoComplete="name" required minLength={2} maxLength={100} value={contact.data.name} disabled={contact.processing} onChange={(event) => contact.setData('name', event.target.value)} aria-invalid={Boolean(contact.errors.name)} aria-describedby="rider-name-error" className={courierInput} /><CourierFieldError id="rider-name-error" message={contact.errors.name} /></div>
+                            <div><label htmlFor="rider-name" className="text-sm font-semibold">Full name</label><input id="rider-name" readOnly type="text" autoComplete="name" required minLength={2} maxLength={100} value={contact.data.name} disabled={contact.processing} onChange={(event) => contact.setData('name', event.target.value)} aria-invalid={Boolean(contact.errors.name)} aria-describedby="rider-name-error" className={courierInput} /><CourierFieldError id="rider-name-error" message={contact.errors.name} /></div>
                             <div><label htmlFor="rider-phone" className="text-sm font-semibold">Mobile number (optional)</label><input id="rider-phone" type="tel" autoComplete="tel" maxLength={30} value={contact.data.phone} disabled={contact.processing} onChange={(event) => contact.setData('phone', event.target.value)} aria-invalid={Boolean(contact.errors.phone)} aria-describedby="rider-phone-help rider-phone-error" className={courierInput} /><p id="rider-phone-help" className="mt-2 text-sm text-slate-600">Use a Philippine mobile number, such as 09XXXXXXXXX.</p><CourierFieldError id="rider-phone-error" message={contact.errors.phone} /></div>
                             <button type="submit" disabled={contact.processing} className={`${courierPrimary} w-full`}><Save className="h-5 w-5" aria-hidden="true" />{contact.processing ? 'Saving…' : 'Save contact details'}</button>
                             <p role="status" className="text-sm font-semibold text-[#047857]">{contactResult}</p>
                         </form>
                     </CourierPanel>
+                    <div className="mt-5"><AccountIdentitySettings theme="courier" /></div>
                     </section>
                     <section id="profile-privacy" aria-labelledby="profile-privacy-title" hidden={tab !== 'privacy'}>
                     <CourierPanel className="p-4 sm:p-6">
                         <h2 id="profile-privacy-title" className="text-lg font-semibold">Privacy and security</h2>
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">Manage email verification and your password.</p>
+                        <div className="mb-5"><AccountEmailSettings theme="courier" /></div>
                         <EmailVerificationStatus email={rider.email} verifiedAt={rider.email_verified_at} comfortable className="mt-4 !border-transparent" />
                         <form onSubmit={savePassword} className="mt-5 space-y-4">
                             <p id="rider-password-help" className="text-sm leading-relaxed text-slate-600">Use 12–128 characters for your new password. Verify your email before making this change.</p>
