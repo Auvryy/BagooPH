@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\Finance\CodCashService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -61,6 +62,13 @@ class LoginRequest extends FormRequest
         $roleMismatch = null;
 
         if ($this->is('custody-recovery/sign-in') && app(RestrictedCustodyRecoveryService::class)->ownGrants($user)) {
+            RateLimiter::clear($this->throttleKey());
+
+            return;
+        }
+        if ($this->is('cash-handover/sign-in') && ($user->isCourier() || $user->isLogistics())
+            && $user->closed_at === null && $user->email_verified_at !== null
+            && app(CodCashService::class)->scoped($user)->exists()) {
             RateLimiter::clear($this->throttleKey());
 
             return;

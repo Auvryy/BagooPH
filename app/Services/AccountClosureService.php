@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
+use App\Services\Finance\CodCashViewService;
 use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,8 @@ class AccountClosureService
 
         return Order::where(function (Builder $query) use ($subject, $shops, $companies, $hubs) {
             $query->where('buyer_id', $subject->id)
+                ->orWhereHas('codAccount', fn ($cash) => $cash->where('collector_id', $subject->id)->orWhereHas('events', fn ($events) => $events
+                    ->where(fn ($party) => $party->where('from_user_id', $subject->id)->orWhere('to_user_id', $subject->id))))
                 ->orWhereIn('pickup_hub_id', $hubs)
                 ->orWhereHas('items', fn ($items) => $items->whereIn('shop_id', $shops))
                 ->orWhereHas('commissionLedger', fn ($ledger) => $ledger->where('seller_id', $subject->id)->orWhere('courier_id', $subject->id))
@@ -137,6 +140,7 @@ class AccountClosureService
             'id' => $order->id, 'number' => $order->order_number, 'status' => $order->status,
             'payment_method' => $order->payment_method, 'payment_status' => $order->payment_status, 'total' => $order->total_amount,
             'parcel' => $order->delivery?->only(['id', 'status', 'courier_id', 'assigned_rider_id', 'current_hub_id']),
+            'cash_evidence' => $order->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($order->delivery) : null,
             'ledger' => $order->commissionLedger?->only(['id', 'status', 'gross_amount', 'seller_amount', 'platform_commission', 'delivery_fee']),
         ])->all();
         $resources = $this->resources($subject);
@@ -158,8 +162,11 @@ class AccountClosureService
             if ($order['parcel'] && ! in_array($order['parcel']['status'], ['delivered', 'returned', 'cancelled'], true)) {
                 $add('parcel_custody', 'Parcel custody for '.$order['number'].' remains unresolved.', 'The assigned logistics team must record the required handover or recovery.', [$order['parcel']['id']]);
             }
-            if ($order['payment_method'] === 'cod') {
+            if ($order['payment_method'] === 'cod' && ($order['cash_evidence']['reconciliation'] ?? null) !== 'reconciled') {
                 $add('cash_unverified', 'Cash reconciliation for '.$order['number'].' cannot be verified from the available records.', 'Platform finance must establish recorded collection, remittance and reconciliation. Payment and commission labels do not prove cash custody.', [$order['id']]);
+            }
+            if (($order['cash_evidence']['excess_cents'] ?? 0) > 0) {
+                $add('cash_excess', 'Separate unallocated cash remains recorded for '.$order['number'].'.', 'Platform finance must account for the extra cash separately from the reconciled order amount.', [$order['id']]);
             }
             if ($order['ledger'] && ! in_array($order['ledger']['status'], ['settled', 'refunded'], true)) {
                 $add('pending_proceeds', 'Recorded proceeds for '.$order['number'].' are unresolved.', 'Platform finance must resolve the recorded obligation without changing its original amounts.', [$order['ledger']['id']]);

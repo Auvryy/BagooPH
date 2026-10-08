@@ -408,7 +408,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()];
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
         $this->assertLedgerIdempotent($order);
     }
@@ -420,6 +420,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $before = [$order->fresh()->getRawOriginal(), $delivery->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()];
         Storage::fake('public');
         $this->actingAs(User::findOrFail($delivery->courier_id))->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('premature.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);

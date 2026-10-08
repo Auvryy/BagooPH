@@ -63,6 +63,7 @@ class RealWorldExceptionsAndFleetTest extends TestCase
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
         Storage::fake('public');
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('duty-proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');
         $this->assertSame('delivered', $delivery->fresh()->status);

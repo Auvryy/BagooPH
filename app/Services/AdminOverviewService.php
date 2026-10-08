@@ -46,7 +46,7 @@ class AdminOverviewService
             ['key' => 'platform_commission', 'label' => 'Recorded platform commission', 'amount' => null,
                 'reason' => 'A complete commission and settlement source is not available. Order gross is not platform income.'],
             ['key' => 'reconciled_cod', 'label' => 'COD reconciled at platform', 'amount' => null,
-                'reason' => 'Cash custody and reconciliation records are not available. A paid or delivered label does not prove remittance.'],
+                'reason' => 'Review collections and receipts in COD cash records. This overview does not combine cash totals; paid or delivered labels do not prove remittance.'],
             ['key' => 'seller_paid', 'label' => 'Seller proceeds paid', 'amount' => null,
                 'reason' => 'Recorded seller payout events are not available.'],
             ['key' => 'shipping_revenue', 'label' => 'Logistics shipping income', 'amount' => null,

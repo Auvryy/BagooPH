@@ -147,6 +147,11 @@ class Order extends Model
         return $this->hasOne(CommissionLedger::class);
     }
 
+    public function codAccount(): HasOne
+    {
+        return $this->hasOne(CodAccount::class);
+    }
+
     public function pickupHub(): BelongsTo
     {
         return $this->belongsTo(LogisticsHub::class, 'pickup_hub_id');

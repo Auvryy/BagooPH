@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CodAccount;
 use App\Models\CodCustodyEntry;
 use App\Models\CourierProfile;
 use App\Models\CustodyRecoveryGrant;
@@ -25,6 +26,7 @@ use App\Models\RestrictionAffectedWork;
 use App\Models\RestrictionDecision;
 use App\Models\User;
 use App\Rules\ApplicationText;
+use App\Services\Finance\CodCashViewService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
@@ -163,7 +165,6 @@ class ExceptionOversightService
         ['source' => $source, 'manifest' => $manifest, 'parcel' => $parcel, 'order' => $order, 'companyId' => $companyId] = $context;
         $checkpoint = $parcel?->checkpoints()->whereNull('source_checkpoint_id')->latest('id')->first();
         $decision = $kind === 'restriction' ? RestrictionDecision::findOrFail($source->restriction_decision_id) : null;
-        $cash = $parcel ? CodCustodyEntry::where('delivery_id', $parcel->id)->where('entry_type', 'counter_collection')->latest('id')->first() : null;
         $events = $parcel ? [
             'attempts' => DeliveryAttempt::where('delivery_id', $parcel->id)->orderBy('id')->get()->map(fn ($a) => $a->only(['id', 'reference', 'attempt_number', 'rider_id', 'departure_checkpoint_id', 'reason_code', 'notes', 'location_name', 'attempted_at']) + ['actorName' => User::find($a->rider_id)?->name])->all(),
             'recovery' => DeliveryRecoveryEvent::where('delivery_id', $parcel->id)->orderBy('id')->get()->map(fn ($e) => $e->only(['id', 'reference', 'delivery_attempt_id', 'actor_id', 'hub_id', 'event_type', 'barcode_scanned', 'retry_at', 'notes', 'created_at']) + ['actorName' => $e->actor_id ? User::find($e->actor_id)?->name : 'System'])->all(),
@@ -198,8 +199,8 @@ class ExceptionOversightService
                 ->map(fn ($u) => $u->only(['id', 'role', 'status', 'kyc_status', 'identity_version', 'restriction_version', 'closed_at']))->all(),
             'company' => $company?->only(['id', 'is_active', 'status', 'restriction_version']),
             'hubs' => LogisticsHub::whereIn('id', $hubIds)->orderBy('id')->get()->map(fn ($h) => $h->only(['id', 'name', 'tier', 'is_active', 'restriction_version']))->all(),
-            'cash' => ['reference' => $cash?->reference, 'amount_cents' => $cash?->amount_cents, 'holderName' => $cash ? User::find($cash->holder_user_id)?->name : null,
-                'holder_user_id' => $cash?->holder_user_id, 'evidence' => $cash ? 'counter_collection' : ($order?->payment_method === 'cod' ? 'unverified' : 'not_cod'), 'reconciliation' => 'unverified'],
+            'cash' => $order?->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($parcel)
+                : ['reference' => null, 'amount_cents' => null, 'holderName' => null, 'holder_user_id' => null, 'evidence' => 'not_cod', 'reconciliation' => 'unverified'],
             'events' => $events, 'last_decision_id' => $this->history($kind, $id)->last()?->id,
             'support' => $this->support($kind, $context),
         ];
@@ -381,13 +382,15 @@ class ExceptionOversightService
         $restriction = $context['source'] instanceof RestrictionAffectedWork ? RestrictionDecision::find($context['source']->restriction_decision_id) : null;
         $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel->fresh()) : null;
         $cashHolderId = $parcel ? CodCustodyEntry::where('delivery_id', $parcel->id)->value('holder_user_id') : null;
+        $cashAccount = $parcel ? CodAccount::where('delivery_id', $parcel->id)->first() : null;
+        $cashIds = $cashAccount ? collect(array_keys($cashAccount->state['balances']))->map(fn ($key) => (int) explode(':', $key)[1])->all() : [];
         $responsibleId = null;
         foreach (self::SOURCES as $kind => [$class]) {
             if ($context['source'] instanceof $class) {
                 $responsibleId = $this->history($kind, $context['source']->id)->last()?->responsible_user_id;
             }
         }
-        $ids = collect([...$accountIds, $company?->user_id, $parcel?->courier_id, $parcel?->assigned_rider_id, $manifest?->driver_id,
+        $ids = collect([...$accountIds, ...$cashIds, $company?->user_id, $parcel?->courier_id, $parcel?->assigned_rider_id, $manifest?->driver_id,
             $restriction?->subject_type === 'account' ? $restriction->subject_id : null, $custody['user_id'] ?? null, $cashHolderId, $responsibleId])->filter()->unique()->sort()->values();
         User::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
         if ($company) {
@@ -395,6 +398,9 @@ class ExceptionOversightService
             LogisticsHub::where('logistics_company_id', $company->id)->orderBy('id')->lockForUpdate()->get();
             CourierProfile::whereIn('user_id', $ids)->orderBy('id')->lockForUpdate()->get();
             HubHandler::whereIn('user_id', $ids)->orderBy('id')->lockForUpdate()->get();
+        }
+        if ($cashAccount) {
+            CodAccount::whereKey($cashAccount->id)->lockForUpdate()->firstOrFail();
         }
         if ($manifest) {
             LogisticsManifest::whereKey($manifest->id)->lockForUpdate()->firstOrFail();

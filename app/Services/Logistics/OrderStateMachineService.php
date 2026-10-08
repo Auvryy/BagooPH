@@ -11,6 +11,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Finance\CodCashService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -126,6 +127,13 @@ class OrderStateMachineService
             $inputs = app(WaybillScanInputService::class);
             $scanMetadata = $inputs->normalize($scanMetadata);
             Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
+            if ($targetStatus === self::STATUS_DELIVERED && $lockedDelivery->status !== $targetStatus) {
+                $proof = $scanMetadata['proof_image'] ?? null;
+                if (! is_string($proof) || preg_match('/\A\/storage\/delivery-proofs\/[A-Za-z0-9._-]+\z/', $proof) !== 1
+                    || ! Storage::disk('public')->exists(substr($proof, strlen('/storage/')))) {
+                    throw new DomainException('Upload a proof of delivery image before recording handoff.');
+                }
+            }
             $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERY_FAILED, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
                 self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,
                 self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true);
@@ -143,6 +151,9 @@ class OrderStateMachineService
                 if ($existing) {
                     if ($existing->scanned_by_id !== $actor->id) {
                         throw new DomainException('This custody action was already recorded by another actor. Refresh the parcel before continuing.');
+                    }
+                    if ($targetStatus === self::STATUS_DELIVERED) {
+                        app(CodCashService::class)->retryRider($lockedDelivery, $actor, $scanMetadata);
                     }
 
                     return $lockedDelivery;
@@ -198,14 +209,8 @@ class OrderStateMachineService
             }
 
             if ($targetStatus === self::STATUS_DELIVERED) {
-                $proof = $scanMetadata['proof_image'] ?? null;
-                if (
-                    ! is_string($proof)
-                    || preg_match('/\A\/storage\/delivery-proofs\/[A-Za-z0-9._-]+\z/', $proof) !== 1
-                    || ! Storage::disk('public')->exists(substr($proof, strlen('/storage/')))
-                ) {
-                    throw new DomainException('Upload a proof of delivery image before recording handoff.');
-                }
+                app(CodCashService::class)->riderInput($lockedDelivery, $actor, $scanMetadata);
+                $barcode = $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery);
             }
 
             $previousStatus = $lockedDelivery->status;
@@ -216,7 +221,7 @@ class OrderStateMachineService
             $lockedDelivery->save();
             $lockedDelivery->order->save();
 
-            DeliveryCheckpoint::record(
+            $checkpoint = DeliveryCheckpoint::record(
                 delivery: $lockedDelivery,
                 type: $targetStatus,
                 location: $scanMetadata['location_name'] ?? $hub?->name ?? 'Mobile Terminal',
@@ -233,6 +238,9 @@ class OrderStateMachineService
                     'custody_before' => $custodyBefore, 'custody_after' => $this->custodyAfter($lockedDelivery, $targetStatus, $actor, $hub, $barcode, $custodyBefore, $transport)],
                 scanProvenance: $transport?->event_type === 'parcel_dispatched' ? 'manifest_load_event' : null,
             );
+            if ($targetStatus === self::STATUS_DELIVERED) {
+                app(CodCashService::class)->collectRider($lockedDelivery, $actor, $checkpoint, $scanMetadata);
+            }
 
             return $lockedDelivery;
         });

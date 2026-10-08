@@ -22,6 +22,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Tests\Concerns\InteractsWithCodCollection;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\TestCase;
@@ -29,6 +30,7 @@ use Tests\TestCase;
 class CourierOperationsHardeningTest extends TestCase
 {
     use CreatesE2EOrders;
+    use InteractsWithCodCollection;
     use InteractsWithRoles;
     use RefreshDatabase;
 
@@ -694,6 +696,7 @@ class CourierOperationsHardeningTest extends TestCase
         $wrongRider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $this->actingAs($wrongRider)
             ->patch(route('courier.updateStatus', $delivery), [
+                ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
                 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
             ])
@@ -714,6 +717,7 @@ class CourierOperationsHardeningTest extends TestCase
 
         $this->actingAs($this->rider)
             ->patch(route('courier.updateStatus', $delivery), [
+                ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
                 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
             ])
@@ -721,6 +725,7 @@ class CourierOperationsHardeningTest extends TestCase
 
         $this->actingAs($this->rider)
             ->patch(route('courier.updateStatus', $delivery), [
+                ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
             ])
             ->assertSessionHas('success');
@@ -743,6 +748,7 @@ class CourierOperationsHardeningTest extends TestCase
             $drop = $this->createDelivery('out_for_delivery', $finalRider);
             $drop->order->update(['status' => $terminalStatus]);
             $this->actingAs($finalRider)->patch(route('courier.updateStatus', $drop), [
+                ...$this->codCollectionInput($drop),
                 'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
             ])->assertSessionHas('error');
             $this->assertSame('out_for_delivery', $drop->fresh()->status);
@@ -768,6 +774,7 @@ class CourierOperationsHardeningTest extends TestCase
             $delivery = $this->createDelivery($source, $rider);
             $delivery->order->update(['status' => 'ready_for_pickup']);
             $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+                ...$this->codCollectionInput($delivery),
                 'status' => $target, 'barcode' => $delivery->tracking_number, 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
             ])->assertSessionHas('error');
             $this->assertSame($source, $delivery->fresh()->status);
@@ -803,15 +810,17 @@ class CourierOperationsHardeningTest extends TestCase
         $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $delivery = $this->createDelivery('out_for_delivery', $rider);
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Original handoff note',
             'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');
         $before = $delivery->fresh()->getAttributes();
         $delivery->order->update(['status' => 'completed']);
         $this->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Replacement handoff note',
             'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
-        ])->assertSessionHas('success');
+        ])->assertSessionHas('error');
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertSame('completed', $delivery->order->fresh()->status);
         $this->assertDatabaseCount('delivery_checkpoints', 1);
@@ -825,18 +834,14 @@ class CourierOperationsHardeningTest extends TestCase
         $delivery = $this->createDelivery('out_for_delivery', $rider, ['courier_notes' => 'Original handoff note']);
         $originalProof = '/storage/'.UploadedFile::fake()->create('original.jpg', 20, 'image/jpeg')->store('delivery-proofs', 'public');
         $service = app(OrderStateMachineService::class);
-        $this->mock(OrderStateMachineService::class, function (MockInterface $mock) use ($service, $originalProof) {
-            $mock->shouldReceive('transition')->once()->andReturnUsing(function ($parcel, $target, $actor, $metadata) use ($service, $originalProof) {
-                // Model a second submission winning after this request bound the old parcel state.
-                $service->transition($parcel, $target, $actor, ['proof_image' => $originalProof]);
-
-                return $service->transition($parcel, $target, $actor, $metadata);
-            });
-        });
+        $service->transition($delivery, 'delivered', $rider, $this->codCollectionInput($delivery) + [
+            'proof_image' => $originalProof, 'notes' => 'Original handoff note',
+        ]);
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Stale replacement note',
             'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
-        ])->assertSessionHas('success');
+        ])->assertSessionHas('error');
         $this->assertSame($originalProof, $delivery->fresh()->proof_image);
         $this->assertSame('Original handoff note', $delivery->fresh()->courier_notes);
         $this->assertDatabaseCount('delivery_checkpoints', 1);

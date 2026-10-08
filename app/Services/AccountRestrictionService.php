@@ -18,6 +18,7 @@ use App\Models\RestrictionDecision;
 use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
+use App\Services\Finance\CodCashViewService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
@@ -69,7 +70,7 @@ class AccountRestrictionService
             'actions' => $subject->closed_at === null ? $this->actions($subject->status) : [], 'state' => $state,
             'affected_work' => $state['work'], 'history' => $this->history('account', $subject->id),
             'legacy_activity' => $subject->restriction_version === 0,
-            'cash_note' => 'Counter collection records identify the collecting handler. Other cash holders and reconciliation need their own evidence; payment labels and commission rows do not prove custody.',
+            'cash_note' => 'Recorded COD collections, holders and reconciliation remain with their original cash history. Payment labels and commission rows do not prove custody.',
         ];
     }
 
@@ -266,6 +267,8 @@ class AccountRestrictionService
 
         return $this->openOrUnverifiedCash(Order::where(fn ($scope) => $scope
             ->whereIn('orders.id', $query->select('orders.id'))
+            ->orWhereHas('codAccount', fn ($cash) => $cash->where('collector_id', $subject->id)->orWhereHas('events', fn ($events) => $events
+                ->where(fn ($party) => $party->where('from_user_id', $subject->id)->orWhere('to_user_id', $subject->id))))
             ->orWhereIn('orders.id', RestrictionAffectedWork::where('responsible_user_id', $subject->id)->select('order_id'))));
     }
 
@@ -295,7 +298,7 @@ class AccountRestrictionService
                     'cash' => ['method' => $order->payment_method, 'payment_label' => $order->payment_status,
                         'expected_amount' => $order->total_amount, 'ledger_id' => $order->commissionLedger?->id,
                         'ledger_state' => $order->commissionLedger?->status, 'holder' => null,
-                        'evidence' => $order->payment_method === 'cod' ? 'unverified' : 'not_cod'],
+                        ...($order->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($parcel) : ['evidence' => 'not_cod'])],
                 ];
             })->all();
     }

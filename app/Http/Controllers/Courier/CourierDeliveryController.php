@@ -7,9 +7,12 @@ use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
+use App\Rules\ApplicationText;
 use App\Services\AccountSettingsService;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
+use App\Services\Finance\CodCashService;
+use App\Services\Finance\CodMoney;
 use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\LogisticsEligibilityService;
@@ -186,8 +189,15 @@ class CourierDeliveryController extends Controller
                 OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
                 OrderStateMachineService::STATUS_DELIVERED,
             ])],
-            'barcode' => $inputs->barcodeRules(in_array($request->input('status'), ['picked_up', 'out_for_delivery'], true)),
+            'barcode' => $inputs->barcodeRules(),
             'courier_notes' => $inputs->notesRules(500),
+            'recipient_name' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', new ApplicationText('name', 2, 255)],
+            'recipient_relationship' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', Rule::in(['buyer', 'household', 'authorized_recipient'])],
+            'cash_received' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'change_given' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'cash_confirmed' => ['accepted_if:status,delivered'],
+            'request_token' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'uuid'],
+            ...app(CodCashService::class)->protectedFields(),
             'proof_image_file' => [
                 Rule::requiredIf(
                     $request->input('status') === OrderStateMachineService::STATUS_DELIVERED
@@ -236,6 +246,13 @@ class CourierDeliveryController extends Controller
                             : ($delivery->delivery_address ?? 'Buyer destination'),
                         'notes' => $courierNote !== '' ? $courierNote : null,
                         'proof_image' => $proofPath,
+                        'proof_hash' => isset($validated['proof_image_file']) ? hash_file('sha256', $validated['proof_image_file']->getRealPath()) : null,
+                        'recipient_name' => $validated['recipient_name'] ?? null,
+                        'recipient_relationship' => $validated['recipient_relationship'] ?? null,
+                        'cash_received' => $validated['cash_received'] ?? null,
+                        'change_given' => $validated['change_given'] ?? null,
+                        'cash_confirmed' => $validated['cash_confirmed'] ?? null,
+                        'request_token' => $validated['request_token'] ?? null,
                     ]
                 );
 
@@ -298,7 +315,7 @@ class CourierDeliveryController extends Controller
         $message = match ($targetStatus) {
             OrderStateMachineService::STATUS_PICKED_UP => 'Pickup recorded. Deliver the parcel to the assigned Origin Bayan Hub.',
             OrderStateMachineService::STATUS_OUT_FOR_DELIVERY => 'Final-mile delivery started.',
-            OrderStateMachineService::STATUS_DELIVERED => 'Delivery and proof recorded. Buyer confirmation is still required.',
+            OrderStateMachineService::STATUS_DELIVERED => 'Delivery, proof and exact COD recorded. Hand over the cash separately; the buyer still confirms receipt.',
         };
 
         return back()->with('success', $message);
@@ -534,6 +551,9 @@ class CourierDeliveryController extends Controller
                 'method' => strtoupper((string) $delivery->order?->payment_method),
                 'codAmount' => $delivery->order?->payment_method === 'cod'
                     ? (float) $delivery->order->total_amount
+                    : null,
+                'codAmountCents' => $delivery->order?->payment_method === 'cod'
+                    ? CodMoney::cents($delivery->order->total_amount)
                     : null,
             ],
             'destinationHub' => $this->hubPayload($delivery->destinationBayanHub),

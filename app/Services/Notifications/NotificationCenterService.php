@@ -8,6 +8,7 @@ use App\Models\RestrictionAffectedWork;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\ExceptionOversightService;
+use App\Services\Finance\CodCashService;
 use App\Services\GovernanceHistoryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event'];
+    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event'];
 
     public function current(User $actor): User
     {
@@ -102,6 +103,11 @@ class NotificationCenterService
             return '/seller/products';
         }
         try {
+            if ($target === 'cod-cash') {
+                app(CodCashService::class)->account($user, (int) ($data['cod_account_id'] ?? 0));
+
+                return '/cash-handover/'.(int) $data['cod_account_id'];
+            }
             if ($target === 'exception') {
                 app(ExceptionOversightService::class)->detail($user, $data['exception_kind'], (int) $data['exception_id'], false);
 

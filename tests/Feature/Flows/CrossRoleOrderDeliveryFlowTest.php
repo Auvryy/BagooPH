@@ -143,6 +143,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         ])->assertSessionHas('success');
         $this->assertNull($delivery->fresh()->current_hub_id);
         $this->actingAs($finalRider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered',
             'courier_notes' => 'Parcel handed directly to the buyer.',
             'proof_image_file' => UploadedFile::fake()->create('delivery-proof.jpg', 20, 'image/jpeg'),
