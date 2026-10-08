@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
@@ -22,6 +23,7 @@ class BuyerCheckoutTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
     }
 
