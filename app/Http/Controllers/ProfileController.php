@@ -89,7 +89,7 @@ class ProfileController extends Controller
 
             $request->user()->save();
 
-            return back()->with('success', 'Contact details updated.');
+            return back(fallback: route('profile.edit'))->with('success', 'Contact details updated.');
         });
     }
 
