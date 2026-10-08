@@ -13,6 +13,13 @@ use Illuminate\Validation\ValidationException;
 
 class RiderSettingsController extends Controller
 {
+    private function address(string $id): AccountEmail
+    {
+        abort_unless(filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false, 404);
+
+        return AccountEmail::findOrFail($id);
+    }
+
     private function inputs(Request $request, array $allowed): void
     {
         $unexpected = array_diff(array_keys($request->all()), $allowed);
@@ -69,7 +76,7 @@ class RiderSettingsController extends Controller
     public function prefer(Request $request, string $id, AccountEmailService $emails, RiderSettingsService $settings): JsonResponse
     {
         $this->inputs($request, ['current_password']);
-        $emails->manage($request, AccountEmail::findOrFail($id), remove: false);
+        $emails->manage($request, $this->address($id), remove: false);
 
         return response()->json(['data' => $settings->snapshot($request)]);
     }
@@ -77,7 +84,7 @@ class RiderSettingsController extends Controller
     public function destroy(Request $request, string $id, AccountEmailService $emails, RiderSettingsService $settings): JsonResponse
     {
         $this->inputs($request, ['current_password']);
-        $emails->manage($request, AccountEmail::findOrFail($id), remove: true);
+        $emails->manage($request, $this->address($id), remove: true);
 
         return response()->json(['data' => $settings->snapshot($request)]);
     }

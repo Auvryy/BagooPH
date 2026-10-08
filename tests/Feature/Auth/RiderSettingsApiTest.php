@@ -352,6 +352,32 @@ class RiderSettingsApiTest extends TestCase
         $this->assertNull(app(AccountEmailService::class)->recoveryOwner($pending->email));
     }
 
+    public function test_oversized_address_identifiers_return_private_404_before_database_lookup(): void
+    {
+        $rider = $this->rider();
+        $this->withToken($this->token($rider));
+        $queries = [];
+        DB::listen(function ($query) use (&$queries) {
+            if (str_contains($query->sql, 'from "account_emails"')) {
+                $queries[] = $query->sql;
+            }
+        });
+
+        foreach (['9223372036854775808', str_repeat('9', 100)] as $id) {
+            foreach ([['PATCH', '/preferred'], ['DELETE', '']] as [$method, $suffix]) {
+                $response = $this->json($method, self::BASE.'/emails/'.$id.$suffix, ['current_password' => 'Password1234'])
+                    ->assertNotFound()->assertHeader('Content-Type', 'application/json')->assertHeader('Pragma', 'no-cache')->assertHeaderMissing('Location');
+                $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+            }
+        }
+
+        $this->assertSame([], $queries, 'Out-of-range email identifiers must not reach an integer database query.');
+        $this->patchJson(self::BASE.'/emails/9223372036854775807/preferred', ['current_password' => 'Password1234'])->assertNotFound();
+        $this->assertCount(1, $queries, 'The largest supported identifier must still reach the ordinary missing-address lookup.');
+        $this->assertSame(1, $rider->accountEmails()->count());
+        $this->assertNull($rider->fresh()->preferred_contact_email_id);
+    }
+
     public function test_owned_email_management_requires_current_password_and_blocks_other_account_addresses_and_capacity(): void
     {
         Mail::fake();

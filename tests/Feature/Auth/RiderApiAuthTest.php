@@ -7,6 +7,7 @@ use App\Models\EmailOtp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -77,6 +78,27 @@ class RiderApiAuthTest extends TestCase
         $this->travelTo($deadline);
         $this->withToken($token)->getJson('/api/v1/rider/me')->assertUnauthorized();
         $this->withToken($token)->deleteJson('/api/v1/auth/tokens/current')->assertUnauthorized();
+    }
+
+    public function test_malformed_token_identifiers_are_denied_before_integer_database_lookups(): void
+    {
+        $queries = [];
+        DB::listen(function ($query) use (&$queries) {
+            if (str_contains($query->sql, 'from "personal_access_tokens"')) {
+                $queries[] = $query->sql;
+            }
+        });
+
+        foreach (['not-a-number', '0', '-1', '01', '1e0', '9223372036854775808', str_repeat('9', 100)] as $id) {
+            $this->withToken($id.'|invalid');
+            foreach ([['GET', '/api/v1/rider/me'], ['GET', '/api/v1/rider/settings'], ['PUT', '/api/v1/rider/settings/password'], ['DELETE', '/api/v1/auth/tokens/current']] as [$method, $path]) {
+                $response = $this->json($method, $path)->assertUnauthorized()
+                    ->assertHeader('Content-Type', 'application/json')->assertHeader('Pragma', 'no-cache')->assertHeaderMissing('Location');
+                $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+            }
+        }
+
+        $this->assertSame([], $queries, 'Invalid token identifiers must not reach an integer database query.');
     }
 
     public function test_browser_origins_require_explicit_entries_and_no_credentialed_preflight(): void

@@ -17,9 +17,24 @@ class RiderAccountService
         return Schema::hasColumn('users', 'contact_settings_version') && Schema::hasTable('account_emails');
     }
 
+    public function findToken(?string $plain): ?PersonalAccessToken
+    {
+        if (! $plain) {
+            return null;
+        }
+        if (str_contains($plain, '|')) {
+            $id = explode('|', $plain, 2)[0];
+            if (! preg_match('/\A[1-9][0-9]*\z/', $id) || filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                return null;
+            }
+        }
+
+        return PersonalAccessToken::findToken($plain);
+    }
+
     public function assertSettingsToken(Request $request, User $user, string $ability, bool $lock = false): PersonalAccessToken
     {
-        $token = $request->bearerToken() ? PersonalAccessToken::findToken($request->bearerToken()) : null;
+        $token = $this->findToken($request->bearerToken());
         if ($lock && $token) {
             $token = PersonalAccessToken::whereKey($token->id)->where('token', $token->token)->lockForUpdate()->first();
         }
