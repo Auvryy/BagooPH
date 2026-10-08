@@ -1,3 +1,4 @@
+import { refreshPage } from '@/utils/accountRequests';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -383,9 +384,7 @@ export default function ScanStation({
                 confirmed: Boolean(data.confirmed),
             });
             setScanMessage(data.message);
-            router.reload({
-                only: ['recentScans', 'pendingOriginIntake', 'stats', 'counterPickups'],
-            });
+            await refreshPage();
         } catch (err: any) {
             playSound('error');
             setScanError(err.message || 'Network error while confirming the custody action.');
@@ -445,7 +444,7 @@ export default function ScanStation({
                 setClaimRecipientName('');
                 setClaimNotes('');
                 setReleasingId(null);
-                router.reload({ only: ['counterPickups', 'recentScans', 'pendingOriginIntake', 'stats'] });
+                await refreshPage();
             } else {
                 playSound('error');
                 setScanError(data.error || 'Release failed.');

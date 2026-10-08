@@ -37,6 +37,8 @@ export interface User {
     id: number;
     name: string;
     email: string;
+    birthday?: string | null;
+    sex?: string | null;
     role: Role;
     google_id?: string | null;
     phone?: string | null;

@@ -7,6 +7,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
+use App\Services\AccountSettingsService;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
 use App\Services\IdentityCorrectionService;
@@ -405,6 +406,8 @@ class CourierDeliveryController extends Controller
         $profile = $user->courierProfile;
 
         return Inertia::render('Courier/Profile', [
+            ...app(AccountSettingsService::class)->presentation($user),
+            'initialTab' => $request->is('account/settings') ? 'edit' : 'information',
             'rider' => [
                 'name' => $user->name,
                 'email' => $user->email,

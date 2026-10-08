@@ -96,9 +96,10 @@ class SellerProfileTest extends TestCase
         Storage::disk('public')->assertExists($secondPath);
     }
 
-    public function test_changing_seller_email_requires_verification_again(): void
+    public function test_seller_cannot_replace_the_original_sign_in_email(): void
     {
         $this->assertNotNull($this->seller->email_verified_at);
+        $originalEmail = $this->seller->email;
 
         $this->actingAs($this->seller)
             ->post(route('seller.profile.update'), [
@@ -106,9 +107,10 @@ class SellerProfileTest extends TestCase
                 'email' => 'updated.seller@example.com',
                 'phone' => $this->seller->phone,
             ])
-            ->assertSessionHas('success');
+            ->assertSessionHasErrors('email');
 
-        $this->assertNull($this->seller->fresh()->email_verified_at);
+        $this->assertSame($originalEmail, $this->seller->fresh()->email);
+        $this->assertNotNull($this->seller->fresh()->email_verified_at);
     }
 
     public function test_seller_can_remove_avatar(): void

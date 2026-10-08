@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { Shop } from '@/types';
@@ -20,19 +20,40 @@ interface Props {
 }
 
 export default function SellerSettings({ shop }: Props) {
-    const { data, setData, post, processing, recentlySuccessful, errors } = useForm({
+    const [fileVersion, setFileVersion] = useState(0);
+    const { data, setData, post, processing, recentlySuccessful, errors, setDefaults } = useForm({
         name: shop.name || '',
         description: shop.description || '',
         phone: shop.phone || '',
         address: shop.address || '',
         city: shop.city || '',
         logo: shop.logo || '',
+        logo_file: null as File | null,
         banner: shop.banner || '',
+        banner_file: null as File | null,
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('seller.settings.update'));
+        post(route('seller.settings.update'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: ({ props }) => {
+                const saved = props.shop as Shop;
+                const values = {
+                    ...data,
+                    phone: saved.phone || '',
+                    description: saved.description || '',
+                    logo: saved.logo || '',
+                    banner: saved.banner || '',
+                    logo_file: null,
+                    banner_file: null,
+                };
+                setData(values);
+                setDefaults(values);
+                setFileVersion(version => version + 1);
+            },
+        });
     };
 
     return (
@@ -91,7 +112,8 @@ export default function SellerSettings({ shop }: Props) {
 
                 <form onSubmit={submit} className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-6">
                     
-                    <p className="text-sm text-slate-600">The shop name, contact details and master category were reviewed. Branding can update the description, logo and banner; reviewed details require a separate correction review.</p>
+                    <Link href="/account/settings#identity-correction" className="text-sm font-semibold text-[#C20836] underline">Request an identity or shop correction</Link>
+                    <p className="text-sm text-slate-600">Update contact numbers, description, logo and banner directly. Shop name, pickup address and category changes need an identity correction review in your account settings.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
@@ -124,7 +146,7 @@ export default function SellerSettings({ shop }: Props) {
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Merchant Hotline / Mobile:
                             </label>
-                            <input readOnly value={shop.phone ?? ''} aria-label="Reviewed shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs" />
+                            <input type="tel" value={data.phone} onChange={event => setData('phone', event.target.value)} aria-label="Shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs" />
                         </div>
 
                         <div>
@@ -158,10 +180,10 @@ export default function SellerSettings({ shop }: Props) {
 
                         <div>
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
-                                Store Logo Image URL:
+                                Store Logo Image URL or Uploaded Path:
                             </label>
                             <input
-                                type="url"
+                                type="text"
                                 value={data.logo}
                                 onChange={(e) => setData('logo', e.target.value)}
                                 placeholder="https://..."
@@ -171,10 +193,10 @@ export default function SellerSettings({ shop }: Props) {
 
                         <div>
                             <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
-                                Store Banner Cover URL:
+                                Store Banner Cover URL or Uploaded Path:
                             </label>
                             <input
-                                type="url"
+                                type="text"
                                 value={data.banner}
                                 onChange={(e) => setData('banner', e.target.value)}
                                 placeholder="https://..."
@@ -182,6 +204,12 @@ export default function SellerSettings({ shop }: Props) {
                             />
                         </div>
                     </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="text-sm font-semibold">Upload shop logo<input key={`logo-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('logo_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /></label>
+                        <label className="text-sm font-semibold">Upload shop banner<input key={`banner-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('banner_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /></label>
+                    </div>
+                    {Object.entries(errors).map(([field, error]) => <p key={field} role="alert" className="text-xs text-rose-700">{error}</p>)}
 
                     {recentlySuccessful && (
                         <p className="text-xs text-emerald-700 font-sans font-bold flex items-center gap-1.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">

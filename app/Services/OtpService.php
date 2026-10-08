@@ -15,12 +15,12 @@ class OtpService
     /**
      * Generate and dispatch a 6-digit OTP code to the given email.
      */
-    public function sendOtp(string $email, string $purpose = 'registration'): array
+    public function sendOtp(string $email, string $purpose = 'registration', ?int $userId = null): array
     {
         $normalizedEmail = strtolower(trim($email));
 
         // 1. Rate Limit Cooldown: check if a code was created within 60 seconds
-        $recentOtp = EmailOtp::forEmail($normalizedEmail, $purpose)
+        $recentOtp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
             ->latest('created_at')
             ->first();
 
@@ -36,7 +36,7 @@ class OtpService
 
         // 2. Throttle Limit: max 5 requests per 15 minutes
         $fifteenMinutesAgo = now()->subMinutes(15);
-        $requestCount = EmailOtp::forEmail($normalizedEmail, $purpose)
+        $requestCount = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
             ->where('created_at', '>=', $fifteenMinutesAgo)
             ->count();
 
@@ -49,15 +49,15 @@ class OtpService
         }
 
         // 3. Invalidate previous active unverified OTPs for this email and purpose
-        EmailOtp::forEmail($normalizedEmail, $purpose)
-            ->whereNull('verified_at')
-            ->delete();
+        EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+            ->update(['verified_at' => now(), 'token' => null, 'expires_at' => now()]);
 
         // 4. Generate 6-digit numeric code
         $code = sprintf('%06d', random_int(100000, 999999));
 
         // 5. Store OTP record with 10-minute expiry
         $otp = EmailOtp::create([
+            'user_id' => $userId,
             'email' => $normalizedEmail,
             'code_hash' => Hash::make($code),
             'purpose' => $purpose,
@@ -95,72 +95,76 @@ class OtpService
     /**
      * Verify a submitted 6-digit OTP code.
      */
-    public function verifyOtp(string $email, string $code, string $purpose = 'registration'): array
+    public function verifyOtp(string $email, string $code, string $purpose = 'registration', ?int $userId = null): array
     {
-        $normalizedEmail = strtolower(trim($email));
-        $cleanCode = trim($code);
+        return DB::transaction(function () use ($email, $code, $purpose, $userId) {
+            $normalizedEmail = strtolower(trim($email));
+            $cleanCode = trim($code);
 
-        // Find active unverified OTP
-        $otp = EmailOtp::forEmail($normalizedEmail, $purpose)
-            ->whereNull('verified_at')
-            ->latest('created_at')
-            ->first();
+            // Find active unverified OTP
+            $otp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+                ->whereNull('verified_at')
+                ->latest('id')
+                ->lockForUpdate()->first();
 
-        if (! $otp || ! $otp->expires_at->isFuture()) {
+            if (! $otp || ! $otp->expires_at->isFuture()) {
+                return [
+                    'success' => false,
+                    'message' => 'The verification code has expired or does not exist. Please request a new code.',
+                ];
+            }
+
+            if ($otp->attempts >= 5) {
+                return [
+                    'success' => false,
+                    'message' => 'Maximum verification attempts exceeded. Please request a new code.',
+                ];
+            }
+
+            // Increment attempt counter
+            $otp->increment('attempts');
+
+            // Compare constant-time hash
+            if (! Hash::check($cleanCode, $otp->code_hash)) {
+                $remaining = max(0, 5 - $otp->attempts);
+
+                return [
+                    'success' => false,
+                    'message' => $remaining > 0
+                        ? "Invalid verification code. {$remaining} attempt(s) remaining."
+                        : 'Maximum verification attempts reached. Please request a new code.',
+                ];
+            }
+
+            // Code matches! Issue verification token
+            $verificationToken = Str::random(40);
+            $otp->update([
+                'verified_at' => now(),
+                'token' => $verificationToken,
+            ]);
+
             return [
-                'success' => false,
-                'message' => 'The verification code has expired or does not exist. Please request a new code.',
+                'success' => true,
+                'message' => 'Email verified successfully.',
+                'token' => $verificationToken,
             ];
-        }
-
-        if ($otp->attempts >= 5) {
-            return [
-                'success' => false,
-                'message' => 'Maximum verification attempts exceeded. Please request a new code.',
-            ];
-        }
-
-        // Increment attempt counter
-        $otp->increment('attempts');
-
-        // Compare constant-time hash
-        if (! Hash::check($cleanCode, $otp->code_hash)) {
-            $remaining = max(0, 5 - $otp->attempts);
-
-            return [
-                'success' => false,
-                'message' => $remaining > 0
-                    ? "Invalid verification code. {$remaining} attempt(s) remaining."
-                    : 'Maximum verification attempts reached. Please request a new code.',
-            ];
-        }
-
-        // Code matches! Issue verification token
-        $verificationToken = Str::random(40);
-        $otp->update([
-            'verified_at' => now(),
-            'token' => $verificationToken,
-        ]);
-
-        return [
-            'success' => true,
-            'message' => 'Email verified successfully.',
-            'token' => $verificationToken,
-        ];
+        });
     }
 
     /**
      * Validate and burn a verification token to finalize registration or action.
      */
-    public function validateAndBurnToken(string $email, string $token, string $purpose = 'registration'): bool
+    public function validateAndBurnToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null): bool
     {
-        return DB::transaction(function () use ($email, $token, $purpose) {
+        return DB::transaction(function () use ($email, $token, $purpose, $userId) {
             $normalizedEmail = strtolower(trim($email));
 
             $otp = EmailOtp::where('email', $normalizedEmail)
                 ->where('token', $token)
                 ->where('purpose', $purpose)
+                ->where('user_id', $userId)
                 ->whereNotNull('verified_at')
+                ->where('expires_at', '>', now())
                 ->where('verified_at', '>=', now()->subHours(2))
                 ->lockForUpdate()->first();
 
@@ -178,14 +182,16 @@ class OtpService
     /**
      * Check if an email has an active valid verification token without burning it yet.
      */
-    public function hasValidToken(string $email, string $token, string $purpose = 'registration'): bool
+    public function hasValidToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null): bool
     {
         $normalizedEmail = strtolower(trim($email));
 
         return EmailOtp::where('email', $normalizedEmail)
             ->where('token', $token)
             ->where('purpose', $purpose)
+            ->where('user_id', $userId)
             ->whereNotNull('verified_at')
+            ->where('expires_at', '>', now())
             ->where('verified_at', '>=', now()->subHours(2))
             ->exists();
     }

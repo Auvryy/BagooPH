@@ -231,8 +231,13 @@ class BuyerAccessAlignmentTest extends TestCase
         $this->actingAs($buyer);
         foreach (['http://localhost', 'http://buyer.localhost'] as $host) {
             foreach (['/buyer/orders', '/my-orders'] as $prefix) {
-                $this->get($host.$prefix)->assertOk()->assertInertia(fn (Assert $page) => $page->component('Buyer/Orders')
-                    ->has('orders.data', 2)->where('canUsePortal', $status === 'active')->missing('addresses')->missing('wallet'));
+                $this->get($host.$prefix)->assertOk()->assertInertia(function (Assert $page) use ($status) {
+                    if ($status === 'active') {
+                        $page->component('Buyer/Profile')->has('orders', 2)->where('initialTab', 'orders');
+                    } else {
+                        $page->component('Buyer/Orders')->has('orders.data', 2)->where('canUsePortal', false)->missing('addresses')->missing('wallet');
+                    }
+                });
                 $this->get($host.$prefix.'/'.$order->id)->assertOk()->assertInertia(fn (Assert $page) => $page
                     ->where('canUsePortal', $status === 'active')->where('canConfirmReceipt', true));
                 $this->get($host.$prefix.'/'.$foreign->id)->assertForbidden();

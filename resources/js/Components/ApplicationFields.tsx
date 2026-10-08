@@ -24,7 +24,7 @@ export default function ApplicationFields({ application, values, errors, onChang
     return (
         <details className="rounded-[12px] border border-slate-300 bg-white p-3" open={Object.keys(application.errors).length > 0 || Object.keys(errors).some(key => application.fields.some(field => field.key === key || key.startsWith(field.key + '.')))}>
             <summary className="cursor-pointer font-semibold text-slate-900">Correct your application details</summary>
-            <p className="my-3 text-xs text-slate-600">Changes need a fresh admin review. Changing your account email requires verification of the new address.</p>
+            <p className="my-3 text-xs text-slate-600">Changes need a fresh admin review. Your original sign-in email stays with your account.</p>
             <div className="grid gap-3 sm:grid-cols-2">
                 {application.fields.map(field => {
                     const value = values[field.key] ?? '';
@@ -43,7 +43,7 @@ export default function ApplicationFields({ application, values, errors, onChang
                                     {field.options.map(option => <option key={option} value={option}>{option}</option>)}
                                 </select>
                             ) : (
-                                <input id={`application-${field.key}`} className={controlClass} type={field.type} value={String(value)} onChange={event => onChange(field.key, event.target.value)} maxLength={field.key.includes('address') ? 500 : field.key === 'name' || field.key.endsWith('_name') && !['shop_name', 'company_name'].includes(field.key) ? 100 : field.key === 'postal_code' ? 4 : 255} inputMode={field.key === 'postal_code' ? 'numeric' : undefined} />
+                                <input id={`application-${field.key}`} className={controlClass} type={field.type} readOnly={field.key === 'email'} value={String(value)} onChange={event => onChange(field.key, event.target.value)} maxLength={field.key.includes('address') ? 500 : field.key === 'name' || field.key.endsWith('_name') && !['shop_name', 'company_name'].includes(field.key) ? 100 : field.key === 'postal_code' ? 4 : 255} inputMode={field.key === 'postal_code' ? 'numeric' : undefined} />
                             )}
                             {field.type === 'tel' && <p className="mt-1 text-xs text-slate-500">Use a Philippine number; business landlines need an area code.</p>}
                             <InputError message={errors[field.key] || Object.entries(errors).find(([key]) => key.startsWith(field.key + '.'))?.[1] || application.errors[field.key]?.[0] || Object.entries(application.errors).find(([key]) => key.startsWith(field.key + '.'))?.[1]?.[0]} />

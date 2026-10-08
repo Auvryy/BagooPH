@@ -1,3 +1,4 @@
+import { refreshPage } from '@/utils/accountRequests';
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
@@ -28,13 +29,13 @@ export default function ProductModeration({ subject, endpoint, backUrl }: { subj
         event.preventDefault(); setProcessing(true); setMessage(''); setErrors([]);
         try {
             await axios.post(endpoint, { action, reason, source_token: subject.source_token }, { headers: { Accept: 'application/json' } });
-            router.reload({ only: ['subject'] });
+            await refreshPage();
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 setMessage(error.response?.data?.message ?? 'The compliance decision could not be saved.');
                 setErrors(Object.values(error.response?.data?.errors ?? {}).flat() as string[]);
                 setConflict(error.response?.status === 409);
-            } else setMessage('The compliance decision could not be saved. Please try again.');
+            } else setMessage(error instanceof Error ? error.message : 'The compliance decision could not be saved. Please try again.');
         } finally { setProcessing(false); }
     };
 

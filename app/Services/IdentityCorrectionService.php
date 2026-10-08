@@ -27,7 +27,7 @@ class IdentityCorrectionService
     public function fields(User $user): array
     {
         return [...self::IDENTITY_FIELDS, ...match ($user->role) {
-            'seller' => ['shop_name', 'shop_phone', 'shop_address', 'shop_city', 'root_category_id'],
+            'seller' => ['shop_name', 'shop_address', 'shop_city', 'root_category_id'],
             'courier' => ['vehicle_type', 'plate_number', 'license_number'],
             'logistics' => ['company_name', 'company_code'],
             default => [],

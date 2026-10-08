@@ -132,14 +132,13 @@ class ProfileInputValidationTest extends TestCase
         $this->assertSame($before, $user->fresh()->getRawOriginal());
     }
 
-    public function test_generic_profile_normalizes_email_domain_and_preserves_reviewed_identity(): void
+    public function test_generic_profile_rejects_a_normalized_replacement_and_preserves_reviewed_identity(): void
     {
         $user = $this->account('buyer');
-        $identity = $user->only(['name', 'birthday', 'role', 'kyc_status', 'identity_version']);
+        $identity = $user->only(['name', 'birthday', 'role', 'kyc_status', 'identity_version', 'email']);
         $this->actingAs($user)->patchJson('/profile', ['name' => $user->name, 'email' => '  Contact@EXAMPLE.TEST  '])
-            ->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertSame('Contact@example.test', $user->fresh()->email);
-        $this->assertNull($user->fresh()->email_verified_at);
+            ->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertNotNull($user->fresh()->email_verified_at);
         $this->assertEquals($identity, $user->fresh()->only(array_keys($identity)));
     }
 

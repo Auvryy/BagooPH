@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BagooPH Verification Code</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0F172A;">
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; color: #0F172A;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F8FAFC; padding: 40px 15px;">
         <tr>
             <td align="center">
@@ -35,6 +35,8 @@
                             <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
                                 @if($purpose === 'password_reset')
                                     We received a request to reset your BagooPH account password. Use the single-use 6-digit code below to verify your identity:
+                                @elseif($purpose === 'account_email')
+                                    Use this single-use code to add this email to your BagooPH account for contact and recovery. Your original sign-in email stays the same:
                                 @else
                                     Thank you for signing up with BagooPH. Please use the single-use 6-digit verification code below to confirm your email address:
                                 @endif

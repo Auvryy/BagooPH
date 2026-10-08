@@ -3,6 +3,8 @@ import { Head, usePage, Link } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps } from '@/types';
+import AccountEmailSettings from '@/Components/AccountEmailSettings';
+import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import { AccountClosureReview } from '@/types/accountClosure';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
@@ -27,7 +29,8 @@ export default function Edit({
     mustVerifyEmail,
     status,
     closure,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string; closure: AccountClosureReview }>) {
+    settingsOnly = false,
+}: PageProps<{ mustVerifyEmail: boolean; status?: string; closure: AccountClosureReview | null; settingsOnly?: boolean }>) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const role = user?.role || 'buyer';
@@ -39,8 +42,9 @@ export default function Edit({
             case 'seller':
                 return { href: route('seller.dashboard'), label: 'Back to Cockpit' };
             case 'courier':
-            case 'logistics':
                 return { href: route('courier.deliveries'), label: 'Back to Deliveries' };
+            case 'logistics':
+                return { href: route('hub.dashboard'), label: 'Back to Hub' };
             default:
                 return { href: route('buyer.index'), label: 'Return to Shop' };
         }
@@ -48,7 +52,13 @@ export default function Edit({
 
     const backLink = getBackRoute();
 
-    const content = (
+    const content = settingsOnly ? (
+        <div className="mx-auto max-w-4xl space-y-5">
+            <h1 className="text-2xl font-semibold">Account settings</h1>
+            <p className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-600">Your account cannot start new work. You can request a correction to reviewed identity here; approval does not clear separate restrictions.</p>
+            <AccountIdentitySettings theme={role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : role === 'courier' ? 'courier' : 'default'} />
+        </div>
+    ) : (
         <div className="max-w-4xl mx-auto space-y-6 font-sans">
             {/* Top Navigation Breadcrumb / Back Link */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
@@ -137,6 +147,10 @@ export default function Edit({
                 />
             </div>
 
+            <AccountEmailSettings theme={role === 'seller' ? 'seller' : 'buyer'} />
+
+            <AccountIdentitySettings theme={role === 'seller' ? 'seller' : 'buyer'} />
+
             {/* 3. Security & Password Card */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase">
@@ -154,7 +168,7 @@ export default function Edit({
                     <span>Danger Zone</span>
                 </div>
 
-                <DeleteUserForm className="max-w-xl" closure={closure} />
+                <DeleteUserForm className="max-w-xl" closure={closure!} />
             </div>
         </div>
     );

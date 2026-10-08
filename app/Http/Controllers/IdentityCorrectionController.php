@@ -36,7 +36,7 @@ class IdentityCorrectionController extends Controller
             'baseUrl' => $request->is('admin/*') ? '/admin' : '']);
     }
 
-    public function show(Request $request, IdentityCorrectionService $corrections, ?User $user = null): Response
+    public function show(Request $request, IdentityCorrectionService $corrections, ?User $user = null): Response|RedirectResponse
     {
         $user ??= $request->user();
         $admin = $request->route('user') !== null;
@@ -44,6 +44,11 @@ class IdentityCorrectionController extends Controller
             app(AccountRestrictionService::class)->currentActor($request->user());
         }
         $data = $request->validate(['shop_id' => 'nullable|integer|min:1']);
+        if (! $admin) {
+            $corrections->form($request->user(), $user, $data['shop_id'] ?? null);
+
+            return redirect('/account/settings#identity-correction');
+        }
 
         return Inertia::render('Governance/IdentityCorrection', ['subject' => $corrections->form($request->user(), $user, $data['shop_id'] ?? null),
             'categories' => app(MasterCategoryService::class)->choices(), 'adminReview' => $admin,
@@ -53,12 +58,15 @@ class IdentityCorrectionController extends Controller
             'listings' => $admin ? $corrections->affectedListings($request->user(), $user, $data['shop_id'] ?? null) : []]);
     }
 
-    public function store(Request $request, IdentityCorrectionService $corrections, ?User $user = null): RedirectResponse
+    public function store(Request $request, IdentityCorrectionService $corrections, ?User $user = null): RedirectResponse|JsonResponse
     {
         if ($request->route('user') !== null) {
             app(AccountRestrictionService::class)->currentActor($request->user());
         }
-        $corrections->submit($request, $user ?? $request->user());
+        $correction = $corrections->submit($request, $user ?? $request->user());
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $correction->id]);
+        }
 
         return back()->with('success', 'Correction requested. Reviewed details stay unchanged until the evidence is approved.');
     }

@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
+import AccountEmailSettings from '@/Components/AccountEmailSettings';
+import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
@@ -38,7 +40,7 @@ export default function SellerProfile({ user, shop }: Props) {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const [fileValidationError, setFileValidationError] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, recentlySuccessful } = useForm<ProfileFormData>({
+    const { data, setData, post, processing, errors, recentlySuccessful, setDefaults } = useForm<ProfileFormData>({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
@@ -98,6 +100,12 @@ export default function SellerProfile({ user, shop }: Props) {
         post(route('seller.profile.update'), {
             forceFormData: true,
             preserveScroll: true,
+            onSuccess: ({ props }) => {
+                const saved = props.user as User;
+                const values = { name: saved.name, email: saved.email, phone: saved.phone || '', avatar: null, remove_avatar: false };
+                setData(values); setDefaults(values); setAvatarPreview(saved.avatar || null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            },
         });
     };
 
@@ -290,7 +298,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                     <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 </div>
                                 {errors.name && <p className="text-xs text-rose-500 mt-1 font-sans">{errors.name}</p>}
-                                <Link href="/account/identity-corrections" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</Link>
+                                <a href="#identity-correction" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</a>
                             </div>
 
                             <div>
@@ -300,6 +308,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                 <div className="relative">
                                     <input
                                         type="email"
+                                    readOnly
                                         value={data.email}
                                         onChange={(e) => setData('email', e.target.value)}
                                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition font-sans"
@@ -344,6 +353,10 @@ export default function SellerProfile({ user, shop }: Props) {
                         </button>
                     </div>
                 </form>
+
+                <AccountEmailSettings theme="seller" />
+
+                <AccountIdentitySettings theme="seller" />
 
                 <div className="rounded-lg border border-slate-300 bg-white p-6 shadow-2xs sm:p-8">
                     <UpdatePasswordForm className="max-w-xl" />

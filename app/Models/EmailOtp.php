@@ -11,6 +11,7 @@ class EmailOtp extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'email',
         'code_hash',
         'purpose',

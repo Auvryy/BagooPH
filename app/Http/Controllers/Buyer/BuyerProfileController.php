@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
 use App\Rules\BirthDate;
+use App\Services\AccountSettingsService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
@@ -42,6 +43,7 @@ class BuyerProfileController extends Controller
         $initialTab = $request->query('tab', 'orders');
 
         return Inertia::render('Buyer/Profile', [
+            ...app(AccountSettingsService::class)->presentation($user),
             'user' => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)],
             'addresses' => $addresses,
             'wallet' => $wallet,
@@ -121,6 +123,14 @@ class BuyerProfileController extends Controller
         app(BuyerAddressService::class)->setDefault($user, $address);
 
         return back()->with('success', 'Default address updated.');
+    }
+
+    public function updateAddress(Request $request, Address $address): RedirectResponse
+    {
+        $user = app(BuyerAccessService::class)->requirePortal($request->user());
+        app(BuyerAddressService::class)->update($user, $address, $request->all());
+
+        return back()->with('success', 'Address updated for future orders. Existing orders keep their delivery details.');
     }
 
     public function destroyAddress(Request $request, Address $address): RedirectResponse

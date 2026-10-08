@@ -70,8 +70,17 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - OTP resend has a 60-second cooldown and at most five requests per 15 minutes per email/purpose. A new OTP invalidates the previous active OTP.
 - OTPs, passwords, reset tokens, self-pickup claim codes, and verification tokens never appear in logs, URLs, analytics, notifications, or support screens.
 - If OTP delivery fails, the system reports that delivery failed and offers a safe retry; it must not claim success or log the secret code.
+- The original registration/sign-in email remains unchanged while the account exists, including ordinary profile edits and application resubmission. Case-equivalent input preserves the exact stored address and its verification; it does not rewrite identity.
+- An eligible account can add up to five additional contact/recovery addresses from settings. Adding, choosing or removing an address requires the current password. Addition also requires a purpose-bound emailed OTP associated with the same account; another account's code or a registration/reset code cannot confirm it. Original and additional addresses share one case-insensitive ownership registry.
+- Only verified additional addresses support contact and recovery. The selected owned contact address receives ordinary mail; original-email verification and sign-in continue to use the registration address. Recovery accepts an owned verified additional address without turning it into a login alias. Removing it revokes pending recovery credentials and restores the original contact fallback when necessary; an old challenge cannot transfer to a new owner.
 - Birthday is a real calendar date in `YYYY-MM-DD` before the current Philippine (`Asia/Manila`) date. The server derives completed years from birthday; a client-submitted age never overrides it. Seller, courier, logistics, and controlled admin accounts require a valid birth date proving age 18 or older. Buyer purchasing eligibility follows the approved KYC policy; the worker adult minimum does not apply to a buyer birth date.
 - Sex, role, vehicle type, and other categorical registration inputs use explicit allowlists rather than arbitrary text.
+
+### Account Settings and Saved Views
+
+- Owners may edit personal/shop contact numbers, avatars and public shop branding without identity approval. Buyer saved delivery addresses affect future checkout; existing recipient/order snapshots stay unchanged. These edits cannot replace reviewed legal identity, birth date, shop name/category/pickup address or private identity/licence/vehicle evidence.
+- Reviewed corrections appear beside identity information inside each role's settings, with that portal's visual treatment and the existing request/history/evidence rules. An approved but restricted account may use only its narrow correction settings; this does not grant ordinary contact writes, checkout, addresses, wallets or privileged work.
+- Saves display pending state, authoritative saved values and success or validation feedback. JSON mutations wait for refreshed server props before releasing their pending state. If the write succeeds but refresh fails, state that distinction and offer recovery without automatically repeating the mutation.
 
 ### Operational Identifiers
 

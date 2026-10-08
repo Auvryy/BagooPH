@@ -27,6 +27,6 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return app(ProfileInputService::class)->rules($this->user(), ['name', 'email']);
+        return app(ProfileInputService::class)->rules($this->user(), ['name', 'email', 'phone']);
     }
 }

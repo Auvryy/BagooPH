@@ -31,6 +31,12 @@ class KycSubmissionService
                 $categoryProvided = array_key_exists('root_category_id', $validated);
                 $applications = app(ApplicationValidationService::class);
                 $provided = array_intersect_key($validated, array_flip($applications->fields($user->role)));
+                if (isset($provided['email'])) {
+                    if (strcasecmp($provided['email'], $user->email) !== 0) {
+                        throw ValidationException::withMessages(['email' => 'Your original sign-in email stays with your account.']);
+                    }
+                    $provided['email'] = $user->email;
+                }
                 $pendingCorrection = ! $buyerUpload && $user->isKycPending()
                     && (($adult && $birthdayProvided) || array_diff(array_keys($provided), ['birthday']));
                 $allowedStates = $buyerUpload ? ['none', 'rejected', 'pending_approval'] : ['rejected'];
@@ -96,9 +102,6 @@ class KycSubmissionService
                 }
                 $updates = array_intersect_key($changes, array_flip(ApplicationValidationService::ACCOUNT_FIELDS))
                     + array_intersect_key($paths, array_flip(['id_document_path', 'business_permit_path', 'driver_license_path', 'or_cr_path']));
-                if (isset($changes['email']) && strcasecmp($changes['email'], $user->email) !== 0) {
-                    $updates += ['email_verified_at' => null, 'google_id' => null];
-                }
                 if ($user->isLogistics()) {
                     $accreditation = $user->logisticsCompany->accreditation_details ?? [];
                     $companyUpdates = [];

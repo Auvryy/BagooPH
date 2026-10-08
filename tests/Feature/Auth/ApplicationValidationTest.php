@@ -71,9 +71,9 @@ class ApplicationValidationTest extends TestCase
         return $data;
     }
 
-    private function applicant(string $role = 'seller'): User
+    private function applicant(string $role = 'seller', array $overrides = []): User
     {
-        $user = User::factory()->pendingKyc()->create(['role' => $role, 'name' => 'José Dela Cruz', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200', 'birthday' => $role === 'buyer' ? null : '2000-01-01']);
+        $user = User::factory()->pendingKyc()->create(array_replace(['role' => $role, 'name' => 'José Dela Cruz', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200', 'birthday' => $role === 'buyer' ? null : '2000-01-01'], $overrides));
         if ($role === 'seller') {
             Shop::factory()->create(['user_id' => $user->id, 'root_category_id' => $this->validMasterCategory()->id, 'name' => 'Bagoo Shop', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'status' => 'pending']);
         } elseif ($role === 'courier') {
@@ -279,8 +279,8 @@ class ApplicationValidationTest extends TestCase
 
     public function test_legacy_readiness_does_not_rewrite_identity_and_completed_history_is_unchanged(): void
     {
-        $user = $this->applicant();
-        $user->update(['name' => '  Juan Dela Cruz ', 'email' => 'Juan@BAGOO.TEST', 'phone' => '09 17123 4567']);
+        $user = $this->applicant('seller', ['email' => 'Juan@BAGOO.TEST']);
+        $user->update(['name' => '  Juan Dela Cruz ', 'phone' => '09 17123 4567']);
         $before = $user->getRawOriginal();
         $this->assertSame([], app(ApplicationValidationService::class)->errors($user));
         $this->assertSame($before, $user->fresh()->getRawOriginal());
@@ -293,16 +293,15 @@ class ApplicationValidationTest extends TestCase
         $this->assertSame('Juan@BAGOO.TEST', $user->fresh()->email);
     }
 
-    public function test_a_changed_email_requires_reverification_and_case_insensitive_login_preserves_saved_identity(): void
+    public function test_resubmission_keeps_original_email_and_case_insensitive_login_preserves_saved_identity(): void
     {
         $user = $this->applicant('buyer');
         $user->update(['google_id' => 'test-google-id', 'email_verified_at' => now()]);
-        $this->actingAs($user)->post('/kyc/resubmit', ['email' => 'Juan@BAGOO.TEST'])->assertSessionHas('success');
-        $this->assertSame('Juan@bagoo.test', $user->fresh()->email);
-        $this->assertNull($user->fresh()->email_verified_at);
-        $this->assertNull($user->fresh()->google_id);
+        $original = $user->only(['email', 'email_verified_at', 'google_id']);
+        $this->actingAs($user)->post('/kyc/resubmit', ['email' => 'Juan@BAGOO.TEST'])->assertSessionHasErrors('email');
+        $this->assertEquals($original, $user->fresh()->only(array_keys($original)));
         $this->post('/logout');
-        $this->post('/login', ['email' => 'JUAN@BAGOO.TEST', 'password' => 'password'])->assertSessionHasNoErrors();
+        $this->post('/login', ['email' => strtoupper($user->email), 'password' => 'password'])->assertSessionHasNoErrors();
         $this->assertAuthenticatedAs($user);
     }
 
@@ -335,6 +334,8 @@ class ApplicationValidationTest extends TestCase
 
     public function test_case_duplicate_migration_refuses_to_rewrite_ambiguous_legacy_accounts(): void
     {
+        $emails = require database_path('migrations/2026_10_08_000001_create_account_emails_table.php');
+        $emails->down();
         DB::statement('DROP INDEX users_email_case_insensitive_unique');
         $first = User::factory()->create(['email' => 'duplicate@bagoo.test']);
         $second = User::factory()->create(['email' => 'DUPLICATE@bagoo.test']);

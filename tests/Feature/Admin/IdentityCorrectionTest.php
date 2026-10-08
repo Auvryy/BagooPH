@@ -333,9 +333,10 @@ class IdentityCorrectionTest extends TestCase
     {
         $subject = $this->subject('courier');
         $correction = $this->submit($subject);
-        $this->actingAs($subject)->get('/account/identity-corrections')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Governance/IdentityCorrection')->where('subject.id', $subject->id)->where('subject.requests.0.id', $correction->id)
-            ->missing('subject.requests.0.evidence')->missing('subject.requests.0.source')->where('adminReview', false));
+        $this->actingAs($subject)->get('/account/identity-corrections')->assertRedirect('/account/settings#identity-correction');
+        $this->get('/account/settings')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Courier/Profile')->where('identityCorrection.subject.id', $subject->id)->where('identityCorrection.subject.requests.0.id', $correction->id)
+            ->missing('identityCorrection.subject.requests.0.evidence')->missing('identityCorrection.subject.requests.0.source')->missing('adminReview'));
         $subject->update(['birthday' => null]);
         $this->actingAs($this->admin())->get('/admin/identity-corrections')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Admin/IdentityCorrections')->where('candidates.data.0.id', $subject->id)->has('requests.data', 1));

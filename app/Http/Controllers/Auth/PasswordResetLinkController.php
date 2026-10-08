@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\AccountRecoveryNotification;
+use App\Services\AccountEmailService;
 use App\Services\SecretMailService;
 use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
@@ -42,15 +45,27 @@ class PasswordResetLinkController extends Controller
         // need to show to the user. Finally, we'll send out a proper response.
         try {
             app(SecretMailService::class)->assertSafeTransport();
-            $status = Password::sendResetLink($request->only('email'), function (User $user, #[\SensitiveParameter] $token) {
+            $email = strtolower(trim($request->input('email')));
+            $owner = app(AccountEmailService::class)->recoveryOwner($email);
+            $status = $owner ? Password::sendResetLink(['email' => $owner->email], function (User $user, #[\SensitiveParameter] $token) use ($email) {
                 try {
-                    $user->sendPasswordResetNotification($token);
+                    DB::transaction(function () use ($user, $email, $token) {
+                        $current = app(AccountEmailService::class)->recoveryOwner($email, lock: true);
+                        if (! $current || $current->id !== $user->id) {
+                            throw new \RuntimeException('The recovery address is no longer available.');
+                        }
+                        if (strcasecmp($email, $current->email) === 0) {
+                            $current->sendPasswordResetNotification($token);
+                        } else {
+                            $current->notify(new AccountRecoveryNotification($token, $email));
+                        }
+                    });
                 } catch (\Throwable $exception) {
                     Password::broker()->getRepository()->delete($user);
                     throw $exception;
                 }
                 event(new PasswordResetLinkSent($user));
-            });
+            }) : Password::INVALID_USER;
         } catch (\Throwable $exception) {
             Log::warning('Failed to dispatch a password reset link.', ['exception' => $exception::class]);
 

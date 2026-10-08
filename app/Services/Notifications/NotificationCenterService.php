@@ -96,7 +96,7 @@ class NotificationCenterService
             return '/pending-approval';
         }
         if ($target === 'identity-correction' && $user->isKycApproved()) {
-            return '/account/identity-corrections';
+            return '/account/settings#identity-correction';
         }
         if ($target === 'seller-products' && $user->isSeller() && $user->canAccessPortal()) {
             return '/seller/products';

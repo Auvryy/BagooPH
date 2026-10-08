@@ -18,16 +18,17 @@ export default function UpdateProfileInformation({
     const user = usePage().props.auth.user!;
     const reviewedIdentity = user.role === 'admin' || ['approved', 'verified'].includes(user.kyc_status ?? '');
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
+    const { data, setData, patch, errors, processing, recentlySuccessful, setDefaults } =
         useForm({
             name: user.name,
             email: user.email,
+            phone: user.phone || '',
         });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'));
+        patch(route('profile.update'), { preserveScroll: true, onSuccess: ({ props }) => { const saved = props.auth.user!; const values = { name: saved.name, email: saved.email, phone: saved.phone || '' }; setData(values); setDefaults(values); } });
     };
 
     return (
@@ -38,7 +39,7 @@ export default function UpdateProfileInformation({
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Update your account's profile information and email address.
+                    Your reviewed name and original sign-in email stay with your account. Manage contact emails below.
                 </p>
             </header>
 
@@ -57,7 +58,7 @@ export default function UpdateProfileInformation({
                         readOnly={reviewedIdentity}
                     />
 
-                    {reviewedIdentity && <p className="mt-2 text-sm text-slate-600">Reviewed identity requires evidence and an admin decision. <Link href="/account/identity-corrections" className="font-semibold text-[#C20836] underline">Request an identity correction</Link>.</p>}
+                    {reviewedIdentity && <p className="mt-2 text-sm text-slate-600">Reviewed identity requires evidence and an admin decision. <a href="#identity-correction" className="font-semibold text-[#C20836] underline">Request an identity correction</a>.</p>}
 
                     <InputError className="mt-2" message={errors.name} />
                 </div>
@@ -68,6 +69,7 @@ export default function UpdateProfileInformation({
                     <TextInput
                         id="email"
                         type="email"
+                        readOnly
                         className="mt-1 block w-full"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
@@ -76,6 +78,12 @@ export default function UpdateProfileInformation({
                     />
 
                     <InputError className="mt-2" message={errors.email} />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="personal-phone" value="Contact number" />
+                    <TextInput id="personal-phone" type="tel" className="mt-1 block w-full" value={data.phone} onChange={event => setData('phone', event.target.value)} autoComplete="tel" />
+                    <InputError className="mt-2" message={errors.phone} />
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (

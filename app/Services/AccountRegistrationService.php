@@ -123,7 +123,7 @@ class AccountRegistrationService
             Storage::disk('local')->delete(array_values($paths));
             if ($exception instanceof QueryException && in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
                 $detail = $exception->errorInfo[2] ?? '';
-                if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email')) {
+                if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email') || str_contains($detail, 'account_emails_email') || str_contains($detail, 'account_emails.email')) {
                     throw ValidationException::withMessages(['email' => 'This email address is already registered.']);
                 }
                 if (str_contains($detail, 'logistics_companies_code') || str_contains($detail, 'logistics_companies.code')) {

@@ -212,8 +212,9 @@ class GovernanceNotificationTest extends TestCase
         $notice = $subject->notifications()->sole();
         $this->assertStringContainsString('identity_correction', $notice->source_key);
         $this->actingAs($subject)->get('/notifications')->assertInertia(fn (Assert $page) => $page
-            ->where('notices.data.0.href', '/account/identity-corrections')->has('notices.data', 1));
-        $this->get('/account/identity-corrections')->assertOk();
+            ->where('notices.data.0.href', '/account/settings#identity-correction')->has('notices.data', 1));
+        $this->get('/account/identity-corrections')->assertRedirect('/account/settings#identity-correction');
+        $this->get('/account/settings')->assertOk();
     }
 
     public function test_closure_notice_does_not_prevent_hard_deletion_or_reopen_a_retained_account(): void
