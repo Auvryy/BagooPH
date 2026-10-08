@@ -41,6 +41,23 @@ class BuyerAddressService
         });
     }
 
+    public function update(User $actor, Address $address, array $input): void
+    {
+        $this->mutate($actor, $address, function ($addresses, Address $owned) use ($actor, $input) {
+            $buyer = app(BuyerAccessService::class)->requirePortal($actor);
+            $input['recipient_name'] = $buyer->name;
+            $data = app(CommerceInputService::class)->address($input);
+            // Keeping the current default avoids leaving the address book without one.
+            $data['is_default'] = $owned->is_default || $data['is_default'];
+            if ($data['is_default']) {
+                foreach ($addresses->where('is_default', true)->except($owned->id) as $previous) {
+                    $previous->update(['is_default' => false]);
+                }
+            }
+            $owned->update($data);
+        });
+    }
+
     public function delete(User $actor, Address $address): void
     {
         $this->mutate($actor, $address, function ($addresses, Address $owned) {

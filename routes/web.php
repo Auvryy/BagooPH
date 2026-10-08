@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountEmailController;
-
 use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -42,12 +41,12 @@ use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
-use App\Http\Controllers\Seller\SellerReviewController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\ShopVerificationDocumentController;
@@ -81,6 +80,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');
     Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
+    Route::get('/account/settings', [ProfileController::class, 'settings'])->name('account.settings');
     Route::post('/account/emails/send', [AccountEmailController::class, 'send'])->middleware('throttle:10,1')->name('account.emails.send');
     Route::post('/account/emails/confirm', [AccountEmailController::class, 'confirm'])->middleware('throttle:20,1')->name('account.emails.confirm');
     Route::patch('/account/emails/{accountEmail}/preferred', [AccountEmailController::class, 'prefer'])->middleware('throttle:10,1')->name('account.emails.prefer');
@@ -364,6 +364,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
             Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
             Route::post('/addresses', [BuyerProfileController::class, 'storeAddress'])->name('addresses.store');
+            Route::patch('/addresses/{address}', [BuyerProfileController::class, 'updateAddress'])->name('addresses.update');
             Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->name('addresses.default');
             Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->name('addresses.destroy');
             Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');

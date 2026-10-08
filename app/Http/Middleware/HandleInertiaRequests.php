@@ -65,8 +65,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user();
-        $user = $user?->isBuyer() ? $user->fresh() : $user;
+        $user = $request->user()?->fresh();
         $canAccessHub = $user && $user->canAccessPortal() && ($user->isLogistics() || $user->isAdmin());
         $eligibility = app(LogisticsEligibilityService::class);
         [$activeHub, $hubs] = $canAccessHub ? $eligibility->hubContext($request) : [null, collect()];

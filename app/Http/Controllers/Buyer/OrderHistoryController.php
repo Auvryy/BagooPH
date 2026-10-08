@@ -21,6 +21,12 @@ class OrderHistoryController extends Controller
     {
         $buyer = app(BuyerAccessService::class)->requireExistingOrders($request->user());
 
+        if ($buyer->canAccessPortal()) {
+            $request->query->set('tab', 'orders');
+
+            return app(BuyerProfileController::class)->index($request);
+        }
+
         return Inertia::render('Buyer/Orders', [
             'orders' => Order::where('buyer_id', $buyer->id)->latest('id')->paginate(12)
                 ->through(fn (Order $order) => $order->only(['id', 'order_number', 'status', 'total_amount', 'created_at'])),

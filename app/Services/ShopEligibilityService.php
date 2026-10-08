@@ -19,6 +19,8 @@ class ShopEligibilityService
 {
     public const DETAILS = ['name', 'phone', 'address', 'city', 'root_category_id'];
 
+    public const REVIEWED_DETAILS = ['name', 'address', 'city', 'root_category_id'];
+
     public function eligibleShops(Builder $query): Builder
     {
         return $this->reviewedShops($query->where('shops.status', 'active')
@@ -38,7 +40,7 @@ class ShopEligibilityService
                     ->whereColumn('shop_review_decisions.shop_id', 'shops.id')
                     ->whereColumn('shop_review_decisions.seller_id', 'shops.user_id')
                     ->whereColumn('shop_review_decisions.root_category_id', 'shops.root_category_id');
-                foreach (['name', 'phone', 'address', 'city'] as $field) {
+                foreach (['name', 'address', 'city'] as $field) {
                     $review->whereColumn('shop_review_decisions.submission->shop->'.$field, 'shops.'.$field);
                 }
             });
@@ -83,11 +85,11 @@ class ShopEligibilityService
         return $shop;
     }
 
-    public function mutate(Request $request, Closure $work): mixed
+    public function mutate(Request $request, Closure $work, bool $history = false): mixed
     {
         // Keep the write inside this callback. A routing pipeline can render an exception before middleware sees it.
-        return DB::transaction(function () use ($request, $work) {
-            $request->attributes->set('locked_seller_shop', $this->context($request, lock: true));
+        return DB::transaction(function () use ($request, $work, $history) {
+            $request->attributes->set('locked_seller_shop', $this->context($request, lock: true, history: $history));
             try {
                 return $work();
             } finally {
@@ -186,7 +188,7 @@ class ShopEligibilityService
 
     public function protectReviewedDetails(Shop $shop, array $values): void
     {
-        foreach (self::DETAILS as $field) {
+        foreach (self::REVIEWED_DETAILS as $field) {
             if (array_key_exists($field, $values) && (string) $values[$field] !== (string) $shop->$field) {
                 throw ValidationException::withMessages([$field => 'Reviewed shop details require a separate correction review. Branding cannot change them.']);
             }

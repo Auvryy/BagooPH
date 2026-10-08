@@ -8,6 +8,8 @@ use App\Models\CommissionLedger;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Rules\PhilippineContact;
+use App\Services\AccountSettingsService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\ProfileInputService;
@@ -152,7 +154,7 @@ class SellerDashboardController extends Controller
 
     public function settings(Request $request): Response
     {
-        $shop = $this->getActiveShop($request);
+        $shop = $this->getActiveShop($request, history: true);
 
         return Inertia::render('Seller/Settings', [
             'shop' => $shop,
@@ -161,7 +163,7 @@ class SellerDashboardController extends Controller
 
     public function updateSettings(Request $request): RedirectResponse
     {
-        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->updateSettingsInShop($request));
+        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->updateSettingsInShop($request), history: true);
     }
 
     private function updateSettingsInShop(Request $request): RedirectResponse
@@ -169,8 +171,13 @@ class SellerDashboardController extends Controller
         $shop = $this->getActiveShop($request);
 
         $rules = [
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:5000',
+            'phone' => ['sometimes', 'required', 'string', new PhilippineContact(true)],
         ];
+
+        if ($request->has('phone')) {
+            $request->merge(['phone' => PhilippineContact::canonical($request->input('phone'), true) ?? $request->input('phone')]);
+        }
 
         if ($request->hasFile('logo')) {
             $rules['logo'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
@@ -207,20 +214,11 @@ class SellerDashboardController extends Controller
             $shop->banner = $validated['banner'];
         }
 
-        if (isset($validated['name'])) {
-            $shop->name = $validated['name'];
-        }
         if (array_key_exists('description', $validated)) {
             $shop->description = $validated['description'];
         }
         if (isset($validated['phone'])) {
             $shop->phone = $validated['phone'];
-        }
-        if (isset($validated['address'])) {
-            $shop->address = $validated['address'];
-        }
-        if (isset($validated['city'])) {
-            $shop->city = $validated['city'];
         }
 
         $shop->save();
@@ -230,10 +228,11 @@ class SellerDashboardController extends Controller
 
     public function profile(Request $request): Response
     {
-        $user = $request->user();
-        $shop = $this->getActiveShop($request);
+        $user = $request->user()->fresh();
+        $shop = $this->getActiveShop($request, history: true);
 
         return Inertia::render('Seller/Profile', [
+            ...app(AccountSettingsService::class)->presentation($user),
             'user' => $user,
             'shop' => $shop,
         ]);
@@ -272,9 +271,6 @@ class SellerDashboardController extends Controller
             }
 
             $user->name = $validated['name'];
-            if ($user->email !== $validated['email']) {
-                $user->email_verified_at = null;
-            }
             $user->email = $validated['email'];
             $user->phone = $validated['phone'] ?? null;
             $user->save();

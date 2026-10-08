@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Buyer\BuyerProfileController;
+use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\AccountClosureService;
+use App\Services\AccountSettingsService;
 use App\Services\BuyerAccessService;
 use App\Services\IdentityCorrectionService;
 use App\Services\ProfileInputService;
@@ -19,6 +23,34 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ProfileController extends Controller
 {
+    public function settings(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user()->fresh();
+        abort_unless($user && $user->closed_at === null, 403);
+        $request->setUserResolver(fn () => $user);
+        if ($user->canAccessPortal()) {
+            if ($user->isBuyer()) {
+                $request->query->set('tab', 'account');
+
+                return app(BuyerProfileController::class)->index($request);
+            }
+            if ($user->isSeller()) {
+                return app(SellerDashboardController::class)->profile($request);
+            }
+            if ($user->isCourier()) {
+                return app(CourierDeliveryController::class)->profile($request);
+            }
+
+            return $this->edit($request);
+        }
+        abort_unless($user->isKycApproved(), 403);
+
+        return Inertia::render('Profile/Edit', [
+            ...app(AccountSettingsService::class)->presentation($user),
+            'settingsOnly' => true, 'mustVerifyEmail' => false, 'closure' => null,
+        ]);
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -35,6 +67,7 @@ class ProfileController extends Controller
         }
 
         return Inertia::render('Profile/Edit', [
+            ...app(AccountSettingsService::class)->presentation($user),
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
             'closure' => app(AccountClosureService::class)->presentation($request->user(), $request->user()->id, self: true),
