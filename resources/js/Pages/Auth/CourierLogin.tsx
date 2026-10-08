@@ -163,6 +163,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                     </p>
                 </div>
             </form>
+            <p className="mt-4 text-center text-xs text-slate-600">Existing COD responsibility? <a href="/cash-handover/sign-in" className="font-semibold text-[#C20836] hover:underline">Open cash handover access</a></p>
         </GuestLayout>
     );
 }
