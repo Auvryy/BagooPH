@@ -41,7 +41,7 @@ The October 7 B15 selection includes its shared Phase 4 prerequisite on `feat/pe
 |---|---|---|---|---|
 | B01 | `admin/seller-category-approval` | [14 master categories, registration, correction, and original-shop KYC](01-seller-category-approval.md) | Foundation merged | 0 |
 | B02 | `admin/application-validation` | [Shared canonical application fields](02-application-validation.md) | B01 | 0 |
-| B03 | `admin/shop-approval-eligibility` | [Separate shop review and eligible shop context](03-shop-approval-eligibility.md) | B01, B02 | 0 |
+| B03 | `admin/shop-approval-eligibility` | [One-shop seller approval and access](03-shop-approval-eligibility.md) | B01, B02 | 0 |
 | B04 | `admin/logistics-resource-eligibility` | [Company, facility, handler, rider, and fleet scope](04-logistics-resource-eligibility.md) | B02 | 0 |
 | B05 | `admin/buyer-access-alignment` | [Buyer holding, approval, and existing-order exceptions](05-buyer-access-alignment.md) | B02 | 0 |
 | B06 | `admin/governance-restrictions` | [Reasoned account suspension/reactivation and last-admin protection](06-account-restrictions.md) | B03, B04, B05 | 0 |

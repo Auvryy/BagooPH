@@ -30,6 +30,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Roles: buyer, seller, courier, logistics/sorting hub, and admin. Pickup and delivery riders are courier phases, not separate account roles unless existing code says otherwise.
 - An account's role is fixed when created. Do not add role-conversion controls or mutate an existing account's role; another role requires a separate account and its documented approval.
 - Registration requires the documented approval authority before portal access.
+- One seller account owns one shop, created at registration with one of the 14 master root categories. Do not add extra-shop creation or seller shop switching. Products stay within that approved root and its active descendants; reviewed scope changes require the existing correction process.
 - Canonical order flow:
   `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> PICKED_UP -> AT_SORTING_CENTER -> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED`.
 - Failure branch: `DELIVERY_FAILED -> RETURNED` or documented rescheduling.

@@ -49,6 +49,18 @@ docker compose exec -T app php artisan tinker --execute='dump(["total_products" 
 
 A shop needs an active approved seller, one of the 14 active master categories, and its current matching Platform Admin approval record. An `active` shop flag alone is insufficient. Legacy demo shops with missing category/review records can have products in the database while contributing no public catalogue entries.
 
-Use the seller's shop submission and Platform Admin review workflow with the required evidence. Missing legacy demo evidence needs a deliberate demo-data repair; it cannot be replaced with an invented approval. A database reset or general seed rerun is unnecessary for diagnosing visibility and can overwrite demo accounts, stock, or referenced products.
+Each seller now has one shop created at registration. The initial seller application review covers that shop; the seller opens it automatically after approval. Ordinary legacy shops still need the actual owner evidence and Platform Admin review.
+
+After publishing and pulling the one-shop repair, the deployment helper must install `2026_10_08_100000_enforce_one_shop_per_seller`. It adds unique ownership without moving data. If it reports existing duplicate ownership, resolve those accounts through a reviewed data decision before deployment; do not delete shops or orders to make migration pass.
+
+For the deliberately reserved demo seller, use the targeted repair after deployment:
+
+```bash
+docker compose exec -T app php artisan db:seed --class=SellerDemoSeeder --force
+```
+
+This repair targets `seller@bagoo.test`, its sole shop and known catalogue fixtures. Fresh demo setup uses Men's Apparel and an active accessory child category. A previously reviewed shop keeps its chosen root and real review history; the repair only reclassifies known fixture products from the active legacy `backpacks-and-bags` root. Existing product IDs, orders, stock, prices, images, custom products, passwords and restrictions are retained. Unavailable/rejected/restricted demo shops fail explicitly instead of being reapproved.
+
+A fresh or unreviewed original demo fixture receives clearly labelled **Synthetic demo setup** provenance, the actual setup time, a fictional adult date and private placeholder images. These are demo fixtures, not evidence of a human identity/document review or a historical approval. Real accounts and non-demo shops never receive this setup. Run the visibility check again to confirm the deployed result. A database reset or general seed rerun is unnecessary; the general seeder also configures the broader demo network.
 
 Current implementation evidence and remaining limits belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).

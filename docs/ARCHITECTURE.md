@@ -23,7 +23,7 @@ The five account roles are `buyer`, `seller`, `courier`, `logistics`, and `admin
 Authentication identifies the user; middleware and backend policies/services must verify account activity, required approval, role, and action scope on every protected root and subdomain request. Login redirects and frontend controls are not authorization. Inspect `routes/web.php` and `routes/auth.php` for actual routes rather than treating this overview as a route inventory.
 
 - Buyer actions are scoped to owned addresses, Shopping Bag, orders, tracking, and receipt confirmation.
-- Seller actions require the eligible selected shop and its approved root category.
+- Seller actions require the account's sole eligible shop and its approved root category. Registration creates one shop per seller, enforced by unique shop ownership; there is no seller shop switcher.
 - Courier actions require eligible company/hub placement and the authorized pickup or final-mile assignment.
 - Logistics actions require the actor's own company and assigned active facility where applicable.
 - Platform Admin has review and read oversight; that does not grant routine seller, rider, or handler custody actions. Admin KYC exemption never bypasses active status.

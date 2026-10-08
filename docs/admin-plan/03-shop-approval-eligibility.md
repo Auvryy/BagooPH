@@ -1,4 +1,4 @@
-# B03: Independent Shop Approval and Eligible Shop Context
+# B03: One-Shop Seller Approval and Access
 
 This is a bounded execution plan, not an implementation-status report. Use the [index](README.md) for order, [workflow](WORKFLOW.md) for Git/testing, and [roadmap](../CORE_FLOW_ROADMAP.md) for current evidence.
 
@@ -9,11 +9,11 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 | Git branch | `admin/shop-approval-eligibility` |
 | Phase | 0 |
 | Minimum prerequisites | [B01](01-seller-category-approval.md), [B02](02-application-validation.md) |
-| Result | Each shop has valid review scope; only an owned eligible shop can accept new work. |
+| Result | One shop per seller, reviewed category scope and positive eligibility for new work. |
 
 ## Purpose
 
-Separate approval of the seller account/original application from approval of each additional shop. Shop creation, session switching, product mutations, and new order eligibility must use positive backend checks rather than an assumed active shop.
+Enforce the one-account, one-shop seller contract. Registration creates the sole shop with its chosen master category, and the initial account review covers that shop. Retain current shop review evidence, legacy resubmission, restrictions and product/checkout gates without extra-shop creation or switching.
 
 ## Contracts and inspection targets
 
@@ -36,19 +36,19 @@ Inspect these existing files before proposing schema or routes. The list is a st
 
 ## Implementation sequence
 
-1. Trace original-shop activation, extra-shop creation, active-shop session fallback, product writes, and checkout shop selection. Define shop review independently of account KYC/activity.
-2. Design only the persistence required for a shop-specific submission/decision, with current version, evidence references, reason, actor/time, before/after and idempotency. Do not pretend existing subject-user KycDecision covers every shop.
-3. Create extra shops as pending with valid master category and canonical details. Remove unreviewed active fallback creation; a missing/invalid shop context produces a holding/selection response.
-4. Make context selection require ownership and positive account/shop eligibility. Re-read it at each mutation and new checkout; stale session IDs and unknown statuses deny new work.
-5. Provide Platform Admin a shop-specific review with current required evidence and an explicit decision. Keep account review from activating unrelated shops; rejection/retry/history use the universal decision contract.
-6. Show separate shop and account states to seller/admin. Preserve owned existing-order obligations under restrictions rather than hiding or completing them through a shop switch.
+1. Trace registration, original application review, seller context, product writes and buyer checkout. Keep account approval, shop review and activity restrictions distinct.
+2. Enforce one shop per seller at the database boundary. Report existing duplicate ownership for reviewed resolution before installing the constraint; never delete, merge or transfer referenced records automatically.
+3. Remove additional-shop creation and seller switching. Resolve the sole owned shop on every request; old picker sessions confer no authority. A missing shop produces a clear review/support response without fallback creation.
+4. Retain versioned shop evidence and immutable decisions. Initial seller application approval records its registered shop together; legacy review and reviewed category corrections require current evidence.
+5. Re-read account/shop eligibility for mutations, direct URLs, root/subdomain portals and new checkout. Product categories remain under the approved master root and active descendants.
+6. Show one shop with its category, account/shop states, feedback and history. Preserve owned existing-order obligations under restrictions. Buyers can still check out across different sellers' shops.
 
 ## Decision and scope rules
 
-- Account, shop review, activity restriction, and category scope remain independent. An approved seller may own pending or restricted shops.
+- Account, shop review, activity restriction, and category scope remain independent. An approved seller may have a pending or restricted sole shop.
 - Only Platform Admin grants shop review approval. A seller-supplied status/approved flag is ignored or rejected and cannot activate a shop.
 - Product scope must match the approved root and supported descendants under existing category contracts; a null category cannot mean unrestricted selling.
-- A selected shop is not perpetual authority. Revalidate ownership and eligibility for direct URLs, bulk actions, root/subdomain portals, and checkout.
+- A registered shop is not perpetual authority. Revalidate ownership and eligibility for direct URLs, bulk actions, root/subdomain portals, and checkout.
 - Reinstatement/correction preserves separate restrictions. Reviewed category changes need B08; routine shop edit cannot erase their review provenance.
 
 ## Data, legacy records, and recovery
@@ -60,17 +60,18 @@ Inspect these existing files before proposing schema or routes. The list is a st
 ## Exclusions
 
 - Controlled reviewed-category correction (B08), reasoned suspension/reactivation (B06/B07), and product compliance workflow (B10).
-- Shop impersonation, marketplace category redesign, order cancellation/repricing, and automatic activation of all a seller's shops.
+- Shop impersonation, marketplace category redesign, order cancellation/repricing, and additional-shop creation or switching.
 - Broad storefront redesign or inferred approval of legacy records from status alone.
 
 ## Acceptance cases
 
 | Case | Required result |
 |---|---|
-| Additional shop creation | Valid input creates pending review; posted active/approved values confer no permission. |
-| Original account approval | Only its reviewed dependent shop activates; other shops are unchanged. |
+| Extra creation or switching | Both portal hosts reject requests; no shop or uploaded permit persists. |
+| Database ownership | Second insert and conflicting owner update fail; legacy duplicates retain all records and block installation. |
+| Initial account approval | Its sole registered shop activates with linked review evidence; other sellers' shops are unchanged. |
 | Eligible context | Owned reviewed active shop allows scoped actions; pending/rejected/unknown state blocks new work. |
-| Session/foreign ID | Stale, deleted, or another seller's shop selection denies without auto-creating a fallback. |
+| Old session/foreign ID | Old picker sessions cannot choose a shop. Explicit foreign or malformed IDs deny access; no fallback is created. |
 | Direct product/checkout calls | Backend denies ineligible shop and category even when UI/session claims eligibility. |
 | Independent shop review retry | One decision, unchanged reviewer/time/reason; competing stale decision conflicts. |
 | Related write fails | Shop state and decision roll back together; account and other shops stay unchanged. |
@@ -88,7 +89,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 
 ## Stopping point and bounded prompt
 
-Stop once independent shop decisions and positive seller/shop context checks are verified across the affected entry points. B06/B07 provide reasoned restrictions later; do not add their controls here.
+Stop once one-shop ownership, retained shop decisions and positive seller/shop access checks are verified across the affected entry points. B06/B07 provide reasoned restrictions later; do not add their controls here.
 
 ```text
 Implement only B03 from docs/admin-plan/03-shop-approval-eligibility.md on admin/shop-approval-eligibility.
