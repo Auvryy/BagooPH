@@ -29,6 +29,7 @@ import {
     User as UserIcon,
     ScanLine,
     Building2,
+    Banknote,
 } from 'lucide-react';
 
 interface Props {
@@ -82,6 +83,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
+                { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
         }
@@ -184,6 +186,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Store, 
                     current: component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter') 
                 },
+                { name: 'COD cash', href: route('hub.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
             ];
         }
 

@@ -106,7 +106,7 @@ class ResourceRestrictionService
             'work_note' => $type === 'fleet'
                 ? 'Rider assignments and recorded manifests identify linked work. Legacy feeder and linehaul labels are retained for review; a label alone does not prove which vehicle carried a parcel.'
                 : ($type === 'handler' ? 'Current facility work and recorded scans need review. A facility assignment does not establish personal parcel or cash custody.' : null),
-            'cash_note' => 'Cash custody and reconciliation are not recorded yet. Payment labels and commission rows do not prove who holds money.',
+            'cash_note' => 'Retain recorded cash holders, handovers and unresolved differences. Payment labels and commission rows do not prove cash custody.',
         ];
     }
 
@@ -260,6 +260,21 @@ class ResourceRestrictionService
                 if ($type === 'hub') {
                     $scope->orWhere(fn ($pickup) => $pickup->where('pickup_hub_id', $resource->id)
                         ->when(! $actor->isAdmin(), fn ($q) => $q->whereHas('delivery', fn ($parcel) => $parcel->where('logistics_company_id', $resource->logistics_company_id))));
+                }
+                if (in_array($type, ['company', 'hub', 'handler'], true)) {
+                    $scope->orWhereHas('codAccount', function ($cash) use ($actor, $type, $resource) {
+                        if (! $actor->isAdmin()) {
+                            $cash->where('logistics_company_id', $type === 'company' ? $resource->id : $resource->logistics_company_id);
+                        }
+                        if ($type === 'company') {
+                            $cash->where('logistics_company_id', $resource->id);
+                        } elseif ($type === 'hub') {
+                            $cash->where('hub_id', $resource->id);
+                        } else {
+                            $cash->where(fn ($parties) => $parties->where('collector_id', $resource->user_id)->orWhereHas('events', fn ($events) => $events
+                                ->where(fn ($party) => $party->where('from_user_id', $resource->user_id)->orWhere('to_user_id', $resource->user_id))));
+                        }
+                    });
                 }
             });
         }

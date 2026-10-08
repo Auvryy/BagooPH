@@ -13,6 +13,7 @@ after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
     stdin: {
         contents: `export * from '@/utils/courier';
+            export * from '@/utils/codCash';
             export { default as Deliveries } from '@/Pages/Courier/Deliveries';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
@@ -53,7 +54,7 @@ const finalMile = {
     id: 2, trackingNumber: 'BGO-DROP', orderNumber: 'BGO-ORDER', status: 'assigned_to_rider',
     recipient: { name: 'Saved recipient', address: 'Saved buyer road', latitude: 14.5, longitude: 121.6, phone: '+639171234567' },
     destinationHub: { name: 'Destination Bayan Hub', address: 'Destination hub road', latitude: 14.3, longitude: 121.4 },
-    payment: { method: 'COD', codAmount: 950.12 }, assignedAt: null, nextAction: 'start_delivery', canMessage: true,
+    payment: { method: 'COD', codAmount: 950.12, codAmountCents: 95012 }, assignedAt: null, nextAction: 'start_delivery', canMessage: true,
 };
 
 test('duty switch exposes the saved state and keeps its white thumb inside the track', () => {
@@ -218,10 +219,10 @@ test('parcel selection preserves queue order and current-stop contact restrictio
     assert.deepEqual(directionDestinations(html), ['14.3,121.4']);
 });
 test('missing COD amount remains missing and prepaid jobs do not show a cash amount', async () => {
-    const missing = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'COD', codAmount: null } }] } });
+    const missing = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'COD', codAmount: null, codAmountCents: null } }] } });
     assert.match(missing, /Amount not provided/);
     assert.doesNotMatch(missing, /₱0/);
-    const prepaid = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'PREPAID', codAmount: null } }] } });
+    const prepaid = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'PREPAID', codAmount: null, codAmountCents: null } }] } });
     assert.match(prepaid, /PREPAID · No COD due/);
     assert.doesNotMatch(prepaid, /Cash due at delivery|₱/);
 });
@@ -415,4 +416,20 @@ test('profile uses the stored avatar and enables password updates only for a ver
     assert.ok(password);
     assert.doesNotMatch(password, /disabled=""/);
     assert.match(html, /Stored model/);
+});
+
+
+test('cash previews keep centavos exact for tender, change and large valid amounts', () => {
+    assert.equal(ui.cashInputCents('950.12'), 95012);
+    assert.equal(ui.cashInputCents('1000.00') - ui.cashInputCents('49.88'), 95012);
+    assert.equal(ui.cashInputCents('0.01'), 1);
+    assert.equal(ui.cashInputCents('999999999.99'), 99999999999);
+    assert.equal(ui.cashInputPesos(95012), '950.12');
+    assert.equal(ui.cashInputPesos(1), '0.01');
+});
+
+test('cash previews reject ambiguous amounts and excess precision', () => {
+    for (const value of ['', '-1', '1e2', '10.001', '1,000.00', ' 10', '01', '1000000000']) {
+        assert.equal(ui.cashInputCents(value), null, value);
+    }
 });

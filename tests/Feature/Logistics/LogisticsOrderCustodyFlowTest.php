@@ -16,10 +16,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\InteractsWithCodCollection;
 use Tests\TestCase;
 
 class LogisticsOrderCustodyFlowTest extends TestCase
 {
+    use InteractsWithCodCollection;
     use RefreshDatabase, \Tests\Feature\E2E\Support\CreatesE2EOrders, \Tests\Feature\E2E\Support\InteractsWithOrderActions, \Tests\Feature\E2E\Support\InteractsWithRoles;
 
     protected function setUp(): void
@@ -316,6 +318,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         Storage::fake('public');
         $assignedRider->courierProfile->update(['is_available' => false]);
         $this->actingAs($assignedRider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered',
             'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');

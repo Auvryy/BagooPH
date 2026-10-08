@@ -71,6 +71,7 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $this->actingAs($rider)->post(route('courier.claim', $delivery))->assertSessionHas('success');
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
@@ -105,7 +106,7 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $this->completeFlowOrder($order);
         $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $rider = User::findOrFail($delivery->assigned_rider_id);
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
         $this->assertSame('completed', $order->fresh()->status);
         // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.

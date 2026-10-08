@@ -86,7 +86,7 @@ class B34_to_B35_E2EAndAdversarialBoundaryTest extends TestCase
         $this->completeFlowOrder($order);
         $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $rider = User::findOrFail($delivery->assigned_rider_id);
-        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
         $this->assertSame('completed', $order->fresh()->status);
         // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.

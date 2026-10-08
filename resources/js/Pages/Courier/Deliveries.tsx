@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Camera, Package, Search, Truck } from 'lucide-react';
+import { Banknote, Camera, Package, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
 import { CourierDashboardSummary, CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
@@ -8,6 +8,7 @@ import { CourierDialog, CourierEmpty, CourierFieldError, courierButton, courierC
 import { courierDate, courierGreeting, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
+import { cashInputCents } from '@/utils/codCash';
 
 interface PickupTask {
     id: number;
@@ -28,7 +29,7 @@ interface FinalMileTask {
     orderNumber: string | null;
     status: string;
     recipient: CourierPlace & { phone: string | null };
-    payment: { method: string; codAmount: number | null };
+    payment: { method: string; codAmount: number | null; codAmountCents: number | null };
     destinationHub: CourierPlace;
     assignedAt: string | null;
     nextAction: 'start_delivery' | 'complete_delivery' | 'return_to_hub';
@@ -65,6 +66,11 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [attemptLocation, setAttemptLocation] = useState('');
     const [requestToken, setRequestToken] = useState('');
     const [barcode, setBarcode] = useState('');
+    const [recipientName, setRecipientName] = useState('');
+    const [recipientRelationship, setRecipientRelationship] = useState('');
+    const [cashReceived, setCashReceived] = useState('');
+    const [changeGiven, setChangeGiven] = useState('0.00');
+    const [cashConfirmed, setCashConfirmed] = useState(false);
     const [proof, setProof] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -108,6 +114,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         : !scope.isOperational ? 'New work is paused at your company or hub.'
         : !isOnline ? 'Go on duty to claim new pickups.'
         : limit !== undefined && activeCount >= limit ? `Your pickup limit of ${limit} has been reached. Bring collected parcels to the origin hub before claiming more.` : '';
+    const actionDue = target?.status === 'delivered' ? deliveries.find((task) => task.id === target.id)?.payment.codAmountCents ?? null : null;
+    const tenderCents = cashInputCents(cashReceived);
+    const changeCents = cashInputCents(changeGiven);
+    const netCash = tenderCents !== null && changeCents !== null ? tenderCents - changeCents : null;
 
     useEffect(() => {
         if (!proof) { setPreview(null); return; }
@@ -121,6 +131,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         if (pending.current) return;
         setNotes(''); setBarcode(''); setProof(null); setErrors({});
         setFailureReason(''); setAttemptLocation(''); setRequestToken(recoveryRequestToken);
+        setRecipientName(''); setRecipientRelationship(''); setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
         setTarget({ id, trackingNumber, status });
     };
     const claim = (id: number) => {
@@ -150,7 +161,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (!target || pending.current) return;
-        if (target.status !== 'delivered' && !barcode.trim()) {
+        if (!barcode.trim()) {
             setErrors({ barcode: 'Enter the code scanned from the parcel waybill.' });
             return;
         }
@@ -158,15 +169,24 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
             return;
         }
+        if (target.status === 'delivered' && (actionDue === null || netCash !== actionDue || !cashConfirmed)) {
+            setErrors({ cash_received: 'Count the saved COD amount, give the correct change, and confirm collection before recording delivery.' });
+            return;
+        }
         pending.current = true;
         setLoadingId(target.id);
         setErrors({});
         router.post(courierPath(`/deliveries/${target.id}/status`), {
             _method: 'patch', status: target.status, courier_notes: notes.trim() || undefined,
-            barcode: target.status !== 'delivered' ? barcode : undefined,
+            barcode,
             failure_reason: target.status === 'delivery_failed' ? failureReason : undefined,
             location_name: target.status === 'delivery_failed' ? attemptLocation : undefined,
-            request_token: target.status === 'delivery_failed' ? requestToken : undefined,
+            request_token: target.status === 'delivery_failed' || target.status === 'delivered' ? requestToken : undefined,
+            recipient_name: target.status === 'delivered' ? recipientName.trim() : undefined,
+            recipient_relationship: target.status === 'delivered' ? recipientRelationship : undefined,
+            cash_received: target.status === 'delivered' ? cashReceived : undefined,
+            change_given: target.status === 'delivered' ? changeGiven : undefined,
+            cash_confirmed: target.status === 'delivered' ? cashConfirmed : undefined,
             proof_image_file: (target.status === 'delivered' || target.status === 'delivery_failed') ? proof ?? undefined : undefined,
         }, {
             forceFormData: true, preserveScroll: true,
@@ -193,6 +213,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Dashboard" subtitle={scope?.isAssigned ? 'Your day, one handoff at a time. Let’s keep each parcel moving.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
+                <div className="flex justify-end"><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
                 <CourierDashboardSummary available={stats?.availablePickups ?? available.length} pickups={activeCount} deliveries={stats?.finalMileTasks ?? deliveries.length} completedToday={stats?.completedToday} onSelect={viewQueue} />
                 {!isOnline && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
                 {scope?.isAssigned && !scope.isOperational && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
@@ -211,7 +232,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         {selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
                     </CourierCurrentJob>}
                     {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile">
-                        <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmount) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Delivery proof does not record cash remittance or settle the order.</p>}</div>
+                        <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmountCents === null ? null : selectedDelivery.payment.codAmountCents / 100) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Record counted cash with delivery. Hub handover and platform reconciliation follow separately.</p>}</div>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order: {selectedDelivery.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
                         {selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}
                     </CourierCurrentJob>}
@@ -227,12 +248,20 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     <CourierFieldError message={errors.status} />
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="failure-reason">Failure reason<select id="failure-reason" required value={failureReason} disabled={loadingId !== null} onChange={event => setFailureReason(event.target.value)} className={courierInput}><option value="">Choose the actual reason</option><option value="customer_unreachable">Customer unreachable</option><option value="customer_unavailable">Customer unavailable or requested another date</option><option value="address_clarification">Wrong or incomplete address</option><option value="unsafe_conditions">Unsafe conditions or severe weather</option><option value="cod_unavailable">Exact COD payment unavailable</option><option value="customer_refused">Customer refused the parcel</option></select><CourierFieldError message={errors.failure_reason} /></label>}
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="attempt-location">Actual attempt location<input id="attempt-location" type="text" required maxLength={255} value={attemptLocation} disabled={loadingId !== null} onChange={event => setAttemptLocation(event.target.value)} className={courierInput} /><CourierFieldError message={errors.location_name} /></label>}
-                    {target.status !== 'delivered' && <div>
+                    <div>
                         <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Scanned waybill code</label>
                         <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan or enter the tracking barcode attached to this parcel after checking its order and contents.</p>
                         <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode)} aria-describedby="waybill-help waybill-error" onChange={(event) => setBarcode(event.target.value)} className={courierInput} />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
-                    </div>}
+                    </div>
+                    {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
+                        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />Count cash at handoff</h3><span className="font-semibold tabular-nums text-[#C20836]">Due: {actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}</span></div>
+                        <label className="block text-sm font-semibold" htmlFor="cash-recipient">Person receiving the parcel<input id="cash-recipient" required maxLength={255} value={recipientName} disabled={loadingId !== null} onChange={(event) => setRecipientName(event.target.value)} className={courierInput} /><CourierFieldError message={errors.recipient_name} /></label>
+                        <label className="block text-sm font-semibold" htmlFor="cash-relationship">Relationship to buyer<select id="cash-relationship" required value={recipientRelationship} disabled={loadingId !== null} onChange={(event) => setRecipientRelationship(event.target.value)} className={courierInput}><option value="">Choose the actual recipient</option><option value="buyer">Buyer</option><option value="household">Household member</option><option value="authorized_recipient">Authorized recipient</option></select><CourierFieldError message={errors.recipient_relationship} /></label>
+                        <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
+                        <p role="status" className="text-sm text-slate-600">{netCash === null || netCash < 0 ? 'Enter the cash counted and any change actually given.' : `Cash kept for this order: ${courierMoney(netCash / 100)}.${netCash === actionDue ? ' This matches the amount due.' : ' This must match the saved amount due.'}`}</p>
+                        <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label><CourierFieldError message={errors.cash_confirmed || errors.request_token} />
+                    </section>}
                     {(target.status === 'delivered' || target.status === 'delivery_failed') && <div>
                         <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">{target.status === 'delivery_failed' ? 'Attempt proof photo' : 'Proof of delivery photo'}</label>
                         <p id="proof-help" className="mt-1 text-sm text-slate-600">{target.status === 'delivery_failed' ? 'Use a JPEG, PNG or WebP image up to 5 MB. Choosing a photo does not record the attempt.' : 'An image is required, up to 5 MB. Choosing a photo does not record delivery.'}</p>

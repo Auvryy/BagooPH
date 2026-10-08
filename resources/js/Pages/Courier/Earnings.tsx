@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Head } from '@inertiajs/react';
-import { CheckCircle2, Copy, MapPin, PackageCheck, Search } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Banknote, CheckCircle2, Copy, MapPin, PackageCheck, Search } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import { CourierBadge, CourierEmpty, CourierPanel, courierButton, courierInput } from '@/Components/CourierUI';
-import { courierDate, type CourierScope } from '@/utils/courier';
+import { courierDate, courierPath, type CourierScope } from '@/utils/courier';
 
 interface Props {
     scope: CourierScope;
@@ -40,6 +40,7 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
         <CourierLayout title="Completed trips" subtitle="Recorded final-mile deliveries at your current company and destination hub." scope={scope} isOnline={isOnline}>
             <Head title="Completed trips — BagooPH" />
             <div className="space-y-5">
+                <div className="flex justify-end"><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
                 <section aria-label="Trip overview" className="grid grid-cols-2 gap-4 lg:grid-cols-[1fr_1fr_1.5fr]">
                     {[{ label: 'Recorded deliveries', value: summary.completedDeliveries, hint: 'In your current assignment', icon: PackageCheck }, { label: 'Delivered today', value: summary.completedToday, hint: 'Recorded at this hub', icon: CheckCircle2 }].map(({ label, value, hint, icon: Icon }) => <CourierPanel key={label} className="min-w-0 p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-2"><p className="text-xs font-medium text-slate-600">{label}</p><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF6F8] text-[#C20836]"><Icon className="h-4 w-4" aria-hidden="true" /></span></div>

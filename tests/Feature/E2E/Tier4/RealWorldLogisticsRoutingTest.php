@@ -117,7 +117,7 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $this->assertSame($replacement->id, $delivery->fresh()->assigned_rider_id, 'A recorded recovery handoff must establish the replacement responsibility.');
         $this->actingAs($replacement)->patch(route('courier.updateStatus', $delivery), ['status' => 'out_for_delivery', 'barcode' => $delivery->tracking_number])->assertSessionHas('success');
         Storage::fake('public');
-        $this->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('recovery-delivery.jpg')])->assertSessionHas('success');
+        $this->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('recovery-delivery.jpg')])->assertSessionHas('success');
         $detail = $this->actingAs($manager)->getJson('/exceptions/restriction/'.$work->id)->assertOk()->json('exception');
         $this->postJson('/exceptions/restriction/'.$work->id, ['action' => 'resolve', 'source_token' => $detail['sourceToken'], 'request_token' => (string) Str::uuid(),
             'reason' => 'Original hub receipt and actual replacement delivery are retained.'])->assertOk();

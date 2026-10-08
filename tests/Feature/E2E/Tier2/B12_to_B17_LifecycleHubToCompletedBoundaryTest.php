@@ -270,6 +270,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $before = $this->snapshot($delivery);
         Storage::fake('public');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('error');
         $this->assertCount(0, Storage::disk('public')->allFiles());
@@ -281,7 +282,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $delivery = $this->parcel('delivered');
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
-        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), ['status' => 'delivered'])->assertSessionHas('success');
+        $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'delivered')->count());
         $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
         $this->assertSame($before, $this->snapshot($delivery));
@@ -295,6 +296,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         Storage::fake('public');
         $rider = $this->flowRider($hub, $this->createApprovedUser('courier'));
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('error');
         $this->assertCount(0, Storage::disk('public')->allFiles());

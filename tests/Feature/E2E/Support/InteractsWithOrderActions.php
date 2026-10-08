@@ -22,11 +22,13 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
+use Tests\Concerns\InteractsWithCodCollection;
 
 /** Initial eligibility is a fixture; order and custody evidence must come from real actions. */
 trait InteractsWithOrderActions
 {
     use InteractsWithCheckoutSubmission;
+    use InteractsWithCodCollection;
 
     private ?LogisticsCompany $flowCompany = null;
 
@@ -315,6 +317,7 @@ trait InteractsWithOrderActions
             $this->flowStorageFaked = true;
         }
         $this->actingAs($final)->patch(route('courier.updateStatus', $delivery), [
+            ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');
         $delivery->refresh();

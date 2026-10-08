@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
+use App\Services\Finance\CodCashService;
 use App\Services\Notifications\LifecycleNoticeService;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -164,13 +165,14 @@ class PickupClaimService
             $event = $this->record($claim, $actor, 'collected', $source, DeliveryCheckpoint::state($parcel),
                 ['barcode_scanned' => $barcode, 'recipient_name' => $buyer->name, 'notes' => $input['notes'] ?? null,
                     'request_token' => $input['request_token'], 'request_fingerprint' => $fingerprint]);
-            CodCustodyEntry::create(['order_id' => $parcel->order_id, 'delivery_id' => $parcel->id, 'logistics_company_id' => $parcel->logistics_company_id,
+            $cash = CodCustodyEntry::create(['order_id' => $parcel->order_id, 'delivery_id' => $parcel->id, 'logistics_company_id' => $parcel->logistics_company_id,
                 'hub_id' => $hub->id, 'actor_id' => $actor->id, 'holder_user_id' => $actor->id, 'pickup_claim_event_id' => $event->id,
                 'entry_type' => 'counter_collection', 'amount_cents' => $due, 'tender_cents' => $tender, 'change_cents' => $change]);
             DeliveryCheckpoint::record($parcel, 'customer_collected', actor: $actor, hub: $hub, barcodeScanned: $barcode,
                 notes: 'Matching buyer photo ID, one-time claim and exact COD collection confirmed. Evidence: '.$event->reference,
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
                     'custody_after' => ['kind' => 'buyer', 'user_id' => $buyer->id, 'pickup_collection_reference' => $event->reference]]);
+            app(CodCashService::class)->collectCounter($parcel, $actor, $cash, $input['request_token']);
             $this->notices->pickup($claim, 'collected');
 
             return ['success' => true, 'delivery' => $parcel, 'message' => 'Buyer collection and COD custody recorded.'];
