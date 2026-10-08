@@ -13,7 +13,7 @@ type Correction = {
 };
 type Subject = {
     id: number; name: string; role: string; shop_id: number | null; source_token: string;
-    shops: { id: number; name: string }[]; values: Record<string, string | number | null>;
+    values: Record<string, string | number | null>;
     fields: { key: string; label: string; type: string; options: string[] }[];
     requests: Correction[]; required_documents: string[]; provenance: Correction['provenance'];
 };
@@ -70,7 +70,6 @@ export default function IdentityCorrection({ subject, categories, adminReview, b
             <h2 className="text-lg font-semibold">{subject.name}</h2>
             <p className="mt-2 text-sm text-slate-600">A correction needs supporting evidence and an admin decision. Account roles, separate restrictions and ongoing work stay in place.</p>
             {subject.provenance.source === 'legacy_without_recorded_review' && <p className="mt-2 text-sm text-amber-800">No earlier identity review is recorded. This request will retain that legacy provenance and record the current review.</p>}
-            {subject.shops.length > 1 && <label className="mt-4 block text-sm font-medium">Shop<select value={subject.shop_id ?? ''} onChange={event => router.get(baseUrl, { shop_id: event.target.value })} className="mt-1 w-full rounded-lg border-slate-300">{subject.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label>}
         </section>
         {adminReview && <section className="rounded-xl border border-slate-300 bg-white p-5">
             <h2 className="font-semibold">Responsibilities and listings</h2>

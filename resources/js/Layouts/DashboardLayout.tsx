@@ -26,7 +26,6 @@ import {
     TrendingUp,
     CheckCircle2,
     Check,
-    Plus,
     User as UserIcon,
     ScanLine,
     Building2,
@@ -44,14 +43,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [shopSwitcherOpen, setShopSwitcherOpen] = useState(false);
     const [hubSwitcherOpen, setHubSwitcherOpen] = useState(false);
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
     const role = user?.role || 'buyer';
     const currentShop = user?.shop;
-    const shops = user?.sellerShops ?? (currentShop ? [currentShop] : []);
     const activeHub = (user as any)?.activeHub;
     const allHubs = (user as any)?.allHubs || [];
     const logisticsCompany = (user as any)?.logisticsCompany;
@@ -91,7 +88,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
         if (role === 'seller') {
             return [
-                { name: 'Shops', href: route('seller.shops.index'), icon: Store, current: component === 'Seller/Shops' },
+                { name: 'Shop', href: route('seller.shops.index'), icon: Store, current: component === 'Seller/Shops' },
                 { 
                     name: 'Dashboard', 
                     href: route('seller.dashboard'), 
@@ -235,84 +232,16 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </div>
                 </div>
 
-                {/* Active Store Profile & Switcher for Merchants */}
                 {role === 'seller' && currentShop && (
-                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
-                                <Store className="w-3 h-3 text-[#E00D42]" /> Store Profile
-                            </span>
-                            {currentShop.root_category && (
-                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                    {currentShop.root_category.name}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Switcher Dropdown Button */}
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShopSwitcherOpen(!shopSwitcherOpen)}
-                                className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-left transition shadow-2xs group cursor-pointer"
-                            >
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#E00D42] transition">{currentShop.name}</p>
-                                    <p className="text-[10px] text-slate-500 font-sans truncate">{shops.length} profile{shops.length === 1 ? '' : 's'} managed</p>
-                                </div>
-                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5 transition-transform ${shopSwitcherOpen ? 'rotate-180' : ''}`} />
-                            </button>
-
-                            {shopSwitcherOpen && (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
-                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans">
-                                        Switch Store Profile
-                                    </div>
-                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
-                                        {shops.map((s) => (
-                                            <button
-                                                key={s.id}
-                                                disabled={!s.eligible}
-                                                type="button"
-                                                onClick={() => {
-                                                    setShopSwitcherOpen(false);
-                                                    if (s.id !== currentShop.id) {
-                                                        router.post(route('seller.shops.switch'), { shop_id: s.id }, { preserveScroll: true });
-                                                    }
-                                                }}
-                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
-                                                    s.id === currentShop.id ? 'bg-slate-50 font-bold text-[#E00D42]' : 'text-slate-700'
-                                                }`}
-                                            >
-                                                <div className="min-w-0 flex-1 pr-2">
-                                                    <p className="truncate">{s.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-sans truncate">
-                                                        {s.root_category?.name || 'Missing category'} · {s.review_status?.replaceAll('_', ' ') || 'Review required'} · {s.status}
-                                                    </p>
-                                                </div>
-                                                {s.id === currentShop.id && (
-                                                    <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="p-2 border-t border-slate-100">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShopSwitcherOpen(false);
-                                                router.visit(route('seller.shops.index'));
-                                            }}
-                                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-semibold transition cursor-pointer"
-                                        >
-                                            <Plus className="w-3 h-3" />
-                                            <span>Manage shops and approvals</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                    <div className="shrink-0 border-b border-slate-300 bg-slate-50/50 p-3">
+                        <Link href={route('seller.shops.index')} className="flex items-start gap-2 rounded-lg border border-slate-300 bg-white p-3 transition hover:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]">
+                            <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
+                            <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-slate-800">{currentShop.name}</p>
+                                <p className="mt-1 text-xs text-slate-600">{currentShop.root_category?.name ?? 'Category needs review'}</p>
+                                <p className="mt-1 text-xs text-slate-500">Shop details and approval</p>
+                            </div>
+                        </Link>
                     </div>
                 )}
 

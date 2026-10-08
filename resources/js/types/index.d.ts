@@ -58,7 +58,6 @@ export interface User {
     kyc_reviewed_at?: string | null;
     email_verified_at?: string | null;
     shop?: Shop | null;
-    sellerShops?: Shop[];
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
     canManageResources?: boolean;
@@ -270,7 +269,6 @@ export type PageProps<
     auth: {
         user: User | null;
     };
-    sellerShops?: Shop[];
     categories?: Category[];
     cartCount: number;
     unreadMessagesCount?: number;
