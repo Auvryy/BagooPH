@@ -23,6 +23,10 @@ Checkout requires the recipient, phone, serviceable road-based address, barangay
 
 If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, shipping fee, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent. A shop voucher reduces only its matching shop order; a platform voucher is divided proportionally without exceeding its calculated checkout discount.
 
+Successful checkout and My Purchases links open the existing purchases and tracking workspace, with item details and parcel actions. Restricted buyers retain only their owned recorded-order view under the exception above.
+
+Account settings keep the original sign-in email and allow verified additional contact/recovery addresses with current-password confirmation and an emailed code. Buyers edit contact numbers, profile photos and saved delivery addresses directly. Saving a photo updates the profile and header from the saved result. Addresses apply to future orders; existing order snapshots remain intact. Legal name, birth date and private identity evidence use the correction request and history beside identity information in settings, with Platform Admin review.
+
 ## 2. Doorstep Delivery
 
 ```text

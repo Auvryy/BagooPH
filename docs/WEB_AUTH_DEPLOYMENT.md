@@ -64,3 +64,11 @@ This repair targets `seller@bagoo.test`, its sole shop and known catalogue fixtu
 A fresh or unreviewed original demo fixture receives clearly labelled **Synthetic demo setup** provenance, the actual setup time, a fictional adult date and private placeholder images. These are demo fixtures, not evidence of a human identity/document review or a historical approval. Real accounts and non-demo shops never receive this setup. Run the visibility check again to confirm the deployed result. A database reset or general seed rerun is unnecessary; the general seeder also configures the broader demo network.
 
 Current implementation evidence and remaining limits belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).
+
+## Account settings update
+
+After publishing and pulling the settings branch, run the same deployment and verification commands above. Confirm `2026_10_08_000001_create_account_emails_table` is **Ran** before opening settings. It adds the email ownership registry and scoped challenges while retaining original account IDs, email strings and verification. Ambiguous legacy addresses block installation for explicit ownership resolution; do not reset the database or delete accounts to force deployment.
+
+The existing secret-mail transport must be configured for actual OTP delivery. A log/array mailer cannot deliver codes to a person's inbox, and secret-mail checks reject unsafe delivery. Verify adding an address with the current password and emailed code, choosing it for contact, recovering through it, and retaining sign-in with the original address. Removing an additional address revokes its pending recovery credentials. No additional mail provider is required by this change.
+
+Check the saved profile photo in both settings and the header, direct shop contact/branding changes without lost approval, future-address edits, and checkout opening the purchases/tracking workspace. Local tests and a production build do not establish these deployed browser or mail results.

@@ -8,6 +8,8 @@ One seller account owns one shop. Registration creates that shop together with t
 
 The seller opens their sole shop automatically after approval. There is no extra-shop creation or shop switcher. Products, stock, variants, prices, images and vouchers stay within the approved root category and its active descendants. A reviewed category change requires the existing identity/scope correction process. Legacy shops without recorded approval use the existing shop review path; approval is never inferred from an active flag.
 
+Sellers edit personal/shop contact numbers, profile photos, shop description, logo and banner directly in settings. These changes preserve the registered shop's approval and catalogue eligibility. Legal identity, birth date, shop name, category, pickup address and private business/identity evidence require the correction request and history beside identity information in merchant account settings. A restricted shop's contact/branding edit cannot reactivate it or open new work. The original sign-in email stays fixed; additional verified contact/recovery addresses use current-password confirmation and emailed OTP verification.
+
 Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or their shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.
 
 ## 2. Order Fulfillment

@@ -45,11 +45,12 @@ Inspect these existing files before proposing schema or routes. The list is a st
 3. Validate proposed birthday/category/canonical fields under B01/B02 rules. Require reason and role-appropriate evidence; review current private files and reject missing or changed content.
 4. Apply approved correction and new audit atomically with before/after values, evidence/version, prior reference, actor/time, and idempotency. Reject stale competing changes; never update/delete the original KYC decision.
 5. Re-evaluate eligibility while preserving independent restrictions, duty, placements, and active-work obligations. A corrected underage/invalid identity cannot be left eligible; a valid correction alone cannot reactivate an account.
-6. Provide a small admin review/candidate workflow and applicant own-request feedback. Protect last-admin continuity; when evidence would remove the final eligible admin, require controlled authorized replacement/recovery before the routine flow proceeds.
+6. Provide a small admin review/candidate workflow. Embed the applicant's request and history beside identity information in existing role settings, using the portal's design. Old applicant links redirect to that section; the admin review queue remains separate. Protect last-admin continuity; when evidence would remove the final eligible admin, require controlled authorized replacement/recovery before the routine flow proceeds.
 
 ## Decision and scope rules
 
 - Correction is not role conversion or routine approval reversal. Roles remain fixed and another public role needs a separate account.
+- Contact numbers, avatars, branding and future buyer delivery addresses are direct owner edits, preserving shop approval and historical snapshots. Reviewed legal identity, birth date, shop name/category/pickup address and private evidence still require correction review. The original sign-in email remains fixed; additional contact/recovery addresses use the separate password-and-OTP verification workflow in settings.
 - Legacy compatibility is explicit and temporary policy, not proof of adulthood or category approval. Never guess birth dates or category mappings.
 - Fresh eligible Platform Admin reviews current evidence; a session's old reviewer eligibility or inspection does not suffice.
 - Reviewed category change remains subject to shop/product scope checks. Identify affected listings without silently reclassifying products or deleting historical order snapshots.
