@@ -281,6 +281,7 @@ class ApplicationValidationTest extends TestCase
     {
         $user = $this->applicant('seller', ['email' => 'Juan@BAGOO.TEST']);
         $user->update(['name' => '  Juan Dela Cruz ', 'phone' => '09 17123 4567']);
+        $user->refresh();
         $before = $user->getRawOriginal();
         $this->assertSame([], app(ApplicationValidationService::class)->errors($user));
         $this->assertSame($before, $user->fresh()->getRawOriginal());

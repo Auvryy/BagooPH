@@ -7,7 +7,6 @@ use App\Services\RiderAccountService;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
-use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureRiderAccountToken
@@ -15,7 +14,7 @@ class EnsureRiderAccountToken
     public function handle(Request $request, Closure $next, string $purpose = 'account'): Response
     {
         $plain = $request->bearerToken();
-        $token = $plain ? PersonalAccessToken::findToken($plain) : null;
+        $token = app(RiderAccountService::class)->findToken($plain);
         $user = $token?->tokenable;
         if (! $token || ! $user instanceof User || ! $token->expires_at || now()->greaterThanOrEqualTo($token->expires_at)
             || ! $token->can($purpose === 'logout' ? 'rider:logout' : 'rider:account')) {
@@ -33,6 +32,13 @@ class EnsureRiderAccountToken
                 $token->delete();
                 throw $exception;
             }
+        }
+        if (str_starts_with($purpose, 'settings:')) {
+            abort_unless($user->isEligibleCourier(), 403, 'An approved active rider account is required for settings.');
+            abort_unless(app(RiderAccountService::class)->settingsAvailable(), 503, 'Account settings are temporarily unavailable.');
+            $ability = 'rider:'.$purpose;
+            app(RiderAccountService::class)->assertSettingsToken($request, $user, $ability);
+            $request->attributes->set('rider_settings_ability', $ability);
         }
         $token->forceFill(['last_used_at' => now()])->save();
         $request->setUserResolver(fn () => $user->withAccessToken($token));
