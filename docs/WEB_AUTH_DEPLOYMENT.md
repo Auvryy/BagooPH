@@ -26,7 +26,7 @@ Run the existing deployment helper from the repository:
 ./bagoo.sh verify
 ```
 
-The deploy helper builds assets, applies additive migrations, clears old caches, and rebuilds configuration/views. Confirm that `2026_10_07_180000_create_notification_deliveries` appears as **Ran** in the migration output. If only environment settings changed, clear and rebuild the configuration cache:
+The deploy helper builds assets, applies additive migrations, clears old caches, and rebuilds configuration/views. Verification requires the asset manifest and no pending migrations; a pending migration returns a failure instead of reporting success. To inspect individual migrations, including `2026_10_07_180000_create_notification_deliveries`, run `./bagoo.sh artisan migrate:status --no-ansi` and confirm **Ran**. If only environment settings changed, clear and rebuild the configuration cache:
 
 ```bash
 docker compose exec -T app php artisan optimize:clear
@@ -34,6 +34,19 @@ docker compose exec -T app php artisan config:cache
 ```
 
 Reload the login page before retrying. Check successful login, wrong-password feedback, logout, and the next unauthenticated page across the applicable portal hosts. A local build or protocol test does not establish a deployed browser result.
+
+## Build memory on small servers
+
+A `Reached heap limit` failure during `tsc && vite build` can leave deployment unfinished before migrations run. The helper now passes `NODE_OPTIONS=--max-old-space-size=1024` into the build container, giving Node a 1 GiB heap cap. The October 8 server build succeeded with this setting and existing swap; the cap is not a reservation or a guarantee that every server has enough memory.
+
+An explicit `NODE_OPTIONS` value is preserved. For a server with suitable memory, override it from the shell running the helper:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=1536 ./bagoo.sh deploy
+./bagoo.sh verify
+```
+
+If deployment stops during the build, complete a successful deployment and verification before treating new backend routes as ready. A database reset or dependency upgrade is not required to recover a Node heap-limit failure.
 
 ## Notification scheduling
 

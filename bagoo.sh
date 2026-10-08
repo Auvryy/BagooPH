@@ -43,7 +43,7 @@ case "$cmd" in
     docker compose build app
     docker compose run --rm --no-deps app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
     docker compose run --rm --no-deps app npm ci
-    docker compose run --rm --no-deps app npm run build
+    docker compose run --rm --no-deps -e "NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=1024}" app npm run build
     docker compose up -d db
     docker compose up -d app web
     docker compose exec app php artisan migrate --force
@@ -54,7 +54,7 @@ case "$cmd" in
     ;;
   verify)
     docker compose exec app sh -lc 'test -f public/build/manifest.json || { echo "Missing public/build/manifest.json. Run ./bagoo.sh deploy." >&2; exit 1; }'
-    docker compose exec app php artisan migrate:status --no-ansi
+    docker compose exec app php artisan migrate:status --no-ansi --pending=1
     echo "Deployment verification passed."
     ;;
   composer)
