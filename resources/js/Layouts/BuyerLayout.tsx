@@ -331,7 +331,7 @@ export default function BuyerLayout({
                                 >
                                     <div className="h-9 sm:h-11 flex items-stretch rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs group">
                                         <Link
-                                            href={route('buyer.profile', { tab: 'orders' })}
+                                            href={route('buyer.orders.index')}
                                             className="flex min-w-0 items-center gap-1.5 sm:gap-2 pl-2.5 sm:pl-4 pr-1 sm:pr-2 focus:outline-hidden"
                                         >
                                             {auth.user.avatar ? (
@@ -396,10 +396,9 @@ export default function BuyerLayout({
                                                     <span>Profile & Settings</span>
                                                 </Link>
 
-                                                {['approved', 'verified'].includes(auth.user.kyc_status ?? '') && <Link href="/account/identity-corrections" className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42]">Identity corrections</Link>}
 
                                                 <Link 
-                                                    href={route('buyer.profile', { tab: 'orders' })} 
+                                                    href={route('buyer.orders.index')}
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
                                                     <Package className="w-4 h-4 text-indigo-500" />
@@ -487,6 +486,12 @@ export default function BuyerLayout({
                         ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
                         : 'py-6 overflow-x-hidden'
             }`}>
+                {auth.user && flash?.success && (
+                    <p role="status" className="mb-5 shrink-0 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{flash.success}</p>
+                )}
+                {auth.user && flash?.error && (
+                    <p role="alert" className="mb-5 shrink-0 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-semibold text-rose-800">{flash.error}</p>
+                )}
                 {children}
             </main>
 

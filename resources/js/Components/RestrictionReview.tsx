@@ -1,3 +1,4 @@
+import { refreshPage } from '@/utils/accountRequests';
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
@@ -31,13 +32,13 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
         setProcessing(true); setMessage(''); setErrors({}); setConflict(false);
         try {
             await axios.post(endpoint, { action, reason, affected_work_confirmed: confirmed, source_token: subject.source_token }, { headers: { Accept: 'application/json' } });
-            router.reload({ only: ['subject'] });
+            await refreshPage();
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 setErrors(error.response?.data?.errors ?? {});
                 setConflict(error.response?.status === 409);
                 setMessage(error.response?.data?.message ?? 'The decision could not be saved. Review the current activity and try again.');
-            } else setMessage('The decision could not be saved. Please try again.');
+            } else setMessage(error instanceof Error ? error.message : 'The decision could not be saved. Please try again.');
         } finally { setProcessing(false); }
     };
 

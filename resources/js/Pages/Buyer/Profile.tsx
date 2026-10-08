@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
+import AccountEmailSettings from '@/Components/AccountEmailSettings';
+import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
@@ -66,8 +68,6 @@ type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
 interface ProfileFormData {
     name: string;
     phone: string;
-    birthday: string;
-    gender: string;
     avatar: File | string | null;
     remove_avatar?: boolean;
 }
@@ -81,7 +81,6 @@ export default function BuyerProfile({
     initialTab = 'orders' 
 }: Props) {
     const page = usePage<PageProps>();
-    const { flash } = page.props;
     const url = page.url;
 
     const isKycApproved = user.kyc_status === 'approved' || user.kyc_status === 'verified';
@@ -115,6 +114,9 @@ export default function BuyerProfile({
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const wallet = initialWallet;
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<number | null>(null);
+    const [addressPending, setAddressPending] = useState<number | null>(null);
+    const [addressActionError, setAddressActionError] = useState('');
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -182,11 +184,9 @@ export default function BuyerProfile({
     }, [user.avatar]);
 
     // Profile Form
-    const { data, setData, post, processing, errors, recentlySuccessful } = useForm<ProfileFormData>({
+    const { data, setData, post, processing, errors, recentlySuccessful, setDefaults } = useForm<ProfileFormData>({
         name: user.name || '',
         phone: user.phone || '',
-        birthday: (user as Record<string, any>).birthday || '2000-01-15',
-        gender: (user as Record<string, any>).gender || 'male',
         avatar: null,
         remove_avatar: false,
     });
@@ -257,6 +257,14 @@ export default function BuyerProfile({
         post(route('buyer.profile.update'), {
             preserveScroll: true,
             forceFormData: true,
+            onSuccess: ({ props }) => {
+                const saved = props.user as User;
+                const values = { name: saved.name, phone: saved.phone || '', avatar: null, remove_avatar: false };
+                setData(values);
+                setDefaults(values);
+                setAvatarPreview(saved.avatar || null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            },
         });
     };
 
@@ -333,26 +341,38 @@ export default function BuyerProfile({
         e.preventDefault();
         if (!newAddress.street || addressForm.processing) return;
 
-        addressForm.post(route('buyer.addresses.store'), {
+        const options = {
             preserveScroll: true,
             onSuccess: () => {
                 setShowAddressModal(false);
+                setEditingAddress(null);
                 addressForm.reset();
             },
-        });
+        };
+        if (editingAddress) addressForm.patch(route('buyer.addresses.update', editingAddress), options);
+        else addressForm.post(route('buyer.addresses.store'), options);
     };
 
+    const openAddress = (address?: Address) => {
+        addressForm.clearErrors();
+        setEditingAddress(address?.id ?? null);
+        setNewAddress({ recipient_name: user.name, phone: address?.phone || user.phone || '', province: address?.province || '', city: address?.city || '', barangay: address?.barangay || '', street: address?.street || '', postal_code: address?.postal_code || '', type: address?.type || 'Home', is_default: address?.is_default ?? false });
+        setShowAddressModal(true);
+    };
+    const addressOptions = {
+        preserveScroll: true,
+        onError: (errors: Record<string, string>) => setAddressActionError(Object.values(errors).join(' ')),
+        onFinish: () => setAddressPending(null),
+    };
     const setDefaultAddress = (id: number) => {
-        router.post(route('buyer.addresses.default', id), {}, {
-            preserveScroll: true,
-        });
+        if (addressPending !== null) return;
+        setAddressPending(id); setAddressActionError('');
+        router.post(route('buyer.addresses.default', id), {}, addressOptions);
     };
-
     const handleDeleteAddress = (id: number) => {
-        if (!confirm('Are you sure you want to delete this delivery address?')) return;
-        router.delete(route('buyer.addresses.destroy', id), {
-            preserveScroll: true,
-        });
+        if (addressPending !== null || !confirm('Are you sure you want to delete this delivery address?')) return;
+        setAddressPending(id); setAddressActionError('');
+        router.delete(route('buyer.addresses.destroy', id), addressOptions);
     };
 
     const formatPrice = (val?: number | string | null) => {
@@ -433,23 +453,13 @@ export default function BuyerProfile({
                     </Link>
                 </div>
 
-                {/* FLASH NOTIFICATIONS */}
-                {flash?.success && (
-                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-3 font-sans shadow-2xs">
-                        <div className="flex items-center gap-2.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="font-semibold">{flash.success}</span>
-                        </div>
-                    </div>
-                )}
-                {flash?.error && (
-                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3 font-sans shadow-2xs">
-                        <div className="flex items-center gap-2.5">
-                            <AlertCircle className="w-4 h-4 text-[#E00D42] shrink-0" />
-                            <span className="font-semibold">{flash.error}</span>
-                        </div>
-                    </div>
-                )}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
 
                 {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -463,16 +473,14 @@ export default function BuyerProfile({
                                 type="button"
                                 onClick={() => {
                                     handleTabChange('account');
-                                    setTimeout(() => {
-                                        fileInputRef.current?.click();
-                                    }, 50);
+                                    fileInputRef.current?.click();
                                 }}
                                 className="relative group shrink-0 rounded-xl overflow-hidden focus:outline-hidden focus:ring-2 focus:ring-[#E00D42] cursor-pointer"
                                 title="Click to update avatar photo"
                             >
-                                {avatarPreview || user.avatar ? (
+                                {avatarPreview ? (
                                     <img
-                                        src={avatarPreview || user.avatar || ''}
+                                        src={avatarPreview || ''}
                                         alt={user.name}
                                         className="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-xs group-hover:scale-105 transition-transform"
                                     />
@@ -746,13 +754,8 @@ export default function BuyerProfile({
                                     )}
 
                                     <form onSubmit={handleProfileSubmit} className="space-y-5 text-xs font-sans">
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
+                                        {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-rose-800">{Object.values(errors).join(' ')}</div>}
+
 
                                         {/* Avatar Customization Section */}
                                         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
@@ -835,7 +838,7 @@ export default function BuyerProfile({
                                                     required
                                                 />
                                                 {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-sans">{errors.name}</p>}
-                                                <Link href="/account/identity-corrections" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</Link>
+                                                <a href="#identity-correction" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</a>
                                             </div>
 
                                             <div>
@@ -858,6 +861,7 @@ export default function BuyerProfile({
                                                     placeholder="917 123 4567"
                                                     accentColor="primary"
                                                     helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                                    error={errors.phone}
                                                 />
                                             </div>
 
@@ -865,23 +869,19 @@ export default function BuyerProfile({
                                                 <label className="block font-bold text-slate-700 mb-1.5 font-sans">Birthday</label>
                                                 <input
                                                     type="date"
-                                                    value={data.birthday}
-                                                    onChange={(e) => setData('birthday', e.target.value)}
+                                                    value={user.birthday?.slice(0, 10) || ''}
+                                                    readOnly
                                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs font-sans focus:ring-[#E00D42] focus:border-[#E00D42]"
                                                 />
                                             </div>
 
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Gender</label>
-                                                <select
-                                                    value={data.gender}
-                                                    onChange={(e) => setData('gender', e.target.value)}
-                                                    className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
-                                                >
-                                                    <option value="male">Male</option>
-                                                    <option value="female">Female</option>
-                                                    <option value="other">Prefer not to say</option>
-                                                </select>
+                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Sex</label>
+                                                <input
+                                                    value={user.sex || 'Not recorded'}
+                                                    readOnly
+                                                    className="w-full rounded-xl bg-slate-50 border border-slate-300 p-2.5 text-xs"
+                                                />
                                             </div>
                                         </div>
 
@@ -896,6 +896,10 @@ export default function BuyerProfile({
                                         </div>
                                     </form>
                                 </div>
+
+                                <AccountEmailSettings theme="buyer" />
+
+                <AccountIdentitySettings theme="buyer" />
 
                                 {/* Identity & Trust Verification (KYC) */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
@@ -1213,7 +1217,7 @@ export default function BuyerProfile({
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setShowAddressModal(true)}
+                                        onClick={() => openAddress()}
                                         className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
@@ -1222,6 +1226,8 @@ export default function BuyerProfile({
                                 </div>
 
                                 <div className="space-y-4">
+                                    {addressActionError && <p role="alert" className="text-sm text-rose-700">{addressActionError}</p>}
+                                    {addressPending !== null && <p role="status" className="text-sm text-slate-600">Updating your address book...</p>}
                                     {addresses.map((addr) => (
                                         <div
                                             key={addr.id}
@@ -1240,6 +1246,7 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-3">
+                                                    <button type="button" disabled={addressPending !== null} onClick={() => openAddress(addr)} className="text-[11px] font-semibold text-[#C20836] underline">Edit</button>
                                                     {addr.is_default ? (
                                                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold">
                                                             DEFAULT ADDRESS
@@ -1248,6 +1255,7 @@ export default function BuyerProfile({
                                                         <button
                                                             type="button"
                                                             onClick={() => setDefaultAddress(addr.id)}
+                                                            disabled={addressPending !== null}
                                                             className="text-[11px] font-sans text-slate-500 hover:text-slate-900 underline cursor-pointer"
                                                         >
                                                             Set as Default
@@ -1258,6 +1266,7 @@ export default function BuyerProfile({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDeleteAddress(addr.id)}
+                                                            disabled={addressPending !== null}
                                                             className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer"
                                                             title="Delete address"
                                                         >
@@ -1339,7 +1348,7 @@ export default function BuyerProfile({
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
-                                <h3 className="font-bold text-slate-900 text-sm uppercase">Add Philippine Delivery Address</h3>
+                                <h3 className="font-bold text-slate-900 text-sm uppercase">{editingAddress ? 'Edit delivery address' : 'Add Philippine delivery address'}</h3>
                                 <button onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
                             </div>
 
@@ -1425,7 +1434,7 @@ export default function BuyerProfile({
                                         disabled={addressForm.processing}
                                         className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase rounded-xl transition shadow-xs"
                                     >
-                                        {addressForm.processing ? 'Saving...' : 'Save Address'}
+                                        {addressForm.processing ? 'Saving...' : editingAddress ? 'Save changes' : 'Save address'}
                                     </button>
                                 </div>
                             </form>

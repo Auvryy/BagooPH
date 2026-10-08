@@ -1,3 +1,4 @@
+import { refreshPage } from '@/utils/accountRequests';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import { FormEvent, useState } from 'react';
@@ -19,14 +20,14 @@ export default function AccountClosure({ closure, endpoint, usersUrl }: { closur
             const result = await axios.post(endpoint, { reason, password, source_token: closure.source_token }, { headers: { Accept: 'application/json' } });
             setPassword(''); setFinished(true);
             if (result.data.signed_out) window.location.assign('/login');
-            else router.reload();
+            else await refreshPage();
         } catch (error) {
             setPassword('');
             if (axios.isAxiosError(error)) {
                 setConflict(error.response?.status === 409);
                 const details = error.response?.data?.errors as Record<string, string[]> | undefined;
                 setErrors(details ? Object.values(details).flat() : [error.response?.data?.message ?? 'The closure could not be recorded.']);
-            } else setErrors(['The closure could not be recorded. Try again.']);
+            } else setErrors([error instanceof Error ? error.message : 'The closure could not be recorded. Try again.']);
         } finally { setProcessing(false); }
     };
     return <DashboardLayout title="Account closure review" subtitle="Resolve responsibilities and preserve supporting history" actions={<Link href={usersUrl} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Back to accounts</Link>}>
@@ -42,7 +43,7 @@ export default function AccountClosure({ closure, endpoint, usersUrl }: { closur
                     <p className="mt-2 whitespace-pre-line">{closure.closure.reason}</p>
                     <p className="mt-2 text-slate-600">{closure.closure.actor_name} · {new Date(closure.closure.closed_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p>
                 </div>}
-                {finished && !closure.closure && <p role="status" className="mt-3 text-sm text-emerald-700">Closure recorded. Reload to view its decision.</p>}
+                {finished && !closure.closure && <p role="status" className="mt-3 text-sm text-emerald-700">Closure recorded.</p>}
             </section>
             {closure.blockers.length > 0 && <section className="rounded-xl border border-slate-300 bg-white p-5">
                 <h2 className="font-semibold">Resolve before closing</h2>
