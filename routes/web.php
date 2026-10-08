@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AccountEmailController;
+
 use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -79,6 +81,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');
     Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
+    Route::post('/account/emails/send', [AccountEmailController::class, 'send'])->middleware('throttle:10,1')->name('account.emails.send');
+    Route::post('/account/emails/confirm', [AccountEmailController::class, 'confirm'])->middleware('throttle:20,1')->name('account.emails.confirm');
+    Route::patch('/account/emails/{accountEmail}/preferred', [AccountEmailController::class, 'prefer'])->middleware('throttle:10,1')->name('account.emails.prefer');
+    Route::delete('/account/emails/{accountEmail}', [AccountEmailController::class, 'destroy'])->middleware('throttle:10,1')->name('account.emails.destroy');
     Route::post('/account/identity-corrections', [IdentityCorrectionController::class, 'store'])->name('identity-corrections.store');
     Route::get('/identity-correction-documents/{correction}/{document}', [IdentityCorrectionController::class, 'document'])->name('identity-correction-documents.show');
 });

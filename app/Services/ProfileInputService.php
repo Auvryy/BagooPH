@@ -11,7 +11,12 @@ class ProfileInputService
 
     public function normalize(array $values, User $user): array
     {
-        return $this->applications->normalize(array_intersect_key($values, array_flip(['name', 'email', 'phone'])), $user->role);
+        $normalized = $this->applications->normalize(array_intersect_key($values, array_flip(['name', 'email', 'phone'])), $user->role);
+        if (isset($normalized['email']) && is_string($normalized['email']) && strcasecmp($normalized['email'], $user->email) === 0) {
+            $normalized['email'] = $user->email;
+        }
+
+        return $normalized;
     }
 
     public function rules(User $user, array $fields): array
@@ -20,6 +25,13 @@ class ProfileInputService
         // Updating contact details does not require a new registration application.
         if (isset($rules['phone'])) {
             $rules['phone'] = array_map(fn ($rule) => $rule === 'required' ? 'nullable' : $rule, $rules['phone']);
+        }
+        if (isset($rules['email'])) {
+            $rules['email'][] = function ($attribute, $value, $fail) use ($user) {
+                if (strcasecmp($value, $user->email) !== 0) {
+                    $fail('Keep your original sign-in email. Add and verify another address in account settings.');
+                }
+            };
         }
 
         return $rules;

@@ -74,6 +74,10 @@ class AccountClosureService
         }
         $references = [];
         foreach (Schema::getTables() as $table) {
+            // Email ownership and one-time challenges are account settings, not retained work history.
+            if (in_array($table['name'], ['account_emails', 'email_otps'], true)) {
+                continue;
+            }
             foreach (Schema::getForeignKeys($table['name']) as $key) {
                 if ($key['foreign_table'] === 'users' && $key['foreign_columns'] === ['id'] && count($key['columns']) === 1) {
                     $references[$table['name']][] = $key['columns'][0];

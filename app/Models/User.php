@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Notifications\AccountRecoveryNotification;
 use App\Services\AccountClosureService;
 use App\Services\BirthDateEligibility;
 use App\Services\SecretMailService;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -74,6 +77,12 @@ class User extends Authenticatable implements MustVerifyEmailContract
             $user->age = app(BirthDateEligibility::class)->age($user->birthday);
         });
         static::updating(function (User $user): void {
+            if ($user->isDirty('email')) {
+                if (strcasecmp($user->email, $user->getRawOriginal('email')) !== 0) {
+                    throw ValidationException::withMessages(['email' => 'Keep your original sign-in email. Add and verify another address in account settings.']);
+                }
+                $user->email = $user->getRawOriginal('email');
+            }
             if ($user->getRawOriginal('closed_at') !== null && ($user->isDirty('closed_at') || $user->status !== 'inactive')) {
                 throw ValidationException::withMessages(['status' => 'Closed accounts remain inactive and retained. Reopening requires a separate policy.']);
             }
@@ -117,6 +126,24 @@ class User extends Authenticatable implements MustVerifyEmailContract
     {
         app(SecretMailService::class)->assertSafeTransport();
         parent::sendEmailVerificationNotification();
+    }
+
+    public function accountEmails(): HasMany
+    {
+        return $this->hasMany(AccountEmail::class);
+    }
+
+    public function routeNotificationForMail($notification): string
+    {
+        if ($notification instanceof AccountRecoveryNotification) {
+            return $notification->recipient;
+        }
+        // Verification and broker recovery always refer to the original sign-in identity.
+        if ($notification instanceof VerifyEmail || $notification instanceof ResetPassword) {
+            return $this->email;
+        }
+
+        return $this->accountEmails()->whereKey($this->preferred_contact_email_id)->whereNotNull('verified_at')->value('email') ?? $this->email;
     }
 
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void

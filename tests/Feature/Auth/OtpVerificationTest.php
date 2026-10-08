@@ -283,6 +283,7 @@ class OtpVerificationTest extends TestCase
         EmailOtp::create([
             'email' => $email,
             'code_hash' => Hash::make('654321'),
+            'user_id' => $user->id,
             'purpose' => 'password_reset',
             'token' => $token,
             'verified_at' => now(),
@@ -318,6 +319,7 @@ class OtpVerificationTest extends TestCase
         EmailOtp::create([
             'email' => $email,
             'code_hash' => Hash::make($code),
+            'user_id' => $user->id,
             'purpose' => 'password_reset',
             'expires_at' => now()->addMinutes(10),
             'attempts' => 0,

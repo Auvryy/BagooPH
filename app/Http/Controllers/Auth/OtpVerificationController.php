@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\AccountEmail;
+use App\Services\AccountEmailService;
 use App\Services\OtpService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 
 class OtpVerificationController extends Controller
 {
@@ -34,14 +36,14 @@ class OtpVerificationController extends Controller
 
         // Validate account existence based on purpose
         if ($purpose === 'registration') {
-            if (User::where('email', $email)->exists()) {
+            if (AccountEmail::where('email', $email)->exists()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'An account with this email already exists. Please sign in instead.',
                 ], 422);
             }
         } elseif ($purpose === 'password_reset') {
-            if (! User::where('email', $email)->exists()) {
+            if (! app(AccountEmailService::class)->recoveryOwner($email)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No account found matching this email address.',
@@ -49,7 +51,7 @@ class OtpVerificationController extends Controller
             }
         }
 
-        $result = $this->otpService->sendOtp($email, $purpose);
+        $result = $this->otpService->sendOtp($email, $purpose, $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email)?->id : null);
 
         if (! $result['success']) {
             $status = $result['status'] ?? 429;
@@ -68,7 +70,7 @@ class OtpVerificationController extends Controller
     {
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255'],
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string', 'regex:/\A[0-9]{6}\z/'],
             'purpose' => ['nullable', 'string', 'in:registration,password_reset'],
         ]);
 
@@ -76,7 +78,7 @@ class OtpVerificationController extends Controller
         $code = trim($validated['code']);
         $purpose = $validated['purpose'] ?? 'registration';
 
-        $result = $this->otpService->verifyOtp($email, $code, $purpose);
+        $result = $this->otpService->verifyOtp($email, $code, $purpose, $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email)?->id : null);
 
         if (! $result['success']) {
             return response()->json($result, 422);
@@ -101,7 +103,7 @@ class OtpVerificationController extends Controller
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255'],
             'token' => ['nullable', 'string'],
-            'code' => ['nullable', 'string', 'size:6'],
+            'code' => ['nullable', 'string', 'regex:/\A[0-9]{6}\z/'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -120,59 +122,25 @@ class OtpVerificationController extends Controller
             return back()->withErrors(['code' => 'Verification code is required.']);
         }
 
-        if ($token) {
-            $isValid = $this->otpService->validateAndBurnToken($email, $token, 'password_reset');
-            if (! $isValid) {
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid or expired verification session. Please request a new code.',
-                    ], 422);
-                }
-
-                return back()->withErrors(['code' => 'Invalid or expired verification session. Please request a new code.']);
-            }
-        } else {
-            // Verify the OTP code for password reset
-            $verifyResult = $this->otpService->verifyOtp($email, $code, 'password_reset');
-
-            if (! $verifyResult['success']) {
-                if ($request->wantsJson()) {
-                    return response()->json($verifyResult, 422);
-                }
-
-                return back()->withErrors(['code' => $verifyResult['message']]);
-            }
-
-            if (isset($verifyResult['token'])) {
-                $this->otpService->validateAndBurnToken($email, $verifyResult['token'], 'password_reset');
-            }
+        $owner = app(AccountEmailService::class)->recoveryOwner($email);
+        if (! $owner) {
+            throw ValidationException::withMessages(['email' => 'This address cannot recover an account.']);
         }
-
-        $user = User::where('email', $email)->first();
-
-        if (! $user) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No account found for this email.',
-                ], 404);
+        if (! $token) {
+            $result = $this->otpService->verifyOtp($email, $code, 'password_reset', $owner->id);
+            if (! $result['success']) {
+                throw ValidationException::withMessages(['code' => $result['message']]);
             }
-
-            return back()->withErrors(['email' => 'No account found for this email.']);
+            $token = $result['token'];
         }
-
-        // Update password and burn token
-        $user->forceFill([
-            'password' => Hash::make($request->password),
-            'remember_token' => Str::random(60),
-        ])->save();
-
-        if (isset($verifyResult['token'])) {
-            $this->otpService->validateAndBurnToken($email, $verifyResult['token'], 'password_reset');
-        }
-
-        event(new PasswordReset($user));
+        DB::transaction(function () use ($email, $token, $owner, $validated) {
+            $user = app(AccountEmailService::class)->recoveryOwner($email, lock: true);
+            if (! $user || $user->id !== $owner->id || ! $this->otpService->validateAndBurnToken($email, $token, 'password_reset', $user->id)) {
+                throw ValidationException::withMessages(['code' => 'Invalid or expired verification session. Request a new code.']);
+            }
+            $user->forceFill(['password' => $validated['password'], 'remember_token' => Str::random(60)])->save();
+            event(new PasswordReset($user));
+        }, 3);
 
         if ($request->wantsJson()) {
             return response()->json([

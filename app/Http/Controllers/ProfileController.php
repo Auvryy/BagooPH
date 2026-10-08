@@ -50,17 +50,13 @@ class ProfileController extends Controller
             if ($request->user()->isBuyer()) {
                 app(BuyerAccessService::class)->requirePortal($request->user());
             }
-            $validated = app(ProfileInputService::class)->validate($request, ['name', 'email']);
+            $validated = app(ProfileInputService::class)->validate($request, ['name', 'email', 'phone']);
             app(IdentityCorrectionService::class)->protectReviewedIdentity($request->user(), $validated);
             $request->user()->fill($validated);
 
-            if ($request->user()->isDirty('email')) {
-                $request->user()->email_verified_at = null;
-            }
-
             $request->user()->save();
 
-            return Redirect::route('profile.edit');
+            return back()->with('success', 'Contact details updated.');
         });
     }
 
