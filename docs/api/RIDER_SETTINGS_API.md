@@ -8,7 +8,7 @@ All paths below are relative to `/api/v1`. Requests and responses are JSON. Succ
 
 - `POST auth/tokens` advertises `data.user.settings_api_version: 1`; `GET rider/me` advertises `data.settings_api_version: 1`. The field is absent until the contact-revision migration and email registry are installed. Settings routes return 503 while that schema is unavailable.
 - New sessions receive `rider:account`, `rider:logout`, `rider:settings:read`, `rider:settings:profile`, `rider:settings:password` and `rider:settings:emails`. Existing account-only tokens keep their original abilities and must sign in again for settings.
-- Every settings request needs a live, unexpired bearer token and the corresponding settings ability. The password fingerprint and fresh account eligibility are checked again. Commands recheck the authenticated token and account under the account lock.
+- Every settings request needs a live, unexpired bearer token, `rider:account` and the corresponding settings ability. The password fingerprint and fresh account eligibility are checked again. Commands recheck both abilities on the authenticated token under the account lock. Malformed, nonpositive or out-of-range token ID prefixes return 401 before an integer database lookup.
 - Only approved, active, open, age-eligible couriers may use these settings. Pending/rejected applicants retain the existing account-status/holding API, without settings access. A company or hub assignment is not required to edit ordinary account contact details.
 - The app must check the supported version, `can_access_portal` and the settings snapshot's capabilities. Client flags never authorize a server command.
 
@@ -26,7 +26,7 @@ Send only the listed body fields. Unknown fields, including null identity, owner
 | PATCH `rider/settings/emails/{id}/preferred` | `current_password`: string | Fresh snapshot |
 | DELETE `rider/settings/emails/{id}` | `current_password`: string | Fresh snapshot |
 
-IDs are positive decimal strings. Route IDs identify an address; they never select a different account. A missing address returns 404, and an existing foreign address cannot be managed (403).
+IDs are positive decimal strings within the database's signed 64-bit range, up to `9223372036854775807`. Route IDs identify an address; they never select a different account. An unsupported or out-of-range address ID returns 404 before lookup; a supported but missing address also returns 404. An existing foreign address cannot be managed (403).
 
 ## Settings snapshot
 
