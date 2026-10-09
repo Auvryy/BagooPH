@@ -11,7 +11,8 @@ return new class extends Migration
     {
         Schema::create('rider_commands', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('actor_id')->constrained('users')->restrictOnDelete();
+            // PostgreSQL checks the actor after domain user locks, avoiding an earlier FK key-share lock inversion.
+            $table->foreignId('actor_id')->constrained('users')->restrictOnDelete()->deferrable()->initiallyImmediate(false);
             $table->uuid('idempotency_key');
             $table->string('action', 60);
             $table->string('resource', 120);

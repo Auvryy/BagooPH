@@ -1,0 +1,49 @@
+services:
+  pg:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: race
+      POSTGRES_DB: ${RIDER_RACE_DATABASE:?}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U race -d "$${POSTGRES_DB}"']
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  verifier:
+    image: ${RIDER_RACE_PHP_IMAGE:?}
+    working_dir: /var/www/html
+    volumes:
+      - ../..:/var/www/html:ro
+      - ${RIDER_RACE_ARTIFACT_DIR:?}:/race-work
+    environment:
+      RIDER_RACE_APPROVED: disposable-only
+      RIDER_RACE_DATABASE: ${RIDER_RACE_DATABASE:?}
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_CONFIG_CACHE: /race-work/config.php
+      APP_ROUTES_CACHE: /race-work/routes.php
+      APP_SERVICES_CACHE: /race-work/services.php
+      APP_PACKAGES_CACHE: /race-work/packages.php
+      APP_URL: http://localhost
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      LARAVEL_STORAGE_PATH: /race-work/storage
+      DB_CONNECTION: pgsql
+      DB_HOST: pg
+      DB_PORT: '5432'
+      DB_DATABASE: ${RIDER_RACE_DATABASE:?}
+      DB_USERNAME: race
+      DB_PASSWORD: ''
+      DB_URL: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+    depends_on:
+      pg:
+        condition: service_healthy
+    command: [php, -d, memory_limit=1G, vendor/bin/phpunit, --configuration, scripts/verify-rider-races/phpunit.pg.xml, scripts/verify-rider-races/RiderPostgresRaceTest.php, --do-not-cache-result, --no-progress, --colors=never, --log-junit, /race-work/postgres-races.xml]
+networks:
+  default:
+    internal: true
