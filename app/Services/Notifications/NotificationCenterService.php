@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\ExceptionOversightService;
 use App\Services\Finance\CodCashService;
+use App\Services\Finance\SellerSettlementService;
 use App\Services\GovernanceHistoryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event'];
+    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
 
     public function current(User $actor): User
     {
@@ -103,6 +104,11 @@ class NotificationCenterService
             return '/seller/products';
         }
         try {
+            if ($target === 'seller-settlement') {
+                app(SellerSettlementService::class)->scoped($user)->whereKey((int) ($data['order_id'] ?? 0))->firstOrFail();
+
+                return '/seller-settlements/'.(int) $data['order_id'];
+            }
             if ($target === 'cod-cash') {
                 app(CodCashService::class)->account($user, (int) ($data['cod_account_id'] ?? 0));
 

@@ -5,10 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class CommissionLedger extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        $retain = function (self $ledger): void {
+            if (SellerSettlement::where('order_id', $ledger->order_id)->exists()) {
+                throw new LogicException('Settlement proceeds must retain their original ledger.');
+            }
+        };
+        static::updating($retain);
+        static::deleting($retain);
+    }
 
     protected $fillable = [
         'order_id',

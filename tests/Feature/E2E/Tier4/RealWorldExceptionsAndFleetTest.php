@@ -126,11 +126,12 @@ class RealWorldExceptionsAndFleetTest extends TestCase
             $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product->fresh(), 'quantity' => 2]]);
             $this->flowDelivery($order, 'delivered');
             $this->completeFlowOrder($order);
+            $this->settleFlowOrder($order);
             $orders[] = $order;
         }
         $this->assertEquals(3000, collect($orders)->sum('subtotal'));
         foreach ($orders as $order) {
-            $this->assertCommissionSplit($order);
+            $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
         }
         $this->actingAs($this->createApprovedUser('admin'))->get(route('admin.dashboard'))->assertOk();
     }

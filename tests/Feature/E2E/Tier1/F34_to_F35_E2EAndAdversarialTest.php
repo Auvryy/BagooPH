@@ -104,12 +104,13 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
+        $this->settleFlowOrder($order);
         $before = [$delivery->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $rider = User::findOrFail($delivery->assigned_rider_id);
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
         $this->assertSame('completed', $order->fresh()->status);
-        // Recorded collection/reconciliation and settlement remain Phase 5 prerequisites.
+
         $this->assertLedgerIdempotent($order);
     }
 

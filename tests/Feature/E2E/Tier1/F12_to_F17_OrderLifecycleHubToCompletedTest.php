@@ -300,7 +300,8 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');
         $this->completeFlowOrder($order);
-        // Phase 5 must record COD custody/reconciliation and settlement before these checks can pass.
+        $this->settleFlowOrder($order);
+
         $this->assertNotNull($order->fresh()->commissionLedger, 'Phase 5: recorded reconciliation and seller settlement are missing.');
         $this->assertSame('paid', $order->fresh()->payment_status);
     }
@@ -315,9 +316,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
         ])->assertSessionHas('success');
         $this->completeFlowOrder($order);
-        // Phase 5 must record COD custody/reconciliation and settlement before these checks can pass.
+        $this->settleFlowOrder($order);
+
         $this->assertNotNull($order->fresh()->commissionLedger, 'Phase 5: recorded reconciliation and seller settlement are missing.');
-        $this->assertCommissionSplit($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     // ==========================================
@@ -355,7 +357,8 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
-        $this->assertCommissionSplit($order);
+        $this->settleFlowOrder($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t1_f17_05_review_submission_enabled(): void

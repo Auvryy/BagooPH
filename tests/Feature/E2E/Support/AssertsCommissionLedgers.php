@@ -18,8 +18,8 @@ trait AssertsCommissionLedgers
         );
 
         $gross = $expectedGross !== null ? (float) $expectedGross : (float) $order->subtotal;
-        $expectedSeller = round($gross * 0.90, 2);
         $expectedPlatform = round($gross * 0.10, 2);
+        $expectedSeller = round($gross - $expectedPlatform, 2);
         Assert::assertNotNull($recordedDeliveryFee, 'A recorded logistics charge is required; shipping is not an invented flat rider fee.');
 
         Assert::assertEquals(
@@ -31,7 +31,7 @@ trait AssertsCommissionLedgers
         Assert::assertEquals(
             $expectedSeller,
             (float) $ledger->seller_amount,
-            "Seller amount in CommissionLedger must be exactly 90% of gross (Expected: {$expectedSeller}, Got: {$ledger->seller_amount})."
+            "Seller proceeds must retain the product remainder after rounded commission (Expected: {$expectedSeller}, Got: {$ledger->seller_amount})."
         );
 
         Assert::assertEquals(

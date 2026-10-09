@@ -4,6 +4,7 @@ namespace Tests\Feature\E2E\Support;
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CodAccount;
 use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
@@ -16,6 +17,8 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\AccountRestrictionService;
+use App\Services\Finance\CodCashService;
+use App\Services\Finance\SellerSettlementService;
 use App\Services\Logistics\DeliveryReturnService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
@@ -39,6 +42,56 @@ trait InteractsWithOrderActions
     private bool $flowStorageFaked = false;
 
     private bool $flowAttemptStorageFaked = false;
+
+    private bool $flowSettlementStorageFaked = false;
+
+    /** Explicit financial actions; buyer confirmation itself never performs settlement. */
+    public function settleFlowOrder(Order $order): void
+    {
+        if (! $this->flowSettlementStorageFaked && ! $this->flowAttemptStorageFaked) {
+            Storage::fake('local');
+        }
+        $this->flowSettlementStorageFaked = true;
+        $cash = CodAccount::where('order_id', $order->id)->sole();
+        $admin = $this->createApprovedUser('admin');
+        $handler = $this->flowHandler(LogisticsHub::findOrFail($cash->hub_id));
+        $service = app(CodCashService::class);
+        $command = function (User $actor, string $action, array $data) use ($service, $cash) {
+            return $service->command($actor, $cash, $action, $data + [
+                'expected_version' => $cash->fresh()->version, 'request_token' => (string) Str::uuid(),
+                'receipt_confirmed' => true, 'evidence_reference' => 'FLOW-CASH-'.$cash->id,
+                'reason' => 'The named recipient checked the actual cash against the original collection.',
+            ]);
+        };
+        $handover = function (User $holder, User $recipient, int $cents) use ($command) {
+            $offer = $command($holder, 'offer', ['holder_id' => $holder->id, 'recipient_id' => $recipient->id,
+                'amount' => SellerSettlementService::pesos($cents)]);
+            $command($recipient, 'receive', ['offer_reference' => $offer->reference, 'received_amount' => SellerSettlementService::pesos($cents)]);
+        };
+        foreach ($cash->fresh()->state['balances'] as $key => $cents) {
+            if ($cents > 0 && str_starts_with($key, 'rider:')) {
+                $handover(User::findOrFail(explode(':', $key)[1]), $handler, $cents);
+            }
+        }
+        foreach ($cash->fresh()->state['balances'] as $key => $cents) {
+            if ($cents > 0 && str_starts_with($key, 'hub:')) {
+                $handover(User::findOrFail(explode(':', $key)[1]), $admin, $cents);
+            }
+        }
+        $command($admin, 'reconcile', []);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertDatabaseMissing('commission_ledgers', ['order_id' => $order->id]);
+        $settlements = app(SellerSettlementService::class);
+        $settlements->command($admin, $order->id, 'authorize', ['expected_version' => 0,
+            'request_token' => (string) Str::uuid(), 'reason' => 'The buyer completion and reconciled order cash were reviewed.']);
+        $input = ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'payment_reference' => 'FLOW-SELLER-'.$order->id, 'payment_confirmed' => true,
+            'reason' => 'The named seller and exact product payment were checked against the receipt.'];
+        $proof = UploadedFile::fake()->image('seller-receipt.png');
+        $event = $settlements->command($admin, $order->id, 'record-payment', $input, $proof);
+        $this->assertSame($event->reference, $settlements->command($admin, $order->id, 'record-payment', $input, $proof)->reference);
+        $this->assertSame($order->items->first()->shop->user_id, $event->settlement->seller_id);
+    }
 
     public function checkoutFlowOrder(User $buyer, Shop $shop, array $items = [], string $stage = 'placed', array $shipping = []): Order
     {

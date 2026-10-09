@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\CommissionLedger;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\SellerSettlementEvent;
 use App\Rules\PhilippineContact;
 use App\Services\AccountSettingsService;
 use App\Services\Commerce\SellerSalesMetricsService;
@@ -120,14 +120,9 @@ class SellerDashboardController extends Controller
         $averageCompletedOrderValue = $orderCount > 0
             ? round($completedGrossSales / $orderCount, 2)
             : 0.0;
-        $settledSellerAmount = round((float) CommissionLedger::query()
-            ->where('seller_id', $shop->user_id)
-            ->whereIn('order_id', $orderItems->pluck('order_id')->unique())
-            ->where('status', 'settled')
-            ->whereHas('order', fn ($orderQuery) => $orderQuery
-                ->where('status', 'completed')
-                ->where('payment_status', 'paid'))
-            ->sum('seller_amount'), 2);
+        $settledSellerAmount = (int) SellerSettlementEvent::where('event_type', 'payment_recorded')
+            ->whereHas('settlement', fn ($record) => $record->where('seller_id', $shop->user_id)
+                ->whereIn('order_id', $orderItems->pluck('order_id')->unique()))->sum('amount_cents') / 100;
 
         return Inertia::render('Seller/Reports', [
             'shop' => $shop,

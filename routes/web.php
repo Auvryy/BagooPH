@@ -50,6 +50,7 @@ use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
 use App\Http\Controllers\Seller\SellerVoucherController;
+use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
@@ -101,6 +102,13 @@ Route::middleware('auth')->get('/verification-documents/{user}/{document}', [Ver
     ->name('verification-documents.show');
 
 Route::middleware('auth')->group(function () {
+    Route::middleware('verified')->prefix('seller-settlements')->name('settlements.')->group(function () {
+        Route::get('/', [SellerSettlementController::class, 'index'])->name('index');
+        Route::get('/{order}', [SellerSettlementController::class, 'show'])->whereNumber('order')->name('show');
+        Route::get('/{order}/proof/{event}', [SellerSettlementController::class, 'proof'])->whereNumber(['order', 'event'])->name('proof');
+        Route::post('/{order}/{action}', [SellerSettlementController::class, 'command'])->whereNumber('order')
+            ->where('action', 'authorize|record-payment|adjust-reference')->name('command');
+    });
     Route::get('/exceptions', [ExceptionOversightController::class, 'index'])->name('exceptions.index');
     Route::get('/exceptions/attempt/{id}/proof', [ExceptionOversightController::class, 'proof'])->whereNumber('id')->name('exceptions.proof');
     Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');

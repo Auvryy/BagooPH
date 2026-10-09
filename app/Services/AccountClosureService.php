@@ -17,6 +17,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
+use App\Services\Finance\SellerSettlementService;
 use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,8 @@ class AccountClosureService
                 ->orWhereIn('pickup_hub_id', $hubs)
                 ->orWhereHas('items', fn ($items) => $items->whereIn('shop_id', $shops))
                 ->orWhereHas('commissionLedger', fn ($ledger) => $ledger->where('seller_id', $subject->id)->orWhere('courier_id', $subject->id))
+                ->orWhereHas('sellerSettlement', fn ($record) => $record->where('seller_id', $subject->id)
+                    ->orWhereHas('events', fn ($events) => $events->where('actor_id', $subject->id)))
                 ->orWhereIn('id', DB::table('restriction_affected_work')->where('responsible_user_id', $subject->id)->select('order_id'))
                 ->orWhereHas('delivery', function ($parcel) use ($subject, $companies, $hubs) {
                     $parcel->where(function ($scope) use ($subject, $companies, $hubs) {
@@ -142,6 +145,7 @@ class AccountClosureService
             'parcel' => $order->delivery?->only(['id', 'status', 'courier_id', 'assigned_rider_id', 'current_hub_id']),
             'cash_evidence' => $order->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($order->delivery) : null,
             'ledger' => $order->commissionLedger?->only(['id', 'status', 'gross_amount', 'seller_amount', 'platform_commission', 'delivery_fee']),
+            'settlement_payment' => app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement)?->only(['id', 'reference', 'amount_cents']),
         ])->all();
         $resources = $this->resources($subject);
         $blockers = [];
@@ -168,9 +172,11 @@ class AccountClosureService
             if (($order['cash_evidence']['excess_cents'] ?? 0) > 0) {
                 $add('cash_excess', 'Separate unallocated cash remains recorded for '.$order['number'].'.', 'Platform finance must account for the extra cash separately from the reconciled order amount.', [$order['id']]);
             }
-            if ($order['ledger'] && ! in_array($order['ledger']['status'], ['settled', 'refunded'], true)) {
+            if (! $order['settlement_payment'] && $order['ledger'] && ! in_array($order['ledger']['status'], ['settled', 'refunded'], true)) {
                 $add('pending_proceeds', 'Recorded proceeds for '.$order['number'].' are unresolved.', 'Platform finance must resolve the recorded obligation without changing its original amounts.', [$order['ledger']['id']]);
-            } elseif ($order['status'] === 'completed' && (! $order['ledger'] || ! in_array($order['payment_status'], ['paid', 'refunded'], true))) {
+            } elseif ($order['status'] === 'completed' && ($order['payment_method'] === 'cod'
+                ? ! $order['settlement_payment']
+                : (! $order['ledger'] || ! in_array($order['payment_status'], ['paid', 'refunded'], true)))) {
                 $add('settlement_unverified', 'Settlement for '.$order['number'].' lacks sufficient records.', 'Platform finance must verify payment and proceeds before account closure.', [$order['id']]);
             }
             if (in_array($order['status'], OrderStatus::unrealizedCommerceStatuses(), true) && $order['payment_status'] === 'paid') {
@@ -179,7 +185,8 @@ class AccountClosureService
         }
         // A ledger can refer directly to an account even if the order owner has another role.
         $pending = CommissionLedger::where(fn ($q) => $q->where('seller_id', $subject->id)->orWhere('courier_id', $subject->id))
-            ->whereNotIn('status', ['settled', 'refunded'])->pluck('id')->all();
+            ->whereNotIn('status', ['settled', 'refunded'])
+            ->whereDoesntHave('order.sellerSettlement.events', fn ($event) => $event->where('event_type', 'payment_recorded'))->pluck('id')->all();
         if ($pending) {
             $add('pending_ledger', 'This account has unresolved recorded proceeds.', 'Platform finance must resolve these entries.', $pending);
         }

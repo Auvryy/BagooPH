@@ -361,8 +361,9 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $this->completeFlowOrder($delivery->order);
-        // Actual collection/reconciliation and source-backed settlement remain required.
-        $this->assertCommissionSplit($delivery->order);
+        $this->settleFlowOrder($delivery->order);
+
+        $this->assertCommissionSplit($delivery->order, null, (float) $delivery->order->shipping_fee);
     }
 
     private function parcel(string $stage): Delivery
