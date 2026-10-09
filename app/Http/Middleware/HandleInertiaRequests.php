@@ -105,6 +105,9 @@ class HandleInertiaRequests extends Middleware
                     'logisticsCompany' => $activeHub?->company,
                     'canSwitchHubs' => $activeHub && $eligibility->isCompanyAdministrator($user),
                     'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyAdministrator($user)),
+                    'canViewFinancialOversight' => $user->closed_at === null && $user->email_verified_at !== null
+                        && (($user->isAdmin() && $user->canAccessPortal()) || ($user->isSeller() && $user->isKycApproved())
+                            || ($user->isLogistics() && $user->canAccessPortal() && $user->logisticsCompany()->count() === 1)),
                     'resourceGovernanceUrl' => $request->route()?->getDomain() ? '/resources' : ($user->isAdmin() ? '/admin/resources' : '/hub/resources'),
                     'activeHub' => $activeHub,
                     'allHubs' => $hubs->map(fn ($hub) => $hub->only(['id', 'name', 'code', 'tier', 'city_municipality'])),
