@@ -248,6 +248,9 @@ class SellerSettlementTest extends TestCase
         $base = '/seller-settlements/'.$cash->order_id;
         $this->actingAs($admin)->postJson($base.'/authorize', $this->input())->assertOk();
         Storage::disk('local')->put('retained.txt', 'Original unrelated evidence.');
+        $retainedFiles = Storage::disk('local')->allFiles();
+        $originalProof = $cash->delivery->proof_image;
+        $originalHash = hash('sha256', Storage::disk('local')->get($originalProof));
         $this->mock(NotificationDeliveryService::class)->shouldReceive('record')->andThrow(new RuntimeException('Controlled audit failure.'));
         $this->withoutExceptionHandling();
         try {
@@ -258,7 +261,9 @@ class SellerSettlementTest extends TestCase
         }
         $this->assertDatabaseCount('seller_settlement_events', 1);
         $this->assertDatabaseCount('commission_ledgers', 0);
-        $this->assertSame(['retained.txt'], Storage::disk('local')->allFiles());
+        $this->assertSame($retainedFiles, Storage::disk('local')->allFiles());
+        $this->assertSame($originalHash, hash('sha256', Storage::disk('local')->get($originalProof)));
+        $this->assertSame($originalProof, $cash->delivery->fresh()->proof_image);
     }
 
     public function test_reference_correction_appends_to_payment_without_moving_money_or_rewriting_history(): void
