@@ -24,5 +24,8 @@ Flutter/device acceptance evidence.
 The public success shapes are sanitized from exercised native test responses.
 The empty/error examples are illustrative contract fixtures. Private image downloads
 return binary bytes with privacy/request headers rather than a JSON envelope.
+The Home example assumes its feature schemas are installed. Missing schema keeps
+the affected feature unavailable; release, native restricted recovery and rider
+earnings stay unavailable in either case.
 Runtime checks, current readiness and deployment limits are recorded only in
 [CORE_FLOW_ROADMAP.md](../../../CORE_FLOW_ROADMAP.md).
