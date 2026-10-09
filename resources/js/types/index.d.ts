@@ -78,7 +78,8 @@ export interface Shop {
     phone?: string | null;
     address?: string | null;
     city?: string | null;
-    rating: string | number;
+    rating: string | number | null;
+    verified_review_count?: number;
     status: string;
     review_status?: 'pending_approval' | 'approved' | 'rejected' | null;
     review_feedback?: string | null;
@@ -140,7 +141,8 @@ export interface Product {
     featured_image?: string | null;
     weight_kg?: string | number;
     status: 'active' | 'draft' | 'archived';
-    rating: string | number;
+    rating: string | number | null;
+    verified_review_count?: number;
     sales_count: number;
     completed_units?: string | number | null;
     open_order_units?: string | number | null;
@@ -190,6 +192,7 @@ export interface OrderItem {
     product: Product;
     shop?: Shop;
     order?: Order;
+    review?: { id: number; order_item_id: number } | null;
 }
 
 export interface Delivery {
@@ -246,13 +249,24 @@ export interface Order {
 
 export interface Review {
     id: number;
-    product_id: number;
-    buyer_id: number;
+    product_id?: number;
+    buyer_id?: number;
+    order_item_id?: number | null;
     rating: number;
     comment?: string | null;
     images?: string[] | null;
-    buyer?: User;
+    verified_purchase?: boolean;
+    buyer?: Pick<User, 'name' | 'avatar'> | null;
+    reply?: ReviewReply | null;
     created_at?: string;
+}
+
+export interface ReviewReply {
+    id?: number;
+    text: string;
+    shop_name?: string | null;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface PaginatedData<T> {

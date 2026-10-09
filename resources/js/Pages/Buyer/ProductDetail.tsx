@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
 import { 
     Star, 
@@ -54,12 +55,11 @@ interface Variations {
 }
 
 interface ShopStats {
-    rating: number | string;
+    rating: number | string | null;
     products_count: number;
-    response_rate: string;
-    response_time: string;
-    joined: string;
-    is_mall: boolean;
+    review_count: number;
+    response_rate: string | null;
+    joined: string | null;
 }
 
 interface Props {
@@ -384,7 +384,7 @@ export default function BuyerProductDetail({
                                 </span>
                             )}
                             <span className="absolute top-3 left-3 px-2 py-1 rounded bg-black/80 backdrop-blur-xs text-white font-sans text-[10px] font-bold uppercase tracking-wider">
-                                100% AUTHENTIC
+                                PRODUCT PHOTOS
                             </span>
                         </div>
 
@@ -432,9 +432,9 @@ export default function BuyerProductDetail({
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
                                 <span className="px-2 py-0.5 rounded bg-[#E00D42] text-white font-sans text-[10px] font-black uppercase tracking-wider">
-                                    MALL VERIFIED
+                                    APPROVED SHOP
                                 </span>
-                                <span className="text-xs text-slate-400 font-sans">SKU: {product.sku || 'BGO-7721-PH'}</span>
+                                <span className="text-xs text-slate-400 font-sans">SKU: {product.sku || 'Not provided'}</span>
                             </div>
 
                             <div className="flex items-start justify-between gap-3">
@@ -456,17 +456,13 @@ export default function BuyerProductDetail({
 
                             <div className="flex items-center gap-4 text-xs font-sans pt-1">
                                 <div className="flex items-center gap-1 text-[#E00D42] font-bold">
-                                    <span className="underline">{Number(product.rating || 5.0).toFixed(1)}</span>
-                                    <div className="flex">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} className="w-3.5 h-3.5 fill-[#E00D42] text-[#E00D42]" />
-                                        ))}
-                                    </div>
+                                    <span className="underline">{ratingLabel(product.rating)}</span>
+                                    <RatingStars value={product.rating} className="w-3.5 h-3.5" color="fill-[#E00D42] text-[#E00D42]" />
                                 </div>
                                 <span className="text-slate-300">|</span>
-                                <span className="text-slate-600 font-bold">{product.reviews?.length ?? 142} Ratings</span>
+                                <span className="text-slate-600 font-bold">{product.verified_review_count ?? 0} Verified ratings</span>
                                 <span className="text-slate-300">|</span>
-                                <span className="text-slate-600 font-bold">{product.sales_count ?? 120} Sold</span>
+                                <span className="text-slate-600 font-bold">{product.sales_count ?? 0} Sold</span>
                             </div>
                         </div>
 
@@ -480,9 +476,6 @@ export default function BuyerProductDetail({
                                     {formatPrice(currentComparePrice)}
                                 </span>
                             )}
-                            <span className="px-2 py-0.5 rounded bg-rose-100 text-[#E00D42] font-sans text-xs font-bold uppercase">
-                                Lowest Price Guaranteed
-                            </span>
                         </div>
 
                         {/* Store Voucher Strip */}
@@ -500,15 +493,15 @@ export default function BuyerProductDetail({
                             </button>
                         </div>
 
-                        {/* Delivery Guarantee */}
+                        {/* Delivery and payment information */}
                         <div className="space-y-2 font-sans text-xs text-slate-600 border-y border-slate-100 py-3">
                             <div className="flex items-center gap-3">
                                 <Truck className="w-4 h-4 text-emerald-600" />
-                                <span><strong>Fast Doorstep Dispatch:</strong> Guaranteed delivery in 2-4 business days</span>
+                                <span><strong>Delivery updates:</strong> Follow recorded parcel checkpoints after ordering</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <ShieldCheck className="w-4 h-4 text-[#E00D42]" />
-                                <span><strong>COD Exclusive:</strong> Cash on Delivery (COD) Nationwide — Doorstep Inspection Guaranteed</span>
+                                <span><strong>Payment:</strong> Cash on Delivery (COD)</span>
                             </div>
                         </div>
 
@@ -724,10 +717,10 @@ export default function BuyerProductDetail({
                                 <div className="flex items-center gap-2 min-w-0">
                                     <h3 className="font-bold text-slate-900 text-base truncate">{product.shop.name}</h3>
                                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold font-sans">
-                                        PREFERRED
+                                        APPROVED SHOP
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-500 font-sans mt-0.5">Active 2 mins ago • Metro Manila, PH</p>
+                                <p className="text-xs text-slate-500 font-sans mt-0.5">{product.shop.city || 'Location unavailable'}</p>
                                 <div className="flex items-center gap-2 mt-2 font-sans text-xs">
                                     <Link
                                         href={route('shop.show', product.shop.slug)}
@@ -751,16 +744,17 @@ export default function BuyerProductDetail({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 font-sans text-xs text-slate-600 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
                             <div>
                                 <span className="text-slate-400 block text-[10px] uppercase">Ratings</span>
-                                <span className="font-bold text-[#E00D42] text-sm">{shopStats.rating} (5.0 Stars)</span>
+                                <span className="font-bold text-[#E00D42] text-sm">{ratingLabel(shopStats.rating)}</span>
                             </div>
                             <div>
                                 <span className="text-slate-400 block text-[10px] uppercase">Products</span>
                                 <span className="font-bold text-slate-800 text-sm">{shopStats.products_count} Items</span>
                             </div>
                             <div>
-                                <span className="text-slate-400 block text-[10px] uppercase">Response Rate</span>
-                                <span className="font-bold text-emerald-600 text-sm">{shopStats.response_rate}</span>
+                                <span className="text-slate-400 block text-[10px] uppercase">Review reply rate</span>
+                                <span className="font-bold text-emerald-600 text-sm">{shopStats.response_rate ?? 'No verified reviews'}</span>
                             </div>
+                            <div><span className="text-slate-400 block text-[10px] uppercase">Shop opened</span><span className="font-bold text-sm">{shopStats.joined ? new Date(shopStats.joined).toLocaleDateString('en-PH') : 'Date unavailable'}</span></div>
                         </div>
                     </div>
                 )}
@@ -783,12 +777,12 @@ export default function BuyerProductDetail({
                                 </span>
                             </div>
                             <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Authenticity:</span>
-                                <span className="text-emerald-600 font-bold">100% Brand Direct Guarantee</span>
+                                <span className="text-slate-400 w-32 font-bold">Payment:</span>
+                                <span className="text-emerald-600 font-bold">Cash on Delivery</span>
                             </div>
                             <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Dispatch Hub:</span>
-                                <span className="text-slate-800 font-bold">Bagoo Express Express Hub</span>
+                                <span className="text-slate-400 w-32 font-bold">Seller location:</span>
+                                <span className="text-slate-800 font-bold">{product.shop?.city || 'Location unavailable'}</span>
                             </div>
                         </div>
                     </div>
@@ -808,16 +802,12 @@ export default function BuyerProductDetail({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                         <div>
                             <h3 className="font-black text-slate-900 text-lg uppercase tracking-wider font-sans">
-                                Verified Customer Reviews & Photos
+                                Customer Reviews & Photos
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-2xl font-black text-[#E00D42]">{Number(product.rating || 5.0).toFixed(1)}</span>
-                                <div className="flex text-amber-400">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                    ))}
-                                </div>
-                                <span className="text-xs text-slate-500 font-sans">({product.reviews?.length ?? 0} Verified Reviews)</span>
+                                <span className="text-2xl font-black text-[#E00D42]">{ratingLabel(product.rating)}</span>
+                                <RatingStars value={product.rating} />
+                                <span className="text-xs text-slate-500 font-sans">({product.verified_review_count ?? 0} Verified Reviews)</span>
                             </div>
                         </div>
                     </div>
@@ -855,22 +845,23 @@ export default function BuyerProductDetail({
                                                 {(rev.buyer?.name || 'V').charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <span className="font-bold text-slate-900">{rev.buyer?.name || 'Verified Shopper'}</span>
-                                                <span className="text-[10px] text-emerald-600 font-bold ml-2">✓ Verified Purchase</span>
+                                                <span className="font-bold text-slate-900">{rev.buyer?.name || 'Shopper'}</span>
+                                                <span className={`text-[10px] font-bold ml-2 ${rev.verified_purchase ? 'text-emerald-700' : 'text-slate-500'}`}>{rev.verified_purchase ? 'Verified Purchase' : 'Unverified legacy review'}</span>
                                             </div>
                                         </div>
                                         <span className="text-slate-400">{rev.created_at ? new Date(rev.created_at).toLocaleDateString() : 'Recent'}</span>
                                     </div>
 
                                     {/* Star Rating */}
-                                    <div className="flex text-amber-400">
-                                        {[...Array(rev.rating)].map((_, i) => (
-                                            <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                        ))}
-                                    </div>
+                                    <RatingStars value={rev.rating} className="w-3.5 h-3.5" />
 
                                     {/* Review Comment */}
-                                    <p className="text-xs text-slate-700 leading-relaxed">{rev.comment}</p>
+                                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{rev.comment}</p>
+                                    {rev.reply && <div className="rounded-xl border border-slate-300 bg-white p-3 text-xs space-y-1">
+                                        <p className="font-bold text-[#E00D42]">Seller reply · {rev.reply.shop_name || product.shop?.name}</p>
+                                        <p className="whitespace-pre-line text-slate-700">{rev.reply.text}</p>
+                                        <p className="text-slate-500">Published {new Date(rev.reply.created_at).toLocaleDateString('en-PH')}{rev.reply.updated_at !== rev.reply.created_at ? ` · Updated ${new Date(rev.reply.updated_at).toLocaleDateString('en-PH')}` : ''}</p>
+                                    </div>}
 
                                     {/* Attached Review Photos */}
                                     {rev.images && rev.images.length > 0 && (
@@ -950,7 +941,7 @@ export default function BuyerProductDetail({
                             />
                             <div className="min-w-0 flex-1">
                                 <span className="px-1.5 py-0.5 rounded bg-[#E00D42] text-white text-[9px] font-sans font-bold uppercase tracking-wider">
-                                    Mall Verified
+                                    Bagoo product
                                 </span>
                                 <h4 className="font-bold text-xs text-slate-900 truncate mt-1">{product.name}</h4>
                                 <p className="font-sans font-black text-sm text-[#E00D42]">{formatPrice(currentPrice)}</p>
