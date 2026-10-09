@@ -62,6 +62,35 @@ class RiderOperationsApiTest extends TestCase
         $this->getJson('/api/v1/rider/settings')->assertOk();
     }
 
+    public function test_home_discovers_available_parcel_trip_and_cash_features_from_the_installed_schema(): void
+    {
+        [, $rider] = $this->ready();
+        $this->native($rider);
+        $this->getJson('/api/v1/rider/home')->assertOk()
+            ->assertJsonPath('data.capabilities.parcel_actions', true)
+            ->assertJsonPath('data.capabilities.trips', true)
+            ->assertJsonPath('data.capabilities.cash', true)
+            ->assertJsonPath('data.capabilities.pre_custody_release', false)
+            ->assertJsonPath('data.capabilities.native_restricted_recovery', false)
+            ->assertJsonPath('data.capabilities.rider_earnings', false);
+        $this->getJson('/api/v1/rider/trips')->assertOk();
+        $this->getJson('/api/v1/rider/cash')->assertOk();
+    }
+
+    public function test_home_keeps_parcel_trip_and_cash_features_unavailable_without_the_cash_journal_schema(): void
+    {
+        [, $rider] = $this->ready();
+        $this->native($rider);
+        Schema::drop('cod_cash_events');
+        $this->getJson('/api/v1/rider/home')->assertOk()
+            ->assertJsonPath('data.capabilities.parcel_actions', false)
+            ->assertJsonPath('data.capabilities.trips', false)
+            ->assertJsonPath('data.capabilities.cash', false)
+            ->assertJsonPath('data.capabilities.messages', true)
+            ->assertJsonPath('data.capabilities.notifications', true);
+        $this->assertSame(0, RiderCommand::count());
+    }
+
     public function test_native_preview_matches_web_scope_without_private_destination_or_payment(): void
     {
         [$parcel, $rider] = $this->ready();
