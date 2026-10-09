@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderOperationsController;
 use App\Http\Controllers\Api\RiderParcelController;
 use App\Http\Controllers\Api\RiderSettingsController;
+use App\Http\Controllers\Api\RiderTripController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Middleware\EnsureRiderAccountToken;
 use App\Http\Middleware\PrivateRiderResponse;
@@ -32,6 +33,10 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
             Route::get('tasks', [RiderOperationsController::class, 'index']);
             Route::get('tasks/{task}', [RiderOperationsController::class, 'show']);
             Route::get('commands/{key}', [RiderOperationsController::class, 'command']);
+            Route::get('trips', [RiderTripController::class, 'index'])->name('rider.api.trips');
+            Route::get('trips/{trip}', [RiderTripController::class, 'show']);
+            Route::get('trips/{trip}/checkpoints/{checkpoint}/proof', [RiderTripController::class, 'checkpointProof']);
+            Route::get('trips/{trip}/attempts/{attempt}/proof', [RiderTripController::class, 'attemptProof']);
         });
         Route::middleware([EnsureRiderAccountToken::class.':operations:work', 'throttle:10,1'])->group(function () {
             Route::patch('duty', [RiderOperationsController::class, 'duty']);
