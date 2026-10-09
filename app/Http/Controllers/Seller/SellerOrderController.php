@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Shop;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ShopEligibilityService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -29,57 +29,36 @@ class SellerOrderController extends Controller
     public function index(Request $request): Response
     {
         $shop = $this->getActiveShop($request, history: true);
-        $status = $request->input('status', 'all');
-
-        $baseItemQuery = fn () => OrderItem::where('shop_id', $shop->id);
-
-        $counts = [
-            'all' => $baseItemQuery()->count(),
-            'to_pack' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']))->count(),
-            'to_pickup' => $baseItemQuery()->whereHas('order', fn ($q) => $q->where('status', 'ready_for_pickup'))->count(),
-            'in_transit' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped']))->count(),
-            'delivered' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['delivered', 'completed']))->count(),
-            'cancelled' => $baseItemQuery()->whereHas('order', fn ($q) => $q->whereIn('status', ['cancelled', 'returned', 'delivery_failed']))->count(),
-        ];
-
-        $query = OrderItem::where('shop_id', $shop->id)
+        $workspace = app(OrderWorkspaceService::class);
+        $status = $workspace->selection($request, 'seller');
+        $owned = Order::whereHas('items', fn ($items) => $items->where('shop_id', $shop->id));
+        $counts = $workspace->counts($owned, 'seller');
+        $eligible = app(ShopEligibilityService::class)->isEligible($shop);
+        $orders = $workspace->stable($workspace->filter(clone $owned, 'seller', $status))
+            ->withCount('items')->withCount(['items as owned_items_count' => fn ($items) => $items->where('shop_id', $shop->id)])
             ->with([
-                'order.buyer' => function ($q) {
-                    $q->withCount([
-                        'orders',
-                        'orders as completed_orders_count' => function ($cq) {
-                            $cq->whereIn('status', ['delivered', 'completed']);
-                        },
-                    ]);
-                },
-                'order.delivery.checkpoints',
-                'order.commissionLedger',
-                'order.items.product',
-                'product.category',
-            ])
-            ->latest();
-
-        if ($status === 'to_pack') {
-            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging']));
-        } elseif ($status === 'to_pickup') {
-            $query->whereHas('order', fn ($q) => $q->where('status', 'ready_for_pickup'));
-        } elseif ($status === 'in_transit') {
-            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped']));
-        } elseif ($status === 'delivered') {
-            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['delivered', 'completed']));
-        } elseif ($status === 'cancelled') {
-            $query->whereHas('order', fn ($q) => $q->whereIn('status', ['cancelled', 'returned', 'delivery_failed']));
-        }
-
-        $orderItems = $query->paginate(10)->withQueryString();
-        foreach ($orderItems->items() as $item) {
-            $delivery = $item->order->delivery;
-            if ($delivery && in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned'], true)) {
+                'buyer' => fn ($buyer) => $buyer->select(['id', 'name', 'avatar', 'kyc_status'])->withCount([
+                    'orders' => fn ($orders) => $orders->whereHas('items', fn ($items) => $items->where('shop_id', $shop->id)),
+                    'orders as completed_orders_count' => fn ($orders) => $orders->where('status', 'completed')
+                        ->whereHas('items', fn ($items) => $items->where('shop_id', $shop->id)),
+                ]),
+                'delivery.checkpoints',
+                'commissionLedger' => fn ($ledger) => $ledger->where('seller_id', $shop->user_id),
+                'items' => fn ($items) => $items->where('shop_id', $shop->id)->with('product.category')->orderBy('id'),
+            ])->paginate(10)->withQueryString();
+        foreach ($orders as $order) {
+            $fullyOwned = (int) $order->items_count > 0 && (int) $order->items_count === (int) $order->owned_items_count;
+            $order->setAttribute('has_mixed_shops', ! $fullyOwned);
+            foreach (app(OrderLifecycleService::class)->sellerActionFlags($order, $eligible, $fullyOwned) as $flag => $value) {
+                $order->setAttribute($flag, $value);
+            }
+            $delivery = $order->delivery;
+            if ($delivery && in_array($delivery->status, OrderWorkspaceService::RETURN_CUSTODY, true)) {
                 $returns = app(DeliveryReturnService::class);
                 try {
                     $route = $returns->route($delivery);
                     $delivery->setAttribute('return_route_reference', $route->reference);
-                    $delivery->setAttribute('return_ready_for_receipt', $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
+                    $delivery->setAttribute('return_ready_for_receipt', $fullyOwned && $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
                 } catch (DomainException $error) {
                     $delivery->setAttribute('return_ready_for_receipt', false);
                 }
@@ -87,12 +66,11 @@ class SellerOrderController extends Controller
         }
 
         return Inertia::render('Seller/Orders', [
-            'orderItems' => $orderItems,
-            'shopEligible' => app(ShopEligibilityService::class)->isEligible($shop),
-            'shop' => $shop,
-            'currentStatus' => $status,
-            'counts' => $counts,
+            'orders' => $orders, 'shopEligible' => $eligible, 'shop' => $shop,
+            'currentStatus' => $status, 'counts' => $counts,
             'returnReceiptToken' => (string) Str::uuid(),
+            'cancellationReasons' => OrderLifecycleService::SELLER_CANCELLATION_REASONS,
+            'batchLimit' => OrderLifecycleService::BATCH_LIMIT,
         ]);
     }
 
@@ -155,48 +133,21 @@ class SellerOrderController extends Controller
 
     public function batchReady(Request $request): RedirectResponse
     {
-        $this->getShop($request);
-        $validated = $request->validate([
-            'order_ids' => 'required|array|min:1',
-            'order_ids.*' => 'integer|exists:orders,id',
-        ]);
-
-        $orders = Order::whereIn('id', $validated['order_ids'])->get();
-        if ($orders->count() !== count(array_unique($validated['order_ids']))) {
-            return back()->with('error', 'One or more selected orders no longer exist.');
-        }
-        $processedCount = 0;
-
-        foreach ($orders as $order) {
-            try {
-                app(OrderLifecycleService::class)->sellerTransition(
-                    $order,
-                    $this->getShop($request),
-                    $request->user(),
-                    'ready_for_pickup'
-                );
-                $processedCount++;
-            } catch (\RuntimeException $exception) {
-                return back()->with('error', $exception->getMessage());
-            }
+        try {
+            $count = app(OrderLifecycleService::class)->sellerBatchReady($request->only('order_ids'), $this->getShop($request), $request->user());
+        } catch (\RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', "{$processedCount} orders scheduled for courier pickup.");
+        return back()->with('success', "{$count} orders scheduled for courier pickup.");
     }
 
     public function cancel(Request $request, Order $order): RedirectResponse
     {
         $shop = $this->getShop($request);
 
-        $validated = $request->validate([
-            'reason' => 'required|string|max:255',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        $reasonText = $validated['reason'].(! empty($validated['notes']) ? ': '.$validated['notes'] : '');
-
         try {
-            app(OrderLifecycleService::class)->cancelBySeller($order, $shop, $request->user(), $reasonText);
+            app(OrderLifecycleService::class)->cancelBySeller($order, $shop, $request->user(), $request->only(['reason', 'notes']));
         } catch (\RuntimeException $exception) {
             return back()->with('error', $exception->getMessage());
         }

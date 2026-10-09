@@ -26,7 +26,8 @@ class AccountSettingsUpdatesTest extends TestCase
         foreach (['http://localhost/buyer/orders', 'http://buyer.localhost/my-orders'] as $url) {
             $this->actingAs($buyer)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
                 ->component('Buyer/Profile')->where('initialTab', 'orders')
-                ->has('orders', 1)->where('orders.0.id', $owned->id)->where('ordersCount', 1));
+                ->has('orders.data', 1)->where('orders.data.0.id', $owned->id)->where('ordersCount', 1)
+                ->where('orders.total', 1)->where('orderCounts.all', 1));
         }
     }
 

@@ -372,7 +372,7 @@ class FinancialOversightTest extends TestCase
     public function test_cancelled_order_is_not_an_unpaid_seller_obligation(): void
     {
         $order = $this->newFlowOrder();
-        $this->actingAs($order->items->first()->shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'The buyer requested cancellation before preparation.'])->assertSessionHas('success');
+        $this->actingAs($order->items->first()->shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Buyer requested cancellation via chat', 'notes' => 'The buyer requested cancellation before preparation.'])->assertSessionHas('success');
         $this->assertSame('cancelled', $order->fresh()->status);
         $admin = $this->createApprovedUser('admin');
         $this->assertSame('0', $this->totals($admin)['pending']);
