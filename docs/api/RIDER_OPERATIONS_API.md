@@ -61,6 +61,12 @@ no KYC or proof storage path appears. IDs remain strings in nested payloads.
 Money uses exact decimal integer-cent strings in PHP, never floats; payment
 status is not remittance or earnings. Timestamps are UTC ISO 8601 with `Z`.
 
+`phase` is `pickup` or `final_mile`. Commercial, operational and cash status
+fields retain the persisted backend codes and are extensible strings; render an
+unfamiliar code as an unknown state. Use the explicit action/capability flags and
+their denial reasons rather than granting actions from a status label. Other closed
+enums, including failure reasons and recipient relationships, are defined in OpenAPI.
+
 Lists default to 20, allow at most 50, and use stable ordering. Pages are bounded
 from 1 through 10,000. Task queues use their shared assignment/time and ID order;
 Trips/conversations use assignment time and ID descending; messages use ID

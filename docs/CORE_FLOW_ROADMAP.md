@@ -55,6 +55,8 @@ Scoped B14 source and oversight review: October 7, 2026. Verified manifests, att
 
 Scoped seller settlement and financial oversight review: October 9, 2026, B17+B18. Buyer confirmation and reconciled cash precede an evidenced seller payment; original cash and proceeds feed scoped read-only totals. The final full run passes 2,800 tests, resolving all 16 baseline financial failures with 36 added cases and no errors or skips. This updates the local financial gate; deployed runtime, PostgreSQL concurrency and overall role/project ratings retain their separate verification limits.
 
+Scoped native Rider backend review: October 9, 2026. All five core API batches have 25 implemented methods, a validated contract, a green 2,834-case regression and four actual disposable PostgreSQL claim/outcome races. Publication, legacy-proof release review, Azure rollout and Flutter/device acceptance remain separate. See the native review below; existing overall role ratings are unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -77,6 +79,7 @@ Scoped seller settlement and financial oversight review: October 9, 2026, B17+B1
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
 | Hub self-pickup | Implemented; scoped verified | Actual destination receipt and configured counter hours precede a hashed one-time buyer claim, identity/waybill verification and source-backed exact COD collection. Seven-calendar-day holding, day-three/day-six notices, lock/retry behavior and actual expiry-return initiation are verified below. Codes remain private; only the owning buyer completes a genuine collection. |
 | Persistent notifications | Implemented; scoped verified | A durable event/recipient outbox delivers real order, custody, failure, pickup, return and governance notices into one owned paginated center. Read acknowledgement and current linked authorization are checked independently. B16 adds cash collection, handover, review and reconciliation notices; B17 adds release, payment and linked receipt-correction notices with retained recipient/source keys. The October 7 B15 and October 9 finance reviews record the relevant acceptance evidence. |
+| Native Rider operational API | Implemented; locally verified | Shared Home/claims, parcel commands, retained Trips/private proof, phase-linked messages, durable notices and journal-backed cash offers have 25 native methods. The October 9 native review records regression, contract and disposable PostgreSQL races; earnings/restricted recovery, rollout and mobile acceptance remain separately bounded. |
 | COD reconciliation | Implemented; scoped verified | B16 records exact rider/counter collection, confirmed rider-to-hub and hub-to-platform handovers, preserved differences and linked reviews, and independent Platform Admin reconciliation. Original sources remain immutable; buyer completion and seller settlement stay separate. Legacy evidence and PostgreSQL execution limits are recorded in the October 8 B16 review. |
 | Seller settlement and financial oversight | Implemented; locally verified | B17 requires actual buyer completion, reconciled cash, the original eligible recipient and private payment evidence. B18 reads distinct cash/proceeds stages, exact cents and original source dates with current admin/company/seller scope. The October 9 review records the green full suite, legacy-unavailable behavior, manual-payment boundary and remaining deployment/PostgreSQL limits. |
 | Buyer-only completion | Implemented | Only the owning buyer advances genuine doorstep delivery or source-backed counter collection to COMPLETED. A legacy collected label lacks authority. Completion remains separate from pending COD reconciliation and settlement. |
@@ -1853,43 +1856,157 @@ The documentation commit's generated hash is reported in the handoff. Apply the 
 
 ### Native Rider operations: October 9, 2026
 
-The native delivery plan is [RIDER_NATIVE_PLAN.md](api/RIDER_NATIVE_PLAN.md), with
-one backend-owned [wire contract](api/RIDER_OPERATIONS_API.md), executable
-[OpenAPI](api/rider-operations.openapi.json) and sanitized examples. This work is
-isolated on `feat/rider-native-api`, based on the locally verified finance source
-at `8fb5193`. The completed admin branch remains unchanged. Neither branch ancestry
-nor an existing mobile account/Settings deployment establishes deployment of these
-new operational routes.
+**State: all five core backend batches implemented and locally verified.** The
+[delivery plan](api/RIDER_NATIVE_PLAN.md), [accepted wire contract](api/RIDER_OPERATIONS_API.md),
+[executable OpenAPI](api/rider-operations.openapi.json) and
+[sanitized fixtures](api/examples/rider-operations/README.md) form the Flutter handoff.
+The 25 operational methods cover Home, duty, pickup claims, distinct parcel commands,
+retained Trips/private evidence, messages, durable notifications and COD offers.
+Conditional future features remain in the plan, outside the executable route set.
 
-| Capability | Existing shared source/evidence | Native adapter state and dependency |
+Work is isolated on `feat/rider-native-api`, based on locally verified finance
+source `8fb5193`. The original `admin/settlement-and-financial-oversight` branch
+remains at that source. No push, merge or deployment was performed. Neither source
+ancestry nor earlier account/Settings deployment proves these routes are deployed.
+The actual dependency is Laravel `^13.17`, with Docker PHP 8.4.24; repository
+instructions still describe Laravel 12. This records the mismatch without changing
+framework dependencies or account contracts.
+
+| Capability | Shared source and native behavior | State / remaining dependency |
 |---|---|---|
-| Account/Settings | Existing native bearer/registration/Settings services and their focused checks | Preserved; new abilities are additive and old tokens must reauthenticate. |
-| Home/duty/queues/detail/claim | Shared CourierOperationsService and LogisticsEligibilityService; claims lock order, parcel and eligibility and retain assignment checkpoints | Implemented locally; 144 focused API/account/Settings/web courier checks passed, 1,821 assertions. Additive command migration required. Simultaneous PostgreSQL race remains unverified. |
-| Pickup/departure/outcomes/failure | Shared state machine, exact submitted-waybill validation, attempts, retained custody and COD services | Adapter planned next. New delivery proof currently uses public storage in the web writer; shared private proof handling is a prerequisite. |
-| Trips/evidence | Immutable assignment and actor checkpoints; attempt proof hashes | Planned attribution adapter; mutable current rider IDs alone cannot authorize history. Private proof and retained attribution are required. |
-| Messaging/notifications | Phase-linked CourierMessagingService and committed durable lifecycle/governance notifications | Planned scoped adapters; participant/reassignment, displayed read boundary, stable pagination and safe retries require native checks. |
-| Cash/remittance | Append-only COD accounts/events and shared scoped cash views, verified in the finance branch | Planned own-cash/offer adapter; recipient receipt and platform reconciliation remain web-owned. |
-| Earnings | Financial oversight explicitly leaves rider payouts unavailable | Blocked by an absent authoritative earnings writer; no COD or shipping-derived earnings. |
-| Stop Mode/instructions/tags/recovery | Existing stops and frozen checkout destination; narrow website recovery and Settings | Task data can support Stop Mode; actual order notes may be supplied to assigned final-mile work. No fabricated entrance fields. Parcel Finder is planned device-only/account+assignment scoped. Server tags and native identity/recovery extensions remain conditional. |
+| Account/Settings | Existing bearer, registration, holding and Settings v1; fresh command authorization and additive narrow abilities | Preserved and regression-checked. Old tokens must sign in again; operational discovery requires the existing Settings schema. Physical Android/password/mailbox acceptance remains separate. |
+| Home/duty/queues/detail/claim | CourierOperationsService and LogisticsEligibilityService; private previews, shared capacity/placement, explicit duty, retained assignment checkpoints and command reconciliation | Implemented and locally verified, including real PostgreSQL competing and duplicate claims. Additive command migration and rollout remain required. |
+| Pickup/departure/outcomes/failure | Shared CourierOutcomeService/state machine, genuine submitted waybill, private image proof, recipient, exact CodCashService collection and actual attempt/return instructions | Implemented and locally verified. Delivery is currently COD-only. Hub intake, retry/RTS, seller receipt and buyer completion remain the owning actors' work. Native release/restricted recovery is unavailable. |
+| Trips/evidence | Immutable original assignment checkpoint identity, actor/interval attribution, Manila-day/search/payment filters and owned hash-verified binary reads | Implemented and locally verified through actual failed-return/retry/reassignment. Foreign children and altered bytes reject; ambiguous legacy attribution is unavailable. |
+| Messaging | Shared phase-linked CourierMessagingService, current assignment/participant identity, exact displayed message boundary and retained send/read results | Implemented and locally verified. Stale drafts cannot change recipient silently; the existing order/actor-pair conversation and duplicate-text guard remain. |
+| Notifications | Existing durable event/outbox and NotificationDeliveryService; canonical final-mile assignment notices, owned lists, exact displayed UUID reads and currently authorized targets | Implemented and locally verified. Workers/scheduler must run after rollout. Unsupported/stale native destinations are null; no push provider was added. |
+| Cash/remittance | CodCashService, retained append-only accounts/events and exact-cent aggregation; own responsibility, permitted recipient, versioned offer and original result | Implemented and locally verified through actual hub/platform receipt and reconciliation. An offer does not confirm receipt; no rider reconciliation authority exists. |
+| Earnings | Finance sources have no authoritative rider earnings writer | Explicitly unavailable, with null confirmed earnings. COD, shipping and commission cannot supply guessed income. Payouts and withdrawals remain outside scope. |
+| Stop Mode/instructions/tags/extensions | Current authorized task stop, frozen checkout destination and actual notes; existing account/Settings and narrow website recovery | Shared task data supports Stop Mode/Doorstep Guide. Parcel Finder is planned device-only/account-plus-assignment scoped, with cleanup owned by Flutter. Server tags and native identity/recovery/reset extensions require a separate selected contract. |
 
-The recent clean source suite at `8fb5193` is reused as this audit's baseline:
-2,800 tests / 55,848 assertions / zero failures/errors/skips. Its executable source
-matches the completed run at `8c6fb63`; the intervening commit changes only the
-recorded finance documentation. This is reuse of inspected evidence, not a new
-claimed full run. The first focused attempt found that operational schema discovery
-broke the existing incomplete-Settings deployment test. Requiring the existing
-Settings schema before new operational authority fixed that compatibility issue;
-the corrected 144-case run above passed.
+Backend services own the domain decisions; controllers adapt requests and JSON.
+Each command checks fresh bearer/account/role/ability and current resource state
+inside the same transaction as the shared mutation and retained result. IDs and
+cent amounts are strings, revisions are opaque, pages are bounded and stable,
+and errors/private headers/request IDs are explicit. A seven-day actor/key retry
+returns the original committed result; reconciliation remains readable after expiry.
+Changed intent rejects. An uncertain custody/cash command must be reconciled before
+retrying the same retained intent, never replaced by a guessed new action.
 
-The first batch provides private, bounded, stably sorted queues; placement/duty/
-capacity context; current owned task detail; explicit desired duty; atomic shared
-pickup claims; strict IDs/field allowlists/source revisions; safe JSON errors and
-request IDs; and actor-scoped seven-day command replay/reconciliation. Original
-command results contain operational references rather than customer/proof data.
-Claim preserves seller readiness and custody; hub intake, final-mile assignment,
-buyer completion, retry/RTS and financial reconciliation remain their actors' work.
+New website and native delivery proof uses genuine server-named private images
+through the shared proof service. Actual file bytes, original hash and recipient/COD
+facts are checked; rejected, replayed and rolled-back writes discard unused new
+files. Ordinary JSON hides paths. Existing successful test fixtures now contain
+genuine images, preserving their business assertions. Older public POD copies
+were not moved or deleted: audit, reviewed private archival, backup/reference/hash
+verification and public-copy removal remain an explicit release prerequisite.
+Private new writes do not revoke already published historical URLs.
 
-**Scoped assessment: native Home/duty/claim API 0/10 -> 7/10 locally.** The app can
-consume real scoped assignments rather than unavailable resources. Publication,
-additive migration, HTTPS rollout, PostgreSQL race evidence and Flutter/device
-acceptance remain open. This does not raise overall Rider or project readiness.
+The recent source suite at `8fb5193` is reused as the valid baseline. Its executable
+source matches the completed run at `8c6fb63`; the intervening commit changes only
+finance documentation. This is inspected evidence reuse, not a claimed fresh
+baseline run. Verification used isolated SQLite `:memory:` except for the user's
+explicitly approved disposable PostgreSQL claim/outcome check.
+
+| Verification | Recorded result |
+|---|---|
+| Reused clean source baseline | 2,800 tests / 55,848 assertions / zero failures, errors or skips. |
+| First corrected API/account/Settings/web courier gate | 144 tests / 1,821 assertions passed. |
+| Connected API and affected shared-flow gate | 78 tests / 1,918 assertions passed. |
+| Native access, parcel, connected-record and executable-contract gate | 34 tests / 1,716 assertions passed; fresh post-migration-timing run completed in 17.067 seconds. |
+| Forced financial rollback/proof retention follow-up | 1 test / 92 assertions passed; original private proof bytes and all pre-existing files remain intact. |
+| Final complete isolated suite | 2,834 tests / 57,567 assertions / zero failures, errors or skips, in 12:13.696. |
+| Exact baseline comparison | All 2,800 original class/method/data-set identities preserved; 34 added cases; no removed cases, failures, errors or skips. |
+| Packaged disposable PostgreSQL verifier | 1 test / 240 assertions passed in 10.037 seconds: four simultaneous races, each with two independent PHP processes and distinct database connection IDs. |
+| Executable contract | All 25 actual route/method pairs match OpenAPI. All 67 schemas compile; 34 captured/public responses and exact ID/money boundaries pass validation. |
+| Repository checks | Scoped PHP formatting, shell syntax, JSON/document links and Git whitespace pass. Local task-guide exclusion and reachable-history privacy checks pass. |
+| Frontend | Source, dependencies and assets are unchanged by this backend branch. The finance source's 53 frontend checks and successful TypeScript/Vite build are reused; no new frontend build or rendered-device check is claimed. |
+
+The first focused run exposed incomplete-Settings discovery compatibility; requiring
+its existing schema before operational authority fixed that case. The first full
+regression run had one financial rollback-test failure because its expected private
+file set omitted the newly private original delivery proof. The corrected check
+compares the exact pre-existing file set and retained proof path/hash, while retaining
+all payment/audit rollback assertions. The final complete run above is green;
+no acceptance case was skipped or turned into a success label.
+
+The first actual PostgreSQL conflicting-outcome race exposed a deadlock: inserting
+a command acquired an immediate actor foreign-key key-share lock before the shared
+domain order/parcel/user locks. Two same-actor commands could then wait on each
+other. The additive actor constraint is now `DEFERRABLE INITIALLY DEFERRED` on
+PostgreSQL, enforcing existence at commit after domain locks. The verifier checks
+that actual constraint metadata. SQLite ignores this PostgreSQL-only timing.
+Competing riders produce one pickup assignment; identical actor/key claims and
+private-proof deliveries return one original result; competing delivery/failure
+produces one outcome and no duplicate collection/attempt. A losing terminal-task
+request may return hidden 404 or stale 409, as documented. No generic success or
+weaker authorization was introduced to make the race pass.
+
+The [packaged verifier](../scripts/verify-rider-races/README.md) uses a new random
+local database, internal Docker network, no published ports, temporary database
+storage, a read-only repository and isolated runtime files. It refuses an existing
+schema and cleans up only its own project. The packaged run followed an earlier
+passing draft run of 238 assertions; the conditional winning outcome accounts for
+the assertion-count difference. These four races do not establish general financial
+concurrency, trigger behavior for every workflow, historical-cohort performance,
+Azure deployment or mobile acceptance. No normal development/production database
+was migrated, reset or seeded by verification.
+
+Exact local evidence commands:
+
+```sh
+bash .codex/native-api/run-php.sh final-full-corrected
+bash .codex/native-api/run-php.sh final-focused --filter 'Rider(OperationsApi|OperationsBoundary|ParcelApi|ConnectedApi|NativeContract)Test'
+scripts/verify-rider-races/run-approved.sh --approved-disposable-postgres
+node .codex/native-api/validate-contract.cjs
+node .codex/native-api/validate-openapi.cjs
+```
+
+The `.codex` runner/helpers and XML/log/comparison samples are machine-local ignored
+artifacts. The SQLite runner explicitly supplies testing, `DB_CONNECTION=sqlite`,
+`DB_DATABASE=:memory:`, empty `DB_URL`, array cache/session/mail and separate storage.
+The PostgreSQL harness is tracked and separately requires express authorization.
+Contract validation used existing installed AJV, without a new project dependency.
+For the official OpenAPI 3.1 base schema, its unextended Schema Object meta-reference
+was bound explicitly because the installed validator cannot resolve that dynamic
+reference correctly. General format plugins were disabled; compiled response schemas,
+explicit patterns and boundary checks were validated separately. This is not a claim
+that an unmodified full OpenAPI dialect validator or production responses were tested.
+
+**Scoped engineering assessment: native operational API 0/10 -> 8/10 locally.**
+The native app can now consume real scoped work, private evidence, communication
+and recorded cash through the same web-owned rules. All core adapters, regression
+and the selected PostgreSQL race gate pass. This does not raise overall admin,
+Rider UI or project readiness, nor prove Flutter/device/production integration.
+
+Local commits for this backend handoff:
+
+- `9c444fc` — `feat(rider-api): expose scoped work queues and retained pickup claims`
+- `7ad7458` — `feat(rider-api): record shared parcel outcomes with private proof`
+- `943fb12` — `feat(rider-api): retain scoped trip history and private evidence reads`
+- `79444cd` — `feat(rider-api): bind message drafts and reads to owned assignments`
+- `5bafce0` — `feat(rider-api): expose retained cash and scoped remittance offers`
+- `57ea48e` — `test(finance): preserve original private proof during payment rollback`
+- `824f1c2` — `fix(rider-api): avoid actor lock inversion in concurrent commands`
+- `228927e` — `docs(rider-api): publish executable operations contract and integration examples`
+
+This evidence update's generated commit hash is reported in the final handoff.
+**Deployment: not performed; current VM revision and new HTTPS operational routes
+were not independently observed.** After user publication/review, apply all additive
+source migrations, including the inherited financial sources and new command table.
+Preserve private proof/receipt storage and backups; recorded command/finance history
+prevents destructive rollback. Audit legacy public POD before release, refresh
+route/config caches and workers/scheduler, run the established deploy/verify workflow,
+and record the actual revision, pending-migration result and fresh HTTPS bearer
+reads/rejected access. No new secret or production configuration was created here.
+
+The contract's per-batch integration checklist is the next consumer handoff: renew
+tokens, decode IDs/cents/nulls exactly, replace unavailable providers with the accepted
+routes, preserve selected drafts/proof bytes and reconcile uncertain outcomes.
+Flutter adapters/controllers, physical Android/camera, real email and full buyer/hub
+release acceptance belong to their respective maintainers and remain unverified here.
+A bounded reviewed rollout/HTTPS check is an estimated 1–2-hour next backend batch,
+after publication and legacy-proof retention review; this is a planning estimate,
+not recorded work. Native release/recovery or identity extensions require a separately
+chosen contract before implementation; no future tasks or unapproved expansion were
+created automatically.
