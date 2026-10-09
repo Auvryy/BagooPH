@@ -2144,3 +2144,110 @@ deployment must apply the additive review migration before serving the new pages
 and refresh the usual application/assets caches. Retained purchase/reply history
 blocks a destructive rollback. Keep the existing deploy/verify workflow; no
 database reset or new external service is part of this batch.
+
+## Native Rider Deployment Verification and Feature Discovery: October 9, 2026
+
+**The local Home discovery bug is fixed; the live operations release gate fails.**
+Branch `fix/rider-api-capability-discovery` starts from local `main` at `a1eb08b`
+(`Feat/buyer seller review and orders (#72)`). The request is to verify the
+existing rider backend for its mobile maintainer. It adds no web map, provider,
+Flutter change or live parcel mutation. The following evidence is an observation,
+not a successful rollout or permission to enable mobile writes.
+
+The authenticated Azure inspection found checkout revision
+`9fe5ce5bff4104d7981f888c0f2a8b510245e1f1` (`Fix/azure build memory (#70)`).
+The actual application reports production mode, debug disabled, PostgreSQL,
+maintenance off and an existing asset manifest. The latest complete HTTPS/schema
+observation was **October 9, 12:54:54 UTC / 20:54:54 Asia/Manila**. There are 58
+recorded migrations and no pending files in that older checkout. That does not
+mean the current target is installed: all three October 9 migrations in local
+`main` are absent from the deployed migration history:
+
+- `2026_10_09_000000_create_seller_settlement_records`
+- `2026_10_09_010000_create_rider_commands_table`
+- `2026_10_09_100000_link_purchase_reviews_and_create_seller_replies`
+
+`rider_commands` is absent. The existing Settings revision/email/token-fingerprint
+schema, delivery checkpoints/attempts, COD accounts and **`cod_cash_events`**,
+messages and notifications are present. Zero of the 25 OpenAPI operational
+method/route pairs is registered in the running application. The review migration
+belongs to the newer commerce release; all missing migrations must be considered
+when rolling out the selected current source, rather than resetting its database.
+
+Fresh live checks used the existing documented synthetic approved courier account.
+They used certificate-verified first-party HTTPS, JSON requests, no redirects and
+an in-memory bearer. The report excludes the actual origin, account details,
+credentials, tokens and recipient/location data.
+
+| Live request | Observed result |
+|---|---|
+| `GET /up` | 200 |
+| `POST /api/v1/auth/tokens` | 200, approved access and Settings version 1; operations version 1 is not advertised |
+| `GET /api/v1/rider/me` and `/rider/settings` | 200 private JSON |
+| `GET /api/v1/rider/home` and `/rider/pickup-jobs` | 404 JSON, with no operational data envelope or native error code |
+| `GET /api/v1/rider/tasks?phase=pickup` and `?phase=final_mile` | 404 JSON, with no operational data envelope |
+| `GET /api/v1/rider/tasks/{valid unknown task reference}` | 404 route-level JSON; this is a negative probe, not owned task acceptance |
+| `GET /api/v1/rider/commands/{unknown UUID}` | 404 route-level JSON; this does not exercise native command reconciliation |
+| `GET /api/v1/rider/me` without bearer and `/rider/settings` with invalid bearer | 401 private JSON |
+| `DELETE /api/v1/auth/tokens/current` | 200; only the newly issued verification token was revoked, and the account token count returned to its prior value |
+
+The approved account has a company/hub placement, is on duty and passes the
+existing operational eligibility check; its returned account ID is a string.
+The native account/Settings and unavailable operational responses carry private
+`no-store` and `Pragma: no-cache`. The older release does not return operational
+request-ID or `nosniff` headers. Scoped operational IDs, exact cents and current
+task disclosure cannot be accepted live from these route-level 404s; their positive
+checks are local only.
+
+The inspected account has **zero owned active pickup tasks and zero owned active
+final-mile tasks** in the existing company/hub/phase scope. No current owned detail
+or usable navigation pin can be accepted against this live account. No task was
+claimed, assigned, fabricated or reseeded to make this check pass. In the current
+native source, `stop.latitude` and `stop.longitude` expose the frozen checkout
+point only at a buyer stop. Seller, origin-hub and destination-hub native stops
+return null coordinates, even when a hub has saved coordinates. These nulls are
+not permission to invent a pin or navigate to the future buyer stop. A genuinely
+owned current task with a valid supported stop is a separate mobile test-data gate.
+
+Local inspection also found Home checking nonexistent `cod_events` for parcel,
+Trips and cash discovery. The executable schema and journal model use
+`cod_cash_events`. The three checks now use that actual table. Fully installed
+features are advertised; missing journal schema still leaves them unavailable.
+Native release, restricted recovery and earnings remain disabled. Authorization,
+capacity, versions, command retries and parcel/cash writers are unchanged.
+The sanitized fully installed Home example now matches the exercised true feature
+flags, with its disabled extensions retained.
+
+**Verification:** the existing rider/account/Settings/shared-courier gate passed
+**164 tests / 3,112 assertions** before the change. The new installed-schema
+regression, run against the original service loaded from `a1eb08b`, failed on the
+incorrect false capability. After the correction, the operations file passed
+**16 tests / 488 assertions**, and the final combined gate passed
+**166 tests / 3,174 assertions** in 30.170 seconds, with no failures, errors or
+skips. The gate covers fresh login, scoped queues/detail, duty, capacity, stale
+versions, owned reconciliation, changed/repeated intents, denied roles/placement,
+parcel outcomes and the executable route contract. PHP formatting and Git
+whitespace checks pass. All test writes use isolated SQLite `:memory:` and
+separate local runtime storage. No new PostgreSQL race, full-suite, frontend build,
+browser or physical-device check is claimed. Sanitized evidence and detailed logs
+are machine-local under `.codex/rider-verification/`.
+
+**Scoped assessment: Home feature discovery 3/10 -> 8/10 locally.** Mobile clients
+can discover the installed parcel, Trips and cash features without bypassing
+missing-schema safeguards. This does not raise overall rider or deployment
+readiness: the live version/route gate still fails, and navigation has no owned
+test task.
+
+Local implementation commit:
+
+- `fa8b6e2` — `fix(rider-api): discover enabled features from the COD cash journal schema`
+
+The generated documentation commit is reported in the handoff. No push, pull,
+production migration or deployment was performed. After user review/publication,
+roll out the approved source using the existing `./bagoo.sh deploy` and
+`./bagoo.sh verify` workflow, preserve retained/private history, and complete the
+existing legacy-proof retention review. Verify the actual target revision and
+required migrations, refresh applicable caches/workers and confirm the scheduler.
+Then obtain a fresh approved bearer, require operations version 1, inspect Home
+and authorized queues/detail, and reconcile commands using authorized test data.
+Mobile duty and claim writes stay disabled until those release checks pass.
