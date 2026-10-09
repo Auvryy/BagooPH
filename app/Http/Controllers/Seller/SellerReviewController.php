@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Review;
-use App\Models\Shop;
+use App\Services\Commerce\ReviewService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,29 +18,30 @@ class SellerReviewController extends Controller
 
     public function index(Request $request): Response
     {
-        $user = $request->user();
         $shop = $this->getActiveShop($request);
 
         $productIds = Product::where('shop_id', $shop?->id ?? 0)->pluck('id');
 
-        $reviews = Review::with(['product', 'buyer', 'order'])
+        $reviews = Review::withPurchaseVerification()->with(['product', 'buyer:id,name,avatar', 'reply'])
             ->whereIn('product_id', $productIds)
             ->latest()
+            ->orderByDesc('id')
             ->paginate(15);
 
-        $totalReviews = Review::whereIn('product_id', $productIds)->count();
-        $avgRating = $totalReviews > 0 ? round((float) Review::whereIn('product_id', $productIds)->avg('rating'), 1) : 0.0;
+        $summary = app(ReviewService::class)->shopSummary($shop);
+        $totalReviews = $summary['review_count'];
+        $avgRating = $summary['rating'];
 
         $stats = [
             'average_rating' => $avgRating,
             'total_reviews' => $totalReviews,
-            'response_rate' => $totalReviews > 0 ? '100%' : 'N/A',
+            'response_rate' => $summary['response_rate'] ?? 'N/A',
             'rating_breakdown' => [
-                '5_star' => Review::whereIn('product_id', $productIds)->where('rating', 5)->count(),
-                '4_star' => Review::whereIn('product_id', $productIds)->where('rating', 4)->count(),
-                '3_star' => Review::whereIn('product_id', $productIds)->where('rating', 3)->count(),
-                '2_star' => Review::whereIn('product_id', $productIds)->where('rating', 2)->count(),
-                '1_star' => Review::whereIn('product_id', $productIds)->where('rating', 1)->count(),
+                '5_star' => Review::verifiedPurchase()->whereIn('product_id', $productIds)->where('rating', 5)->count(),
+                '4_star' => Review::verifiedPurchase()->whereIn('product_id', $productIds)->where('rating', 4)->count(),
+                '3_star' => Review::verifiedPurchase()->whereIn('product_id', $productIds)->where('rating', 3)->count(),
+                '2_star' => Review::verifiedPurchase()->whereIn('product_id', $productIds)->where('rating', 2)->count(),
+                '1_star' => Review::verifiedPurchase()->whereIn('product_id', $productIds)->where('rating', 1)->count(),
             ],
         ];
 
@@ -52,10 +54,10 @@ class SellerReviewController extends Controller
 
     public function reply(Request $request, int $reviewId): RedirectResponse
     {
-        $request->validate([
-            'reply_text' => 'required|string|max:500',
-        ]);
+        return app(ShopEligibilityService::class)->mutate($request, function () use ($request, $reviewId) {
+            app(ReviewService::class)->reply($request->user(), $this->getActiveShop($request), $reviewId, $request->input());
 
-        return back()->with('success', 'Merchant reply posted to customer review.');
+            return back()->with('success', 'Your reply has been saved.');
+        });
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Shop extends Model
 {
@@ -33,7 +34,7 @@ class Shop extends Model
         'business_permit_path', 'review_decision_id', 'review_version',
     ];
 
-    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version'];
+    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version', 'verified_rating'];
 
     protected $casts = [
         'is_default' => 'boolean',
@@ -71,6 +72,27 @@ class Shop extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    public function reviews(): HasManyThrough
+    {
+        return $this->hasManyThrough(Review::class, Product::class);
+    }
+
+    public function scopeWithReviewSummary(Builder $query): Builder
+    {
+        return $query->withAvg(['reviews as verified_rating' => fn (Builder $reviews) => $reviews->verifiedPurchase()], 'rating')
+            ->withCount(['reviews as verified_review_count' => fn (Builder $reviews) => $reviews->verifiedPurchase()]);
+    }
+
+    public function getRatingAttribute(mixed $value): ?float
+    {
+        $rating = $this->attributes['verified_rating'] ?? $value;
+        if (array_key_exists('verified_rating', $this->attributes)) {
+            $rating = $this->attributes['verified_rating'];
+        }
+
+        return $rating === null ? null : round((float) $rating, 2);
     }
 
     public function orderItems(): HasMany

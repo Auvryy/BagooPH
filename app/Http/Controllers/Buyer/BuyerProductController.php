@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\Commerce\ReviewService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +18,7 @@ class BuyerProductController extends Controller
      */
     public function search(Request $request): Response
     {
-        $query = Product::with(['shop', 'category'])->availableForSale()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         // Search Query (Name, Description, SKU, Category, and Shop Name)
@@ -58,7 +59,7 @@ class BuyerProductController extends Controller
 
         // Rating Filter (e.g. 4 stars and above)
         if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->where('rating', '>=', (float) $request->input('rating'));
+            $query->whereVerifiedRatingAtLeast((float) $request->input('rating'));
         }
 
         // Sorting
@@ -74,13 +75,13 @@ class BuyerProductController extends Controller
                 $query->orderBy('sales_count', 'desc');
                 break;
             case 'top_rated':
-                $query->orderBy('rating', 'desc');
+                $query->orderBy('verified_rating', 'desc');
                 break;
             case 'newest':
                 $query->latest();
                 break;
             default:
-                $query->orderBy('sales_count', 'desc')->orderBy('rating', 'desc');
+                $query->orderBy('sales_count', 'desc')->orderBy('verified_rating', 'desc');
                 break;
         }
 
@@ -93,7 +94,7 @@ class BuyerProductController extends Controller
 
         // Related / Recommended Products
         $matchedIds = $products->pluck('id')->toArray();
-        $relatedQuery = Product::with(['shop', 'category'])->availableForSale()
+        $relatedQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active')
             ->whereNotIn('id', $matchedIds);
 
@@ -125,7 +126,7 @@ class BuyerProductController extends Controller
 
     public function show(Request $request, string $slug): Response
     {
-        $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])->availableForSale()
+        $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
             ->where('status', 'active')
             ->where(function ($q) use ($slug) {
                 $q->where('slug', $slug);
@@ -137,7 +138,7 @@ class BuyerProductController extends Controller
 
         // Support slug format with appended ID (e.g. {slug}-{id} or {slug}-i.{id})
         if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
-            $product = Product::with(['shop.user', 'category', 'images', 'reviews.buyer'])->availableForSale()
+            $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
                 ->where('status', 'active')
                 ->where('id', (int) $matches[1])
                 ->first();
@@ -147,7 +148,7 @@ class BuyerProductController extends Controller
             abort(404, 'Product not found.');
         }
 
-        $relatedProducts = Product::with(['shop', 'category'])->availableForSale()
+        $relatedProducts = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->where('status', 'active')
@@ -160,15 +161,10 @@ class BuyerProductController extends Controller
             'sizes' => [],
         ];
 
-        // Store performance metrics
-        $shopStats = [
-            'rating' => $product->shop?->rating ?? 4.9,
-            'products_count' => $product->shop ? Product::where('shop_id', $product->shop_id)->availableForSale()->count() : 12,
-            'response_rate' => '99%',
-            'response_time' => 'within hours',
-            'joined' => '1 year ago',
-            'is_mall' => true,
-        ];
+        $reviews = app(ReviewService::class);
+        $reviews->publicReviews($product);
+        $shopStats = $reviews->shopSummary($product->shop);
+        $product->shop->setAttribute('rating', $shopStats['rating']);
 
         $cart = Cart::query()
             ->when(

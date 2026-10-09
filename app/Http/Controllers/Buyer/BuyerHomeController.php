@@ -102,7 +102,7 @@ class BuyerHomeController extends Controller
             ->get();
 
         // 5. "Daily Discover" & Search Product Feed
-        $query = Product::with(['shop', 'category'])->availableForSale()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         // Search Filter (Product name, description, SKU, and matching category or shop name)
@@ -143,7 +143,7 @@ class BuyerHomeController extends Controller
 
         // Rating Filter (e.g. 4 stars and above)
         if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->where('rating', '>=', (float) $request->input('rating'));
+            $query->whereVerifiedRatingAtLeast((float) $request->input('rating'));
         }
 
         // Sort Engine
@@ -159,14 +159,14 @@ class BuyerHomeController extends Controller
                 $query->orderBy('sales_count', 'desc');
                 break;
             case 'top_rated':
-                $query->orderBy('rating', 'desc');
+                $query->orderBy('verified_rating', 'desc');
                 break;
             case 'newest':
             case 'new_arrivals':
                 $query->latest();
                 break;
             default:
-                $query->orderBy('sales_count', 'desc')->orderBy('rating', 'desc');
+                $query->orderBy('sales_count', 'desc')->orderBy('verified_rating', 'desc');
                 break;
         }
 
@@ -176,7 +176,7 @@ class BuyerHomeController extends Controller
         $relatedProducts = [];
         if ($request->filled('search') || $request->filled('category')) {
             $matchedIds = $feedProducts->pluck('id')->toArray();
-            $relatedQuery = Product::with(['shop', 'category'])->availableForSale()
+            $relatedQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
                 ->where('status', 'active')
                 ->whereNotIn('id', $matchedIds);
 

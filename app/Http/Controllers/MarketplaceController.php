@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Commerce\ReviewService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class MarketplaceController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Product::with(['shop', 'category'])->availableForSale()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         if ($request->filled('search')) {
@@ -47,7 +48,7 @@ class MarketplaceController extends Controller
                     $query->orderBy('sales_count', 'desc');
                     break;
                 case 'rating':
-                    $query->orderBy('rating', 'desc');
+                    $query->orderBy('verified_rating', 'desc');
                     break;
                 default:
                     $query->latest();
@@ -59,7 +60,7 @@ class MarketplaceController extends Controller
 
         $products = $query->paginate(12)->withQueryString();
         $categories = Category::where('is_active', true)->withCount('products')->get();
-        $featuredShops = Shop::eligible()->withCount('products')->take(4)->get();
+        $featuredShops = Shop::eligible()->withReviewSummary()->withCount('products')->take(4)->get();
 
         return Inertia::render('Marketplace/Index', [
             'products' => $products,
@@ -71,7 +72,7 @@ class MarketplaceController extends Controller
 
     public function catalog(Request $request): Response
     {
-        $query = Product::with(['shop', 'category', 'images'])->availableForSale()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         if ($request->filled('search')) {
@@ -114,7 +115,7 @@ class MarketplaceController extends Controller
                 $query->orderBy('sales_count', 'desc');
                 break;
             case 'rating':
-                $query->orderBy('rating', 'desc');
+                $query->orderBy('verified_rating', 'desc');
                 break;
             default:
                 $query->latest();
@@ -123,7 +124,7 @@ class MarketplaceController extends Controller
 
         $products = $query->paginate(12)->withQueryString();
         $categories = Category::where('is_active', true)->withCount('products')->orderBy('id')->get();
-        $featuredShops = Shop::eligible()->withCount('products')->take(4)->get();
+        $featuredShops = Shop::eligible()->withReviewSummary()->withCount('products')->take(4)->get();
 
         // If authenticated as buyer, fetch latest active shipment telemetry
         $activeShipment = null;
@@ -159,7 +160,7 @@ class MarketplaceController extends Controller
 
     public function show(string $slug): Response
     {
-        $product = Product::with(['shop', 'category', 'images', 'reviews.buyer'])->availableForSale()
+        $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
             ->where('status', 'active')
             ->where(function ($q) use ($slug) {
                 $q->where('slug', $slug);
@@ -170,7 +171,7 @@ class MarketplaceController extends Controller
             ->first();
 
         if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
-            $product = Product::with(['shop', 'category', 'images', 'reviews.buyer'])->availableForSale()
+            $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
                 ->where('status', 'active')
                 ->where('id', (int) $matches[1])
                 ->first();
@@ -180,11 +181,14 @@ class MarketplaceController extends Controller
             abort(404, 'Product not found.');
         }
 
-        $relatedProducts = Product::where('category_id', $product->category_id)->availableForSale()
+        $relatedProducts = Product::where('category_id', $product->category_id)->availableForSale()->withReviewSummary()
             ->where('id', '!=', $product->id)
             ->where('status', 'active')
             ->take(4)
             ->get();
+
+        app(ReviewService::class)->publicReviews($product);
+        $product->shop->setAttribute('rating', app(ReviewService::class)->shopSummary($product->shop)['rating']);
 
         return Inertia::render('Marketplace/ProductDetail', [
             'product' => $product,
@@ -201,7 +205,7 @@ class MarketplaceController extends Controller
             ->where('slug', $slug)
             ->firstOrFail();
 
-        $products = Product::where('shop_id', $shop->id)->availableForSale()
+        $products = Product::where('shop_id', $shop->id)->availableForSale()->withReviewSummary()
             ->where('status', 'active')
             ->latest()
             ->paginate(18);
@@ -213,6 +217,7 @@ class MarketplaceController extends Controller
 
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
+            'shopStats' => app(ReviewService::class)->shopSummary($shop),
             'products' => $products,
             'isOwner' => (bool) $isOwner,
             'isPreview' => (bool) $isPreview,

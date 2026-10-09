@@ -83,15 +83,15 @@ class RealWorldExceptionsAndFleetTest extends TestCase
         $shop = $this->createE2EShop($seller);
         $product = $this->createE2EProduct($shop, ['stock' => 10]);
         $beforeClaim = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product]]);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
         $this->assertSame('cancelled', $beforeClaim->fresh()->status);
         $this->assertSame(10, $product->fresh()->stock);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Stock unavailable'])->assertSessionHas('error');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
         $this->assertSame(10, $product->fresh()->stock);
         $afterClaim = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product->fresh()]], 'ready_for_pickup');
         $parcel = $this->flowDelivery($afterClaim, 'assigned_pickup');
         $snapshot = [$afterClaim->fresh()->getRawOriginal(), $parcel->getRawOriginal(), $parcel->checkpoints()->pluck('id')->all()];
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $afterClaim), ['reason' => 'Stock unavailable'])->assertSessionHas('error');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $afterClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
         $this->assertSame($snapshot, [$afterClaim->fresh()->getRawOriginal(), $parcel->fresh()->getRawOriginal(), $parcel->checkpoints()->pluck('id')->all()]);
         $this->assertSame(9, $product->fresh()->stock);
         $this->actingAs($buyer)->post(route('seller.orders.cancel', $afterClaim), ['reason' => 'Changed plans'])->assertForbidden();

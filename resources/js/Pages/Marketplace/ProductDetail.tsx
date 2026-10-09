@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
+import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product } from '@/types';
 import { 
     Star, 
@@ -116,7 +117,7 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                                 >
                                     <Store className="w-3.5 h-3.5 text-indigo-600" />
                                     <span>{product.shop.name}</span>
-                                    <span className="text-[10px] text-emerald-600 font-bold">★ {product.shop.rating}</span>
+                                    <span className="text-[10px] text-emerald-600 font-bold">{ratingLabel(product.shop.rating)}</span>
                                 </Link>
                             )}
 
@@ -127,9 +128,9 @@ export default function ProductDetail({ product, relatedProducts }: Props) {
                             {/* Ratings & Sales */}
                             <div className="flex items-center gap-4 text-xs">
                                 <div className="flex items-center gap-1 text-amber-500 font-bold">
-                                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                    <span>{product.rating}</span>
-                                    <span className="text-slate-400 font-normal">({product.reviews?.length ?? 0} reviews)</span>
+                                    <RatingStars value={product.rating} />
+                                    <span>{ratingLabel(product.rating)}</span>
+                                    <span className="text-slate-400 font-normal">({product.verified_review_count ?? 0} verified reviews)</span>
                                 </div>
                                 <span className="text-slate-300">•</span>
                                 <span className="text-slate-500 font-medium">{product.sales_count} items sold</span>

@@ -60,7 +60,7 @@ class InventoryCheckoutTest extends TestCase
         $seller = $order->items->first()->product->shop->user;
         $this->actingAs($seller)
             ->post(route('seller.orders.cancel', $order), [
-                'reason' => 'Buyer and seller agreed to cancel',
+                'reason' => 'Buyer requested cancellation via chat',
             ])
             ->assertSessionHas('success');
 

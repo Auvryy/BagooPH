@@ -57,6 +57,8 @@ Scoped seller settlement and financial oversight review: October 9, 2026, B17+B1
 
 Scoped native Rider backend review: October 9, 2026. All five core API batches have 25 implemented methods, a validated contract, a green 2,834-case regression and four actual disposable PostgreSQL claim/outcome races. Publication, legacy-proof release review, Azure rollout and Flutter/device acceptance remain separate. See the native review below; existing overall role ratings are unchanged.
 
+Scoped buyer/seller BS01-BS02 review: October 9, 2026. Completed-purchase reviews, persisted seller replies and verified rating summaries now join grouped, paginated owned-order workspaces. The final 521-case commerce regression, 63 frontend checks and production build pass. The complete 2,904-case run had one obsolete pagination assertion, corrected and verified in the subsequent retests below. These scoped improvements do not change the overall role scores or start BS03-BS05.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -71,6 +73,8 @@ Scoped native Rider backend review: October 9, 2026. All five core API batches h
 | Multi-shop checkout | Implemented | Checkout transactionally creates an independent order, delivery, waybill, shipping fee and route per shop, plus any requested saved address and the retained submission result. Failures roll back every selected shop. A buyer/Bag-scoped confirmation returns the original orders on identical retries after Bag consumption; changed or foreign confirmations reject. |
 | Voucher allocation | Implemented | Shop vouchers are isolated to their owning shop, while platform discounts are proportionally divided without exceeding the calculated discount. |
 | Seller fulfillment | Implemented | A central lifecycle service enforces `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`, shop ownership, and the pre-custody cancellation boundary. |
+| Purchase reviews and seller replies | Implemented; locally verified | BS01 binds one review to an owned completed order item, preserves unchanged retries and legacy content, persists one owned seller reply, and derives public averages/counts from verified purchases. The October 9 commerce review records migration, privacy, rollback and interface evidence, with deployment and PostgreSQL limits. |
+| Buyer and seller order workspaces | Implemented; locally verified | BS02 groups seller items under original orders, paginates owned history, separates delivery/completion and exceptions, and exposes existing-authority action flags. Seller batches commit together; cancellation validates current reasons and retains exactly-once stock/custody rules. Mixed-shop legacy history is read-only. See the October 9 commerce review below. |
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
@@ -2010,3 +2014,133 @@ after publication and legacy-proof retention review; this is a planning estimate
 not recorded work. Native release/recovery or identity extensions require a separately
 chosen contract before implementation; no future tasks or unapproved expansion were
 created automatically.
+
+## Buyer and Seller Review Integrity and Order Workspaces: October 9, 2026
+
+The selected [BS01](buyer-seller-plan/01-review-integrity.md) and
+[BS02](buyer-seller-plan/02-order-workspaces.md) batches are implemented locally on
+`feat/buyer-seller-review-and-orders`. The five separate plans and shared workflow
+are saved in [buyer-seller-plan](buyer-seller-plan/README.md). BS03 inventory/drafts,
+BS04 discovery/saved products and BS05 Buy again remain unstarted.
+
+**BS01: purchase reviews.** New reviews identify an original purchased item owned
+by the currently approved buyer and require its order to be completed. Order,
+product, shop and buyer links come from that item. The database permits one new
+review per item. Identical retries return the original text, photos and timestamps;
+changed repeats reject. Invalid photos and failed rating writes retain the original
+records and remove unused new files. Public review data omits private account and
+order identifiers.
+
+The additive migration conservatively links an old review only when its owned
+completed purchase, matching item and review are all unambiguous. Original text,
+images and timestamps remain unchanged. Other historical rows stay visibly
+unverified and do not enter verified rating averages. Seller replies now persist,
+enforce the current owning eligible shop and keep their original attribution when
+edited. Product/store ratings, verified counts and review reply rates come from
+records; unrated products show an empty state. The interfaces remove the scoped
+invented rating, premium and response/delivery claims.
+
+**BS02: owned order workspaces.** Buyers and sellers use server-side stage filters,
+whole-history counts and stable date/ID pagination. Stale pages clamp to the
+remaining last page after an order changes stage, including restricted history
+and empty stages. Seller cards contain all owned
+items under one original order, with one selection/action area and distinct unit
+and order counts. Delivered, completed, delivery issue, returned and cancelled
+remain separate, including explicit historical aliases. Buyer receipt controls
+require physical delivery or the existing evidenced counter collection; the
+existing buyer receipt writer alone completes an order.
+
+Seller batch readiness validates the entire selection, locks its orders and
+parcels consistently, and writes inside one transaction. A later invalid row or
+checkpoint failure retains every earlier order, parcel, notice and outbox intent.
+Stale rider claims, missing packing/route evidence, foreign selections and mixed
+legacy ownership reject. Cancellation uses the existing six displayed reasons,
+requires explanatory notes for Other reason, and preserves exactly-once stock
+restoration, voucher allocations and the pre-custody boundary. Restricted shop
+history remains readable. Mixed-shop history shows only owned products with
+fulfilment controls disabled, and commission records are scoped to their seller.
+
+Dashboard return links/counts now refer to actual reverse-custody parcels and
+separate exception destinations. Post-delivery disputes remain explicitly
+unavailable. Buyer purchases remain in the existing profile/tracking workspace,
+including settings/address navigation and saves. Both roles keep their existing
+portal layouts and styling; no global, rider or Flutter interface was redesigned.
+
+Implementation references:
+[ReviewService.php](../app/Services/Commerce/ReviewService.php),
+[review migration](../database/migrations/2026_10_09_100000_link_purchase_reviews_and_create_seller_replies.php),
+[Review.php](../app/Models/Review.php),
+[ReviewReply.php](../app/Models/ReviewReply.php),
+[OrderWorkspaceService.php](../app/Services/Orders/OrderWorkspaceService.php),
+[OrderLifecycleService.php](../app/Services/Orders/OrderLifecycleService.php),
+[SellerOrderController.php](../app/Http/Controllers/Seller/SellerOrderController.php),
+[buyer purchases](../resources/js/Pages/Buyer/Profile.tsx),
+[seller orders](../resources/js/Pages/Seller/Orders.tsx),
+[seller reviews](../resources/js/Pages/Seller/Reviews.tsx) and
+[commerce frontend checks](../tests/Frontend/commerce.test.mjs).
+
+### Verification and limits
+
+All PHP checks used isolated SQLite `:memory:` with array cache/session/mail.
+The complete run also used separate ignored runtime storage. No development or
+production database was migrated, reset or seeded.
+
+| Check | Result |
+|---|---|
+| Fresh original commerce/lifecycle baseline | 428 tests, 6,943 assertions, passing |
+| Final focused BS01 review/reply cases | 33 tests, 210 assertions, passing |
+| BS01 buyer/seller regression before the final guest case | 430 tests, 5,021 assertions, passing |
+| Initial BS02 workspaces plus account-settings contract retest | 44 tests, 1,125 assertions, passing |
+| Complete regression run | 2,904 tests, 58,588 assertions; one obsolete order-array assertion, zero errors or skips |
+| Final buyer/seller, settings, financial oversight and normal hub-to-completion regression | 521 tests, 9,944 assertions, passing |
+| Frontend checks, including grouped cards, counts, receipts and restricted history | 63 passing |
+| Production TypeScript/Vite build | Passing through `docker compose exec -T app npm run build` |
+| Scoped PHP formatting and Git whitespace check | Passing |
+
+The complete-run failure was
+`AccountSettingsUpdatesTest::test_order_history_opens_the_purchases_workspace_with_only_owned_orders_on_both_hosts`.
+Its original ownership and both-host assertions were retained and migrated from
+the old array to `orders.data`, with paginator and whole-history totals added.
+The entire file subsequently passed 7 tests and 290 assertions and is also in the
+final passing 521-case regression. Two additional stale-page acceptance cases
+were added after the complete run and pass in that final regression. The complete
+run was not repeated after the fixture correction, seller commission-read
+restriction and pagination follow-up. Its historical
+failure remains in the artifact; final verification combines that broad evidence
+with passing affected-flow retests. No case was removed, skipped or relabelled.
+
+Exact acceptance references:
+[ReviewIntegrityTest.php](../tests/Feature/Buyer/ReviewIntegrityTest.php),
+[SellerReviewReplyTest.php](../tests/Feature/Seller/SellerReviewReplyTest.php),
+[BuyerOrderWorkspaceTest.php](../tests/Feature/Buyer/BuyerOrderWorkspaceTest.php),
+[SellerOrderWorkspaceTest.php](../tests/Feature/Seller/SellerOrderWorkspaceTest.php) and
+[AccountSettingsUpdatesTest.php](../tests/Feature/AccountSettingsUpdatesTest.php).
+Ignored `.codex/buyer-seller` logs/XML and the failed-case/retest comparison retain
+the machine-local evidence. No browser, device or live-site acceptance was run.
+SQLite verifies rollback, uniqueness, stale sequential rejection and ownership;
+it does not establish PostgreSQL locking/concurrent execution. The earlier native
+claim/outcome races do not certify these new review/batch paths. Large historical
+backfill performance also remains unmeasured.
+
+**Scoped engineering assessment:** purchase review integrity **2/10 -> 8/10**;
+order workspace accuracy/action safety **5/10 -> 8/10** locally. Saved replies,
+verified averages and purchase links replace fabricated or unbound review signals.
+Original grouped orders, truthful stage counts and transactional batches remove
+duplicate cards and partial batch progress. These ratings cover the selected
+features; overall buyer, seller, admin and project readiness scores are unchanged.
+
+Local implementation commits:
+
+- `b70d204` — `docs(commerce): split buyer and seller improvements into bounded plans`
+- `b5fda7c` — `feat(commerce): verify purchase reviews and persist seller replies`
+- `a995067` — `feat(commerce): show recorded ratings and saved review responses`
+- `8f1fce1` — `feat(commerce): group owned orders and make seller batches atomic`
+- `33a00ce` — `feat(commerce): present paginated buyer and seller order stages`
+- `d326a33` — `fix(commerce): keep filtered order pages valid after status changes`
+
+The generated hash for this evidence update is reported in the final handoff.
+Publication and deployment were not performed. After review/publication, the
+deployment must apply the additive review migration before serving the new pages
+and refresh the usual application/assets caches. Retained purchase/reply history
+blocks a destructive rollback. Keep the existing deploy/verify workflow; no
+database reset or new external service is part of this batch.

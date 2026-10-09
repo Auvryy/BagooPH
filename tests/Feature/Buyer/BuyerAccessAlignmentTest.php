@@ -233,7 +233,7 @@ class BuyerAccessAlignmentTest extends TestCase
             foreach (['/buyer/orders', '/my-orders'] as $prefix) {
                 $this->get($host.$prefix)->assertOk()->assertInertia(function (Assert $page) use ($status) {
                     if ($status === 'active') {
-                        $page->component('Buyer/Profile')->has('orders', 2)->where('initialTab', 'orders');
+                        $page->component('Buyer/Profile')->has('orders.data', 2)->where('initialTab', 'orders');
                     } else {
                         $page->component('Buyer/Orders')->has('orders.data', 2)->where('canUsePortal', false)->missing('addresses')->missing('wallet');
                     }

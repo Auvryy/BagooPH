@@ -357,11 +357,11 @@ class CrossFeatureCombinationsTest extends TestCase
         $product = $this->createE2EProduct($shop, ['stock' => 5]);
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product]]);
         $this->assertSame(4, $product->fresh()->stock);
-        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
         $this->assertSame('cancelled', $order->fresh()->status);
         $this->assertSame(5, $product->fresh()->stock);
         $before = $order->fresh()->getRawOriginal();
-        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('error');
+        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
         $this->assertSame($before, $order->fresh()->getRawOriginal());
         $this->assertSame(5, $product->fresh()->stock);
     }

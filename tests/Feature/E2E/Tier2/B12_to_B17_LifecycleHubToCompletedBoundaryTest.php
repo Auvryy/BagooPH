@@ -377,7 +377,7 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
     {
         $order = $this->newFlowOrder();
         $this->actingAs($order->shop->user)->withSession(['active_seller_shop_id' => $order->shop_id])
-            ->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+            ->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
         $this->assertSame('cancelled', $order->fresh()->status);
         $this->assertSame('cancelled', $order->delivery->fresh()->status);
 

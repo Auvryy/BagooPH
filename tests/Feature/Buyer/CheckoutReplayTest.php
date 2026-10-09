@@ -428,7 +428,7 @@ class CheckoutReplayTest extends TestCase
         [$buyer, , $product, $payload] = $this->checkout();
         $this->actingAs($buyer)->post('/checkout', $payload)->assertSessionHas('success');
         $order = Order::firstOrFail();
-        $this->actingAs($product->shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Buyer requested cancellation'])->assertSessionHas('success');
+        $this->actingAs($product->shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Buyer requested cancellation via chat'])->assertSessionHas('success');
         $before = $this->snapshots();
         $this->actingAs($buyer)->post('/checkout', $payload)->assertSessionHas('success');
         $this->assertSame('cancelled', $order->fresh()->status);

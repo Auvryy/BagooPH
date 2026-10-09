@@ -155,7 +155,7 @@ class SellerOrderFulfillmentTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Seller/Orders')
-            ->has('orderItems.data', 3)
+            ->has('orders.data', 3)
             ->has('counts')
             ->where('counts.all', 3)
             ->where('counts.to_pack', 1)
@@ -318,12 +318,12 @@ class SellerOrderFulfillmentTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Seller/Orders')
-            ->has('orderItems.data', 10)
-            ->where('orderItems.per_page', 10)
-            ->where('orderItems.total', 15)
-            ->where('orderItems.current_page', 1)
-            ->where('orderItems.last_page', 2)
-            ->has('orderItems.next_page_url')
+            ->has('orders.data', 10)
+            ->where('orders.per_page', 10)
+            ->where('orders.total', 15)
+            ->where('orders.current_page', 1)
+            ->where('orders.last_page', 2)
+            ->has('orders.next_page_url')
         );
     }
 
@@ -337,7 +337,7 @@ class SellerOrderFulfillmentTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Seller/Orders')
-            ->has('orderItems.data', 1)
+            ->has('orders.data', 1)
             ->where('currentStatus', 'to_pack')
         );
     }

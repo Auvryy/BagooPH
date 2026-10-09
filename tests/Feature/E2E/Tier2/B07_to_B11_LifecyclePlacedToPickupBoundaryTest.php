@@ -125,7 +125,7 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $shop = $this->createE2EShop($seller);
         $buyer = $this->createApprovedUser('buyer');
         $order = $this->checkoutFlowOrder($buyer, $shop);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
 
         $before = $order->fresh()->getRawOriginal();
         $this->actingAs($seller)->post(route('seller.orders.accept', $order))->assertSessionHas('error');
@@ -206,7 +206,7 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $shop = $this->createE2EShop($seller);
         $buyer = $this->createApprovedUser('buyer');
         $order = $this->checkoutFlowOrder($buyer, $shop);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
 
         $before = $order->fresh()->getRawOriginal();
         $this->actingAs($seller)->post(route('seller.orders.pack', $order))->assertSessionHas('error');
@@ -310,7 +310,7 @@ class B07_to_B11_LifecyclePlacedToPickupBoundaryTest extends TestCase
         $shop = $this->createE2EShop($seller);
         $buyer = $this->createApprovedUser('buyer');
         $order = $this->checkoutFlowOrder($buyer, $shop);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Stock unavailable'])->assertSessionHas('success');
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
 
         $before = $order->fresh()->getRawOriginal();
         $this->actingAs($seller)->post(route('seller.orders.ready', $order))->assertSessionHas('error');

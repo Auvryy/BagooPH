@@ -173,7 +173,7 @@ class ShopEligibilityTest extends TestCase
         $item = OrderItem::factory()->create(['shop_id' => $restricted->id, 'product_id' => $product->id]);
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $current->id])
             ->get('/seller/orders?shop_id='.$restricted->id)->assertOk()->assertSessionMissing('active_seller_shop_id')
-            ->assertInertia(fn (Assert $page) => $page->where('shop.id', $restricted->id)->where('shopEligible', false)->where('orderItems.data.0.id', $item->id));
+            ->assertInertia(fn (Assert $page) => $page->where('shop.id', $restricted->id)->where('shopEligible', false)->where('orders.data.0.id', $item->order_id));
         $this->get('/seller/orders?shop_id='.Shop::factory()->create()->id)->assertForbidden();
         $this->post('/seller/orders/'.$item->order_id.'/accept')->assertRedirect()->assertSessionHas('error');
         $this->assertSame($item->order->status, $item->order->fresh()->status);

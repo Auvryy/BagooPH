@@ -47,7 +47,7 @@ function assertNoNestedForms(html) {
     assert.equal(open, false);
 }
 test('buyer account embeds corrections and emails with an empty, read-only missing birth date', async () => {
-    const html = await render(ui.Buyer, 'Buyer/Profile', { user: account, initialTab: 'account', addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] }, orders: [], ordersCount: 0 }, 'buyer');
+    const html = await render(ui.Buyer, 'Buyer/Profile', { user: account, initialTab: 'account', addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] }, orders: { data: [], current_page: 1, last_page: 1, per_page: 12, total: 0 }, orderCounts: { all: 0 }, currentOrderStatus: 'all', ordersCount: 0 }, 'buyer');
     assert.match(html, /id="identity-correction"/);
     assert.match(html, /data-settings-theme="buyer"/);
     assert.match(html, /type="date"[^>]*readonly=""[^>]*value=""/);
@@ -65,7 +65,7 @@ test('seller account embeds the same reviewed workflow in merchant settings', as
 });
 test('buyer saves and order actions expose shared feedback exactly once', async () => {
     const html = await render(ui.Buyer, 'Buyer/Profile', {
-        user: account, initialTab: 'account', addresses: [], orders: [], ordersCount: 0,
+        user: account, initialTab: 'account', addresses: [], orders: { data: [], current_page: 1, last_page: 1, per_page: 12, total: 0 }, orderCounts: { all: 0 }, currentOrderStatus: 'all', ordersCount: 0,
         wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] },
         flash: { success: 'Your profile was saved.', error: 'This order changed. Try again.' },
     }, 'buyer');

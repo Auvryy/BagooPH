@@ -10,8 +10,10 @@ use App\Models\Product;
 use App\Models\SellerSettlementEvent;
 use App\Rules\PhilippineContact;
 use App\Services\AccountSettingsService;
+use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
+use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
 use App\Services\ShopEligibilityService;
 use Carbon\CarbonImmutable;
@@ -39,34 +41,11 @@ class SellerDashboardController extends Controller
             fn ($query) => $query->where('shop_id', $shop->id)
         );
 
-        // Order Pipeline metrics (Canonical 13-stage lifecycle support)
-        $pendingPackCount = $shopOrders()
-            ->whereIn('status', ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging'])
-            ->count();
-
-        $readyPickupCount = $shopOrders()
-            ->whereIn('status', ['ready_for_pickup'])
-            ->count();
-
-        $shippedCount = $shopOrders()
-            ->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'])
-            ->count();
-
-        $completedCount = $shopOrders()
-            ->whereIn('status', ['delivered', 'completed'])
-            ->count();
-
-        // Cancellation & Return claims count (cancelled/returned orders + actionable disputes)
-        $cancelledCount = $shopOrders()
-            ->whereIn('status', ['cancelled', 'canceled', 'returned', 'delivery_failed'])
-            ->count();
-        $returnCount = $cancelledCount;
-
-        $recentOrders = OrderItem::where('shop_id', $shop->id)
-            ->with(['order.buyer', 'order.delivery', 'product'])
-            ->latest()
-            ->take(6)
-            ->get();
+        $workspace = app(OrderWorkspaceService::class);
+        $counts = $workspace->counts($shopOrders(), 'seller');
+        $recentOrders = $workspace->stable($shopOrders())->with([
+            'items' => fn ($items) => $items->where('shop_id', $shop->id)->with('product')->orderBy('id'),
+        ])->take(6)->get();
 
         $topProducts = $this->salesMetrics
             ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
@@ -82,11 +61,15 @@ class SellerDashboardController extends Controller
                 ...$salesSummary,
                 'totalProducts' => $totalProducts,
                 'lowStockCount' => $lowStockCount,
-                'pendingPackCount' => $pendingPackCount,
-                'readyPickupCount' => $readyPickupCount,
-                'shippedCount' => $shippedCount,
-                'completedCount' => $completedCount,
-                'returnCount' => $returnCount,
+                'pendingPackCount' => $counts['to_pack'],
+                'readyPickupCount' => $counts['to_pickup'],
+                'shippedCount' => $counts['in_transit'],
+                'completedCount' => $counts['completed'],
+                'deliveredCount' => $counts['delivered'],
+                'deliveryIssueCount' => $counts['delivery_failed'],
+                'cancelledCount' => $counts['cancelled'],
+                'returnedCount' => $counts['returned'],
+                'returnCount' => $counts['return_custody'],
             ],
             'dailySales' => $this->salesMetrics->sevenDayCompletedSales($shop->id),
             'recentOrders' => $recentOrders,
@@ -282,7 +265,7 @@ class SellerDashboardController extends Controller
             $q->where('status', 'active');
         }]);
 
-        $products = Product::where('shop_id', $shop->id)
+        $products = Product::where('shop_id', $shop->id)->withReviewSummary()
             ->where('status', 'active')
             ->with('images')
             ->latest()
@@ -290,6 +273,7 @@ class SellerDashboardController extends Controller
 
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
+            'shopStats' => app(ReviewService::class)->shopSummary($shop),
             'products' => $products,
             'isOwner' => true,
             'isPreview' => true,

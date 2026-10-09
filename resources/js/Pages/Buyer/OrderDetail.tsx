@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import { Order, PageProps } from '@/types';
@@ -51,7 +51,10 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
         finally { setCodeBusy(false); }
     };
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
-    const [selectedProductId, setSelectedProductId] = useState<number | null>(order.items?.[0]?.product_id || null);
+    const reviewableItems = (order.items ?? []).filter(item => !item.review);
+    const [reviewSaved, setReviewSaved] = useState(false);
+    const previewRef = useRef<string[]>([]);
+    useEffect(() => () => previewRef.current.forEach(url => URL.revokeObjectURL(url)), []);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
 
     useEffect(() => {
@@ -66,14 +69,12 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
     }, [reviewModalOpen]);
 
     const { data, setData, post, processing, reset, recentlySuccessful, errors } = useForm<{
-        product_id: number | null;
-        order_id: number;
+        order_item_id: number | null;
         rating: number;
         comment: string;
         images: File[];
     }>({
-        product_id: selectedProductId,
-        order_id: order.id,
+        order_item_id: reviewableItems[0]?.id ?? null,
         rating: 5,
         comment: '',
         images: [],
@@ -87,13 +88,16 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
 
             // Generate image preview URLs
             const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-            setPreviewImages(prev => [...prev, ...newPreviews]);
+            previewRef.current = [...previewRef.current, ...newPreviews];
+            setPreviewImages(previewRef.current);
         }
     };
 
     const removeImage = (index: number) => {
         const updatedFiles = data.images.filter((_, i) => i !== index);
+        URL.revokeObjectURL(previewImages[index]);
         const updatedPreviews = previewImages.filter((_, i) => i !== index);
+        previewRef.current = updatedPreviews;
         setData('images', updatedFiles);
         setPreviewImages(updatedPreviews);
     };
@@ -105,8 +109,11 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
             preserveScroll: true,
             onSuccess: () => {
                 reset();
+                previewRef.current.forEach(url => URL.revokeObjectURL(url));
+                previewRef.current = [];
                 setPreviewImages([]);
-                setTimeout(() => setReviewModalOpen(false), 2000);
+                setReviewSaved(true);
+                setReviewModalOpen(false);
             }
         });
     };
@@ -226,10 +233,10 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                                 <span>Confirm Order Received</span>
                             </button>
                         )}
-                        {canUsePortal && order.status === 'completed' && (
+                        {canUsePortal && order.status === 'completed' && reviewableItems.length > 0 && (
                             <button
                                 type="button"
-                                onClick={() => setReviewModalOpen(true)}
+                                onClick={() => { setData('order_item_id', reviewableItems[0]?.id ?? null); setReviewModalOpen(true); }}
                                 className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <Star className="w-4 h-4 fill-white" />
@@ -396,6 +403,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                                         <p className="text-xs text-slate-500 font-sans">
                                             Quantity: {item.quantity} × {formatPrice(item.unit_price)}
                                         </p>
+                                        {item.review && canUsePortal && <p className="text-xs font-semibold text-emerald-700">Review saved</p>}
                                     </div>
                                 </div>
 
@@ -423,6 +431,8 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                     </div>
                 </div>
 
+                {reviewSaved && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">Your purchase review has been saved.</p>}
+
                 {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
                 {canUsePortal && reviewModalOpen && (
                     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
@@ -438,18 +448,19 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                             </div>
 
                             <form onSubmit={submitReview} className="space-y-4">
+                                {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{Object.values(errors).map((error, index) => <p key={index}>{error}</p>)}</div>}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Select Product to Review:
+                                        Select Purchased Item to Review:
                                     </label>
                                     <select
-                                        value={data.product_id || ''}
-                                        onChange={(e) => setData('product_id', Number(e.target.value))}
+                                        value={data.order_item_id || ''}
+                                        onChange={(e) => setData('order_item_id', Number(e.target.value))}
                                         className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
                                     >
-                                        {order.items?.map((item) => (
-                                            <option key={item.product_id} value={item.product_id}>
-                                                {item.product?.name}
+                                        {reviewableItems.map((item) => (
+                                            <option key={item.id} value={item.id}>
+                                                {item.product?.name} — Item #{item.id}{item.color ? ` · ${item.color}` : ''}{item.size ? ` · ${item.size}` : ''}
                                             </option>
                                         ))}
                                     </select>
@@ -483,6 +494,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                                         value={data.comment}
                                         onChange={(e) => setData('comment', e.target.value)}
                                         rows={3}
+                                        maxLength={1000}
                                         placeholder="Tell other buyers about product build, size fitting, and delivery condition..."
                                         className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
                                         required
@@ -516,7 +528,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                                                 <span className="text-[9px] font-sans font-bold uppercase">+ Add</span>
                                                 <input
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/jpeg,image/png,image/webp"
                                                     multiple
                                                     onChange={handleImageChange}
                                                     className="hidden"

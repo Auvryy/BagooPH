@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from '@inertiajs/react';
 import { Star, Truck, ShoppingBag, Check, MapPin } from 'lucide-react';
 import { Product } from '@/types';
+import { ratingLabel, recordedRating } from '@/Components/RatingStars';
 
 interface ProductCardProps {
     product: Product;
@@ -46,7 +47,7 @@ export default function ProductCard({
         }).format(numeric);
     };
 
-    const ratingVal = Number(product.rating || 5.0).toFixed(1);
+    const ratingVal = ratingLabel(product.rating);
     const salesCountVal = product.sales_count ?? 0;
     const storeLocation = product.shop?.city?.trim() || 'Location unavailable';
     const isOutOfStock = Number(product.stock) <= 0;
@@ -133,7 +134,7 @@ export default function ProductCard({
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                             <div className="flex items-center gap-0.5 text-amber-500 font-bold font-sans">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <Star className={`w-3 h-3 ${recordedRating(product.rating) === null ? 'text-slate-300' : 'fill-amber-400 text-amber-400'}`} />
                                 <span>{ratingVal}</span>
                             </div>
                             <span className="text-slate-400 font-sans">

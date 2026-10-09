@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import RatingStars, { ratingLabel, recordedRating } from '@/Components/RatingStars';
 import { PaginatedData, Product, Shop } from '@/types';
 import { getDomainUrl } from '@/utils/domain';
 import { 
@@ -38,11 +39,12 @@ interface Props {
         products_count?: number;
     };
     products: PaginatedData<Product>;
+    shopStats: { rating: number | null; review_count: number; response_rate: string | null; joined: string | null };
     isOwner?: boolean;
     isPreview?: boolean;
 }
 
-export default function ShopDetail({ shop, products, isOwner = false, isPreview = false }: Props) {
+export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false }: Props) {
     const isQueryPreview = typeof window !== 'undefined' && (
         new URLSearchParams(window.location.search).has('preview') ||
         window.location.pathname.includes('/preview')
@@ -207,7 +209,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                         <div className="absolute top-4 right-4 flex items-center gap-2 font-sans text-xs text-white">
                             <span className="px-2.5 py-1 rounded-xs bg-black/70 backdrop-blur-md border border-white/20 flex items-center gap-1 font-bold">
                                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>100% Authentic Products</span>
+                                <span>BagooPH Shop</span>
                             </span>
                         </div>
 
@@ -225,7 +227,7 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                         )}
                     </div>
 
-                    {/* Storefront Info & Telemetry Bar - PURE WHITE CANVAS FOR 100% GUARANTEED LEGIBILITY */}
+                    {/* Storefront information */}
                     <div className="p-6 sm:p-8 bg-white relative">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                             
@@ -250,19 +252,19 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                     )}
                                 </div>
 
-                                {/* Text Content - Guaranteed Readable on White Canvas */}
+                                {/* Shop identity and description */}
                                 <div className="space-y-1.5">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                                             {shop.name}
                                         </h1>
                                         <span className="px-2 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 border border-emerald-300 text-[10px] font-bold font-sans uppercase">
-                                            MALL PREFERRED
+                                            APPROVED SHOP
                                         </span>
                                     </div>
                                     <div className="flex items-start gap-2">
                                         <p className="text-xs text-slate-700 max-w-xl line-clamp-2">
-                                            {shop.description || 'Official flagship store for curated lifestyle essentials on BagooPH.'}
+                                            {shop.description || 'Explore this shop on BagooPH.'}
                                         </p>
                                         {canManageStore && (
                                             <button
@@ -326,12 +328,8 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                             <div className="p-3.5 rounded-xs bg-slate-50 border border-slate-300 space-y-1">
                                 <span className="text-slate-500 text-[10px] uppercase font-bold block">Rating & Feedback</span>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-base font-black text-[#E00D42]">{Number(shop.rating || 4.95).toFixed(2)}</span>
-                                    <div className="flex text-amber-400">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} className="w-3 h-3 fill-amber-400" />
-                                        ))}
-                                    </div>
+                                    <span className="text-base font-black text-[#E00D42]">{ratingLabel(shopStats.rating)}</span>
+                                    <RatingStars value={shopStats.rating} className="w-3 h-3" />
                                 </div>
                             </div>
 
@@ -341,13 +339,13 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                             </div>
 
                             <div className="p-3.5 rounded-xs bg-slate-50 border border-slate-300 space-y-1">
-                                <span className="text-slate-500 text-[10px] uppercase font-bold block">Chat Response</span>
-                                <p className="text-base font-black text-emerald-600">99% (Within 5 mins)</p>
+                                <span className="text-slate-500 text-[10px] uppercase font-bold block">Review reply rate</span>
+                                <p className="text-base font-black text-emerald-600">{shopStats.response_rate ?? 'No verified reviews'}</p>
                             </div>
 
                             <div className="p-3.5 rounded-xs bg-slate-50 border border-slate-300 space-y-1">
-                                <span className="text-slate-500 text-[10px] uppercase font-bold block">Dispatch Performance</span>
-                                <p className="text-base font-black text-indigo-600">98% Fast Dispatch</p>
+                                <span className="text-slate-500 text-[10px] uppercase font-bold block">Shop opened</span>
+                                <p className="text-base font-black text-indigo-600">{shopStats.joined ? new Date(shopStats.joined).toLocaleDateString('en-PH') : 'Date unavailable'}</p>
                             </div>
                         </div>
                     </div>
@@ -455,13 +453,6 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                             />
 
-                                            {/* Mall Badge */}
-                                            <div className="absolute top-2 left-2 flex flex-col gap-1">
-                                                <span className="px-1.5 py-0.5 rounded-xs bg-[#E00D42] text-white font-sans text-[9px] font-black tracking-wider shadow-2xs">
-                                                    MALL
-                                                </span>
-                                            </div>
-
                                             {discountPct && (
                                                 <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-xs bg-amber-400 text-slate-950 font-sans text-[9px] font-black shadow-2xs">
                                                     -{discountPct}%
@@ -497,10 +488,10 @@ export default function ShopDetail({ shop, products, isOwner = false, isPreview 
                                                 {/* Rating & Sold count */}
                                                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-sans pt-1">
                                                     <div className="flex items-center gap-0.5 text-amber-500 font-bold">
-                                                        <Star className="w-3 h-3 fill-amber-400" />
-                                                        <span>{Number(product.rating || 5.0).toFixed(1)}</span>
+                                                        <Star className={`w-3 h-3 ${recordedRating(product.rating) === null ? 'text-slate-300' : 'fill-amber-400'}`} />
+                                                        <span>{ratingLabel(product.rating)}</span>
                                                     </div>
-                                                    <span className="text-slate-400">{product.sales_count ?? 120} sold</span>
+                                                    <span className="text-slate-400">{product.sales_count ?? 0} sold</span>
                                                 </div>
                                             </div>
                                         </div>

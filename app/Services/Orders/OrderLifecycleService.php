@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Rules\ApplicationText;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\PickupClaimService;
@@ -15,11 +17,25 @@ use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class OrderLifecycleService
 {
     public function __construct(private readonly InventoryService $inventory) {}
+
+    public const SELLER_CANCELLATION_REASONS = [
+        'Out of stock / Inventory shortage',
+        'Damaged item during inspection',
+        'Pricing / Listing discrepancy',
+        'Buyer requested cancellation via chat',
+        'Unable to deliver to destination',
+        'Other reason',
+    ];
+
+    public const BATCH_LIMIT = 50;
 
     private const SELLER_TRANSITIONS = [
         'placed' => 'confirmed',
@@ -34,10 +50,7 @@ class OrderLifecycleService
     public function sellerTransition(Order $order, Shop $shop, User $seller, string $targetStatus): Order
     {
         return DB::transaction(function () use ($order, $shop, $seller, $targetStatus) {
-            $lockedOrder = Order::with(['items.product', 'delivery'])
-                ->whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $lockedOrder = $this->lockSellerOrder($order->id);
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
             $this->applySellerTransition($lockedOrder, $shop, $seller, $targetStatus);
@@ -49,10 +62,7 @@ class OrderLifecycleService
     public function sellerAcceptAndPack(Order $order, Shop $shop, User $seller): Order
     {
         return DB::transaction(function () use ($order, $shop, $seller) {
-            $lockedOrder = Order::with(['items.product', 'delivery'])
-                ->whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $lockedOrder = $this->lockSellerOrder($order->id);
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
             if (! in_array($lockedOrder->status, ['placed', 'pending'], true)) {
@@ -70,27 +80,7 @@ class OrderLifecycleService
 
     private function applySellerTransition(Order $order, Shop $shop, User $seller, string $targetStatus): void
     {
-        $expectedTarget = self::SELLER_TRANSITIONS[$order->status] ?? null;
-        if ($expectedTarget !== $targetStatus) {
-            throw new RuntimeException(
-                "Order is currently {$order->status}; the requested {$targetStatus} transition is not allowed."
-            );
-        }
-
-        if (! $order->delivery) {
-            throw new RuntimeException('This order has no waybill or logistics route and cannot advance.');
-        }
-
-        if ($targetStatus === 'ready_for_pickup' && ! $this->hasCompleteRoute($order)) {
-            throw new RuntimeException('The parcel route is incomplete and cannot be released for pickup.');
-        }
-        if (
-            $targetStatus === 'ready_for_pickup'
-            && ! $order->delivery->checkpoints()->where('checkpoint_type', 'seller_pack')->exists()
-        ) {
-            throw new RuntimeException('Pack the parcel and prepare its waybill before marking it ready for pickup.');
-        }
-
+        $this->assertSellerTransition($order, $targetStatus);
         $sourceState = DeliveryCheckpoint::state($order->delivery->setRelation('order', $order));
         $custodyBefore = DeliveryCheckpoint::lastCustody($order->delivery);
         $custodyAfter = ['kind' => 'seller', 'user_id' => $seller->id, 'shop_id' => $shop->id];
@@ -138,26 +128,110 @@ class OrderLifecycleService
         app(LifecycleNoticeService::class)->order($order, $targetStatus);
     }
 
-    public function cancelBySeller(Order $order, Shop $shop, User $seller, string $reason): Order
+    private function assertSellerTransition(Order $order, string $targetStatus): void
     {
-        return DB::transaction(function () use ($order, $shop, $seller, $reason) {
-            $lockedOrder = Order::with(['items.product', 'delivery'])
-                ->whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        $expectedTarget = self::SELLER_TRANSITIONS[$order->status] ?? null;
+        if ($expectedTarget !== $targetStatus) {
+            throw new RuntimeException(
+                "Order is currently {$order->status}; the requested {$targetStatus} transition is not allowed."
+            );
+        }
+
+        if (! $order->delivery) {
+            throw new RuntimeException('This order has no waybill or logistics route and cannot advance.');
+        }
+
+        if (! $this->isUnclaimed($order->delivery)) {
+            throw new RuntimeException('A rider has already claimed or received parcel custody.');
+        }
+
+        if ($targetStatus === 'ready_for_pickup' && ! $this->hasCompleteRoute($order)) {
+            throw new RuntimeException('The parcel route is incomplete and cannot be released for pickup.');
+        }
+        if (
+            $targetStatus === 'ready_for_pickup'
+            && ! $order->delivery->checkpoints()->where('checkpoint_type', 'seller_pack')->exists()
+        ) {
+            throw new RuntimeException('Pack the parcel and prepare its waybill before marking it ready for pickup.');
+        }
+
+    }
+
+    public function sellerBatchReady(array $input, Shop $shop, User $seller): int
+    {
+        $data = Validator::make($input, [
+            'order_ids' => ['required', 'array', 'list', 'min:1', 'max:'.self::BATCH_LIMIT],
+            'order_ids.*' => ['bail', new AsciiPositiveInteger, 'integer', 'distinct'],
+        ])->validate();
+
+        return DB::transaction(function () use ($data, $shop, $seller) {
+            $orders = Order::whereIn('id', $data['order_ids'])->orderBy('id')->lockForUpdate()->with('items.product')->get();
+            if ($orders->count() !== count($data['order_ids'])) {
+                throw ValidationException::withMessages(['order_ids' => 'One or more selected orders are unavailable.']);
+            }
+            $parcels = Delivery::whereIn('order_id', $orders->modelKeys())->orderBy('id')->lockForUpdate()->get()->keyBy('order_id');
+            foreach ($orders as $order) {
+                $order->setRelation('delivery', $parcels->get($order->id));
+                $this->assertSellerOwnsCompleteOrder($order, $shop, $seller);
+                $this->assertSellerTransition($order, 'ready_for_pickup');
+            }
+            foreach ($orders as $order) {
+                $this->applySellerTransition($order, $shop, $seller, 'ready_for_pickup');
+            }
+
+            return $orders->count();
+        });
+    }
+
+    public function sellerActionFlags(Order $order, bool $eligible, bool $fullyOwned): array
+    {
+        $work = $eligible && $fullyOwned;
+        $unclaimed = ! $order->delivery || $this->isUnclaimed($order->delivery);
+        $canAdvance = $work && $unclaimed && $order->delivery;
+
+        return [
+            'can_fulfill' => $work,
+            'can_accept_and_pack' => $canAdvance && in_array($order->status, ['placed', 'pending'], true),
+            'can_pack' => $canAdvance && $order->status === 'confirmed',
+            'can_mark_ready' => $canAdvance && in_array($order->status, ['preparing', 'processing', 'packaging'], true)
+                && $this->hasCompleteRoute($order) && $order->delivery->checkpoints->contains('checkpoint_type', 'seller_pack'),
+            'can_cancel' => $work && $unclaimed && in_array($order->status, [...OrderWorkspaceService::PREPARATION, 'ready_for_pickup'], true),
+            'can_print_waybill' => $fullyOwned && (bool) $order->delivery?->tracking_number,
+        ];
+    }
+
+    private function lockSellerOrder(int $id): Order
+    {
+        $order = Order::whereKey($id)->lockForUpdate()->firstOrFail();
+        $order->setRelation('delivery', Delivery::where('order_id', $id)->lockForUpdate()->first());
+
+        return $order->load('items.product');
+    }
+
+    private function isUnclaimed(Delivery $delivery): bool
+    {
+        return ! $delivery->courier_id && ! $delivery->assigned_rider_id && $delivery->status === 'unassigned';
+    }
+
+    public function cancelBySeller(Order $order, Shop $shop, User $seller, array $input): Order
+    {
+        return DB::transaction(function () use ($order, $shop, $seller, $input) {
+            $lockedOrder = $this->lockSellerOrder($order->id);
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
             if (! in_array($lockedOrder->status, ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging', 'ready_for_pickup'], true)) {
                 throw new RuntimeException('This order can no longer be cancelled by the seller.');
             }
 
-            if ($lockedOrder->delivery && (
-                $lockedOrder->delivery->courier_id
-                || $lockedOrder->delivery->assigned_rider_id
-                || ! in_array($lockedOrder->delivery->status, ['unassigned'], true)
-            )) {
+            if ($lockedOrder->delivery && ! $this->isUnclaimed($lockedOrder->delivery)) {
                 throw new RuntimeException('A rider has already claimed or received parcel custody.');
             }
+
+            $data = Validator::make($input, [
+                'reason' => ['required', 'string', Rule::in(self::SELLER_CANCELLATION_REASONS)],
+                'notes' => [Rule::requiredIf(($input['reason'] ?? null) === 'Other reason'), 'nullable', 'string', new ApplicationText('notes', 1, 1000)],
+            ])->validate();
+            $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
 
             foreach ($lockedOrder->items as $item) {
                 $product = Product::whereKey($item->product_id)->lockForUpdate()->first();

@@ -5,6 +5,7 @@ import WaybillCamera from '@/Components/WaybillCamera';
 import Barcode from '@/Components/Barcode';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { sellerOrderStages } from '@/utils/orderWorkspace';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
 import { 
     Package, 
@@ -36,58 +37,24 @@ import {
     ExternalLink
 } from 'lucide-react';
 
-interface Counts {
-    all: number;
-    to_pack: number;
-    to_pickup: number;
-    in_transit: number;
-    delivered: number;
-    cancelled: number;
-}
-
 interface Props {
-    orderItems: PaginatedData<OrderItem & {
-        order: Order & {
-            buyer?: User & {
-                orders_count?: number;
-                completed_orders_count?: number;
-            };
-            delivery?: {
-                id: number;
-                tracking_number: string;
-                status: string;
-                logistics_partner?: string;
-                pickup_store_name?: string;
-                pickup_address?: string;
-                delivery_recipient_name?: string;
-                delivery_address?: string;
-                delivery_phone?: string;
-                checkpoints?: Array<{
-                    id: number;
-                    checkpoint_type: string;
-                    location_name: string;
-                    notes?: string;
-                    created_at: string;
-                }>;
-            };
-            items?: OrderItem[];
-            cancellation_reason?: string;
-        };
-    }>;
+    orders: PaginatedData<Order>;
     shop: Shop;
     shopEligible: boolean;
     returnReceiptToken: string;
-    currentStatus?: string;
-    counts?: Counts;
+    currentStatus: string;
+    counts: Record<string, number>;
+    cancellationReasons: string[];
+    batchLimit: number;
 }
 
-export default function SellerOrders({ orderItems, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts }: Props) {
+export default function SellerOrders({ orders, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts, cancellationReasons, batchLimit }: Props) {
     const [selectedOrderForWaybill, setSelectedOrderForWaybill] = useState<any | null>(null);
     const [selectedOrderForQr, setSelectedOrderForQr] = useState<any | null>(null);
     const [orderToAcceptAndPack, setOrderToAcceptAndPack] = useState<any | null>(null);
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any | null>(null);
     const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
-    const [cancelReason, setCancelReason] = useState('Out of stock / Inventory shortage');
+    const [cancelReason, setCancelReason] = useState(cancellationReasons[0]);
     const [cancelNotes, setCancelNotes] = useState('');
     const [chatOrder, setChatOrder] = useState<any | null>(null);
     const [chatMessage, setChatMessage] = useState('');
@@ -96,6 +63,9 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
     const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
     const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [actionError, setActionError] = useState('');
+    const writePending = useRef(false);
+    const saved = (page: any) => !page.props.flash?.error;
 
     const [returnOrder, setReturnOrder] = useState<any | null>(null);
     const [returnBarcode, setReturnBarcode] = useState('');
@@ -116,69 +86,20 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
             onFinish: () => { returnPending.current = false; setIsSubmitting(false); } });
     };
 
-    // Infinite scroll & tab loading state
-    const [items, setItems] = useState<any[]>(orderItems.data || []);
-    const [nextPageUrl, setNextPageUrl] = useState<string | null>(orderItems.next_page_url ?? null);
+    const items = orders.data.map(order => ({
+        ...order.items?.[0], id: order.id, order_id: order.id, order,
+        quantity: (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0),
+        subtotal: (order.items ?? []).reduce((sum, item) => sum + Number(item.subtotal), 0),
+    }));
     const [isTabLoading, setIsTabLoading] = useState(false);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-    // Synchronize items when props change (replace on page 1, append on pagination)
-    useEffect(() => {
-        if (orderItems.current_page === 1) {
-            setItems(orderItems.data || []);
-        } else {
-            setItems(prev => {
-                const existingIds = new Set(prev.map((p: any) => p.id));
-                const newItems = (orderItems.data || []).filter((item: any) => !existingIds.has(item.id));
-                return [...prev, ...newItems];
-            });
-        }
-        setNextPageUrl(orderItems.next_page_url ?? null);
-    }, [orderItems]);
-
-    // IntersectionObserver for infinite scrolling
-    useEffect(() => {
-        if (!nextPageUrl || isLoadingMore || isTabLoading) return;
-
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && nextPageUrl && !isLoadingMore && !isTabLoading) {
-                setIsLoadingMore(true);
-                router.get(nextPageUrl, {}, {
-                    preserveState: true,
-                    preserveScroll: true,
-                    only: ['orderItems'],
-                    onFinish: () => setIsLoadingMore(false),
-                });
-            }
-        }, {
-            rootMargin: '200px',
-        });
-
-        const currentEl = sentinelRef.current;
-        if (currentEl) {
-            observer.observe(currentEl);
-        }
-
-        return () => {
-            if (currentEl) observer.unobserve(currentEl);
-            observer.disconnect();
-        };
-    }, [nextPageUrl, isLoadingMore, isTabLoading]);
+    useEffect(() => { setSelectedOrderIds([]); }, [currentStatus, orders.current_page]);
 
     // Animated sliding tab state
     const [activeTab, setActiveTab] = useState(currentStatus || 'all');
     const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
 
-    const tabConfig = [
-        { key: 'all', label: 'All Orders', count: counts?.all ?? orderItems.total ?? 0 },
-        { key: 'to_pack', label: 'To Pack', count: counts?.to_pack ?? 0 },
-        { key: 'to_pickup', label: 'Ready for Pickup', count: counts?.to_pickup ?? 0 },
-        { key: 'in_transit', label: 'In Transit', count: counts?.in_transit ?? 0 },
-        { key: 'delivered', label: 'Completed', count: counts?.delivered ?? 0 },
-        { key: 'cancelled', label: 'Cancelled', count: counts?.cancelled ?? 0 },
-    ];
+    const tabConfig = sellerOrderStages.map(stage => ({ key: stage.id, label: stage.label, count: counts[stage.id] ?? 0 }));
 
     useEffect(() => {
         setActiveTab(currentStatus || 'all');
@@ -220,9 +141,11 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
     };
 
     const handleTabClick = (statusKey: string) => {
+        if (isSubmitting || isTabLoading) return;
         if (statusKey === activeTab && !isTabLoading) return;
         setActiveTab(statusKey);
         setIsTabLoading(true);
+        setSelectedOrderIds([]); setActionError('');
         const url = new URL(window.location.href);
         if (statusKey === 'all') {
             url.searchParams.delete('status');
@@ -234,66 +157,44 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
         router.get(url.pathname + url.search, {}, {
             preserveState: true,
             preserveScroll: true,
-            only: ['orderItems', 'counts', 'currentStatus'],
+            only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'flash'],
+            onError: errors => { setActionError(Object.values(errors).join(' ')); setActiveTab(currentStatus); },
             onStart: () => setIsTabLoading(true),
             onFinish: () => setIsTabLoading(false),
         });
     };
 
-    const handlePackOrder = (orderId: number) => {
-        if (!shopEligible) return;
-        setIsSubmitting(true);
-        router.post(route('seller.orders.pack', orderId), {}, {
-            preserveScroll: true,
-            onFinish: () => setIsSubmitting(false),
+    const runOrderAction = (name: string, orderId: number) => {
+        if (!shopEligible || writePending.current) return;
+        writePending.current = true; setIsSubmitting(true); setActionError('');
+        router.post(route(name, orderId), {}, { preserveScroll: true,
+            onError: errors => setActionError(Object.values(errors).join(' ')),
+            onSuccess: page => { if (saved(page)) { setOrderToAcceptAndPack(null); setSelectedOrderIds(ids => ids.filter(id => id !== orderId)); } },
+            onFinish: () => { writePending.current = false; setIsSubmitting(false); },
         });
     };
-
-    const handleAcceptAndPack = (orderId: number) => {
-        if (!shopEligible) return;
-        setIsSubmitting(true);
-        router.post(route('seller.orders.acceptAndPack', orderId), {}, {
-            preserveScroll: true,
-            onFinish: () => setIsSubmitting(false),
-        });
-    };
-
-    const handleSchedulePickup = (orderId: number) => {
-        if (!shopEligible) return;
-        setIsSubmitting(true);
-        router.post(route('seller.orders.ready', orderId), {}, {
-            preserveScroll: true,
-            onFinish: () => setIsSubmitting(false),
-        });
-    };
+    const handlePackOrder = (orderId: number) => runOrderAction('seller.orders.pack', orderId);
+    const handleAcceptAndPack = (orderId: number) => runOrderAction('seller.orders.acceptAndPack', orderId);
+    const handleSchedulePickup = (orderId: number) => runOrderAction('seller.orders.ready', orderId);
 
     const handleBatchSchedulePickup = () => {
-        if (!shopEligible) return;
-        if (selectedOrderIds.length === 0) return;
-        setIsSubmitting(true);
-        router.post(route('seller.orders.batchReady'), { order_ids: selectedOrderIds }, {
-            preserveScroll: true,
-            onFinish: () => {
-                setIsSubmitting(false);
-                setSelectedOrderIds([]);
-            },
+        if (!shopEligible || !selectedOrderIds.length || writePending.current) return;
+        writePending.current = true; setIsSubmitting(true); setActionError('');
+        router.post(route('seller.orders.batchReady'), { order_ids: selectedOrderIds }, { preserveScroll: true,
+            onError: errors => setActionError(Object.values(errors).join(' ')),
+            onSuccess: page => { if (saved(page)) setSelectedOrderIds([]); },
+            onFinish: () => { writePending.current = false; setIsSubmitting(false); },
         });
     };
 
-    const handleConfirmCancel = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!orderToCancel) return;
-        setIsSubmitting(true);
-        router.post(route('seller.orders.cancel', orderToCancel.order_id), {
-            reason: cancelReason,
-            notes: cancelNotes,
-        }, {
-            preserveScroll: true,
-            onFinish: () => {
-                setIsSubmitting(false);
-                setOrderToCancel(null);
-                setCancelNotes('');
-            },
+    const handleConfirmCancel = (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!orderToCancel || !shopEligible || writePending.current) return;
+        writePending.current = true; setIsSubmitting(true); setActionError('');
+        router.post(route('seller.orders.cancel', orderToCancel.order_id), { reason: cancelReason, notes: cancelNotes }, { preserveScroll: true,
+            onError: errors => setActionError(Object.values(errors).join(' ')),
+            onSuccess: page => { if (saved(page)) { setOrderToCancel(null); setCancelNotes(''); } },
+            onFinish: () => { writePending.current = false; setIsSubmitting(false); },
         });
     };
 
@@ -329,6 +230,8 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
     };
 
     const toggleSelectOrder = (orderId: number) => {
+        if (isSubmitting) return;
+        if (!selectedOrderIds.includes(orderId) && selectedOrderIds.length >= batchLimit) { setActionError(`Select at most ${batchLimit} orders.`); return; }
         setSelectedOrderIds(prev => 
             prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
         );
@@ -373,6 +276,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
             case 'assigned_to_rider':
             case 'out_for_delivery':
             case 'shipped':
+            case 'in_transit':
                 return (
                     <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
                         <Truck className="w-3 h-3 text-slate-500" />
@@ -380,6 +284,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                     </span>
                 );
             case 'delivered':
+                return <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 text-[11px] font-semibold">Delivered · awaiting buyer confirmation</span>;
             case 'completed':
                 return (
                     <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
@@ -387,13 +292,17 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                         <span>Completed</span>
                     </span>
                 );
-            case 'cancelled':
             case 'returned':
+                return <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-semibold">Returned</span>;
+            case 'failed':
             case 'delivery_failed':
+                return <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-300 text-[11px] font-semibold">Delivery issue</span>;
+            case 'canceled':
+            case 'cancelled':
                 return (
                     <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
                         <Ban className="w-3 h-3 text-slate-400" />
-                        <span>Cancelled / Returned</span>
+                        <span>Cancelled</span>
                     </span>
                 );
             default:
@@ -434,7 +343,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                 )}
                 {completedOrders > 0 && (
                     <span className="text-[10px] text-slate-500 font-sans">
-                        • {completedOrders} Delivered
+                        • {completedOrders} Completed
                     </span>
                 )}
                 {buyer.kyc_status === 'approved' && (
@@ -452,7 +361,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
         const q = searchQuery.toLowerCase();
         return (
             item.order?.order_number?.toLowerCase().includes(q) ||
-            (item.product?.name && item.product.name.toLowerCase().includes(q)) ||
+            item.order.items?.some(line => line.product?.name?.toLowerCase().includes(q)) ||
             (item.order?.recipient_name && item.order.recipient_name.toLowerCase().includes(q)) ||
             (item.order?.delivery?.tracking_number && item.order.delivery.tracking_number.toLowerCase().includes(q))
         );
@@ -489,6 +398,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                 key={tab.key}
                                 ref={el => tabRefs.current[tab.key] = el}
                                 type="button"
+                                disabled={isSubmitting || isTabLoading}
                                 onClick={() => handleTabClick(tab.key)}
                                 className={`relative z-10 flex-1 py-2 px-3.5 rounded-xl font-bold transition-colors duration-200 text-center whitespace-nowrap flex items-center justify-center gap-2 text-xs cursor-pointer ${
                                     isActive 
@@ -514,7 +424,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-sans">
                             <Package className="w-4 h-4 text-slate-400" />
-                            <span>Showing <strong>{filteredItems.length}</strong> of {orderItems.total || filteredItems.length} items</span>
+                            <span>Showing <strong>{filteredItems.length}</strong> of {orders.total} orders</span>
                         </div>
 
                         {/* Bulk Action Button if items selected */}
@@ -536,12 +446,14 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search order #, buyer, tracking..."
+                            placeholder="Search this page: order, item, tracking…"
                             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition placeholder:text-slate-400"
                         />
                         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                     </div>
                 </div>
+
+                {actionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{actionError}</p>}
 
                 {/* 3. ORDERS LIST */}
                 {isTabLoading ? (
@@ -578,19 +490,20 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                         {filteredItems.map((item) => {
                             const orderStatus = item.order?.status || 'pending';
                             const isSelected = selectedOrderIds.includes(item.order_id);
-                            const needsAcceptance = ['placed', 'pending'].includes(orderStatus);
-                            const needsPacking = orderStatus === 'confirmed';
-                            const needsReadyForPickup = ['preparing', 'processing', 'packaging'].includes(orderStatus);
+                            const needsAcceptance = Boolean(item.order.can_accept_and_pack);
+                            const needsPacking = Boolean(item.order.can_pack);
+                            const needsReadyForPickup = Boolean(item.order.can_mark_ready);
                             const canBatchReady = needsReadyForPickup;
-                            const canCancel = ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging', 'ready_for_pickup'].includes(orderStatus);
+                            const canCancel = Boolean(item.order.can_cancel);
                             const needsSellerAction = needsAcceptance || needsPacking || needsReadyForPickup;
-                            const grossPrice = Number(item.subtotal || (Number(item.unit_price) * item.quantity));
+                            const grossPrice = item.subtotal;
                             const platformFee = grossPrice * 0.10;
                             const netSettlement = grossPrice - platformFee;
 
                             return (
                                 <div
                                     key={item.id}
+                                    data-order-id={item.order_id}
                                     className={`rounded-2xl border p-4 sm:p-5 space-y-3 font-sans ${
                                         needsSellerAction
                                             ? 'bg-rose-50/15 border-rose-200/80 border-l-[3px] border-l-[#E00D42] shadow-2xs'
@@ -603,6 +516,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {canBatchReady && (
                                                 <input
                                                     type="checkbox"
+                                                    disabled={isSubmitting || !shopEligible}
                                                     checked={isSelected}
                                                     onChange={() => toggleSelectOrder(item.order_id)}
                                                     className="w-4 h-4 text-[#E00D42] rounded border-slate-300 focus:ring-[#E00D42] cursor-pointer"
@@ -648,29 +562,17 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
 
                                     {/* Order Body Details */}
                                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3.5 min-w-0">
-                                            <img
-                                                src={item.product?.featured_image || ''}
-                                                alt=""
-                                                className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                                            />
-                                            <div className="space-y-0.5 min-w-0">
-                                                <h4 className="font-bold text-slate-900 text-sm truncate max-w-sm sm:max-w-md">
-                                                    {item.product?.name}
-                                                </h4>
-                                                {(item.color || item.size) && (
-                                                    <p className="text-[11px] text-slate-400 font-sans">
-                                                        Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
-                                                    </p>
-                                                )}
-                                                <div className="flex items-center gap-2 text-xs font-sans text-slate-500">
-                                                    <span>Qty {item.quantity}</span>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="font-bold text-slate-900">{formatPrice(grossPrice)}</span>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-emerald-600 font-medium">Net: {formatPrice(netSettlement)}</span>
+                                        <div className="min-w-0 flex-1 space-y-3">
+                                            {item.order.items?.map(line => <div key={line.id} className="flex items-center gap-3.5">
+                                                <img src={line.product?.featured_image || ''} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-slate-300 bg-slate-100 object-cover" />
+                                                <div className="min-w-0 space-y-1">
+                                                    <h4 className="text-sm font-bold text-slate-900">{line.product?.name || 'Purchased item'}</h4>
+                                                    {(line.color || line.size) && <p className="text-xs text-slate-500">Variant: {[line.color, line.size].filter(Boolean).join(' / ')}</p>}
+                                                    <p className="text-xs text-slate-600">Qty {line.quantity} · {formatPrice(line.subtotal)}</p>
                                                 </div>
-                                            </div>
+                                            </div>)}
+                                            <p className="text-xs text-slate-600">{item.quantity} units · Product subtotal: <strong className="text-slate-900">{formatPrice(grossPrice)}</strong>{!item.order.has_mixed_shops && <span className="ml-2 text-emerald-700">Estimated seller share: {formatPrice(netSettlement)}</span>}</p>
+                                            {item.order.has_mixed_shops && <p className="text-xs font-semibold text-amber-700">Mixed-shop legacy order. Your items remain visible in read-only history; fulfillment actions require review.</p>}
                                         </div>
 
                                         {/* Action Buttons (Clean, Streamlined, Minimal) */}
@@ -679,6 +581,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {/* Print Waybill Icon Button */}
                                             <button
                                                 type="button"
+                                                disabled={!item.order.can_print_waybill || isSubmitting}
                                                 onClick={() => setSelectedOrderForWaybill(item)}
                                                 className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer"
                                                 title="Print Thermal Waybill"
@@ -689,6 +592,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {/* Quick QR Code Scanner Button */}
                                             <button
                                                 type="button"
+                                                disabled={!item.order.can_print_waybill || isSubmitting}
                                                 onClick={() => setSelectedOrderForQr(item)}
                                                 className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer"
                                                 title="Show QR Code for Courier Scan & Tracking"
@@ -700,7 +604,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {canCancel && (
                                                 <button
                                                     type="button"
-                                                    disabled={!shopEligible}
+                                                    disabled={!shopEligible || isSubmitting}
                                                     onClick={() => setOrderToCancel(item)}
                                                     className="p-2 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition shadow-2xs cursor-pointer"
                                                     title="Decline / Cancel Order"
@@ -713,7 +617,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {needsAcceptance || needsPacking ? (
                                                 <button
                                                     type="button"
-                                                    disabled={!shopEligible}
+                                                    disabled={!shopEligible || isSubmitting}
                                                     onClick={() => setOrderToAcceptAndPack(item)}
                                                     className="px-4 py-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer font-sans uppercase text-xs"
                                                 >
@@ -741,7 +645,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                                 </span>
                                             )}
 
-                                            {['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'].includes(orderStatus) && (
+                                            {['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'in_transit'].includes(orderStatus) && (
                                                 <button
                                                     type="button"
                                                     onClick={() => copyToClipboard(item.order?.delivery?.tracking_number || item.order?.order_number)}
@@ -760,7 +664,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                             {['delivered', 'completed'].includes(orderStatus) && (
                                                 <span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1 font-sans text-xs">
                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                    <span>Delivered</span>
+                                                    <span>{orderStatus === 'completed' ? 'Completed' : 'Delivered'}</span>
                                                 </span>
                                             )}
                                         </div>
@@ -783,15 +687,11 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                     </form>
                 </div>}
 
-                {/* Infinite Scroll Sentinel & Loading Indicator */}
-                <div ref={sentinelRef} className="py-2">
-                    {isLoadingMore && (
-                        <div className="flex items-center justify-center gap-2 py-4 text-xs font-sans text-slate-500">
-                            <Loader2 className="w-4 h-4 animate-spin text-[#E00D42]" />
-                            <span>Loading more orders...</span>
-                        </div>
-                    )}
-                </div>
+                {orders.last_page > 1 && <nav aria-label="Seller order pages" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-xs">
+                    <Link href={orders.prev_page_url ?? '#'} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting}>Previous</Link>
+                    <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders</span>
+                    <Link href={orders.next_page_url ?? '#'} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting}>Next</Link>
+                </nav>}
 
             </div>
 
@@ -825,28 +725,13 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
 
                         {/* Order Item Snapshot */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs font-sans">
-                            <span className="text-[11px] text-slate-400 font-semibold block">Purchased Item</span>
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3.5 min-w-0">
-                                    <img
-                                        src={orderToAcceptAndPack.product?.featured_image || ''}
-                                        alt=""
-                                        className="w-14 h-14 rounded-xl object-cover bg-white border border-slate-200 shrink-0"
-                                    />
-                                    <div className="truncate">
-                                        <p className="font-bold text-slate-900 truncate text-xs">{orderToAcceptAndPack.product?.name}</p>
-                                        {(orderToAcceptAndPack.color || orderToAcceptAndPack.size) && (
-                                            <p className="text-slate-400 text-[11px]">
-                                                Variant: {[orderToAcceptAndPack.color, orderToAcceptAndPack.size].filter(Boolean).join(' / ')}
-                                            </p>
-                                        )}
-                                        <p className="text-slate-500 text-xs">Qty: {orderToAcceptAndPack.quantity} × {formatPrice(orderToAcceptAndPack.unit_price)}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <p className="font-bold text-slate-900 text-sm">{formatPrice(Number(orderToAcceptAndPack.unit_price) * orderToAcceptAndPack.quantity)}</p>
-                                </div>
-                            </div>
+                            <span className="text-[11px] text-slate-500 font-semibold block">Purchased items</span>
+                            {orderToAcceptAndPack.order.items?.map((line: OrderItem) => <div key={line.id} className="flex items-center justify-between gap-3 py-2">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <img src={line.product?.featured_image || ''} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-slate-300 bg-white object-cover" />
+                                    <div className="min-w-0"><p className="text-xs font-bold text-slate-900">{line.product?.name}</p><p className="text-xs text-slate-500">{[line.color, line.size].filter(Boolean).join(' / ')} · Qty {line.quantity} × {formatPrice(line.unit_price)}</p></div>
+                                </div><p className="text-sm font-bold">{formatPrice(line.subtotal)}</p>
+                            </div>)}
                         </div>
 
                         {/* Customer & Order Insights */}
@@ -932,7 +817,6 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                     } else {
                                         handleAcceptAndPack(orderToAcceptAndPack.order_id);
                                     }
-                                    setOrderToAcceptAndPack(null);
                                 }}
                                 disabled={isSubmitting || !shopEligible}
                                 className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-sans uppercase"
@@ -1159,18 +1043,15 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                                     onChange={(e) => setCancelReason(e.target.value)}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-rose-200"
                                 >
-                                    <option value="Out of stock / Inventory shortage">Out of stock / Inventory shortage</option>
-                                    <option value="Damaged item during inspection">Damaged item during inspection</option>
-                                    <option value="Pricing / Listing discrepancy">Pricing / Listing discrepancy</option>
-                                    <option value="Buyer requested cancellation via chat">Buyer requested cancellation via chat</option>
-                                    <option value="Unable to deliver to destination">Unable to deliver to destination</option>
-                                    <option value="Other reason">Other reason</option>
+                                    {cancellationReasons.map(reason => <option key={reason} value={reason}>{reason}</option>)}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-slate-700 font-semibold mb-1">Additional Notes (Optional)</label>
+                                <label className="block text-slate-700 font-semibold mb-1">Additional notes {cancelReason === 'Other reason' ? '(required)' : '(optional)'}</label>
                                 <textarea
+                                    required={cancelReason === 'Other reason'}
+                                    maxLength={1000}
                                     value={cancelNotes}
                                     onChange={(e) => setCancelNotes(e.target.value)}
                                     rows={3}
@@ -1180,6 +1061,7 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                             </div>
                         </div>
 
+                        {actionError && <p role="alert" className="text-xs text-rose-700">{actionError}</p>}
                         <div className="grid grid-cols-2 gap-2.5 pt-2">
                             <button
                                 type="button"
@@ -1285,10 +1167,10 @@ export default function SellerOrders({ orderItems, shop, shopEligible, returnRec
                             {/* Package Breakdown */}
                             <div className="space-y-1 text-[11px]">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">PACKAGE CONTENTS:</span>
-                                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                    <span className="font-bold truncate max-w-[260px] text-slate-900">{selectedOrderForWaybill.product?.name}</span>
-                                    <span className="font-bold text-slate-900 font-sans">Qty: {selectedOrderForWaybill.quantity}</span>
-                                </div>
+                                {selectedOrderForWaybill.order.items?.map((line: OrderItem) => <div key={line.id} className="flex justify-between gap-3 rounded-lg border border-slate-300 bg-slate-50 p-2">
+                                    <span className="font-semibold text-slate-900">{line.product?.name} {[line.color, line.size].filter(Boolean).join(' / ')}</span>
+                                    <span className="shrink-0 font-semibold text-slate-900">Qty: {line.quantity}</span>
+                                </div>)}
                             </div>
                         </div>
 
