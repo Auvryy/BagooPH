@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/financial-oversight` |
+| Git branch | `admin/settlement-and-financial-oversight` (selected B17+B18 batch) |
 | Phase | 5 |
 | Minimum prerequisites | [B16](16-cod-reconciliation.md), [B17](17-seller-settlement.md) |
 | Result | Displayed cash and proceeds totals can be traced to immutable source records. |
@@ -90,7 +90,7 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop when every displayed financial value is traceable and appropriately scoped. Whole-admin/project readiness still requires the roadmap's complete cross-role gates; do not automatically add optional reports.
 
 ```text
-Implement only B18 from docs/admin-plan/18-financial-oversight.md on admin/financial-oversight.
+Implement B18 from docs/admin-plan/18-financial-oversight.md on admin/settlement-and-financial-oversight after B17's focused gate passes.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
 Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.

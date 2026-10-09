@@ -6,11 +6,11 @@ These documents are execution plans. They do not declare features implemented, c
 
 ## Branch count and the checkpoint before starting
 
-Plan for **18 bounded admin tasks on 14 admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. B06/B07 share `admin/governance-restrictions`, B08/B09 share `admin/identity-and-closure-safety`, and B10-B12 share `admin/moderation-audit-and-overview`, giving **15 Git delivery branches including the foundation**. Each task retains its own acceptance checks. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
+Plan for **18 bounded admin tasks on 13 admin-focused branches**, following the existing `admin/governance-improvements` foundation branch. B06/B07 share `admin/governance-restrictions`, B08/B09 share `admin/identity-and-closure-safety`, B10-B12 share `admin/moderation-audit-and-overview`, and B17/B18 share `admin/settlement-and-financial-oversight`, giving **14 Git delivery branches including the foundation**. Each task retains its own acceptance checks. B01-B13 cover governance and the Phase 0 acceptance gate. B14-B18 cover later operations, notifications, COD, settlement, and financial oversight.
 
 This is an initial branch allocation, not a count of every remaining branch in the whole project. Role-owned manifest, rider scan, retry, return, and self-pickup work has its own roadmap prerequisites. A later admin branch cannot substitute for those workflows. If evidence requires splitting a branch, update this index and the roadmap explicitly before adding another task.
 
-The [B13 follow-up ownership plan](13-phase0-acceptance.md#follow-up-ownership-for-an-incomplete-decision) adds four supplemental repair deliveries: `fix/phase0-commerce-inputs-and-replay`, `test/phase0-cross-role-fixtures`, `fix/logistics-operational-inputs`, and `fix/phase0-profile-and-bag-inputs`. The numbered allocation stays at 18 tasks on 14 core admin branches; including these four follow-ups and the foundation gives 19 planned delivery branches. Role-owned later prerequisites are still additional work. Each follow-up requires separate selection and user review; B13's audit prompt does not start it or clear an incomplete gate.
+The [B13 follow-up ownership plan](13-phase0-acceptance.md#follow-up-ownership-for-an-incomplete-decision) adds four supplemental repair deliveries: `fix/phase0-commerce-inputs-and-replay`, `test/phase0-cross-role-fixtures`, `fix/logistics-operational-inputs`, and `fix/phase0-profile-and-bag-inputs`. The numbered allocation stays at 18 tasks on 13 core admin branches; including these four follow-ups and the foundation gives 18 planned delivery branches. Role-owned later prerequisites are still additional work. Each follow-up requires separate selection and user review; B13's audit prompt does not start it or clear an incomplete gate.
 
 First review and publish the foundation branch, including this plan. After that branch is merged, create B01 from updated `main`. Use [WORKFLOW.md](WORKFLOW.md) for the exact start, verification, review, and stopping process. The user publishes commits; agents never run `git push`.
 
@@ -55,8 +55,10 @@ The October 7 B15 selection includes its shared Phase 4 prerequisite on `feat/pe
 | B14 | `admin/exception-oversight` | [Restricted-work and delivery-exception oversight](14-exception-oversight.md) | B13; role-owned Phases 2 and 3 gates | 3 |
 | B15 | `admin/governance-notifications` | [Persistent in-app governance notices](15-governance-notifications.md) | B13, B14; Phase 4 notification foundation | 4 |
 | B16 | `admin/cod-reconciliation` | [Recorded COD custody and platform reconciliation](16-cod-reconciliation.md) | B13-B15; Phases 2-4 gates | 5 |
-| B17 | `admin/seller-settlement` | [Buyer-completed, reconciled seller proceeds](17-seller-settlement.md) | B16 | 5 |
-| B18 | `admin/financial-oversight` | [Read-only finance evidence and recorded totals](18-financial-oversight.md) | B16, B17 | 5 |
+| B17 | `admin/settlement-and-financial-oversight` | [Buyer-completed, reconciled seller proceeds](17-seller-settlement.md) | B16 | 5 |
+| B18 | `admin/settlement-and-financial-oversight` | [Read-only finance evidence and recorded totals](18-financial-oversight.md) | B16, B17 verified within the batch | 5 |
+
+The October 9 selection batches B17 and B18 on `admin/settlement-and-financial-oversight` from merged B16. Complete B17's settlement acceptance checks before implementing B18. Preserve separate task records and logical commits, then compare the full isolated suite with a fresh baseline and run the production build. Stop after both tasks for user review and publication; numbered task completion does not establish whole-project readiness.
 
 ## Why these functions belong in the admin account
 
