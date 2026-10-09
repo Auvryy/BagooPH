@@ -3,10 +3,11 @@ import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import { buyerOrderStages } from '@/utils/orderWorkspace';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
-import { User, Order, Address, PageProps } from '@/types';
+import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
     User as UserIcon, 
     ShieldCheck, 
@@ -58,7 +59,9 @@ interface Props {
     user: User;
     addresses: Address[];
     wallet: WalletData;
-    orders: Order[];
+    orders: PaginatedData<Order>;
+    orderCounts: Record<string, number>;
+    currentOrderStatus: string;
     ordersCount: number;
     initialTab?: TabType;
 }
@@ -76,7 +79,9 @@ export default function BuyerProfile({
     user, 
     addresses: initialAddresses, 
     wallet: initialWallet, 
-    orders = [], 
+    orders,
+    orderCounts,
+    currentOrderStatus = 'all',
     ordersCount = 0,
     initialTab = 'orders' 
 }: Props) {
@@ -110,7 +115,28 @@ export default function BuyerProfile({
         return initialTab || 'orders';
     });
 
-    const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('all');
+    const selectedOrderStatus = currentOrderStatus;
+    const [orderBusy, setOrderBusy] = useState(false);
+    const [orderActionError, setOrderActionError] = useState('');
+    const [receiptPending, setReceiptPending] = useState<number | null>(null);
+    const receiptGuard = useRef(false);
+    const loadOrderPage = (target: string, query: Record<string, string> = {}) => {
+        if (orderBusy || receiptGuard.current) return;
+        setOrderBusy(true); setOrderActionError('');
+        router.get(target, query, { preserveState: true, preserveScroll: true,
+            only: ['orders', 'ordersCount', 'orderCounts', 'currentOrderStatus', 'initialTab', 'flash'],
+            onError: errors => setOrderActionError(Object.values(errors).join(' ')),
+            onFinish: () => setOrderBusy(false),
+        });
+    };
+    const confirmReceipt = (id: number) => {
+        if (receiptGuard.current || !confirm('Confirm that you received this order?')) return;
+        receiptGuard.current = true; setReceiptPending(id); setOrderActionError('');
+        router.post(route('buyer.orders.confirm', id), {}, { preserveScroll: true,
+            onError: errors => setOrderActionError(Object.values(errors).join(' ')),
+            onFinish: () => { receiptGuard.current = false; setReceiptPending(null); },
+        });
+    };
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const wallet = initialWallet;
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -129,7 +155,7 @@ export default function BuyerProfile({
 
         setActiveTab(tabId);
 
-        const targetUrl = route('buyer.profile', { tab: tabId });
+        const targetUrl = route('buyer.profile', { tab: tabId, order_status: currentOrderStatus, page: orders.current_page });
         try {
             router.push({
                 url: targetUrl,
@@ -384,13 +410,7 @@ export default function BuyerProfile({
         }).format(num);
     };
 
-    const filteredOrders = orders.filter(order => {
-        if (selectedOrderStatus === 'all') return true;
-        if (selectedOrderStatus === 'to_ship') return ['pending', 'placed', 'confirmed', 'preparing', 'processing', 'ready_for_pickup'].includes(order.status);
-        if (selectedOrderStatus === 'to_receive') return ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'in_transit'].includes(order.status);
-        if (selectedOrderStatus === 'completed') return ['delivered', 'completed'].includes(order.status);
-        return true;
-    });
+    const filteredOrders = orders.data;
 
     const getStatusPill = (status: string) => {
         switch (status) {
@@ -400,16 +420,26 @@ export default function BuyerProfile({
                 return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
             case 'out_for_delivery':
             case 'shipped':
+            case 'in_transit':
                 return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-indigo-500" /> In Transit</span>;
             case 'assigned_to_rider':
             case 'sorted':
             case 'at_sorting_center':
             case 'picked_up':
                 return <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-purple-500" /> In Logistics</span>;
+            case 'failed':
+            case 'delivery_failed':
+                return <span className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700">Delivery issue</span>;
+            case 'returned':
+                return <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">Returned</span>;
+            case 'canceled':
+            case 'cancelled':
+                return <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">Cancelled</span>;
             case 'ready_for_pickup':
                 return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Ready for Pickup</span>;
             case 'preparing':
             case 'processing':
+            case 'packaging':
                 return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Packaging</span>;
             case 'pending':
             case 'placed':
@@ -420,7 +450,7 @@ export default function BuyerProfile({
     };
 
     const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
-        { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: orders.length },
+        { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: ordersCount },
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
         { id: 'wallet', label: 'Bagoo Wallet', icon: Wallet, badge: wallet.available ? undefined : 'Unavailable' },
@@ -583,29 +613,28 @@ export default function BuyerProfile({
                                 
                                 {/* Status Filter Strip */}
                                 <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-sans text-xs">
-                                    {[
-                                        { id: 'all', label: `All (${orders.length})` },
-                                        { id: 'to_ship', label: 'To Ship' },
-                                        { id: 'to_receive', label: 'In Transit' },
-                                        { id: 'completed', label: 'Delivered' },
-                                    ].map((tab) => {
+                                    {buyerOrderStages.map((tab) => {
                                         const isActive = selectedOrderStatus === tab.id;
                                         return (
                                             <button
                                                 key={tab.id}
                                                 type="button"
-                                                onClick={() => setSelectedOrderStatus(tab.id)}
+                                                disabled={orderBusy || receiptPending !== null}
+                                                onClick={() => loadOrderPage(route('buyer.profile'), { tab: 'orders', order_status: tab.id })}
                                                 className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap text-xs ${
                                                     isActive
                                                         ? 'bg-[#E00D42] text-white shadow-xs'
                                                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                                                 }`}
                                             >
-                                                {tab.label}
+                                                {tab.label} ({orderCounts[tab.id] ?? 0})
                                             </button>
                                         );
                                     })}
                                 </div>
+
+                                {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
+                                {orderBusy && <p role="status" className="text-xs text-slate-500">Loading orders…</p>}
 
                                 {/* Orders List Cards */}
                                 {filteredOrders.length === 0 ? (
@@ -695,18 +724,15 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    {order.status === 'delivered' && (
+                                                    {order.can_confirm_receipt && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
-                                                                if (confirm("Confirm that you have received your order in good condition?")) {
-                                                                    router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true });
-                                                                }
-                                                            }}
+                                                            disabled={receiptPending !== null || orderBusy}
+                                                            onClick={() => confirmReceipt(order.id)}
                                                             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl font-bold uppercase transition flex items-center gap-1.5 shadow-2xs text-xs cursor-pointer"
                                                         >
                                                             <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            <span>Confirm Received</span>
+                                                            <span>{receiptPending === order.id ? 'Confirming…' : 'Confirm Received'}</span>
                                                         </button>
                                                     )}
 
@@ -723,7 +749,7 @@ export default function BuyerProfile({
                                                             href={route('buyer.disputes.index')}
                                                             className="px-3 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition"
                                                         >
-                                                            Report Defect
+                                                            Disputes unavailable
                                                         </Link>
                                                     )}
                                                 </div>
@@ -731,6 +757,12 @@ export default function BuyerProfile({
                                         </div>
                                     ))
                                 )}
+
+                                {orders.last_page > 1 && <nav aria-label="Purchase pages" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-xs">
+                                    <button type="button" disabled={!orders.prev_page_url || orderBusy || receiptPending !== null} onClick={() => orders.prev_page_url && loadOrderPage(orders.prev_page_url)} className="rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-700 disabled:opacity-40">Previous</button>
+                                    <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders in this stage</span>
+                                    <button type="button" disabled={!orders.next_page_url || orderBusy || receiptPending !== null} onClick={() => orders.next_page_url && loadOrderPage(orders.next_page_url)} className="rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-700 disabled:opacity-40">Next</button>
+                                </nav>}
 
                             </div>
                         )}

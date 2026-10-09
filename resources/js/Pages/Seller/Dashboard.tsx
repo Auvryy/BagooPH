@@ -1,7 +1,7 @@
 import React, { useState, useId, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { OrderItem, Product, Shop } from '@/types';
+import { Order, Product, Shop } from '@/types';
 import { 
     Package, 
     ShoppingCart, 
@@ -36,13 +36,17 @@ interface Props {
         shippedCount: number;
         completedCount: number;
         returnCount: number;
+        deliveredCount: number;
+        deliveryIssueCount: number;
+        cancelledCount: number;
+        returnedCount: number;
     };
     dailySales: Array<{
         date: string;
         revenue: number;
         units: number;
     }>;
-    recentOrders: OrderItem[];
+    recentOrders: Order[];
     topProducts: Product[];
 }
 
@@ -504,9 +508,9 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 </span>
                             </Link>
 
-                            {/* 2. RETURNS & CANCELLATIONS */}
+                            {/* 2. RETURN CUSTODY */}
                             <Link
-                                href={route('seller.disputes.index')}
+                                href={route('seller.orders.index', { status: 'return_custody' })}
                                 className={`p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     (stats.returnCount || 0) > 0
                                         ? 'bg-rose-50/70 border border-rose-300 shadow-2xs hover:bg-rose-100/60'
@@ -522,11 +526,11 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <RotateCcw className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight" title="Returns & Cancellations">
-                                            Returns & Cancels
+                                        <span className="text-xs font-bold text-slate-900 uppercase font-sans tracking-tight group-hover:text-rose-900 block leading-tight" title="Return parcels">
+                                            Return parcels
                                         </span>
                                         <p className="text-[10px] text-slate-500 font-sans truncate mt-0.5">
-                                            {(stats.returnCount || 0) > 0 ? 'Review claims' : 'No active claims'}
+                                            {(stats.returnCount || 0) > 0 ? 'Review reverse parcel custody' : 'No recorded return parcels'}
                                         </p>
                                     </div>
                                 </div>
@@ -539,13 +543,18 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 </span>
                             </Link>
 
+                            <div className="space-y-2 text-xs">
+                                {[{ status: 'delivery_failed', label: 'Delivery issues', count: stats.deliveryIssueCount }, { status: 'returned', label: 'Returned orders', count: stats.returnedCount }, { status: 'cancelled', label: 'Cancelled orders', count: stats.cancelledCount }].map(stage => <Link key={stage.status} href={route('seller.orders.index', { status: stage.status })} className="flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:border-[#E00D42]"><span>{stage.label}</span><strong>{stage.count ?? 0}</strong></Link>)}
+                                <p className="text-[10px] text-slate-500">Post-delivery disputes remain unavailable.</p>
+                            </div>
+
                             {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}
                             <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80 font-sans shrink-0">
                                 <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/60 text-[9px] uppercase font-bold text-slate-400 tracking-wider">
                                     <span>Logistics Pipeline</span>
                                     <span className="text-slate-500">Live Status</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-1 divide-x divide-slate-200/80 text-center">
+                                <div className="grid grid-cols-4 gap-1 divide-x divide-slate-200/80 text-center">
                                     <Link
                                         href={route('seller.orders.index', { status: 'to_pickup' })}
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
@@ -587,11 +596,16 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                             Delivered
                                         </span>
                                         <span className="text-sm font-black text-slate-900 font-sans block mt-0.5 group-hover:text-[#E00D42]">
-                                            {stats.completedCount}
+                                            {stats.deliveredCount ?? 0}
                                         </span>
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             received
                                         </span>
+                                    </Link>
+                                    <Link href={route('seller.orders.index', { status: 'completed' })} className="block rounded-lg px-1 text-center hover:bg-slate-100/80" title="Buyer-confirmed completed orders">
+                                        <span className="block text-[9px] font-bold uppercase text-slate-500">Completed</span>
+                                        <span className="mt-0.5 block text-sm font-black text-slate-900">{stats.completedCount ?? 0}</span>
+                                        <span className="block text-[8px] text-slate-400">confirmed</span>
                                     </Link>
                                 </div>
                             </div>
@@ -623,23 +637,23 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     <div key={item.id} className="pt-3 first:pt-0 flex items-center justify-between gap-4 font-sans text-xs">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <img
-                                                src={item.product?.featured_image || ''}
+                                                src={item.items?.[0]?.product?.featured_image || ''}
                                                 alt=""
                                                 className="w-12 h-12 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                                             />
                                             <div className="truncate space-y-0.5">
-                                                <p className="font-bold text-slate-900 truncate font-sans text-xs">{item.product?.name}</p>
+                                                <p className="font-bold text-slate-900 truncate font-sans text-xs">{item.items?.[0]?.product?.name || 'Purchased items'}{(item.items?.length ?? 0) > 1 ? ` + ${(item.items?.length ?? 0) - 1} more` : ''}</p>
                                                 <p className="text-slate-400 text-[11px]">
-                                                    Order #{item.order?.order_number} • Qty: {item.quantity}
+                                                    Order #{item.order_number} · Units: {(item.items ?? []).reduce((sum, line) => sum + line.quantity, 0)}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-3 shrink-0">
                                             <div className="text-right space-y-0.5">
-                                                <span className="font-black text-slate-900 font-sans text-sm block">{formatPrice(item.subtotal)}</span>
+                                                <span className="font-black text-slate-900 font-sans text-sm block">{formatPrice((item.items ?? []).reduce((sum, line) => sum + Number(line.subtotal), 0))}</span>
                                                 <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] uppercase font-bold">
-                                                    {item.order?.status || 'Unknown'}
+                                                    {item.status || 'Unknown'}
                                                 </span>
                                             </div>
                                             <Link

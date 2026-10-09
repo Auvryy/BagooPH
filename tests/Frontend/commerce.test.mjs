@@ -15,7 +15,11 @@ const bundle = buildSync({
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
         export { default as Store } from '@/Pages/Marketplace/ShopDetail';
         export { default as Reviews } from '@/Pages/Seller/Reviews';
-        export { default as Detail } from '@/Pages/Buyer/OrderDetail';`,
+        export { default as Detail } from '@/Pages/Buyer/OrderDetail';
+        export { default as Purchases } from '@/Pages/Buyer/Profile';
+        export { default as RestrictedOrders } from '@/Pages/Buyer/Orders';
+        export { default as SellerOrders } from '@/Pages/Seller/Orders';
+        export { default as Dashboard } from '@/Pages/Seller/Dashboard';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -23,7 +27,11 @@ const bundle = buildSync({
 const path = join(temporary, 'commerce.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
 const ui = await import(pathToFileURL(path).href);
-globalThis.route = (name, parameter) => name ? `/${name.replaceAll('.', '/')}${parameter ? `/${typeof parameter === 'object' ? parameter.id : parameter}` : ''}` : { current: () => false, has: () => true };
+globalThis.route = (name, parameter) => {
+    if (!name) return { current: () => false, has: () => true };
+    const suffix = parameter && typeof parameter === 'object' && !parameter.id ? `?${new URLSearchParams(parameter)}` : parameter ? `/${typeof parameter === 'object' ? parameter.id : parameter}` : '';
+    return `/${name.replaceAll('.', '/')}${suffix}`;
+};
 after(() => delete globalThis.route);
 const shop = { id: 5, name: 'Bagoo Crafts', slug: 'bagoo-crafts', user_id: 7, review_status: 'approved', city: 'Naval', rating: null, created_at: '2026-10-01' };
 const product = { id: 3, name: 'Everyday Bag', slug: 'everyday-bag', price: '250.00', stock: 10, rating: null, verified_review_count: 0, sales_count: 0, shop, variants: {}, images: [] };
@@ -84,4 +92,65 @@ test('completed order details hide review creation once all items have saved rev
     });
     assert.match(html, /Review saved/);
     assert.doesNotMatch(html, /Rate &amp; Upload Photos/);
+});
+
+const buyer = { id: 7, name: 'Ana Santos', role: 'buyer', email: 'buyer@bagoo.test', status: 'active', kyc_status: 'approved' };
+const lines = [
+    { id: 10, product_id: 3, product, quantity: 2, unit_price: 250, subtotal: 500, color: 'Blue', size: 'M' },
+    { id: 11, product_id: 4, product: { ...product, id: 4, name: 'Travel Pouch' }, quantity: 1, unit_price: 100, subtotal: 100, color: 'Red', size: 'L' },
+];
+const order = { id: 40, buyer_id: buyer.id, buyer, order_number: 'BGO-GROUPED', status: 'preparing', payment_method: 'cod', payment_status: 'pending', subtotal: 600, shipping_fee: 50, total_amount: 650, created_at: '2026-10-01', items: lines, delivery: { id: 20, status: 'unassigned', tracking_number: 'BGO-WAYBILL' }, can_mark_ready: true, can_cancel: true, can_print_waybill: true, can_fulfill: true, has_mixed_shops: false };
+const counts = { all: 42, to_pack: 12, to_pickup: 2, to_ship: 14, in_transit: 8, delivered: 4, completed: 6, delivery_failed: 5, returned: 3, cancelled: 2, return_custody: 1 };
+const sellerProps = { shop, shopEligible: true, returnReceiptToken: 'receipt-token', currentStatus: 'to_pack', counts, cancellationReasons: ['Out of stock / Inventory shortage', 'Other reason'], batchLimit: 50 };
+
+test('seller fulfilment renders one card and selection for every original order, including all item variants', async () => {
+    const html = await render(ui.SellerOrders, 'Seller/Orders', { ...sellerProps, orders: { ...paginated([order]), total: 12, last_page: 2, next_page_url: '/seller/orders?status=to_pack&page=2' } }, 'seller');
+    assert.equal((html.match(/data-order-id="40"/g) || []).length, 1);
+    assert.equal((html.match(/type="checkbox"/g) || []).length, 1);
+    assert.match(html, /Everyday Bag/); assert.match(html, /Travel Pouch/);
+    assert.match(html, /Blue/); assert.match(html, /Red/); assert.match(html, /Product subtotal/);
+    assert.match(html, /Page 1 of 2/);
+    assert.match(html, /status=to_pack&amp;page=2/);
+    assert.match(html, /<span>Ready for Pickup<\/span>/);
+    for (const label of ['Delivered', 'Completed', 'Delivery issue', 'Returned', 'Cancelled', 'Return parcels']) assert.ok(html.includes(label));
+});
+
+test('mixed-shop seller history displays owned products without fulfilment, cancellation, or printing controls', async () => {
+    const html = await render(ui.SellerOrders, 'Seller/Orders', { ...sellerProps, orders: paginated([{ ...order, has_mixed_shops: true, can_mark_ready: false, can_cancel: false, can_print_waybill: false, can_fulfill: false }]) }, 'seller');
+    assert.match(html, /read-only/i); assert.match(html, /Travel Pouch/);
+    assert.doesNotMatch(html, /type="checkbox"|<span>Ready for Pickup<\/span>|Decline \/ Cancel Order/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*title="Print Thermal Waybill"/);
+});
+
+test('buyer purchases retain full-history counts and paginate with receipt actions only for eligible records', async () => {
+    const html = await render(ui.Purchases, 'Buyer/Profile', {
+        user: buyer, addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] },
+        orders: { ...paginated([{ ...order, status: 'delivered', can_confirm_receipt: true }, { ...order, id: 41, order_number: 'BGO-UNREADY', status: 'delivered', can_confirm_receipt: false }]), total: 4, last_page: 2, next_page_url: '/buyer/profile?tab=orders&order_status=delivered&page=2' },
+        ordersCount: 42, orderCounts: counts, currentOrderStatus: 'delivered', initialTab: 'orders',
+    });
+    assert.match(html, /My Purchases &amp; Order Tracking/);
+    assert.match(html, /Purchase pages/); assert.match(html, /Page 1 of 2/);
+    assert.match(html, />42</); assert.equal((html.match(/Confirm Received/g) || []).length, 1);
+    assert.match(html, /Disputes unavailable/); assert.doesNotMatch(html, /Report Defect/);
+    for (const label of ['Delivered', 'Completed', 'Delivery issue', 'Returned', 'Cancelled']) assert.ok(html.includes(label));
+});
+
+test('restricted buyer order history retains narrow access and filtered pagination', async () => {
+    const html = await render(ui.RestrictedOrders, 'Buyer/Orders', { orders: { ...paginated([{ ...order, status: 'delivery_failed' }]), total: 5, last_page: 2, next_page_url: '/buyer/orders?order_status=delivery_failed&page=2' }, canUsePortal: false, orderCounts: counts, currentOrderStatus: 'delivery_failed' });
+    assert.match(html, /Delivery issue \(5\)/); assert.match(html, /Completed \(6\)/);
+    assert.match(html, /order_status=delivery_failed&amp;page=2/);
+    assert.doesNotMatch(html, /Confirm Received|Delivery Address Book|My Account &amp; Security/);
+});
+
+test('seller dashboard groups recent orders and links actual return and exception stages', async () => {
+    const html = await render(ui.Dashboard, 'Seller/Dashboard', {
+        shop, dailySales: [], recentOrders: [order], topProducts: [],
+        stats: { totalProducts: 2, lowStockCount: 0, completedGrossSales: 600, completedUnits: 3, completedOrderCount: 1, averageCompletedOrderValue: 600, estimatedSellerShare: 540, openOrderValue: 600, openUnits: 3, openOrderCount: 1, pendingPackCount: 12, readyPickupCount: 2, shippedCount: 8, completedCount: 6, deliveredCount: 4, deliveryIssueCount: 5, returnedCount: 3, cancelledCount: 2, returnCount: 1 },
+    }, 'seller');
+    assert.equal((html.match(/Order #BGO-GROUPED/g) || []).length, 1);
+    assert.match(html, /Everyday Bag \+ 1 more/); assert.match(html, /Units: 3/);
+    assert.match(html, /status=return_custody/); assert.match(html, /status=delivery_failed/);
+    assert.match(html, /status=delivered/); assert.match(html, /status=completed/);
+    assert.match(html, /Post-delivery disputes remain unavailable\./);
+    assert.doesNotMatch(html, /Return Claims/);
 });
