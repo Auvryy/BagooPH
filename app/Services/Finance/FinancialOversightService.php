@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\User;
 use Brick\Math\BigInteger;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -164,7 +165,8 @@ class FinancialOversightService
                 : ($state['pending'] ? 'awaiting_receipt' : ($amounts['remitted'] === (string) $account->expected_cents ? 'at_platform' : 'cash_held')));
         $payload = ['reference' => $account->reference, 'journal_reference' => $last->reference, 'status' => $status,
             'company_id' => $account->logistics_company_id, 'hub_id' => $account->hub_id,
-            'recorded_at' => $account->created_at->toIso8601String(), 'expected_cents' => (string) $account->expected_cents,
+            'recorded_at' => $account->created_at->toIso8601String(), 'collected_at' => $this->collectionDate($account)->toIso8601String(),
+            'expected_cents' => (string) $account->expected_cents,
             'amounts' => $amounts + ['shipping_charges' => (string) $account->shipping_cents]];
         if ($details) {
             $payload['history'] = $events->map(fn ($event) => $event->only(['reference', 'sequence', 'event_type', 'amount_cents',
@@ -174,6 +176,28 @@ class FinancialOversightService
         }
 
         return $payload;
+    }
+
+    private function collectionDate(CodAccount $account): CarbonImmutable
+    {
+        if ($account->source_kind !== 'counter_collection') {
+            return CarbonImmutable::instance($account->created_at);
+        }
+        $event = $account->events->firstWhere('event_type', 'counter_collection');
+        $original = $event?->private_evidence['original_collected_at'] ?? null;
+        if (! is_string($original) || ! preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}\z/', $original)) {
+            throw new UnexpectedValueException('The original collection date is unavailable.');
+        }
+        try {
+            $date = CarbonImmutable::createFromFormat('Y-m-d\\TH:i:sP', $original)->utc();
+        } catch (InvalidFormatException) {
+            throw new UnexpectedValueException('The original collection date is unavailable.');
+        }
+        if ($date->gt($account->created_at)) {
+            throw new UnexpectedValueException('The original collection date requires review.');
+        }
+
+        return $date;
     }
 
     public function row(Order $order, User $actor, bool $details = false): array
@@ -211,7 +235,7 @@ class FinancialOversightService
         }
 
         return ['order_id' => $order->id, 'currency' => 'PHP', 'order_number' => $record?->snapshot['order_number'] ?? $order->order_number,
-            'recorded_at' => $account?->created_at->toIso8601String() ?? $order->created_at->toIso8601String(),
+            'recorded_at' => $account ? $this->collectionDate($account)->toIso8601String() : $order->created_at->toIso8601String(),
             'date_basis' => $account ? 'Original cash collection' : 'Order placed; cash not recorded',
             'cash_status' => $cashStatus,
             'cash' => $cash, 'proceeds' => $proceeds, 'metrics' => $metrics,
@@ -234,7 +258,7 @@ class FinancialOversightService
         $to = ! empty($filters['to']) ? CarbonImmutable::parse($filters['to'], 'Asia/Manila')->addDay()->startOfDay()->utc() : null;
         $rows = collect();
         foreach ($query->lazyById(100) as $order) {
-            $date = $order->codAccount?->created_at ?? $order->created_at;
+            $date = $order->codAccount ? $this->collectionDate($order->codAccount) : $order->created_at;
             if (($from && $date->lt($from)) || ($to && $date->gte($to))) {
                 continue;
             }

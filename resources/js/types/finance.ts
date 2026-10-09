@@ -34,7 +34,7 @@ export interface OversightCashEvent {
 export interface OversightRecord {
     order_id: number; order_number: string; currency: 'PHP'; recorded_at: string; date_basis: string; cash_status: string;
     cash: { reference: string; journal_reference: string; status: string; company_id: number; hub_id: number;
-        recorded_at: string; expected_cents: string; amounts: Record<string, string>; history?: OversightCashEvent[] } | null;
+        recorded_at: string; collected_at: string; expected_cents: string; amounts: Record<string, string>; history?: OversightCashEvent[] } | null;
     proceeds: (Omit<SettlementRecord, 'status'> & { status: SettlementRecord['status'] | 'void' | 'unverified' }) | null;
     metrics: Record<string, string | null>; unavailable: boolean; url: string;
 }
