@@ -256,11 +256,12 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
-        $this->assertTrue(Storage::disk('public')->exists(substr($delivery->fresh()->proof_image, strlen('/storage/'))));
+        $this->assertTrue(Storage::disk('local')->exists($delivery->fresh()->proof_image));
     }
 
     public function test_t1_f16_02_state_transition_to_delivered(): void
@@ -268,9 +269,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
         $this->assertSame('delivered', $delivery->fresh()->status);
         $this->assertSame('delivered', $order->fresh()->status);
@@ -282,9 +284,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
         $this->assertCheckpointLogged($delivery, 'delivered');
         $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'delivered', 'scanned_by_id' => $delivery->assigned_rider_id]);
@@ -295,9 +298,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);
@@ -311,9 +315,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'out_for_delivery');
         Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('handover.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);

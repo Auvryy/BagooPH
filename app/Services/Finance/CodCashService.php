@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Courier\CourierProofService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -22,7 +23,6 @@ use App\Services\Notifications\CodNoticeService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -128,7 +128,6 @@ class CodCashService
         $state = $account->state;
         $state['collected_cents'] = $account->expected_cents;
         $state['balances']['rider:'.$actor->id] = $account->expected_cents;
-        $proof = substr($checkpoint->proof_image, strlen('/storage/'));
 
         return $this->append($account, $actor, 'rider_collection', $input, $state, [
             'to_user_id' => $actor->id, 'to_stage' => 'rider', 'amount_cents' => $account->expected_cents,
@@ -136,7 +135,7 @@ class CodCashService
             'evidence_reference' => $checkpoint->record_reference,
             'private_evidence' => ['recipient_name' => $input['recipient_name'], 'recipient_relationship' => $input['recipient_relationship'],
                 'tender_cents' => $input['cash_received'], 'change_cents' => $input['change_given'],
-                'proof_hash' => hash('sha256', Storage::disk('public')->get($proof))],
+                'proof_hash' => app(CourierProofService::class)->hash($checkpoint->proof_image)],
         ]);
     }
 

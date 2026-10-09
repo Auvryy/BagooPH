@@ -18,9 +18,7 @@ class RiderApiResponse
         if (! self::applies($request)) {
             return $response;
         }
-        $candidate = $request->header('X-Request-ID', '');
-        $id = $request->attributes->get('rider_request_id') ?? (Str::isUuid($candidate) ? strtolower($candidate) : (string) Str::uuid());
-        $request->attributes->set('rider_request_id', $id);
+        $id = self::requestId($request);
         $status = $response->getStatusCode();
         if ($status >= 400) {
             $body = json_decode((string) $response->getContent(), true) ?? [];
@@ -28,7 +26,8 @@ class RiderApiResponse
                 401 => 'SESSION_EXPIRED', 403 => 'ACCESS_DENIED', 404 => 'NOT_FOUND', 409 => 'OPERATION_CONFLICT',
                 422 => 'VALIDATION_FAILED', 429 => 'RATE_LIMITED', 503 => 'SERVICE_UNAVAILABLE', default => 'REQUEST_FAILED',
             };
-            $message = $status >= 500 ? 'Rider operations are temporarily unavailable.' : ($body['message'] ?? 'This request cannot be completed.');
+            $message = $status >= 500 ? 'Rider operations are temporarily unavailable.'
+                : (is_string($body['message'] ?? null) && trim($body['message']) !== '' ? $body['message'] : 'This request cannot be completed.');
             $payload = ['code' => $code, 'message' => $message, 'errors' => $status === 422 ? ($body['errors'] ?? []) : [], 'request_id' => $id];
             if ($status === 429) {
                 $payload['cooldown'] = max(1, min(300, (int) $response->headers->get('Retry-After', 60)));
@@ -48,5 +47,14 @@ class RiderApiResponse
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         return $response;
+    }
+
+    public static function requestId(Request $request): string
+    {
+        $candidate = $request->header('X-Request-ID', '');
+        $id = $request->attributes->get('rider_request_id') ?? (Str::isUuid($candidate) ? strtolower($candidate) : (string) Str::uuid());
+        $request->attributes->set('rider_request_id', $id);
+
+        return $id;
     }
 }

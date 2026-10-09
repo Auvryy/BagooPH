@@ -9,11 +9,13 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
 use App\Services\Courier\RiderApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -48,6 +50,23 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (Throwable $exception) {
+            if (RiderApiResponse::applies(request())) {
+                try {
+                    Log::error('Native Rider operation failed.', [
+                        'request_id' => RiderApiResponse::requestId(request()), 'exception_type' => $exception::class,
+                    ]);
+                } catch (Throwable) {
+                }
+
+                return false;
+            }
+        });
+        $exceptions->render(function (QueryException $exception, Request $request) {
+            if (RiderApiResponse::applies($request)) {
+                return response()->json(['code' => 'SERVICE_UNAVAILABLE', 'message' => 'Rider operations are temporarily unavailable.'], 503);
+            }
+        });
         $exceptions->render(function (DomainException $exception, Request $request) {
             if (RiderApiResponse::applies($request)) {
                 return response()->json(['code' => 'OPERATION_CONFLICT', 'message' => $exception->getMessage()], 409);

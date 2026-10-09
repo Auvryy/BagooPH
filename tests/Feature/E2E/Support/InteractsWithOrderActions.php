@@ -367,15 +367,19 @@ trait InteractsWithOrderActions
         $this->assertSame('delivered', $stage, 'Unknown flow stage must never fabricate evidence.');
         if (! $this->flowStorageFaked) {
             Storage::fake('public');
+            if (! $this->flowAttemptStorageFaked && ! $this->flowSettlementStorageFaked) {
+                Storage::fake('local');
+            }
+            $this->flowAttemptStorageFaked = true;
             $this->flowStorageFaked = true;
         }
         $this->actingAs($final)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
         ])->assertSessionHas('success');
         $delivery->refresh();
         $this->assertSame('delivered', $delivery->status);
-        $this->assertTrue(Storage::disk('public')->exists(substr($delivery->proof_image, strlen('/storage/'))));
+        $this->assertTrue(Storage::disk('local')->exists($delivery->proof_image));
         $this->assertSame('delivered', $order->fresh()->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
 

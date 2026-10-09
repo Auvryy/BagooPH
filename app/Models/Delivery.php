@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Delivery extends Model
 {
+    protected $hidden = ['proof_image'];
+
     use HasFactory;
 
     /**

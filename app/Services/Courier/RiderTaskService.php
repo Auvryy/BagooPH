@@ -4,13 +4,16 @@ namespace App\Services\Courier;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Finance\CodMoney;
+use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 class RiderTaskService
 {
@@ -34,9 +37,12 @@ class RiderTaskService
                 'remaining_pickups' => max(0, Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER - $pickups)],
             'counts' => collect(['available', 'pickup', 'final_mile'])->mapWithKeys(fn ($phase) => [$phase => $this->operations->queue($actor, $phase)->count()])->all(),
             'capabilities' => ['home' => true, 'duty' => true, 'pickup_claim' => true,
-                'parcel_actions' => Route::has('rider.api.pickup'), 'trips' => Route::has('rider.api.trips'),
-                'messages' => Route::has('rider.api.conversations'), 'notifications' => Route::has('rider.api.notifications'),
-                'cash' => Route::has('rider.api.cash'), 'pre_custody_release' => false, 'native_restricted_recovery' => false, 'rider_earnings' => false],
+                'parcel_actions' => Route::has('rider.api.pickup') && Schema::hasTable('delivery_attempts') && Schema::hasTable('cod_events'),
+                'trips' => Route::has('rider.api.trips') && Schema::hasTable('delivery_attempts') && Schema::hasTable('cod_events'),
+                'messages' => Route::has('rider.api.conversations') && Schema::hasTable('messages'),
+                'notifications' => Route::has('rider.api.notifications') && Schema::hasTable('notifications'),
+                'cash' => Route::has('rider.api.cash') && Schema::hasTable('cod_events'),
+                'pre_custody_release' => false, 'native_restricted_recovery' => false, 'rider_earnings' => false],
             'limits' => ['per_page_max' => 50, 'poll_interval_seconds' => 30, 'request_budget_per_minute' => 30,
                 'proof_bytes_max' => 5242880, 'message_characters_max' => 1000, 'idempotency_days' => 7]];
     }
@@ -127,6 +133,13 @@ class RiderTaskService
                 'depart' => Route::has('rider.api.depart') && ! $pickup && $operational && $parcel->status === 'assigned_to_rider',
                 'deliver' => Route::has('rider.api.deliver') && ! $pickup && $operational && $parcel->status === 'out_for_delivery' && $parcel->order->payment_method === 'cod',
                 'fail' => Route::has('rider.api.fail') && ! $pickup && $operational && $parcel->status === 'out_for_delivery', 'release' => false],
+            'action_denials' => ['release' => 'SHARED_RELEASE_POLICY_UNAVAILABLE',
+                'deliver' => ! $pickup && $parcel->order->payment_method !== 'cod' ? 'UNSUPPORTED_PAYMENT_OUTCOME' : null],
+            'failure_policy' => ! $preview && ! $pickup ? ['attempt_limit' => 3,
+                'recorded_attempts' => DeliveryAttempt::where('delivery_id', $parcel->id)->count(),
+                'reasons' => collect(DeliveryRecoveryService::REASONS)->map(fn ($label, $code) => ['code' => $code, 'label' => $label])->values()->all(),
+                'requires_notes' => true, 'requires_location' => true, 'requires_private_image' => true,
+                'retry_authority' => 'destination_hub', 'return_hub_id' => (string) $parcel->destination_bayan_hub_id] : null,
             'next_instruction' => match ($stop) {
                 'seller' => $preview ? 'Claim before collecting this parcel.' : 'Scan the parcel waybill at the seller.',
                 'origin_hub' => 'Bring the parcel to the origin hub. Its handler confirms intake.',

@@ -72,7 +72,7 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()];
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
         $this->assertCount(0, Storage::disk('public')->allFiles());

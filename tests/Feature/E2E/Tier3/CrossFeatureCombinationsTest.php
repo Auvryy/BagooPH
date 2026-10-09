@@ -425,7 +425,7 @@ class CrossFeatureCombinationsTest extends TestCase
         Storage::fake('public');
         $this->actingAs(User::findOrFail($delivery->courier_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('premature.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('premature.jpg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
         $this->assertCount(0, Storage::disk('public')->allFiles('delivery-proofs'));

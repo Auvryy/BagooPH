@@ -11,6 +11,8 @@ use LogicException;
 
 class DeliveryCheckpoint extends Model
 {
+    protected $hidden = ['proof_image'];
+
     use HasFactory;
 
     protected $fillable = [

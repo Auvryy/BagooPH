@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderOperationsController;
+use App\Http\Controllers\Api\RiderParcelController;
 use App\Http\Controllers\Api\RiderSettingsController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Middleware\EnsureRiderAccountToken;
@@ -35,6 +36,10 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
         Route::middleware([EnsureRiderAccountToken::class.':operations:work', 'throttle:10,1'])->group(function () {
             Route::patch('duty', [RiderOperationsController::class, 'duty']);
             Route::post('pickup-jobs/{job}/claim', [RiderOperationsController::class, 'claim']);
+            Route::post('tasks/{task}/pickup', [RiderParcelController::class, 'pickup'])->name('rider.api.pickup');
+            Route::post('tasks/{task}/depart', [RiderParcelController::class, 'depart'])->name('rider.api.depart');
+            Route::post('tasks/{task}/deliver', [RiderParcelController::class, 'deliver'])->name('rider.api.deliver');
+            Route::post('tasks/{task}/fail', [RiderParcelController::class, 'fail'])->name('rider.api.fail');
         });
     });
     Route::prefix('rider/settings')->group(function () {

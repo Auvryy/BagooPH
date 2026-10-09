@@ -11,6 +11,8 @@ use App\Rules\ApplicationText;
 use App\Services\AccountSettingsService;
 use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
+use App\Services\Courier\CourierOutcomeService;
+use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
 use App\Services\IdentityCorrectionService;
@@ -23,7 +25,6 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -124,7 +125,7 @@ class CourierDeliveryController extends Controller
             'location_name' => ['required', ...$inputs->notesRules(255)],
             'request_token' => ['required', 'uuid'], 'proof_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-        $path = $request->file('proof_image_file')->storeAs('delivery-attempt-proofs', (string) Str::uuid().'.'.$request->file('proof_image_file')->extension(), 'local');
+        $path = app(CourierProofService::class)->store($request->file('proof_image_file'), true);
         abort_unless(is_string($path), 503, 'The attempt proof could not be saved. Please retry.');
         try {
             app(DeliveryRecoveryService::class)->fail($delivery, $request->user(), [
@@ -185,6 +186,7 @@ class CourierDeliveryController extends Controller
         $targetStatus = $validated['status'];
         $courierNote = trim((string) ($validated['courier_notes'] ?? ''));
         $proofPath = null;
+        $proofs = app(CourierProofService::class);
 
         $isIdempotentRetry = $delivery->status === $targetStatus
             && DeliveryCheckpoint::query()
@@ -193,92 +195,34 @@ class CourierDeliveryController extends Controller
                 ->exists();
 
         if (! $isIdempotentRetry && $request->hasFile('proof_image_file')) {
-            $storedPath = $request->file('proof_image_file')->store('delivery-proofs', 'public');
-            $proofPath = '/storage/'.$storedPath;
+            $proofPath = $proofs->store($request->file('proof_image_file'));
         }
 
         try {
-            $updatedDelivery = DB::transaction(function () use (
-                $delivery,
-                $targetStatus,
-                $rider,
-                $courierNote,
-                $proofPath,
-                $validated,
-            ) {
-                $updatedDelivery = app(OrderStateMachineService::class)->transition(
-                    delivery: $delivery,
-                    targetStatus: $targetStatus,
-                    actor: $rider,
-                    scanMetadata: [
-                        'rider_id' => $rider->id,
-                        'barcode' => $validated['barcode'] ?? null,
-                        'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
-                            ? ($delivery->pickup_store_name ?? 'Merchant store')
-                            : ($delivery->delivery_address ?? 'Buyer destination'),
-                        'notes' => $courierNote !== '' ? $courierNote : null,
-                        'proof_image' => $proofPath,
-                        'proof_hash' => isset($validated['proof_image_file']) ? hash_file('sha256', $validated['proof_image_file']->getRealPath()) : null,
-                        'recipient_name' => $validated['recipient_name'] ?? null,
-                        'recipient_relationship' => $validated['recipient_relationship'] ?? null,
-                        'cash_received' => $validated['cash_received'] ?? null,
-                        'change_given' => $validated['change_given'] ?? null,
-                        'cash_confirmed' => $validated['cash_confirmed'] ?? null,
-                        'request_token' => $validated['request_token'] ?? null,
-                    ]
-                );
-
-                if (! $updatedDelivery->wasChanged('status')) {
-                    if ($proofPath) {
-                        Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
-                    }
-
-                    return $updatedDelivery;
-                }
-
-                $updatedDelivery->update([
-                    'courier_notes' => $courierNote !== '' ? $courierNote : $updatedDelivery->courier_notes,
-                ]);
-
-                if (
-                    $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
-                    && $courierNote !== ''
-                ) {
-                    $this->messaging->recordPickupNote($rider, $updatedDelivery, $courierNote);
-                }
-
-                if ($targetStatus === OrderStateMachineService::STATUS_PICKED_UP) {
-                    $source = $updatedDelivery->checkpoints()->where('checkpoint_type', OrderStateMachineService::STATUS_PICKED_UP)->whereNull('source_checkpoint_id')->firstOrFail();
-                    DeliveryCheckpoint::firstOrCreate(
-                        ['delivery_id' => $updatedDelivery->id, 'checkpoint_type' => 'courier_pickup'],
-                        [
-                            'location_name' => $updatedDelivery->pickup_store_name ?? 'Merchant store',
-                            'barcode_scanned' => $source->barcode_scanned,
-                            'scan_provenance' => 'source_alias',
-                            'source_checkpoint_id' => $source->id,
-                            'source_state' => $source->source_state,
-                            'target_state' => $source->target_state,
-                            'custody_before' => $source->custody_before,
-                            'custody_after' => $source->custody_after,
-                            'notes' => $courierNote !== ''
-                                ? $courierNote
-                                : 'Pickup rider matched the waybill and collected the seller parcel.',
-                            'scanned_by_id' => $rider->id,
-                        ]
-                    );
-                }
-
-                return $updatedDelivery;
-            });
+            $updatedDelivery = app(CourierOutcomeService::class)->record(
+                $rider, $delivery, $targetStatus, [
+                    'rider_id' => $rider->id, 'barcode' => $validated['barcode'] ?? null,
+                    'location_name' => $targetStatus === OrderStateMachineService::STATUS_PICKED_UP
+                        ? ($delivery->pickup_store_name ?? 'Merchant store') : ($delivery->order->shipping_address ?? 'Buyer destination'),
+                    'notes' => $courierNote !== '' ? $courierNote : null,
+                    'proof_image' => $proofPath,
+                    'proof_hash' => isset($validated['proof_image_file']) ? hash_file('sha256', $validated['proof_image_file']->getRealPath()) : null,
+                    'recipient_name' => $validated['recipient_name'] ?? null,
+                    'recipient_relationship' => $validated['recipient_relationship'] ?? null,
+                    'cash_received' => $validated['cash_received'] ?? null, 'change_given' => $validated['change_given'] ?? null,
+                    'cash_confirmed' => $validated['cash_confirmed'] ?? null, 'request_token' => $validated['request_token'] ?? null,
+                ]
+            );
+            $proofs->discardUnused($proofPath);
         } catch (DomainException $exception) {
             if ($proofPath) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
+                $proofs->discardUnused($proofPath);
             }
 
             return back()->with('error', $exception->getMessage());
         } catch (Throwable $exception) {
             if ($proofPath) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $proofPath));
+                $proofs->discardUnused($proofPath);
             }
 
             throw $exception;

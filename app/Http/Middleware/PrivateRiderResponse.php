@@ -11,6 +11,9 @@ class PrivateRiderResponse
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (RiderApiResponse::applies($request)) {
+            RiderApiResponse::requestId($request);
+        }
         $response = $next($request);
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('Pragma', 'no-cache');
