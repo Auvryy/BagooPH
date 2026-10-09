@@ -34,6 +34,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 ## Planning and Current Gaps
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
+- [buyer-seller-plan/README.md](buyer-seller-plan/README.md) separates review integrity, order workspaces, seller inventory/drafts, buyer saved products and Buy again into five bounded batches. It preserves each portal's own style; selected batches keep separate acceptance gates and do not start later features automatically.
 - Implementation-status lists must not be copied into role or operational specifications because they become stale.
 - [admin-plan/README.md](admin-plan/README.md) divides admin work into 18 bounded tasks on 13 planned branches, with B06+B07, B08+B09, B10-B12, and the selected B17+B18 batch each sharing a delivery branch. Dependencies, scope, exclusions, acceptance cases, and stopping points remain separate for each task. These are execution plans under the normative contracts, not current implementation-status lists or authorization to run every branch automatically.
 - [B13 follow-up ownership](admin-plan/13-phase0-acceptance.md#follow-up-ownership-for-an-incomplete-decision) adds four bounded repair deliveries outside that numbered allocation: commerce inputs, real cross-role fixtures, logistics sorting inputs, and profile/Shopping Bag inputs. An audit can finish with an incomplete gate; follow-up selection and later role-owned prerequisites remain separate.
