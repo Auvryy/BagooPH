@@ -41,8 +41,9 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $this->assertSame(18, $product->fresh()->stock);
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
+        $this->settleFlowOrder($order);
         $this->assertCheckpointLogged($delivery, 'buyer_completed');
-        $this->assertCommissionSplit($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t4_08_cod_financial_lifecycle_and_remittance(): void
@@ -53,8 +54,10 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->assertSame('pending', $order->fresh()->payment_status);
-        // Recorded cash remittance/reconciliation, separate charges and seller transfer remain required.
-        $this->assertCommissionSplit($order, 2000);
+        $this->settleFlowOrder($order);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        // Cash and seller payment were recorded independently from buyer confirmation.
+        $this->assertCommissionSplit($order, 2000, (float) $order->shipping_fee);
         $this->assertSame('paid', $order->fresh()->payment_status);
     }
 
@@ -75,12 +78,13 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $order = $this->newFlowOrder('ready_for_pickup');
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
+        $this->settleFlowOrder($order);
         $admin = $this->createApprovedUser('admin');
         $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk();
         $this->actingAs($admin)->get(route('buyer.orders.show', $order))->assertOk();
         $this->assertCheckpointLogged($delivery, 'buyer_completed');
         // Dispute processing remains deferred; finance oversight still requires real settlement sources.
-        $this->assertCommissionSplit($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t4_11_courier_breakdown_hub_reassignment(): void

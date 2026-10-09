@@ -4,7 +4,7 @@ This document is the single source for current implementation gaps and delivery 
 
 ## Project Delivery Target: October 4, 2026
 
-At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation is 18 bounded admin tasks on 14 planned branches, or 15 Git deliveries including the existing foundation; B06+B07, B08+B09, and B10-B12 each share one branch.
+At the user's direction, planning begins **October 4, 2026**, with expected project completion around **November 20, 2026**. November 20 is the latest planned task deadline. The main target is in [README.md](README.md#project-delivery-target), and [the admin plan](admin-plan/README.md#delivery-window) divides the window into governance, prerequisite, later-admin, and final-review checkpoints. The allocation is 18 bounded admin tasks on 13 planned branches, or 14 Git deliveries including the existing foundation; B06+B07, B08+B09, B10-B12, and the selected B17+B18 batch each share one branch.
 
 Every planned task uses **October 4, 2026** as its common start date and extends to its individual deadline. These overlapping planning windows do not authorize simultaneous implementation or bypass dependencies. The checkpoint windows describe intended execution and review order; estimates, acceptance gates, and completion evidence remain unchanged.
 
@@ -53,6 +53,10 @@ Scoped profile/Shopping Bag repair: October 7, 2026. Existing profile writers sh
 
 Scoped B14 source and oversight review: October 7, 2026. Verified manifests, attempts/retries/returns, secure holding/counter collection and narrow restricted handover now feed an accountable exception queue. The final full run has 17 unchanged later-gate failures and zero errors; all 39 added cases pass and the actual breakdown case is resolved. Overall phase and cross-role ratings remain unchanged. See the final dated review below.
 
+Scoped seller settlement and financial oversight review: October 9, 2026, B17+B18. Buyer confirmation and reconciled cash precede an evidenced seller payment; original cash and proceeds feed scoped read-only totals. The final full run passes 2,800 tests, resolving all 16 baseline financial failures with 36 added cases and no errors or skips. This updates the local financial gate; deployed runtime, PostgreSQL concurrency and overall role/project ratings retain their separate verification limits.
+
+Scoped native Rider backend review: October 9, 2026. All five core API batches have 25 implemented methods, a validated contract, a green 2,834-case regression and four actual disposable PostgreSQL claim/outcome races. Publication, legacy-proof release review, Azure rollout and Flutter/device acceptance remain separate. See the native review below; existing overall role ratings are unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -74,10 +78,12 @@ Scoped B14 source and oversight review: October 7, 2026. Verified manifests, att
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
 | Hub self-pickup | Implemented; scoped verified | Actual destination receipt and configured counter hours precede a hashed one-time buyer claim, identity/waybill verification and source-backed exact COD collection. Seven-calendar-day holding, day-three/day-six notices, lock/retry behavior and actual expiry-return initiation are verified below. Codes remain private; only the owning buyer completes a genuine collection. |
-| Persistent notifications | Implemented; scoped verified | A durable event/recipient outbox delivers real order, custody, failure, pickup, return and governance notices into one owned paginated center. Read acknowledgement and current linked authorization are checked independently. B16 adds recorded cash collection, handover, review and reconciliation notices; settlement notices still require B17 sources. The combined notification comparison is recorded in the October 7 B15 review below. |
+| Persistent notifications | Implemented; scoped verified | A durable event/recipient outbox delivers real order, custody, failure, pickup, return and governance notices into one owned paginated center. Read acknowledgement and current linked authorization are checked independently. B16 adds cash collection, handover, review and reconciliation notices; B17 adds release, payment and linked receipt-correction notices with retained recipient/source keys. The October 7 B15 and October 9 finance reviews record the relevant acceptance evidence. |
+| Native Rider operational API | Implemented; locally verified | Shared Home/claims, parcel commands, retained Trips/private proof, phase-linked messages, durable notices and journal-backed cash offers have 25 native methods. The October 9 native review records regression, contract and disposable PostgreSQL races; earnings/restricted recovery, rollout and mobile acceptance remain separately bounded. |
 | COD reconciliation | Implemented; scoped verified | B16 records exact rider/counter collection, confirmed rider-to-hub and hub-to-platform handovers, preserved differences and linked reviews, and independent Platform Admin reconciliation. Original sources remain immutable; buyer completion and seller settlement stay separate. Legacy evidence and PostgreSQL execution limits are recorded in the October 8 B16 review. |
+| Seller settlement and financial oversight | Implemented; locally verified | B17 requires actual buyer completion, reconciled cash, the original eligible recipient and private payment evidence. B18 reads distinct cash/proceeds stages, exact cents and original source dates with current admin/company/seller scope. The October 9 review records the green full suite, legacy-unavailable behavior, manual-payment boundary and remaining deployment/PostgreSQL limits. |
 | Buyer-only completion | Implemented | Only the owning buyer advances genuine doorstep delivery or source-backed counter collection to COMPLETED. A legacy collected label lacks authority. Completion remains separate from pending COD reconciliation and settlement. |
-| Admin governance and audit | Partial | KYC, shops, fixed-role/resource eligibility, reasoned restrictions, reviewed corrections/closure, product moderation and scoped retained history are implemented. B14 now links actual restriction, attempt, manifest and counter sources to retained follow-up responsibility and evidence-based resolution. Platform cross-company and Company Admin own-company scope are verified; physical scans and buyer completion remain actor-owned. Broader Phase 0, notice and finance gates remain open. |
+| Admin governance and audit | Partial | KYC, shops, fixed-role/resource eligibility, reasoned restrictions, reviewed corrections/closure, product moderation and scoped retained history are implemented. B14 links actual restriction, attempt, manifest and counter sources to retained follow-up responsibility and evidence-based resolution. Platform cross-company and Company Admin own-company scope are verified; physical scans and buyer completion remain actor-owned. B15-B18's local notice and financial gates have evidence below. Broader Phase 0, portal cleanup and deployed acceptance retain their separate boundaries. |
 | Cross-role presentation | Partial | Courier work is separated into company/hub-scoped pickup and final-mile queues with persistent duty state, delivery-linked messages, real profile data, real proof, and truthful trip history. Other portals still need canonical-status and unfinished-feature cleanup. |
 | Normal cross-role delivery | Implemented | A focused test covers checkout, seller fulfillment, two separately scoped riders, origin/Mother/destination hub custody, proof of delivery, and buyer completion. |
 
@@ -1392,14 +1398,14 @@ Acceptance: the focused real-source, ownership, rollback, outage/retry, privacy,
 
 ### Phase 5: COD and Admin Reconciliation
 
-**State: Partial; B16 scoped gate verified.** Exact collection, confirmed cash handovers, linked differences, immutable sources, restricted known-holder recovery and independent Platform Admin reconciliation are recorded in the October 8 B16 review. Seller settlement and consolidated finance remain B17/B18; the full financial gate is still red.
+**State: B16-B18 local financial gate verified.** Exact collection, confirmed handovers, immutable differences and independent platform reconciliation feed evidenced seller payment and scoped financial oversight. The October 8 B16 and October 9 B17+B18 reviews record the controls and green final full suite. Deployment and simultaneous PostgreSQL execution remain unverified by the selected finance batch.
 
 - B16 preserves collection, rider-to-hub and hub-to-platform receipts, separate expected/received/held/reconciled cents and append-only adjustment evidence.
-- Buyer completion and COD reconciliation remain independent prerequisites for B17's product-only 90%/10% seller accounting. Shipping and recorded logistics/rider charges must remain separate.
-- B17 must supply its settlement source and extend the existing financial acceptance scenarios through actual handovers/reconciliation and settlement without weakening their amounts or idempotency assertions.
-- B18 must consume the actual cash and settlement records for consolidated financial views; the current overview does not invent those totals.
+- Buyer completion and COD reconciliation are independent prerequisites for B17's product-only 90%/10% accounting. Authorization and actual recorded payment are separate, with private receipt evidence and retained source/recipient snapshots.
+- Existing financial acceptance scenarios execute real handovers, reconciliation and settlement while retaining their amount, recorded shipping and duplicate-record assertions.
+- B18 reads original cash and settlement records, links totals to their included sources, and applies company/seller privacy and original collection dates. Shipping charges remain separate; unsupported logistics income and rider payouts stay unavailable.
 
-B16 acceptance: delivery and buyer completion do not reconcile COD or settle seller proceeds; only current Platform Admin authority can reconcile complete received cash, and original money evidence remains retained. Whole-phase acceptance still requires B17/B18 and the unresolved financial cases.
+B16-B18 acceptance: delivery or buyer completion alone does not reconcile COD or settle proceeds. Current Platform Admin records complete received cash and independently evidenced payment; original records remain retained. The selected source-backed financial checks and full regression suite pass locally. Unverified legacy records, refunds, external banking, unsupported earnings and live/runtime verification are not completed by that result.
 
 ### Phase 6: Cross-Role Cleanup
 
@@ -1805,3 +1811,202 @@ The local `fix/azure-build-memory` branch makes the working heap cap the deploym
 **Scoped engineering assessment: deployment helper reliability 4/10 -> 8/10.** The observed small-server build failure is addressed and incomplete migration installation no longer passes verification. All six isolated Docker-stub command tests passed, covering container memory forwarding, explicit overrides, stopping before migrations on build failure, pending-migration rejection, a successful verification and missing-asset rejection. The three memory/pending cases failed against the original helper before the fix. `bash -n` and Git whitespace checks passed. These tests run no Docker services or databases; the actual production build and migration checks provide the separate server evidence above. This rating does not raise native settings mutation, Flutter, finance or overall admin readiness.
 
 Implementation commit: `bb76a72` — `fix(deploy): raise build heap and reject pending migrations`. The documentation commit hash is reported in the handoff. No agent push or merge was performed.
+
+### Seller Settlement and Financial Oversight: October 9, 2026
+
+**State: B17 and B18 implemented and locally verified on the selected shared branch.** `admin/settlement-and-financial-oversight` starts from merged `main` at `9fe5ce5`, after B16. B17's settlement gate passed before B18 implementation. This closes the two selected finance plans; it does not certify every historical record, deployed runtime or remaining cross-role cleanup gate.
+
+Previously no source-backed seller payment writer existed, sixteen financial acceptance cases failed, and overview finance panels were unavailable. Release approval now requires actual buyer completion, reconciled COD without unresolved differences or extra cash, and the original eligible seller/shop. Approval records an immutable product basis and source references. A separate payment record requires a reference, private receipt, explicit confirmation and reason. It records an existing manually reviewed payment; it does not perform a banking transfer. Seller and platform shares use exact 90%/10% product cents, with shipping and discounts separate.
+
+Original order, cash, buyer checkpoint, recipient, actor and payment evidence remain retained. Identical retries return the original result; conflicting/stale requests, amount/rate/recipient injection and unproven payments reject. Linked receipt-reference corrections append evidence with zero additional payment. Audit failure rolls back the new payment/ledger/file, and downloads verify the original receipt hash. Paid history retains its original identity and basis after current records change. Closure and seller metrics use evidenced payments rather than an older ledger's status; a supported original pending ledger is preserved after payment.
+
+The [settlement service](../app/Services/Finance/SellerSettlementService.php), [retained schema](../database/migrations/2026_10_09_000000_create_seller_settlement_records.php), and [settlement checks](../tests/Feature/Finance/SellerSettlementTest.php) establish that boundary. Existing tiered financial scenarios now explicitly execute counted handovers, reconciliation, release approval and recorded seller payment through their real services. Their original amount, split, shipping and duplicate-record assertions remain; buyer confirmation alone does not settle cash.
+
+The [financial oversight service](../app/Services/Finance/FinancialOversightService.php) reads original cash journals and settlement records. Collection, current rider/hub custody, platform receipts and reconciliation are distinct stages of the same money. Pending, eligible, authorized and paid proceeds remain distinct. Recorded commission accompanies an evidenced seller payment; shipping charges are not represented as logistics earnings. Unsupported logistics income and rider payouts remain unavailable, and ambiguous legacy/source failures produce unavailable amounts or a service error, never a guessed zero.
+
+Platform Admin sees global sources; Company Admin sees only its original company cash; seller sees only owned proceeds without operational cash history. Source/date/state/company/recipient filters apply before totals and stable order-ID pagination. Total links select their contributing records. Date filters use the original collection-date cohort in Asia/Manila, with an exclusive next-day boundary; orders without recorded cash use their order date. Reviewed older counter collections retain the original collection date while the actual review/recording time remains separately visible. Aggregate cents use exact integer strings, and the frontend preserves them beyond JavaScript's safe integer range.
+
+The shared `/seller-settlements` and `/financial-oversight` pages provide source references, original/corrected receipts and read-only cash before/after histories. Oversight adds only GET routes and no financial mutation authority. Admin overview/logistics panels now link supported totals to the same evidence; unsupported categories stay explicit. The [reporting checks](../tests/Feature/Finance/FinancialOversightTest.php) and [counter checks](../tests/Feature/Finance/CodCashCustodyTest.php) include owned/foreign roles, restrictions/closure, real doorstep/counter workflows, legacy review dates, query failures, no-write reads and reproducible totals.
+
+| Verification | Recorded result |
+|---|---|
+| Valid clean baseline | `9fe5ce5`: 2,764 tests / 52,545 assertions / 16 failures / zero errors / zero skips. |
+| B17 affected-flow gate | 271 tests / 13,908 assertions passed; retained-history and proof-integrity follow-up: 60 tests / 1,893 assertions passed. |
+| Combined finance/overview/closure/seller/notice gate | 174 tests / 8,103 assertions passed. |
+| Final counter/settlement/reporting/admin gate | 95 tests / 6,805 assertions passed, including current and reviewed older counter collection through actual seller payment. |
+| Final complete isolated suite | 2,800 tests / 55,848 assertions / zero failures / zero errors / zero skips, in 11:29.495. |
+| Exact baseline comparison | All 16 original financial failure identities resolved; 36 added cases passed; no removed cases, new failures/errors, changed failure contexts or skips. |
+| Frontend | 53 helper/server-render checks passed. TypeScript/Vite production build passed in Docker; Vite 14.35 seconds. |
+| Repository checks | Scoped PHP formatting, documentation links/fences, Git whitespace, private-guide exclusion and tracked/history privacy checks passed. |
+
+The valid baseline used the clean source snapshot's own built assets and Docker PHP 8.4; working-tree verification used separate storage and explicitly forced SQLite `:memory:`. Earlier host/missing-asset/test-key attempts are not the baseline. The first final regression attempt was superseded after the counter-date audit found a real reporting gap; the table records the complete run after that correction. Full test identities include class, method/data set, failure/error kind, exception type and stable assertion context. No acceptance cases were skipped or changed to treat unverified labels as success.
+
+**Scoped engineering assessment: seller settlement 2/10 -> 8/10; financial oversight 2/10 -> 8/10.** The improvement is enforceable payment evidence, exact sources and appropriately scoped views with passing local acceptance. Overall role/project ratings remain their previous assessments; the numbered plan and a green automated suite do not establish deployed readiness or remove the need for later review.
+
+Local implementation commits:
+
+- `b994229` — `feat(finance): record verified seller settlement and payment evidence`
+- `7beb8e5` — `feat(finance): show seller release decisions and private receipts`
+- `2dc2abe` — `feat(finance): project scoped cash and seller proceeds from retained sources`
+- `6c94d5c` — `feat(finance): display traceable totals and read-only financial evidence`
+- `8c6fb63` — `fix(finance): retain original counter collection dates in reports`
+
+The documentation commit's generated hash is reported in the handoff. Apply the additive settlement migration after user publication and review, together with the already required source migrations. Preserve private receipt storage and backups; rollback refuses to discard recorded financial history. No development/production database reset, synthetic financial seeding, PostgreSQL migration, push, merge, deployment, banking transfer or browser/device check was performed. Row-lock order, unique source/retry constraints and immutability were reviewed and exercised on SQLite; simultaneous PostgreSQL execution and its trigger/runtime behavior remain unverified. Large historical-cohort performance has not been load-tested. Refunds, exchanges, bank integrations, rider payouts and logistics earnings remain outside these two plans.
+
+
+### Native Rider operations: October 9, 2026
+
+**State: all five core backend batches implemented and locally verified.** The
+[delivery plan](api/RIDER_NATIVE_PLAN.md), [accepted wire contract](api/RIDER_OPERATIONS_API.md),
+[executable OpenAPI](api/rider-operations.openapi.json) and
+[sanitized fixtures](api/examples/rider-operations/README.md) form the Flutter handoff.
+The 25 operational methods cover Home, duty, pickup claims, distinct parcel commands,
+retained Trips/private evidence, messages, durable notifications and COD offers.
+Conditional future features remain in the plan, outside the executable route set.
+
+Work is isolated on `feat/rider-native-api`, based on locally verified finance
+source `8fb5193`. The original `admin/settlement-and-financial-oversight` branch
+remains at that source. No push, merge or deployment was performed. Neither source
+ancestry nor earlier account/Settings deployment proves these routes are deployed.
+The actual dependency is Laravel `^13.17`, with Docker PHP 8.4.24; repository
+instructions still describe Laravel 12. This records the mismatch without changing
+framework dependencies or account contracts.
+
+| Capability | Shared source and native behavior | State / remaining dependency |
+|---|---|---|
+| Account/Settings | Existing bearer, registration, holding and Settings v1; fresh command authorization and additive narrow abilities | Preserved and regression-checked. Old tokens must sign in again; operational discovery requires the existing Settings schema. Physical Android/password/mailbox acceptance remains separate. |
+| Home/duty/queues/detail/claim | CourierOperationsService and LogisticsEligibilityService; private previews, shared capacity/placement, explicit duty, retained assignment checkpoints and command reconciliation | Implemented and locally verified, including real PostgreSQL competing and duplicate claims. Additive command migration and rollout remain required. |
+| Pickup/departure/outcomes/failure | Shared CourierOutcomeService/state machine, genuine submitted waybill, private image proof, recipient, exact CodCashService collection and actual attempt/return instructions | Implemented and locally verified. Delivery is currently COD-only. Hub intake, retry/RTS, seller receipt and buyer completion remain the owning actors' work. Native release/restricted recovery is unavailable. |
+| Trips/evidence | Immutable original assignment checkpoint identity, actor/interval attribution, Manila-day/search/payment filters and owned hash-verified binary reads | Implemented and locally verified through actual failed-return/retry/reassignment. Foreign children and altered bytes reject; ambiguous legacy attribution is unavailable. |
+| Messaging | Shared phase-linked CourierMessagingService, current assignment/participant identity, exact displayed message boundary and retained send/read results | Implemented and locally verified. Stale drafts cannot change recipient silently; the existing order/actor-pair conversation and duplicate-text guard remain. |
+| Notifications | Existing durable event/outbox and NotificationDeliveryService; canonical final-mile assignment notices, owned lists, exact displayed UUID reads and currently authorized targets | Implemented and locally verified. Workers/scheduler must run after rollout. Unsupported/stale native destinations are null; no push provider was added. |
+| Cash/remittance | CodCashService, retained append-only accounts/events and exact-cent aggregation; own responsibility, permitted recipient, versioned offer and original result | Implemented and locally verified through actual hub/platform receipt and reconciliation. An offer does not confirm receipt; no rider reconciliation authority exists. |
+| Earnings | Finance sources have no authoritative rider earnings writer | Explicitly unavailable, with null confirmed earnings. COD, shipping and commission cannot supply guessed income. Payouts and withdrawals remain outside scope. |
+| Stop Mode/instructions/tags/extensions | Current authorized task stop, frozen checkout destination and actual notes; existing account/Settings and narrow website recovery | Shared task data supports Stop Mode/Doorstep Guide. Parcel Finder is planned device-only/account-plus-assignment scoped, with cleanup owned by Flutter. Server tags and native identity/recovery/reset extensions require a separate selected contract. |
+
+Backend services own the domain decisions; controllers adapt requests and JSON.
+Each command checks fresh bearer/account/role/ability and current resource state
+inside the same transaction as the shared mutation and retained result. IDs and
+cent amounts are strings, revisions are opaque, pages are bounded and stable,
+and errors/private headers/request IDs are explicit. A seven-day actor/key retry
+returns the original committed result; reconciliation remains readable after expiry.
+Changed intent rejects. An uncertain custody/cash command must be reconciled before
+retrying the same retained intent, never replaced by a guessed new action.
+
+New website and native delivery proof uses genuine server-named private images
+through the shared proof service. Actual file bytes, original hash and recipient/COD
+facts are checked; rejected, replayed and rolled-back writes discard unused new
+files. Ordinary JSON hides paths. Existing successful test fixtures now contain
+genuine images, preserving their business assertions. Older public POD copies
+were not moved or deleted: audit, reviewed private archival, backup/reference/hash
+verification and public-copy removal remain an explicit release prerequisite.
+Private new writes do not revoke already published historical URLs.
+
+The recent source suite at `8fb5193` is reused as the valid baseline. Its executable
+source matches the completed run at `8c6fb63`; the intervening commit changes only
+finance documentation. This is inspected evidence reuse, not a claimed fresh
+baseline run. Verification used isolated SQLite `:memory:` except for the user's
+explicitly approved disposable PostgreSQL claim/outcome check.
+
+| Verification | Recorded result |
+|---|---|
+| Reused clean source baseline | 2,800 tests / 55,848 assertions / zero failures, errors or skips. |
+| First corrected API/account/Settings/web courier gate | 144 tests / 1,821 assertions passed. |
+| Connected API and affected shared-flow gate | 78 tests / 1,918 assertions passed. |
+| Native access, parcel, connected-record and executable-contract gate | 34 tests / 1,716 assertions passed; fresh post-migration-timing run completed in 17.067 seconds. |
+| Forced financial rollback/proof retention follow-up | 1 test / 92 assertions passed; original private proof bytes and all pre-existing files remain intact. |
+| Final complete isolated suite | 2,834 tests / 57,567 assertions / zero failures, errors or skips, in 12:13.696. |
+| Exact baseline comparison | All 2,800 original class/method/data-set identities preserved; 34 added cases; no removed cases, failures, errors or skips. |
+| Packaged disposable PostgreSQL verifier | 1 test / 240 assertions passed in 10.037 seconds: four simultaneous races, each with two independent PHP processes and distinct database connection IDs. |
+| Executable contract | All 25 actual route/method pairs match OpenAPI. All 67 schemas compile; 34 captured/public responses and exact ID/money boundaries pass validation. |
+| Repository checks | Scoped PHP formatting, shell syntax, JSON/document links and Git whitespace pass. Local task-guide exclusion and reachable-history privacy checks pass. |
+| Frontend | Source, dependencies and assets are unchanged by this backend branch. The finance source's 53 frontend checks and successful TypeScript/Vite build are reused; no new frontend build or rendered-device check is claimed. |
+
+The first focused run exposed incomplete-Settings discovery compatibility; requiring
+its existing schema before operational authority fixed that case. The first full
+regression run had one financial rollback-test failure because its expected private
+file set omitted the newly private original delivery proof. The corrected check
+compares the exact pre-existing file set and retained proof path/hash, while retaining
+all payment/audit rollback assertions. The final complete run above is green;
+no acceptance case was skipped or turned into a success label.
+
+The first actual PostgreSQL conflicting-outcome race exposed a deadlock: inserting
+a command acquired an immediate actor foreign-key key-share lock before the shared
+domain order/parcel/user locks. Two same-actor commands could then wait on each
+other. The additive actor constraint is now `DEFERRABLE INITIALLY DEFERRED` on
+PostgreSQL, enforcing existence at commit after domain locks. The verifier checks
+that actual constraint metadata. SQLite ignores this PostgreSQL-only timing.
+Competing riders produce one pickup assignment; identical actor/key claims and
+private-proof deliveries return one original result; competing delivery/failure
+produces one outcome and no duplicate collection/attempt. A losing terminal-task
+request may return hidden 404 or stale 409, as documented. No generic success or
+weaker authorization was introduced to make the race pass.
+
+The [packaged verifier](../scripts/verify-rider-races/README.md) uses a new random
+local database, internal Docker network, no published ports, temporary database
+storage, a read-only repository and isolated runtime files. It refuses an existing
+schema and cleans up only its own project. The packaged run followed an earlier
+passing draft run of 238 assertions; the conditional winning outcome accounts for
+the assertion-count difference. These four races do not establish general financial
+concurrency, trigger behavior for every workflow, historical-cohort performance,
+Azure deployment or mobile acceptance. No normal development/production database
+was migrated, reset or seeded by verification.
+
+Exact local evidence commands:
+
+```sh
+bash .codex/native-api/run-php.sh final-full-corrected
+bash .codex/native-api/run-php.sh final-focused --filter 'Rider(OperationsApi|OperationsBoundary|ParcelApi|ConnectedApi|NativeContract)Test'
+scripts/verify-rider-races/run-approved.sh --approved-disposable-postgres
+node .codex/native-api/validate-contract.cjs
+node .codex/native-api/validate-openapi.cjs
+```
+
+The `.codex` runner/helpers and XML/log/comparison samples are machine-local ignored
+artifacts. The SQLite runner explicitly supplies testing, `DB_CONNECTION=sqlite`,
+`DB_DATABASE=:memory:`, empty `DB_URL`, array cache/session/mail and separate storage.
+The PostgreSQL harness is tracked and separately requires express authorization.
+Contract validation used existing installed AJV, without a new project dependency.
+For the official OpenAPI 3.1 base schema, its unextended Schema Object meta-reference
+was bound explicitly because the installed validator cannot resolve that dynamic
+reference correctly. General format plugins were disabled; compiled response schemas,
+explicit patterns and boundary checks were validated separately. This is not a claim
+that an unmodified full OpenAPI dialect validator or production responses were tested.
+
+**Scoped engineering assessment: native operational API 0/10 -> 8/10 locally.**
+The native app can now consume real scoped work, private evidence, communication
+and recorded cash through the same web-owned rules. All core adapters, regression
+and the selected PostgreSQL race gate pass. This does not raise overall admin,
+Rider UI or project readiness, nor prove Flutter/device/production integration.
+
+Local commits for this backend handoff:
+
+- `9c444fc` — `feat(rider-api): expose scoped work queues and retained pickup claims`
+- `7ad7458` — `feat(rider-api): record shared parcel outcomes with private proof`
+- `943fb12` — `feat(rider-api): retain scoped trip history and private evidence reads`
+- `79444cd` — `feat(rider-api): bind message drafts and reads to owned assignments`
+- `5bafce0` — `feat(rider-api): expose retained cash and scoped remittance offers`
+- `57ea48e` — `test(finance): preserve original private proof during payment rollback`
+- `824f1c2` — `fix(rider-api): avoid actor lock inversion in concurrent commands`
+- `228927e` — `docs(rider-api): publish executable operations contract and integration examples`
+
+This evidence update's generated commit hash is reported in the final handoff.
+**Deployment: not performed; current VM revision and new HTTPS operational routes
+were not independently observed.** After user publication/review, apply all additive
+source migrations, including the inherited financial sources and new command table.
+Preserve private proof/receipt storage and backups; recorded command/finance history
+prevents destructive rollback. Audit legacy public POD before release, refresh
+route/config caches and workers/scheduler, run the established deploy/verify workflow,
+and record the actual revision, pending-migration result and fresh HTTPS bearer
+reads/rejected access. No new secret or production configuration was created here.
+
+The contract's per-batch integration checklist is the next consumer handoff: renew
+tokens, decode IDs/cents/nulls exactly, replace unavailable providers with the accepted
+routes, preserve selected drafts/proof bytes and reconcile uncertain outcomes.
+Flutter adapters/controllers, physical Android/camera, real email and full buyer/hub
+release acceptance belong to their respective maintainers and remain unverified here.
+A bounded reviewed rollout/HTTPS check is an estimated 1–2-hour next backend batch,
+after publication and legacy-proof retention review; this is a planning estimate,
+not recorded work. Native release/recovery or identity extensions require a separately
+chosen contract before implementation; no future tasks or unapproved expansion were
+created automatically.

@@ -15,6 +15,7 @@ use App\Models\Product;
 use App\Models\RestrictionAffectedWork;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Finance\FinancialOversightService;
 use App\Services\Logistics\OrderStateMachineService;
 use Brick\Math\BigDecimal;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,20 +41,21 @@ class AdminOverviewService
         return Delivery::query()->whereRaw("deliveries.status in ({$placeholders})", self::OPEN_PARCEL_STATUSES);
     }
 
-    private function finance(): array
+    private function finance(User $actor): array
     {
-        return [
-            ['key' => 'platform_commission', 'label' => 'Recorded platform commission', 'amount' => null,
-                'reason' => 'A complete commission and settlement source is not available. Order gross is not platform income.'],
-            ['key' => 'reconciled_cod', 'label' => 'COD reconciled at platform', 'amount' => null,
-                'reason' => 'Review collections and receipts in COD cash records. This overview does not combine cash totals; paid or delivered labels do not prove remittance.'],
-            ['key' => 'seller_paid', 'label' => 'Seller proceeds paid', 'amount' => null,
-                'reason' => 'Recorded seller payout events are not available.'],
-            ['key' => 'shipping_revenue', 'label' => 'Logistics shipping income', 'amount' => null,
-                'reason' => 'No complete shipping income source is available. Parcel counts do not establish earnings.'],
-            ['key' => 'rider_paid', 'label' => 'Rider payouts', 'amount' => null,
-                'reason' => 'Recorded rider payout events are not available.'],
-        ];
+        $page = app(FinancialOversightService::class)->page($actor, []);
+        $totals = array_column($page['totals'], null, 'key');
+        $items = [];
+        foreach (['platform_commission' => 'commission', 'reconciled_cod' => 'reconciled', 'seller_paid' => 'settled',
+            'shipping_revenue' => 'shipping_income', 'rider_paid' => 'rider_paid'] as $key => $source) {
+            $total = $totals[$source];
+            $cents = $total['amount_cents'];
+            $items[] = ['key' => $key, 'label' => $total['label'], 'amount_cents' => $cents,
+                'amount' => $cents === null ? null : (string) BigDecimal::ofUnscaledValue($cents, 2),
+                'reason' => $page['error'] ?? $total['definition'], 'url' => $cents === null ? null : $total['url']];
+        }
+
+        return $items;
     }
 
     public function overview(User $actor, string $base): array
@@ -84,7 +86,7 @@ class AdminOverviewService
                 'companies' => LogisticsCompany::count(), 'eligibleCompanies' => LogisticsCompany::eligible()->count(),
                 'hubs' => LogisticsHub::count(), 'eligibleHubs' => LogisticsHub::eligible()->count(),
                 'onDutyEligibleRiders' => CourierProfile::operational()->where('is_available', true)->count()],
-            'queues' => $queues, 'finance' => $this->finance(),
+            'queues' => $queues, 'finance' => $this->finance($actor),
             'orderStates' => DB::table('orders')->select('status')->selectRaw('count(*) as count')->groupBy('status')->orderBy('status')->get()
                 ->map(fn ($row) => ['status' => $row->status, 'label' => OrderStatus::tryFrom($row->status)?->label() ?? ucwords(str_replace('_', ' ', $row->status)), 'count' => (int) $row->count])->all(),
             'workReferences' => (clone $work)->select(['restriction_affected_work.id', 'restriction_affected_work.restriction_decision_id', 'orders.id as order_id', 'orders.order_number', 'orders.status'])
@@ -151,7 +153,7 @@ class AdminOverviewService
                 'handoverStatus' => DB::table('deliveries')->whereIn('status', ['delivered', 'customer_collected', 'completed'])->count(),
                 'exceptions' => DB::table('deliveries')->whereIn('status', ['failed', 'delivery_failed', 'return_to_sender'])->count(),
                 'courierAccounts' => User::where('role', 'courier')->count(), 'onDutyEligibleRiders' => CourierProfile::operational()->where('is_available', true)->count()],
-            'finance' => $this->finance(),
+            'finance' => $this->finance($actor),
         ];
     }
 }

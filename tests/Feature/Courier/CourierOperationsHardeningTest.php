@@ -683,6 +683,7 @@ class CourierOperationsHardeningTest extends TestCase
     public function test_delivery_requires_proof_and_invalid_attempt_leaves_no_file(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $this->rider->courierProfile->update([
             'assigned_hub_id' => $this->destinationHub->id,
             'assigned_barangay' => 'Poblacion III',
@@ -698,17 +699,18 @@ class CourierOperationsHardeningTest extends TestCase
             ->patch(route('courier.updateStatus', $delivery), [
                 ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
-                'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+                'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertSessionHas('error');
 
         $this->assertSame('out_for_delivery', $delivery->fresh()->status);
-        $this->assertSame([], Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertSame([], Storage::disk('local')->allFiles('delivery-proofs'));
     }
 
     public function test_duplicate_delivery_submission_is_idempotent_and_does_not_create_an_orphaned_proof(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $this->rider->courierProfile->update([
             'assigned_hub_id' => $this->destinationHub->id,
             'assigned_barangay' => 'Poblacion III',
@@ -719,7 +721,7 @@ class CourierOperationsHardeningTest extends TestCase
             ->patch(route('courier.updateStatus', $delivery), [
                 ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
-                'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+                'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertSessionHas('success');
 
@@ -731,13 +733,14 @@ class CourierOperationsHardeningTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertSame('delivered', $delivery->fresh()->status);
-        $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertCount(1, Storage::disk('local')->allFiles('delivery-proofs'));
         $this->assertDatabaseCount('delivery_checkpoints', 1);
     }
 
     public function test_terminal_orders_cannot_resume_rider_custody_even_with_active_delivery_rows(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $finalRider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         foreach (['cancelled', 'completed', 'returned'] as $terminalStatus) {
             $pickup = $this->createDelivery('assigned_pickup', $this->rider);
@@ -749,19 +752,20 @@ class CourierOperationsHardeningTest extends TestCase
             $drop->order->update(['status' => $terminalStatus]);
             $this->actingAs($finalRider)->patch(route('courier.updateStatus', $drop), [
                 ...$this->codCollectionInput($drop),
-                'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+                'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
             ])->assertSessionHas('error');
             $this->assertSame('out_for_delivery', $drop->fresh()->status);
             $this->assertSame($terminalStatus, $drop->order->fresh()->status);
         }
         $this->assertDatabaseCount('delivery_checkpoints', 0);
         $this->assertDatabaseCount('commission_ledgers', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertSame([], Storage::disk('local')->allFiles('delivery-proofs'));
     }
 
     public function test_rider_scan_requires_the_current_commercial_state(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         foreach (['placed', 'confirmed', 'preparing'] as $orderStatus) {
             $delivery = $this->createDelivery('assigned_pickup', $this->rider);
             $delivery->order->update(['status' => $orderStatus]);
@@ -775,19 +779,20 @@ class CourierOperationsHardeningTest extends TestCase
             $delivery->order->update(['status' => 'ready_for_pickup']);
             $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
                 ...$this->codCollectionInput($delivery),
-                'status' => $target, 'barcode' => $delivery->tracking_number, 'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+                'status' => $target, 'barcode' => $delivery->tracking_number, 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
             ])->assertSessionHas('error');
             $this->assertSame($source, $delivery->fresh()->status);
             $this->assertSame('ready_for_pickup', $delivery->order->fresh()->status);
         }
         $this->assertDatabaseCount('delivery_checkpoints', 0);
         $this->assertDatabaseCount('commission_ledgers', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertSame([], Storage::disk('local')->allFiles('delivery-proofs'));
     }
 
     public function test_shared_lifecycle_service_rejects_missing_or_untrusted_proof(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $delivery = $this->createDelivery('out_for_delivery', $rider);
         foreach ([null, '<UNTRUSTED_PROOF_URL>', '/storage/delivery-proofs/missing.jpg', '/storage/delivery-proofs/../private.jpg'] as $proof) {
@@ -807,29 +812,31 @@ class CourierOperationsHardeningTest extends TestCase
     public function test_retried_delivery_keeps_original_proof_notes_and_timestamp_after_buyer_completion(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $delivery = $this->createDelivery('out_for_delivery', $rider);
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Original handoff note',
-            'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
         ])->assertSessionHas('success');
         $before = $delivery->fresh()->getAttributes();
         $delivery->order->update(['status' => 'completed']);
         $this->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Replacement handoff note',
-            'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
+            'proof_image_file' => UploadedFile::fake()->image('replacement.jpg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertSame('completed', $delivery->order->fresh()->status);
         $this->assertDatabaseCount('delivery_checkpoints', 1);
-        $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertCount(1, Storage::disk('local')->allFiles('delivery-proofs'));
     }
 
     public function test_stale_delivery_submission_removes_unused_proof_and_preserves_the_winning_result(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
         $delivery = $this->createDelivery('out_for_delivery', $rider, ['courier_notes' => 'Original handoff note']);
         $originalProof = '/storage/'.UploadedFile::fake()->create('original.jpg', 20, 'image/jpeg')->store('delivery-proofs', 'public');
@@ -840,12 +847,13 @@ class CourierOperationsHardeningTest extends TestCase
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Stale replacement note',
-            'proof_image_file' => UploadedFile::fake()->create('replacement.jpg', 20, 'image/jpeg'),
+            'proof_image_file' => UploadedFile::fake()->image('replacement.jpg'),
         ])->assertSessionHas('error');
         $this->assertSame($originalProof, $delivery->fresh()->proof_image);
         $this->assertSame('Original handoff note', $delivery->fresh()->courier_notes);
         $this->assertDatabaseCount('delivery_checkpoints', 1);
         $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
+        $this->assertSame([], Storage::disk('local')->allFiles('delivery-proofs'));
         $this->assertDatabaseCount('commission_ledgers', 0);
     }
 

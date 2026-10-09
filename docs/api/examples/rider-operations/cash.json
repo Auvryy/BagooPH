@@ -1,0 +1,72 @@
+{
+  "data": {
+    "id": "1",
+    "reference": "SOURCE-SAMPLE-001",
+    "delivery_id": "1",
+    "tracking_number": "BGO-SAMPLE001",
+    "order_number": "BGO-SAMPLE002",
+    "source_kind": "rider_collection",
+    "status": "cash_held",
+    "version": "1",
+    "source_event_reference": "COD-SAMPLE-001",
+    "hub_name": "Demo Bayan Hub",
+    "company_name": "Bagoo Demo Logistics",
+    "own_held_cents": "95000",
+    "own_remitted_cents": "0",
+    "holders": [
+      {
+        "user_id": "11",
+        "name": "Demo account",
+        "stage": "rider",
+        "amount_cents": "95000",
+        "restricted": false
+      }
+    ],
+    "recorded_at": "2026-10-09T02:00:00.000Z",
+    "pending_handover": null,
+    "can_offer": true,
+    "can_receive": false,
+    "can_reconcile": false,
+    "earnings": {
+      "available": false,
+      "confirmed_cents": null
+    },
+    "expected_cents": "95000",
+    "product_subtotal_cents": "90000",
+    "discount_cents": "0",
+    "shipping_cents": "5000",
+    "collected_cents": "95000",
+    "reconciled_cents": "0",
+    "excess_cents": "0",
+    "recipients": [
+      {
+        "id": "10",
+        "name": "Demo account"
+      }
+    ],
+    "history": [
+      {
+        "reference": "SOURCE-SAMPLE-001",
+        "event_type": "rider_collection",
+        "from_stage": null,
+        "to_stage": "rider",
+        "actor_role": "courier",
+        "provenance": "cash_participant",
+        "evidence_reference": "RIDER-CASH-001",
+        "reason": null,
+        "actor_name": "Demo Rider",
+        "source_reference": null,
+        "sequence": "1",
+        "amount_cents": "95000",
+        "expected_cents": "95000",
+        "received_cents": "95000",
+        "discrepancy_cents": "0",
+        "from_user_id": null,
+        "to_user_id": "11",
+        "recorded_at": "2026-10-09T02:00:00.000Z"
+      }
+    ],
+    "discrepancies": []
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

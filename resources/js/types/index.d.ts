@@ -63,6 +63,7 @@ export interface User {
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
     canManageResources?: boolean;
+    canViewFinancialOversight?: boolean;
     resourceGovernanceUrl?: string;
 }
 

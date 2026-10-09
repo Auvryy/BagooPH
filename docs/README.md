@@ -35,7 +35,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
 - Implementation-status lists must not be copied into role or operational specifications because they become stale.
-- [admin-plan/README.md](admin-plan/README.md) divides admin work into 18 bounded tasks on 14 planned branches, with B06+B07, B08+B09, and B10-B12 each sharing a delivery branch. Dependencies, scope, exclusions, acceptance cases, and stopping points remain separate for each task. These are execution plans under the normative contracts, not current implementation-status lists or authorization to run every branch automatically.
+- [admin-plan/README.md](admin-plan/README.md) divides admin work into 18 bounded tasks on 13 planned branches, with B06+B07, B08+B09, B10-B12, and the selected B17+B18 batch each sharing a delivery branch. Dependencies, scope, exclusions, acceptance cases, and stopping points remain separate for each task. These are execution plans under the normative contracts, not current implementation-status lists or authorization to run every branch automatically.
 - [B13 follow-up ownership](admin-plan/13-phase0-acceptance.md#follow-up-ownership-for-an-incomplete-decision) adds four bounded repair deliveries outside that numbered allocation: commerce inputs, real cross-role fixtures, logistics sorting inputs, and profile/Shopping Bag inputs. An audit can finish with an incomplete gate; follow-up selection and later role-owned prerequisites remain separate.
 - [admin-plan/WORKFLOW.md](admin-plan/WORKFLOW.md) explains the foundation review, one-branch Git workflow, isolated checks, local commits, and user-only publication. [admin-plan/CAPABILITIES.md](admin-plan/CAPABILITIES.md) maps governance functions to the existing roles and identifies optional additions.
 
@@ -45,6 +45,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 - `VERIFICATION_DOCUMENT_SECURITY.md` explains private document deployment, migration, and secret-mail configuration.
 - `WEB_AUTH_DEPLOYMENT.md` explains production web session settings, HTTPS authentication redirects, notification scheduling, catalogue visibility checks, and the targeted demo repair after deployment.
 - [Native rider settings API](api/RIDER_SETTINGS_API.md) defines versioned bearer access, contact revisions, password reauthentication, additional-email verification and the mobile deployment handoff.
+- [Native rider operations API](api/RIDER_OPERATIONS_API.md) and [backend delivery plan](api/RIDER_NATIVE_PLAN.md) define scoped queues, commands and the operational integration boundaries.
 - `SCHEMA.md` is supporting context only. Migrations and models describe the current executable schema; planned data changes belong in the roadmap until implemented.
 
 ## Historical and Original Sources

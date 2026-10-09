@@ -10,11 +10,37 @@ use App\Models\User;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class CourierOperationsService
 {
     public function __construct(private readonly LogisticsEligibilityService $eligibility) {}
+
+    public function queue(User $rider, string $phase): Builder
+    {
+        $profile = CourierProfile::where('user_id', $rider->id)->first();
+        $query = Delivery::query()->where('logistics_company_id', $profile?->logistics_company_id)
+            ->with(['order.items', 'originBayanHub', 'destinationBayanHub']);
+        if (! $rider->isEligibleCourier() || ! $profile?->logistics_company_id || ! $profile->assigned_hub_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return match ($phase) {
+            'available' => $query->whereNull('courier_id')->whereRaw('deliveries.status = ?', ['unassigned'])
+                ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereHas('order', fn ($order) => $order->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
+                ->when(! $this->eligibility->canReceivePickups($profile), fn ($empty) => $empty->whereRaw('1 = 0'))
+                ->orderBy('created_at')->orderBy('id'),
+            'pickup' => $query->where('courier_id', $rider->id)->where('origin_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw("deliveries.status in ('assigned', 'assigned_pickup', 'picked_up')")->orderBy('assigned_at')->orderBy('id'),
+            'final_mile' => $query->where('assigned_rider_id', $rider->id)->where('destination_bayan_hub_id', $profile->assigned_hub_id)
+                ->whereRaw("deliveries.status in ('assigned_to_rider', 'out_for_delivery', 'delivery_failed')")
+                ->where(fn ($failed) => $failed->whereRaw("deliveries.status != 'delivery_failed'")->orWhereNull('current_hub_id'))
+                ->orderBy('assigned_at')->orderBy('id'),
+            default => throw new DomainException('Unknown courier queue.'),
+        };
+    }
 
     public function claimPickup(User $rider, Delivery $delivery): Delivery
     {

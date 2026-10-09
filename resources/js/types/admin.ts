@@ -3,7 +3,9 @@ import type { PaginatedData } from '@/types';
 export interface UnavailableFinance {
     key: string;
     label: string;
-    amount: null;
+    amount: string | null;
+    amount_cents: string | null;
+    url: string | null;
     reason: string;
 }
 

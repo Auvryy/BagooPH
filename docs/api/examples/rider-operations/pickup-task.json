@@ -1,0 +1,45 @@
+{
+  "data": {
+    "id": "pickup-1",
+    "delivery_id": "1",
+    "assignment_reference": "CHK-SAMPLE-001",
+    "phase": "pickup",
+    "preview": false,
+    "tracking_number": "BGO-SAMPLE001",
+    "order_number": "BGO-SAMPLE002",
+    "commercial_status": "ready_for_pickup",
+    "operational_stage": "assigned_pickup",
+    "version": "0425fc857bde45e915264692c6accd97830b10d135c26497f18ced51a0d5e051",
+    "observed_at": "2026-10-09T02:00:00.000Z",
+    "custody": {
+      "kind": "seller",
+      "hub_id": null,
+      "held_by_me": false
+    },
+    "stop": {
+      "kind": "seller",
+      "name": "Demo account",
+      "address": "Demo delivery address",
+      "latitude": null,
+      "longitude": null,
+      "phone": null,
+      "instructions": null
+    },
+    "payment": null,
+    "actions": {
+      "claim": false,
+      "pickup": true,
+      "depart": false,
+      "deliver": false,
+      "fail": false,
+      "release": false
+    },
+    "action_denials": {
+      "release": "SHARED_RELEASE_POLICY_UNAVAILABLE",
+      "deliver": null
+    },
+    "failure_policy": null,
+    "next_instruction": "Scan the parcel waybill at the seller."
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

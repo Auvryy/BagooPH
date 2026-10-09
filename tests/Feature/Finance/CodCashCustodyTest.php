@@ -9,6 +9,7 @@ use App\Models\HubHandler;
 use App\Models\LogisticsHub;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
+use App\Models\SellerSettlement;
 use App\Models\User;
 use App\Services\AccountClosureService;
 use App\Services\AccountRestrictionService;
@@ -147,6 +148,55 @@ class CodCashCustodyTest extends TestCase
         $this->assertSame($sourceBefore, $source->fresh()->getAttributes());
         $this->assertSame($handler->id, $account->fresh()->collector_id);
         $this->assertNotNull($handler->fresh()->closed_at);
+    }
+
+    public static function counterSettlementSources(): array
+    {
+        return ['current_counter' => [false], 'reviewed_older_counter' => [true]];
+    }
+
+    #[DataProvider('counterSettlementSources')]
+    public function test_counter_settlement_and_reports_retain_original_collection_date(bool $legacy): void
+    {
+        [$parcel, $handler] = $this->collectAtCounter($legacy);
+        $source = CodCustodyEntry::sole();
+        $sourceBefore = $source->getAttributes();
+        $originalDate = $source->created_at->copy()->timezone('Asia/Manila')->toDateString();
+        $admin = $this->createApprovedUser('admin');
+        if ($legacy) {
+            $this->travel(1)->days();
+            $this->actingAs($admin)->postJson('/admin/cod/legacy/'.$parcel->id, [
+                'expected_status' => $parcel->status, 'request_token' => (string) Str::uuid(),
+                'evidence_reference' => 'RETAINED-COUNTER-REVIEW', 'reason' => 'The original buyer claim, collection receipt and amount were checked.'])->assertOk();
+        }
+        $account = CodAccount::sole();
+        $this->actingAs($parcel->order->buyer)->post('/buyer/orders/'.$parcel->order_id.'/confirm')->assertSessionHas('success');
+        $this->handover($account, $handler, $admin, $account->expected_cents);
+        $this->command($account, $admin, 'reconcile', ['evidence_reference' => 'COUNTER-PLATFORM-RECEIPT',
+            'reason' => 'The counted platform receipt matches the actual buyer collection.']);
+        $this->actingAs($admin)->getJson('/seller-settlements/'.$parcel->order_id)->assertOk()->assertJsonPath('record.status', 'eligible');
+        $this->postJson('/seller-settlements/'.$parcel->order_id.'/authorize', [
+            'expected_version' => 0, 'request_token' => (string) Str::uuid(),
+            'reason' => 'The actual buyer confirmation and reconciled counter cash were checked.'])->assertOk();
+        $this->postJson('/seller-settlements/'.$parcel->order_id.'/record-payment', [
+            'expected_version' => 1, 'request_token' => (string) Str::uuid(), 'payment_reference' => 'COUNTER-SELLER-RECEIPT',
+            'payment_confirmed' => true, 'proof' => UploadedFile::fake()->image('seller-receipt.png'),
+            'reason' => 'The named seller received the original product proceeds shown on the receipt.'])->assertOk();
+        $record = SellerSettlement::sole();
+        $this->assertSame('customer_collected', $parcel->fresh()->status);
+        $this->assertSame($sourceBefore, $source->fresh()->getAttributes());
+        $this->getJson('/financial-oversight/'.$parcel->order_id)->assertOk()
+            ->assertJsonPath('record.cash.collected_at', $source->created_at->toIso8601String())
+            ->assertJsonPath('record.cash.recorded_at', $account->created_at->toIso8601String())
+            ->assertJsonPath('record.proceeds.status', 'settled');
+        $response = $this->getJson('/financial-oversight?from='.$originalDate.'&to='.$originalDate)->assertOk()
+            ->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.recorded_at', $source->created_at->toIso8601String());
+        $this->assertSame((string) $record->seller_cents, collect($response->json('totals'))->firstWhere('key', 'settled')['amount_cents']);
+        if ($legacy) {
+            $reviewDate = $account->created_at->copy()->timezone('Asia/Manila')->toDateString();
+            $this->getJson('/financial-oversight?from='.$reviewDate.'&to='.$reviewDate)->assertOk()->assertJsonPath('records.total', 0);
+            $this->travelBack();
+        }
     }
 
     private function handler(CodAccount $account): User

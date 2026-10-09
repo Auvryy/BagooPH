@@ -121,8 +121,8 @@ class SellerSalesMetricsTest extends TestCase
         $this->actingAs($seller)
             ->get(route('seller.reports'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('report.settledSellerAmount', 450)
-                ->where('report.pendingSettlementAmount', 0)
+                ->where('report.settledSellerAmount', 0)
+                ->where('report.pendingSettlementAmount', 450)
             );
     }
 

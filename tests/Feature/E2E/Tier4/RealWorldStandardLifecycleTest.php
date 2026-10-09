@@ -25,10 +25,11 @@ class RealWorldStandardLifecycleTest extends TestCase
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
+        $this->settleFlowOrder($order);
         $this->assertCheckpointLogged($delivery, 'arrived_at_mother_hub');
         $this->assertCheckpointLogged($delivery, 'buyer_completed');
-        // Settlement remains a Phase 5 gate; delivery and buyer receipt do not reconcile cash.
-        $this->assertCommissionSplit($order);
+
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t4_02_provincial_laguna_delivery_with_area_b_sorting(): void

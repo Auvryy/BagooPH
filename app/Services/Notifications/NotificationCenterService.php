@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\ExceptionOversightService;
 use App\Services\Finance\CodCashService;
+use App\Services\Finance\SellerSettlementService;
 use App\Services\GovernanceHistoryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
@@ -16,11 +17,13 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event'];
+    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
 
     public function current(User $actor): User
     {
@@ -59,6 +62,24 @@ class NotificationCenterService
         $user->notifications()->whereKey($id)->whereNull('read_at')->update(['read_at' => now(), 'updated_at' => now()]);
 
         return $notice->fresh();
+    }
+
+    public function acknowledgeDisplayed(User $user, array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        abort_unless(count($ids) >= 1 && count($ids) <= 50
+            && collect($ids)->every(fn ($id) => is_string($id) && Str::isUuid($id)), 422);
+
+        return DB::transaction(function () use ($user, $ids) {
+            $user = $this->current(User::whereKey($user->id)->lockForUpdate()->firstOrFail());
+            $records = $user->notifications()->whereIn('type', self::TYPES)->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
+            abort_unless($records->count() === count($ids), 404);
+            // UUID/time cutoffs can include a later unseen notice created in the same clock tick.
+            // Only explicitly displayed owned records may be acknowledged.
+            $user->notifications()->whereIn('type', self::TYPES)->whereIn('id', $ids)->whereNull('read_at')->update(['read_at' => now(), 'updated_at' => now()]);
+
+            return $records->pluck('id')->all();
+        });
     }
 
     public function present(DatabaseNotification $notice, User $user): array
@@ -103,6 +124,11 @@ class NotificationCenterService
             return '/seller/products';
         }
         try {
+            if ($target === 'seller-settlement') {
+                app(SellerSettlementService::class)->scoped($user)->whereKey((int) ($data['order_id'] ?? 0))->firstOrFail();
+
+                return '/seller-settlements/'.(int) $data['order_id'];
+            }
             if ($target === 'cod-cash') {
                 app(CodCashService::class)->account($user, (int) ($data['cod_account_id'] ?? 0));
 

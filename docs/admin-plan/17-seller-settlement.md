@@ -6,7 +6,7 @@ This is a bounded execution plan, not an implementation-status report. Use the [
 
 | Item | Requirement |
 |---|---|
-| Git branch | `admin/seller-settlement` |
+| Git branch | `admin/settlement-and-financial-oversight` (selected B17+B18 batch) |
 | Phase | 5 |
 | Minimum prerequisites | [B16](16-cod-reconciliation.md) |
 | Result | Recorded seller proceeds settle only after buyer completion and platform COD reconciliation. |
@@ -91,8 +91,8 @@ Split backend/domain tests, affected UI, and documentation evidence into small l
 Stop when recorded settlement eligibility and release evidence are verified, with no early payout or fictitious transfer. Financial read aggregation is the separate B18 task.
 
 ```text
-Implement only B17 from docs/admin-plan/17-seller-settlement.md on admin/seller-settlement.
+Implement B17 from docs/admin-plan/17-seller-settlement.md on admin/settlement-and-financial-oversight.
 Read AGENTS.md and the plan's contracts. Verify dependencies and inspect executable code first.
 Complete this branch's acceptance cases, required checks, local commits, and roadmap evidence.
-Preserve unrelated changes. Do not push, merge, or start the next branch. Report blockers without expanding scope.
+Preserve unrelated changes. Do not push or merge. Start B18 only if explicitly selected and after B17's focused gate passes. Report blockers without expanding scope.
 ```

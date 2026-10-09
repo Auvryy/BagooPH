@@ -1,0 +1,27 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "type": "parcel-event",
+        "title": "You have a delivery assignment",
+        "body": "Open your assignment and scan the parcel out of the destination hub.",
+        "recorded_at": "2026-10-09T02:00:00.000Z",
+        "read_at": null,
+        "target": {
+          "kind": "task",
+          "id": "final_mile-1",
+          "href": "/api/v1/rider/tasks/final_mile-1"
+        }
+      }
+    ],
+    "unread_count": 1,
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 1,
+      "last_page": 1
+    }
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

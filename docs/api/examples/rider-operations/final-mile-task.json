@@ -1,0 +1,83 @@
+{
+  "data": {
+    "id": "final_mile-1",
+    "delivery_id": "1",
+    "assignment_reference": "CHK-SAMPLE-001",
+    "phase": "final_mile",
+    "preview": false,
+    "tracking_number": "BGO-SAMPLE001",
+    "order_number": "BGO-SAMPLE002",
+    "commercial_status": "out_for_delivery",
+    "operational_stage": "out_for_delivery",
+    "version": "9a5383f12ef8a940e5f3d89597afc4d120134d8d1acc244cf53bf6e0f2e93709",
+    "observed_at": "2026-10-09T02:00:00.000Z",
+    "custody": {
+      "kind": "courier",
+      "hub_id": null,
+      "held_by_me": true
+    },
+    "stop": {
+      "kind": "buyer",
+      "name": "Demo account",
+      "address": "Demo delivery address",
+      "latitude": null,
+      "longitude": null,
+      "phone": "09170000000",
+      "instructions": "Please call at the saved entrance."
+    },
+    "payment": {
+      "method": "cod",
+      "cod_due_cents": "95000",
+      "commercial_payment_status": "pending"
+    },
+    "actions": {
+      "claim": false,
+      "pickup": false,
+      "depart": false,
+      "deliver": true,
+      "fail": true,
+      "release": false
+    },
+    "action_denials": {
+      "release": "SHARED_RELEASE_POLICY_UNAVAILABLE",
+      "deliver": null
+    },
+    "failure_policy": {
+      "attempt_limit": 3,
+      "recorded_attempts": 0,
+      "reasons": [
+        {
+          "code": "customer_unreachable",
+          "label": "Customer unreachable"
+        },
+        {
+          "code": "customer_unavailable",
+          "label": "Customer unavailable or requested another date"
+        },
+        {
+          "code": "address_clarification",
+          "label": "Wrong or incomplete address"
+        },
+        {
+          "code": "unsafe_conditions",
+          "label": "Unsafe conditions or severe weather"
+        },
+        {
+          "code": "cod_unavailable",
+          "label": "Exact COD payment unavailable"
+        },
+        {
+          "code": "customer_refused",
+          "label": "Customer refused the parcel"
+        }
+      ],
+      "requires_notes": true,
+      "requires_location": true,
+      "requires_private_image": true,
+      "retry_authority": "destination_hub",
+      "return_hub_id": "3"
+    },
+    "next_instruction": "Record recipient handoff and exact cash. The buyer confirms receipt separately."
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

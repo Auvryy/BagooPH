@@ -1,0 +1,20 @@
+{
+  "data": {
+    "idempotency_key": "00000000-0000-4000-8000-000000000002",
+    "action": "claim",
+    "resource": "pickup-12",
+    "state": "committed",
+    "result": {
+      "task_id": "pickup-12",
+      "delivery_id": "12",
+      "commercial_status": "ready_for_pickup",
+      "operational_stage": "assigned_pickup",
+      "checkpoint_id": "31"
+    },
+    "recorded_at": "2026-10-09T02:00:00.000Z",
+    "expires_at": "2026-10-16T02:00:00.000Z",
+    "retry_expired": false,
+    "replayed": false
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

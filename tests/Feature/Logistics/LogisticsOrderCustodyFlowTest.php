@@ -320,7 +320,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
         $this->actingAs($assignedRider)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered',
-            'proof_image_file' => UploadedFile::fake()->create('proof.jpg', 20, 'image/jpeg'),
+            'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
         ])->assertSessionHas('success');
         $this->assertSame('delivered', $delivery->fresh()->status);
         $this->assertSame('delivered', $order->fresh()->status);

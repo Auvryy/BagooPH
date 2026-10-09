@@ -8,11 +8,14 @@ use App\Http\Middleware\EnsureBuyerAccess;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
+use App\Services\Courier\RiderApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -26,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
-            || $request->is('api/v1/rider/settings/*')
+            || $request->is('api/v1/rider/settings/*') || RiderApiResponse::applies($request)
             || ($request->isMethod('POST') && $request->is('api/v1/rider/applications', 'api/v1/rider/registration/email/verify', 'register', 'kyc/resubmit', 'admin/kyc/*/reject', 'kyc/*/reject', 'seller/shops/*/resubmit', 'shops/*/resubmit', 'admin/shops/*/reject', 'shops/*/reject', 'admin/products/*/moderation', 'products/*/moderation', 'buyer/addresses', 'hub/sort', 'sort', 'buyer/profile', 'seller/profile', 'profile', 'cart', 'hub/scan', 'scan', 'hub/manifests', 'hub/manifests/*', 'manifests', 'manifests/*', 'hub/release', 'release', 'hub/counter/hours', 'counter/hours', 'custody-recovery/*', 'exceptions/*'))
             || ($request->isMethod('PATCH') && $request->is('profile', 'courier/profile/account', 'profile/account', 'cart/*', 'courier/deliveries/*/status', 'deliveries/*/status'))]);
 
@@ -47,6 +50,28 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (Throwable $exception) {
+            if (RiderApiResponse::applies(request())) {
+                try {
+                    Log::error('Native Rider operation failed.', [
+                        'request_id' => RiderApiResponse::requestId(request()), 'exception_type' => $exception::class,
+                    ]);
+                } catch (Throwable) {
+                }
+
+                return false;
+            }
+        });
+        $exceptions->render(function (QueryException $exception, Request $request) {
+            if (RiderApiResponse::applies($request)) {
+                return response()->json(['code' => 'SERVICE_UNAVAILABLE', 'message' => 'Rider operations are temporarily unavailable.'], 503);
+            }
+        });
+        $exceptions->render(function (DomainException $exception, Request $request) {
+            if (RiderApiResponse::applies($request)) {
+                return response()->json(['code' => 'OPERATION_CONFLICT', 'message' => $exception->getMessage()], 409);
+            }
+        });
         $exceptions->respond(function (Response $response) {
             $request = request();
             if ($response->getStatusCode() === 419 && $request->header('X-Inertia') && $request->is('login', 'custody-recovery/sign-in')) {
@@ -67,7 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $response->headers->set('Pragma', 'no-cache');
             }
 
-            return $response;
+            return RiderApiResponse::decorate($response, $request);
         });
         $exceptions->dontFlash(['otp_token', 'token', 'code', 'claim_code', 'pickup_code', 'signature', 'checkout_token']);
         $exceptions->shouldRenderJsonWhen(

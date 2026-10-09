@@ -1,0 +1,52 @@
+{
+  "data": {
+    "account_id": "5",
+    "operations_api_version": 1,
+    "on_duty": true,
+    "observed_at": "2026-10-09T02:00:00.000Z",
+    "placement": {
+      "company_id": "1",
+      "company_name": "Bagoo Demo Logistics",
+      "hub_id": "2",
+      "hub_name": "Demo Bayan Hub",
+      "barangay": "Poblacion III"
+    },
+    "eligibility": {
+      "operational": true,
+      "can_claim": true,
+      "claim_denial": null
+    },
+    "capacity": {
+      "active_pickups": 0,
+      "pickup_limit": 5,
+      "remaining_pickups": 5
+    },
+    "counts": {
+      "available": 1,
+      "pickup": 0,
+      "final_mile": 0
+    },
+    "capabilities": {
+      "home": true,
+      "duty": true,
+      "pickup_claim": true,
+      "parcel_actions": false,
+      "trips": false,
+      "messages": true,
+      "notifications": true,
+      "cash": false,
+      "pre_custody_release": false,
+      "native_restricted_recovery": false,
+      "rider_earnings": false
+    },
+    "limits": {
+      "per_page_max": 50,
+      "poll_interval_seconds": 30,
+      "request_budget_per_minute": 30,
+      "proof_bytes_max": 5242880,
+      "message_characters_max": 1000,
+      "idempotency_days": 7
+    }
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

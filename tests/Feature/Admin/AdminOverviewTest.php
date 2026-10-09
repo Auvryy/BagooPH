@@ -54,7 +54,7 @@ class AdminOverviewTest extends TestCase
             ->component('Admin/Dashboard')->where('stats.totalUsers', 1)->where('stats.usersByRole.admin', 1)
             ->where('stats.usersByRole.logistics', 0)->where('stats.paidOrderGross', '0.00')->where('stats.paidOrderCount', 0)
             ->where('stats.totalOrders', 0)->where('stats.openParcels', 0)->where('orderStates', [])->where('recentOrders', [])
-            ->where('workReferences', [])->has('queues', 5)->where('queues.0.count', 0)->where('finance.0.amount', null)
+            ->where('workReferences', [])->has('queues', 5)->where('queues.0.count', 0)->where('finance.0.amount', '0.00')
             ->missing('stats.totalRevenue')->missing('stats.platformCommission'));
         $this->get('/admin/logistics')->assertInertia(fn (Assert $page) => $page->component('Admin/Logistics')
             ->where('deliveries.data', [])->where('couriers', [])->where('stats.total', 0)->where('stats.onDutyEligibleRiders', 0)

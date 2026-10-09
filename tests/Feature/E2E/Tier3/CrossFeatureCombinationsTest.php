@@ -135,7 +135,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->newFlowOrder('ready_for_pickup');
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
-        $this->assertCommissionSplit($order);
+        $this->settleFlowOrder($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t3_13_buyer_confirmation_seller_settlement(): void
@@ -143,7 +144,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->newFlowOrder('ready_for_pickup');
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
-        $this->assertCommissionSplit($order);
+        $this->settleFlowOrder($order);
+        $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
     public function test_t3_14_doorstep_delivery_failure_reason_logging(): void
@@ -333,7 +335,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $this->assertEquals(149.99, $order->total_amount);
         $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
-        $this->assertCommissionSplit($order, 149.99);
+        $this->settleFlowOrder($order);
+        $this->assertCommissionSplit($order, 149.99, (float) $order->shipping_fee);
     }
 
     public function test_t3_28_product_stock_depletion_out_of_stock_guard(): void
@@ -407,6 +410,7 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->newFlowOrder('ready_for_pickup');
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
+        $this->settleFlowOrder($order);
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()];
         $this->actingAs(User::findOrFail($delivery->assigned_rider_id))->patch(route('courier.updateStatus', $delivery), $this->codCollectionInput($delivery) + ['status' => 'delivered'])->assertSessionHas('success');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
@@ -421,7 +425,7 @@ class CrossFeatureCombinationsTest extends TestCase
         Storage::fake('public');
         $this->actingAs(User::findOrFail($delivery->courier_id))->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
-            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->create('premature.jpg', 20, 'image/jpeg'),
+            'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('premature.jpg'),
         ])->assertSessionHas('error');
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->pluck('id')->all()]);
         $this->assertCount(0, Storage::disk('public')->allFiles('delivery-proofs'));

@@ -147,6 +147,11 @@ class Order extends Model
         return $this->hasOne(CommissionLedger::class);
     }
 
+    public function sellerSettlement(): HasOne
+    {
+        return $this->hasOne(SellerSettlement::class);
+    }
+
     public function codAccount(): HasOne
     {
         return $this->hasOne(CodAccount::class);

@@ -11,10 +11,10 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class OrderStateMachineService
@@ -129,10 +129,7 @@ class OrderStateMachineService
             Validator::make($scanMetadata, ['notes' => $inputs->notesRules()])->validate();
             if ($targetStatus === self::STATUS_DELIVERED && $lockedDelivery->status !== $targetStatus) {
                 $proof = $scanMetadata['proof_image'] ?? null;
-                if (! is_string($proof) || preg_match('/\A\/storage\/delivery-proofs\/[A-Za-z0-9._-]+\z/', $proof) !== 1
-                    || ! Storage::disk('public')->exists(substr($proof, strlen('/storage/')))) {
-                    throw new DomainException('Upload a proof of delivery image before recording handoff.');
-                }
+                app(CourierProofService::class)->hash($proof);
             }
             $scanRequired = in_array($targetStatus, [self::STATUS_PICKED_UP, self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERY_FAILED, self::STATUS_ARRIVED_AT_ORIGIN_HUB,
                 self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_ARRIVED_AT_MOTHER_HUB,

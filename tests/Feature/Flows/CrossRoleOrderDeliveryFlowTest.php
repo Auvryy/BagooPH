@@ -146,13 +146,13 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered',
             'courier_notes' => 'Parcel handed directly to the buyer.',
-            'proof_image_file' => UploadedFile::fake()->create('delivery-proof.jpg', 20, 'image/jpeg'),
+            'proof_image_file' => UploadedFile::fake()->image('delivery-proof.jpg'),
         ])->assertSessionHas('success');
 
         $this->assertSame('delivered', $delivery->fresh()->status);
-        $this->assertStringStartsWith('/storage/delivery-proofs/', $delivery->fresh()->proof_image);
-        $proofPath = str_replace('/storage/', '', $delivery->fresh()->proof_image);
-        $this->assertTrue(Storage::disk('public')->exists($proofPath));
+        $this->assertStringStartsWith('delivery-proofs/', $delivery->fresh()->proof_image);
+        $proofPath = $delivery->fresh()->proof_image;
+        $this->assertTrue(Storage::disk('local')->exists($proofPath));
         $this->assertSame('delivered', $order->fresh()->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
         $this->assertSame(0, CommissionLedger::where('order_id', $order->id)->count());
