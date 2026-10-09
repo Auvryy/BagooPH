@@ -1849,3 +1849,47 @@ Local implementation commits:
 - `8c6fb63` — `fix(finance): retain original counter collection dates in reports`
 
 The documentation commit's generated hash is reported in the handoff. Apply the additive settlement migration after user publication and review, together with the already required source migrations. Preserve private receipt storage and backups; rollback refuses to discard recorded financial history. No development/production database reset, synthetic financial seeding, PostgreSQL migration, push, merge, deployment, banking transfer or browser/device check was performed. Row-lock order, unique source/retry constraints and immutability were reviewed and exercised on SQLite; simultaneous PostgreSQL execution and its trigger/runtime behavior remain unverified. Large historical-cohort performance has not been load-tested. Refunds, exchanges, bank integrations, rider payouts and logistics earnings remain outside these two plans.
+
+
+### Native Rider operations: October 9, 2026
+
+The native delivery plan is [RIDER_NATIVE_PLAN.md](api/RIDER_NATIVE_PLAN.md), with
+one backend-owned [wire contract](api/RIDER_OPERATIONS_API.md), executable
+[OpenAPI](api/rider-operations.openapi.json) and sanitized examples. This work is
+isolated on `feat/rider-native-api`, based on the locally verified finance source
+at `8fb5193`. The completed admin branch remains unchanged. Neither branch ancestry
+nor an existing mobile account/Settings deployment establishes deployment of these
+new operational routes.
+
+| Capability | Existing shared source/evidence | Native adapter state and dependency |
+|---|---|---|
+| Account/Settings | Existing native bearer/registration/Settings services and their focused checks | Preserved; new abilities are additive and old tokens must reauthenticate. |
+| Home/duty/queues/detail/claim | Shared CourierOperationsService and LogisticsEligibilityService; claims lock order, parcel and eligibility and retain assignment checkpoints | Implemented locally; 144 focused API/account/Settings/web courier checks passed, 1,821 assertions. Additive command migration required. Simultaneous PostgreSQL race remains unverified. |
+| Pickup/departure/outcomes/failure | Shared state machine, exact submitted-waybill validation, attempts, retained custody and COD services | Adapter planned next. New delivery proof currently uses public storage in the web writer; shared private proof handling is a prerequisite. |
+| Trips/evidence | Immutable assignment and actor checkpoints; attempt proof hashes | Planned attribution adapter; mutable current rider IDs alone cannot authorize history. Private proof and retained attribution are required. |
+| Messaging/notifications | Phase-linked CourierMessagingService and committed durable lifecycle/governance notifications | Planned scoped adapters; participant/reassignment, displayed read boundary, stable pagination and safe retries require native checks. |
+| Cash/remittance | Append-only COD accounts/events and shared scoped cash views, verified in the finance branch | Planned own-cash/offer adapter; recipient receipt and platform reconciliation remain web-owned. |
+| Earnings | Financial oversight explicitly leaves rider payouts unavailable | Blocked by an absent authoritative earnings writer; no COD or shipping-derived earnings. |
+| Stop Mode/instructions/tags/recovery | Existing stops and frozen checkout destination; narrow website recovery and Settings | Task data can support Stop Mode; actual order notes may be supplied to assigned final-mile work. No fabricated entrance fields. Parcel Finder is planned device-only/account+assignment scoped. Server tags and native identity/recovery extensions remain conditional. |
+
+The recent clean source suite at `8fb5193` is reused as this audit's baseline:
+2,800 tests / 55,848 assertions / zero failures/errors/skips. Its executable source
+matches the completed run at `8c6fb63`; the intervening commit changes only the
+recorded finance documentation. This is reuse of inspected evidence, not a new
+claimed full run. The first focused attempt found that operational schema discovery
+broke the existing incomplete-Settings deployment test. Requiring the existing
+Settings schema before new operational authority fixed that compatibility issue;
+the corrected 144-case run above passed.
+
+The first batch provides private, bounded, stably sorted queues; placement/duty/
+capacity context; current owned task detail; explicit desired duty; atomic shared
+pickup claims; strict IDs/field allowlists/source revisions; safe JSON errors and
+request IDs; and actor-scoped seven-day command replay/reconciliation. Original
+command results contain operational references rather than customer/proof data.
+Claim preserves seller readiness and custody; hub intake, final-mile assignment,
+buyer completion, retry/RTS and financial reconciliation remain their actors' work.
+
+**Scoped assessment: native Home/duty/claim API 0/10 -> 7/10 locally.** The app can
+consume real scoped assignments rather than unavailable resources. Publication,
+additive migration, HTTPS rollout, PostgreSQL race evidence and Flutter/device
+acceptance remain open. This does not raise overall Rider or project readiness.

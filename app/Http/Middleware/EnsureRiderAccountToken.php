@@ -40,6 +40,13 @@ class EnsureRiderAccountToken
             app(RiderAccountService::class)->assertSettingsToken($request, $user, $ability);
             $request->attributes->set('rider_settings_ability', $ability);
         }
+        if (str_starts_with($purpose, 'operations:')) {
+            abort_unless($user->isEligibleCourier(), 403, 'An approved active rider account is required.');
+            abort_unless(app(RiderAccountService::class)->operationsAvailable(), 503, 'Rider operations are temporarily unavailable.');
+            $ability = 'rider:'.$purpose;
+            app(RiderAccountService::class)->assertSettingsToken($request, $user, $ability, false, 'Sign in again to enable rider operations.');
+            $request->attributes->set('rider_operations_ability', $ability);
+        }
         $token->forceFill(['last_used_at' => now()])->save();
         $request->setUserResolver(fn () => $user->withAccessToken($token));
 

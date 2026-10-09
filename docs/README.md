@@ -45,6 +45,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 - `VERIFICATION_DOCUMENT_SECURITY.md` explains private document deployment, migration, and secret-mail configuration.
 - `WEB_AUTH_DEPLOYMENT.md` explains production web session settings, HTTPS authentication redirects, notification scheduling, catalogue visibility checks, and the targeted demo repair after deployment.
 - [Native rider settings API](api/RIDER_SETTINGS_API.md) defines versioned bearer access, contact revisions, password reauthentication, additional-email verification and the mobile deployment handoff.
+- [Native rider operations API](api/RIDER_OPERATIONS_API.md) and [backend delivery plan](api/RIDER_NATIVE_PLAN.md) define scoped queues, commands and the operational integration boundaries.
 - `SCHEMA.md` is supporting context only. Migrations and models describe the current executable schema; planned data changes belong in the roadmap until implemented.
 
 ## Historical and Original Sources

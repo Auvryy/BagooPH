@@ -1,0 +1,6 @@
+{
+  "code": "ACCESS_DENIED",
+  "message": "An approved active rider account is required.",
+  "errors": [],
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

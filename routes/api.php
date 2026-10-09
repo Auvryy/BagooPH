@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\RiderAuthController;
+use App\Http\Controllers\Api\RiderOperationsController;
 use App\Http\Controllers\Api\RiderSettingsController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Middleware\EnsureRiderAccountToken;
@@ -23,6 +24,19 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
     Route::post('rider/applications', [RiderAuthController::class, 'register']);
     Route::delete('auth/tokens/current', [RiderAuthController::class, 'logout'])->middleware(EnsureRiderAccountToken::class.':logout');
     Route::get('rider/me', [RiderAuthController::class, 'me'])->middleware(EnsureRiderAccountToken::class);
+    Route::prefix('rider')->group(function () {
+        Route::middleware(EnsureRiderAccountToken::class.':operations:read')->group(function () {
+            Route::get('home', [RiderOperationsController::class, 'home']);
+            Route::get('pickup-jobs', [RiderOperationsController::class, 'available']);
+            Route::get('tasks', [RiderOperationsController::class, 'index']);
+            Route::get('tasks/{task}', [RiderOperationsController::class, 'show']);
+            Route::get('commands/{key}', [RiderOperationsController::class, 'command']);
+        });
+        Route::middleware([EnsureRiderAccountToken::class.':operations:work', 'throttle:10,1'])->group(function () {
+            Route::patch('duty', [RiderOperationsController::class, 'duty']);
+            Route::post('pickup-jobs/{job}/claim', [RiderOperationsController::class, 'claim']);
+        });
+    });
     Route::prefix('rider/settings')->group(function () {
         Route::get('/', [RiderSettingsController::class, 'show'])->middleware(EnsureRiderAccountToken::class.':settings:read');
         Route::patch('profile', [RiderSettingsController::class, 'profile'])->middleware([EnsureRiderAccountToken::class.':settings:profile', 'throttle:10,1']);

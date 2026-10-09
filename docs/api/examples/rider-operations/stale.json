@@ -1,0 +1,6 @@
+{
+  "code": "STALE_RESOURCE",
+  "message": "This parcel changed. Refresh it before starting a new action.",
+  "errors": [],
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

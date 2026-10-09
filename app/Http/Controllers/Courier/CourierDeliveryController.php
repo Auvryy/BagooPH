@@ -54,39 +54,11 @@ class CourierDeliveryController extends Controller
         $completedToday = 0;
         $todayStart = today('Asia/Manila')->utc();
         $todayEnd = $todayStart->copy()->addDay();
-        $canReceiveNewWork = app(LogisticsEligibilityService::class)->canReceivePickups($profile);
 
         if ($profile?->logistics_company_id && $profile->assigned_hub_id) {
-            if ($canReceiveNewWork && $profile->is_available) {
-                $availableJobs = Delivery::query()
-                    ->whereNull('courier_id')
-                    ->whereRaw('deliveries.status = ?', ['unassigned'])
-                    ->where('logistics_company_id', $profile->logistics_company_id)
-                    ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
-                    ->whereHas('order', fn ($query) => $query->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
-                    ->with(['order.items', 'originBayanHub'])
-                    ->oldest()
-                    ->get();
-            }
-
-            $pickupTasks = Delivery::query()
-                ->where('courier_id', $user->id)
-                ->where('logistics_company_id', $profile->logistics_company_id)
-                ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
-                ->whereRaw("deliveries.status in ('assigned', 'assigned_pickup', 'picked_up')")
-                ->with(['order.items', 'originBayanHub'])
-                ->oldest('assigned_at')
-                ->get();
-
-            $finalMileTasks = Delivery::query()
-                ->where('assigned_rider_id', $user->id)
-                ->where('logistics_company_id', $profile->logistics_company_id)
-                ->where('destination_bayan_hub_id', $profile->assigned_hub_id)
-                ->whereRaw("deliveries.status in ('assigned_to_rider', 'out_for_delivery', 'delivery_failed')")
-                ->where(fn ($query) => $query->whereRaw("deliveries.status != 'delivery_failed'")->orWhereNull('current_hub_id'))
-                ->with(['order', 'destinationBayanHub'])
-                ->oldest('assigned_at')
-                ->get();
+            $availableJobs = $this->operations->queue($user, 'available')->get();
+            $pickupTasks = $this->operations->queue($user, 'pickup')->get();
+            $finalMileTasks = $this->operations->queue($user, 'final_mile')->get();
 
             $recentActivity = Delivery::query()
                 ->where('assigned_rider_id', $user->id)
