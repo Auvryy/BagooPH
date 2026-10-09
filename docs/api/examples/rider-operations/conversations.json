@@ -1,0 +1,30 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "final_mile-1-13-3",
+        "delivery_id": "1",
+        "assignment_reference": "CHK-SAMPLE-001",
+        "phase": "final_mile",
+        "tracking_number": "BGO-SAMPLE001",
+        "participant": {
+          "id": "3",
+          "name": "Demo account",
+          "role": "buyer",
+          "avatar_url": null
+        },
+        "can_send": true,
+        "send_denial": null,
+        "unread_count": 0,
+        "last_message": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 1,
+      "last_page": 1
+    }
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

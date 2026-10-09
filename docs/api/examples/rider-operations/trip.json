@@ -1,0 +1,52 @@
+{
+  "data": {
+    "id": "trip-13",
+    "assignment_reference": "CHK-SAMPLE-001",
+    "delivery_id": "1",
+    "task_id": "final_mile-1",
+    "phase": "final_mile",
+    "tracking_number": "BGO-SAMPLE001",
+    "order_number": "BGO-SAMPLE002",
+    "outcome": "delivered",
+    "assignment_recorded_at": "2026-10-09T02:00:00.000Z",
+    "last_recorded_at": "2026-10-09T02:00:00.000Z",
+    "commercial_status": "delivered",
+    "current_operational_stage": "delivered",
+    "recipient": "Demo Buyer",
+    "address": "Demo delivery address",
+    "payment_method": "cod",
+    "collected_cents": "95000",
+    "earnings": {
+      "available": false,
+      "confirmed_cents": null
+    },
+    "checkpoints": [
+      {
+        "id": "13",
+        "reference": "SOURCE-SAMPLE-001",
+        "kind": "assigned_to_rider",
+        "recorded_at": "2026-10-09T02:00:00.000Z",
+        "waybill_matched": false,
+        "proof_url": null
+      },
+      {
+        "id": "14",
+        "reference": "SOURCE-SAMPLE-001",
+        "kind": "out_for_delivery",
+        "recorded_at": "2026-10-09T02:00:00.000Z",
+        "waybill_matched": true,
+        "proof_url": null
+      },
+      {
+        "id": "15",
+        "reference": "SOURCE-SAMPLE-001",
+        "kind": "delivered",
+        "recorded_at": "2026-10-09T02:00:00.000Z",
+        "waybill_matched": true,
+        "proof_url": "/api/v1/rider/trips/trip-13/checkpoints/15/proof"
+      }
+    ],
+    "attempts": []
+  },
+  "request_id": "00000000-0000-4000-8000-000000000001"
+}

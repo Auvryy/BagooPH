@@ -44,8 +44,10 @@ sanitized fixtures, fields/abilities/limits/retry rules, exact checks and gaps,
 additive schema/config instructions, and a Flutter integration checklist. A local
 test result is distinct from publication, migration, deployment or device proof.
 Actual PostgreSQL races require independent connections to an authorized isolated
-test database. Repository tests are restricted to SQLite `:memory:`, so that
-runtime gate must remain explicitly unverified here.
+test database. Ordinary repository tests remain restricted to SQLite `:memory:`.
+Running the [disposable PostgreSQL verifier](../../scripts/verify-rider-races/README.md)
+requires an explicit exception for that isolated database only. Record the actual
+run and its limits in the roadmap; SQLite results alone cannot satisfy this gate.
 
 No live GPS, ETA, route optimization, AI dispatch, offline-success queue,
 role conversion, payout/withdrawal or new external service enters this plan.

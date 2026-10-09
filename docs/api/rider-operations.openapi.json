@@ -2,7 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BagooPH Rider operations",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "description": "Implemented backend native operations. See RIDER_OPERATIONS_API.md for locked authority, semantic validation, retry/reconciliation and deployment boundaries. Unknown domain enums require a safe client fallback."
   },
   "servers": [
     {
@@ -13,101 +14,73 @@
     "/rider/home": {
       "get": {
         "operationId": "riderHome",
+        "summary": "Own placement, eligibility, duty, counts and limits",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:read",
         "parameters": [
           {
             "name": "X-Request-ID",
             "in": "header",
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Own placement, eligibility, duty, counts and limits",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/HomeEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error429"
           },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         }
       }
@@ -115,12 +88,22 @@
     "/rider/pickup-jobs": {
       "get": {
         "operationId": "riderPickupJobs",
+        "summary": "Available private pickup previews",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:read",
         "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
           {
             "name": "page",
             "in": "query",
@@ -140,96 +123,58 @@
               "maximum": 50,
               "default": 20
             }
-          },
-          {
-            "name": "X-Request-ID",
-            "in": "header",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Available private pickup previews",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/TaskListEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error429"
           },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         }
       }
@@ -237,12 +182,22 @@
     "/rider/tasks": {
       "get": {
         "operationId": "riderTasks",
+        "summary": "Own active tasks",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:read",
         "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
           {
             "name": "page",
             "in": "query",
@@ -274,96 +229,58 @@
                 "final_mile"
               ]
             }
-          },
-          {
-            "name": "X-Request-ID",
-            "in": "header",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Own active tasks",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/TaskListEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error429"
           },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         }
       }
@@ -371,110 +288,163 @@
     "/rider/tasks/{task}": {
       "get": {
         "operationId": "riderTask",
+        "summary": "Current owned task",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:read",
         "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
           {
             "name": "task",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "pattern": "^(pickup|final_mile)-[1-9][0-9]*$"
-            }
-          },
-          {
-            "name": "X-Request-ID",
-            "in": "header",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
+              "$ref": "#/components/schemas/TaskID"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Current owned task",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/TaskEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/commands/{key}": {
+      "get": {
+        "operationId": "riderCommand",
+        "summary": "Original owned committed result including expired retry window",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original owned committed result including expired retry window",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/CommandEnvelope"
                 }
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         }
       }
@@ -482,110 +452,82 @@
     "/rider/duty": {
       "patch": {
         "operationId": "riderDuty",
+        "summary": "Set an explicit desired duty state",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:work",
         "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Request-ID",
-            "in": "header",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Set an explicit desired duty state",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/DutyCommandEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error429"
           },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         },
         "requestBody": {
@@ -593,16 +535,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "on_duty"
-                ],
-                "properties": {
-                  "on_duty": {
-                    "type": "boolean"
-                  }
-                }
+                "$ref": "#/components/schemas/DutyBody"
               }
             }
           }
@@ -612,20 +545,28 @@
     "/rider/pickup-jobs/{job}/claim": {
       "post": {
         "operationId": "riderClaim",
+        "summary": "Claim eligible pickup; this is not physical collection",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:work",
         "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
           {
             "name": "job",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "pattern": "^[1-9][0-9]*$",
-              "maxLength": 19
+              "$ref": "#/components/schemas/ID"
             }
           },
           {
@@ -633,99 +574,61 @@
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Request-ID",
-            "in": "header",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Claim eligible pickup; this is not physical collection",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/ParcelCommandEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error429"
           },
           "503": {
-            "description": "Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error503"
           }
         },
         "requestBody": {
@@ -733,128 +636,1813 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "expected_version"
-                ],
-                "properties": {
-                  "expected_version": {
-                    "type": "string",
-                    "pattern": "^[a-f0-9]{64}$"
-                  }
-                }
+                "$ref": "#/components/schemas/ClaimBody"
               }
             }
           }
         }
       }
     },
-    "/rider/commands/{key}": {
-      "get": {
-        "operationId": "riderCommand",
+    "/rider/tasks/{task}/pickup": {
+      "post": {
+        "operationId": "riderPickup",
+        "summary": "Record authorized pickup through the shared custody writer",
         "security": [
           {
             "nativeBearer": []
           }
         ],
+        "x-required-token-ability": "rider:operations:work",
         "parameters": [
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
           {
             "name": "X-Request-ID",
             "in": "header",
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
           }
         ],
         "responses": {
           "200": {
-            "description": "Authoritative owned resource or committed command",
+            "description": "Record authorized pickup through the shared custody writer",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope"
+                  "$ref": "#/components/schemas/ParcelCommandEnvelope"
                 }
               }
             }
           },
           "401": {
-            "description": "Session lost",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error401"
           },
           "403": {
-            "description": "Denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error403"
           },
           "404": {
-            "description": "Hidden or missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           },
           "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error409"
           },
           "422": {
-            "description": "Validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           },
           "429": {
-            "description": "Rate limit",
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/tasks/{task}/depart": {
+      "post": {
+        "operationId": "riderDepart",
+        "summary": "Record authorized depart through the shared custody writer",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:work",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record authorized depart through the shared custody writer",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ParcelCommandEnvelope"
                 }
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
           "503": {
-            "description": "Unavailable",
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/tasks/{task}/deliver": {
+      "post": {
+        "operationId": "riderDeliver",
+        "summary": "Record authorized deliver through the shared custody writer",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:work",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record authorized deliver through the shared custody writer",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ParcelCommandEnvelope"
                 }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/tasks/{task}/fail": {
+      "post": {
+        "operationId": "riderFail",
+        "summary": "Record authorized fail through the shared custody writer",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:work",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record authorized fail through the shared custody writer",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FailBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/trips": {
+      "get": {
+        "operationId": "riderTrips",
+        "summary": "Retained assignment history",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "payment",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "cod",
+                "prepaid"
+              ]
+            }
+          },
+          {
+            "name": "phase",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pickup",
+                "final_mile"
+              ]
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive Asia/Manila assignment day. Both supplied: to_date must be on/after from_date."
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive Asia/Manila assignment day. Both supplied: to_date must be on/after from_date."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained assignment history",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/trips/{trip}": {
+      "get": {
+        "operationId": "riderTrip",
+        "summary": "Owned original assignment history",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "trip",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TripID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned original assignment history",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/trips/{trip}/checkpoints/{checkpoint}/proof": {
+      "get": {
+        "operationId": "riderCheckpointProof",
+        "summary": "Owned private hash-verified original POD",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "trip",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TripID"
+            }
+          },
+          {
+            "name": "checkpoint",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned private hash-verified original POD",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/trips/{trip}/attempts/{attempt}/proof": {
+      "get": {
+        "operationId": "riderAttemptProof",
+        "summary": "Owned private hash-verified attempt proof",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "trip",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TripID"
+            }
+          },
+          {
+            "name": "attempt",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned private hash-verified attempt proof",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/conversations": {
+      "get": {
+        "operationId": "riderConversations",
+        "summary": "Current assignment/phase/participant-bound threads",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current assignment/phase/participant-bound threads",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/conversations/{thread}/messages": {
+      "get": {
+        "operationId": "riderMessages",
+        "summary": "Selected thread messages, newest first",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "thread",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThreadID"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selected thread messages, newest first",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      },
+      "post": {
+        "operationId": "riderSendMessage",
+        "summary": "Send to the selected authoritative participant",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:messages",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "thread",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThreadID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Send to the selected authoritative participant",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/conversations/{thread}/read": {
+      "post": {
+        "operationId": "riderReadMessages",
+        "summary": "Acknowledge the displayed selected-thread boundary",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:messages",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "thread",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThreadID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Acknowledge the displayed selected-thread boundary",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageReadCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadMessageBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/notifications": {
+      "get": {
+        "operationId": "riderNotifications",
+        "summary": "Durable owned notices and authorized destinations",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable owned notices and authorized destinations",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/notifications/{notice}/read": {
+      "post": {
+        "operationId": "riderReadNotice",
+        "summary": "Read one owned notice",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:notifications",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "notice",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read one owned notice",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationReadCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/notifications/read-through": {
+      "post": {
+        "operationId": "riderReadDisplayedNotices",
+        "summary": "Read exactly the displayed owned notice IDs",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:notifications",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read exactly the displayed owned notice IDs",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationReadCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadNoticesBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/cash": {
+      "get": {
+        "operationId": "riderCash",
+        "summary": "Owned journal responsibilities, exact cash and unavailable earnings",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned journal responsibilities, exact cash and unavailable earnings",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/cash/{account}": {
+      "get": {
+        "operationId": "riderCashAccount",
+        "summary": "Owned retained cash journal and allowed hub recipients",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned retained cash journal and allowed hub recipients",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/cash/{account}/offer": {
+      "post": {
+        "operationId": "riderOfferCash",
+        "summary": "Offer own counted cash; only recipient can record receipt",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:cash",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offer own counted cash; only recipient can record receipt",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashOfferCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashOfferBody"
               }
             }
           }
@@ -870,51 +2458,3130 @@
       }
     },
     "schemas": {
-      "Envelope": {
+      "ID": {
+        "type": "string",
+        "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+        "description": "Positive ASCII decimal string, no leading zero, at most signed 64-bit maximum. Validate before lookup."
+      },
+      "UUID": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+        "format": "uuid"
+      },
+      "UTC": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+      },
+      "Version": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "Cents": {
+        "type": "string",
+        "pattern": "^(?:0|[1-9][0-9]*)$",
+        "description": "Exact integer PHP centavos; never decode through binary float."
+      },
+      "SignedCents": {
+        "type": "string",
+        "pattern": "^-?(?:0|[1-9][0-9]*)$"
+      },
+      "PesoAmount": {
+        "type": "string",
+        "pattern": "^(?:0|[1-9][0-9]{0,8})(?:\\.[0-9]{1,2})?$"
+      },
+      "TaskID": {
+        "type": "string",
+        "pattern": "^(?:pickup|final_mile)-[1-9][0-9]*$"
+      },
+      "TripID": {
+        "type": "string",
+        "pattern": "^trip-[1-9][0-9]*$"
+      },
+      "ThreadID": {
+        "type": "string",
+        "pattern": "^(?:pickup|final_mile)-[1-9][0-9]*-[1-9][0-9]*-[1-9][0-9]*$"
+      },
+      "RelativeProofURL": {
+        "type": "string",
+        "pattern": "^/api/v1/rider/trips/trip-[1-9][0-9]*/(?:checkpoints|attempts)/[1-9][0-9]*/proof$"
+      },
+      "Pagination": {
         "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "Earnings": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "const": false
+          },
+          "confirmed_cents": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "available",
+          "confirmed_cents"
+        ],
+        "additionalProperties": false
+      },
+      "Home": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "operations_api_version": {
+            "const": 1
+          },
+          "on_duty": {
+            "type": "boolean"
+          },
+          "observed_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "placement": {
+            "type": "object",
+            "properties": {
+              "company_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "company_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hub_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hub_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "barangay": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "company_id",
+              "company_name",
+              "hub_id",
+              "hub_name",
+              "barangay"
+            ],
+            "additionalProperties": false
+          },
+          "eligibility": {
+            "type": "object",
+            "properties": {
+              "operational": {
+                "type": "boolean"
+              },
+              "can_claim": {
+                "type": "boolean"
+              },
+              "claim_denial": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "PLACEMENT_UNAVAILABLE",
+                      "OFF_DUTY",
+                      "PICKUP_CAPACITY",
+                      "OTHER_ACTIVE_WORK"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "operational",
+              "can_claim",
+              "claim_denial"
+            ],
+            "additionalProperties": false
+          },
+          "capacity": {
+            "type": "object",
+            "properties": {
+              "active_pickups": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pickup_limit": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "remaining_pickups": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "active_pickups",
+              "pickup_limit",
+              "remaining_pickups"
+            ],
+            "additionalProperties": false
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pickup": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "final_mile": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "available",
+              "pickup",
+              "final_mile"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "home": {
+                "type": "boolean"
+              },
+              "duty": {
+                "type": "boolean"
+              },
+              "pickup_claim": {
+                "type": "boolean"
+              },
+              "parcel_actions": {
+                "type": "boolean"
+              },
+              "trips": {
+                "type": "boolean"
+              },
+              "messages": {
+                "type": "boolean"
+              },
+              "notifications": {
+                "type": "boolean"
+              },
+              "cash": {
+                "type": "boolean"
+              },
+              "pre_custody_release": {
+                "type": "boolean"
+              },
+              "native_restricted_recovery": {
+                "type": "boolean"
+              },
+              "rider_earnings": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "home",
+              "duty",
+              "pickup_claim",
+              "parcel_actions",
+              "trips",
+              "messages",
+              "notifications",
+              "cash",
+              "pre_custody_release",
+              "native_restricted_recovery",
+              "rider_earnings"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "per_page_max": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "poll_interval_seconds": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "request_budget_per_minute": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "proof_bytes_max": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "message_characters_max": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "idempotency_days": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "per_page_max",
+              "poll_interval_seconds",
+              "request_budget_per_minute",
+              "proof_bytes_max",
+              "message_characters_max",
+              "idempotency_days"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "account_id",
+          "operations_api_version",
+          "on_duty",
+          "observed_at",
+          "placement",
+          "eligibility",
+          "capacity",
+          "counts",
+          "capabilities",
+          "limits"
+        ],
+        "additionalProperties": false
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/TaskID"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "assignment_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "final_mile"
+            ]
+          },
+          "preview": {
+            "type": "boolean"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "commercial_status": {
+            "type": "string"
+          },
+          "operational_stage": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "observed_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "custody": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "hub_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "held_by_me": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "hub_id",
+              "held_by_me"
+            ],
+            "additionalProperties": false
+          },
+          "stop": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "seller",
+                  "origin_hub",
+                  "destination_hub",
+                  "buyer"
+                ]
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "latitude": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "longitude": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "phone": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "instructions": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "name",
+              "address",
+              "latitude",
+              "longitude",
+              "phone",
+              "instructions"
+            ],
+            "additionalProperties": false
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string"
+                  },
+                  "cod_due_cents": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Cents"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "commercial_payment_status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method",
+                  "cod_due_cents",
+                  "commercial_payment_status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "claim": {
+                "type": "boolean"
+              },
+              "pickup": {
+                "type": "boolean"
+              },
+              "depart": {
+                "type": "boolean"
+              },
+              "deliver": {
+                "type": "boolean"
+              },
+              "fail": {
+                "type": "boolean"
+              },
+              "release": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "release"
+            ],
+            "additionalProperties": false
+          },
+          "action_denials": {
+            "type": "object",
+            "properties": {
+              "release": {
+                "const": "SHARED_RELEASE_POLICY_UNAVAILABLE"
+              },
+              "deliver": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "release",
+              "deliver"
+            ],
+            "additionalProperties": false
+          },
+          "failure_policy": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "attempt_limit": {
+                    "const": 3
+                  },
+                  "recorded_attempts": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "label"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "requires_notes": {
+                    "type": "boolean"
+                  },
+                  "requires_location": {
+                    "type": "boolean"
+                  },
+                  "requires_private_image": {
+                    "type": "boolean"
+                  },
+                  "retry_authority": {
+                    "const": "destination_hub"
+                  },
+                  "return_hub_id": {
+                    "$ref": "#/components/schemas/ID"
+                  }
+                },
+                "required": [
+                  "attempt_limit",
+                  "recorded_attempts",
+                  "reasons",
+                  "requires_notes",
+                  "requires_location",
+                  "requires_private_image",
+                  "retry_authority",
+                  "return_hub_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "delivery_id",
+          "assignment_reference",
+          "phase",
+          "preview",
+          "tracking_number",
+          "order_number",
+          "commercial_status",
+          "operational_stage",
+          "version",
+          "observed_at",
+          "custody",
+          "stop",
+          "payment",
+          "actions",
+          "action_denials",
+          "failure_policy",
+          "next_instruction"
+        ],
+        "additionalProperties": false
+      },
+      "Checkpoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "waybill_matched": {
+            "type": "boolean"
+          },
+          "proof_url": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelativeProofURL"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "kind",
+          "recorded_at",
+          "waybill_matched",
+          "proof_url"
+        ],
+        "additionalProperties": false
+      },
+      "Attempt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "proof_url": {
+            "$ref": "#/components/schemas/RelativeProofURL"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "number",
+          "reason",
+          "recorded_at",
+          "proof_url"
+        ],
+        "additionalProperties": false
+      },
+      "Trip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/TripID"
+          },
+          "assignment_reference": {
+            "type": "string"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "task_id": {
+            "$ref": "#/components/schemas/TaskID"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "final_mile"
+            ]
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assignment_recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "last_recorded_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "commercial_status": {
+            "type": "string"
+          },
+          "current_operational_stage": {
+            "type": "string"
+          },
+          "recipient": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "collected_cents": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cents"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earnings": {
+            "$ref": "#/components/schemas/Earnings"
+          },
+          "checkpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Checkpoint"
+            }
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attempt"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "assignment_reference",
+          "delivery_id",
+          "task_id",
+          "phase",
+          "tracking_number",
+          "order_number",
+          "outcome",
+          "assignment_recorded_at",
+          "last_recorded_at",
+          "commercial_status",
+          "current_operational_stage",
+          "recipient",
+          "address",
+          "payment_method",
+          "collected_cents",
+          "earnings",
+          "checkpoints",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "sender_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "text": {
+            "type": "string"
+          },
+          "from_rider": {
+            "type": "boolean"
+          },
+          "is_read": {
+            "type": "boolean"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          }
+        },
+        "required": [
+          "id",
+          "sender_id",
+          "text",
+          "from_rider",
+          "is_read",
+          "recorded_at"
+        ],
+        "additionalProperties": false
+      },
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ThreadID"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "assignment_reference": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "final_mile"
+            ]
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "participant": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ID"
+              },
+              "name": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "avatar_url": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^/storage/avatars/"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "role",
+              "avatar_url"
+            ],
+            "additionalProperties": false
+          },
+          "can_send": {
+            "type": "boolean"
+          },
+          "send_denial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unread_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Message"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "delivery_id",
+          "assignment_reference",
+          "phase",
+          "tracking_number",
+          "participant",
+          "can_send",
+          "send_denial",
+          "unread_count",
+          "last_message"
+        ],
+        "additionalProperties": false
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "task",
+                      "cash",
+                      "account"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "href": {
+                    "type": "string",
+                    "pattern": "^/api/v1/rider/"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "id",
+                  "href"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "body",
+          "recorded_at",
+          "read_at",
+          "target"
+        ],
+        "additionalProperties": false
+      },
+      "Holder": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "amount_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "restricted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "stage",
+          "amount_cents",
+          "restricted"
+        ],
+        "additionalProperties": false
+      },
+      "CashEvent": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "actor_role": {
+            "type": "string"
+          },
+          "actor_name": {
+            "type": "string"
+          },
+          "from_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "evidence_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sequence": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "amount_cents": {
+            "$ref": "#/components/schemas/SignedCents"
+          },
+          "expected_cents": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cents"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received_cents": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cents"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discrepancy_cents": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignedCents"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          }
+        },
+        "required": [
+          "reference",
+          "event_type",
+          "actor_role",
+          "actor_name",
+          "from_stage",
+          "to_stage",
+          "provenance",
+          "evidence_reference",
+          "reason",
+          "source_reference",
+          "sequence",
+          "amount_cents",
+          "expected_cents",
+          "received_cents",
+          "discrepancy_cents",
+          "from_user_id",
+          "to_user_id",
+          "recorded_at"
+        ],
+        "additionalProperties": false
+      },
+      "Cash": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "source_event_reference": {
+            "type": "string"
+          },
+          "hub_name": {
+            "type": "string"
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "own_held_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "own_remitted_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "holders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holder"
+            }
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "pending_handover": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "string"
+                  },
+                  "amount_cents": {
+                    "$ref": "#/components/schemas/Cents"
+                  },
+                  "holder_id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "recipient_id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "holder_name": {
+                    "type": "string"
+                  },
+                  "recipient_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reference",
+                  "amount_cents",
+                  "holder_id",
+                  "recipient_id",
+                  "holder_name",
+                  "recipient_name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_offer": {
+            "type": "boolean"
+          },
+          "can_receive": {
+            "const": false
+          },
+          "can_reconcile": {
+            "const": false
+          },
+          "earnings": {
+            "$ref": "#/components/schemas/Earnings"
+          },
+          "expected_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "product_subtotal_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "discount_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "shipping_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "collected_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "reconciled_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "excess_cents": {
+            "$ref": "#/components/schemas/Cents"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "delivery_id",
+          "tracking_number",
+          "order_number",
+          "source_kind",
+          "status",
+          "version",
+          "source_event_reference",
+          "hub_name",
+          "company_name",
+          "own_held_cents",
+          "own_remitted_cents",
+          "holders",
+          "recorded_at",
+          "pending_handover",
+          "can_offer",
+          "can_receive",
+          "can_reconcile",
+          "earnings",
+          "expected_cents",
+          "product_subtotal_cents",
+          "discount_cents",
+          "shipping_cents",
+          "collected_cents",
+          "reconciled_cents",
+          "excess_cents"
+        ],
+        "additionalProperties": false
+      },
+      "CashDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "source_event_reference": {
+            "type": "string"
+          },
+          "hub_name": {
+            "type": "string"
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "own_held_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "own_remitted_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "holders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holder"
+            }
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "pending_handover": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "string"
+                  },
+                  "amount_cents": {
+                    "$ref": "#/components/schemas/Cents"
+                  },
+                  "holder_id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "recipient_id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "holder_name": {
+                    "type": "string"
+                  },
+                  "recipient_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reference",
+                  "amount_cents",
+                  "holder_id",
+                  "recipient_id",
+                  "holder_name",
+                  "recipient_name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_offer": {
+            "type": "boolean"
+          },
+          "can_receive": {
+            "const": false
+          },
+          "can_reconcile": {
+            "const": false
+          },
+          "earnings": {
+            "$ref": "#/components/schemas/Earnings"
+          },
+          "expected_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "product_subtotal_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "discount_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "shipping_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "collected_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "reconciled_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "excess_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/ID"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashEvent"
+            }
+          },
+          "discrepancies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_reference": {
+                  "type": "string"
+                },
+                "difference_cents": {
+                  "$ref": "#/components/schemas/SignedCents"
+                },
+                "holder_id": {
+                  "$ref": "#/components/schemas/ID"
+                },
+                "resolved_by": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "source_reference",
+                "difference_cents",
+                "holder_id",
+                "resolved_by"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "delivery_id",
+          "tracking_number",
+          "order_number",
+          "source_kind",
+          "status",
+          "version",
+          "source_event_reference",
+          "hub_name",
+          "company_name",
+          "own_held_cents",
+          "own_remitted_cents",
+          "holders",
+          "recorded_at",
+          "pending_handover",
+          "can_offer",
+          "can_receive",
+          "can_reconcile",
+          "earnings",
+          "expected_cents",
+          "product_subtotal_cents",
+          "discount_cents",
+          "shipping_cents",
+          "collected_cents",
+          "reconciled_cents",
+          "excess_cents",
+          "recipients",
+          "history",
+          "discrepancies"
+        ],
+        "additionalProperties": false
+      },
+      "ParcelResult": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "$ref": "#/components/schemas/TaskID"
+          },
+          "delivery_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "commercial_status": {
+            "type": "string"
+          },
+          "operational_stage": {
+            "type": "string"
+          },
+          "checkpoint_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "task_id",
+          "delivery_id",
+          "commercial_status",
+          "operational_stage",
+          "checkpoint_id"
+        ],
+        "additionalProperties": false
+      },
+      "DutyResult": {
+        "type": "object",
+        "properties": {
+          "on_duty": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on_duty"
+        ],
+        "additionalProperties": false
+      },
+      "MessageReadResult": {
+        "type": "object",
+        "properties": {
+          "through_message_id": {
+            "$ref": "#/components/schemas/ID"
+          }
+        },
+        "required": [
+          "through_message_id"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationReadResult": {
+        "type": "object",
+        "properties": {
+          "read_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        },
+        "required": [
+          "read_ids"
+        ],
+        "additionalProperties": false
+      },
+      "CashOfferResult": {
+        "type": "object",
+        "properties": {
+          "cash_account_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "event_reference": {
+            "type": "string"
+          },
+          "ledger_version": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "handover_state": {
+            "const": "awaiting_recipient_receipt"
+          }
+        },
+        "required": [
+          "cash_account_id",
+          "event_reference",
+          "ledger_version",
+          "handover_state"
+        ],
+        "additionalProperties": false
+      },
+      "Command": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ParcelResult"
+              },
+              {
+                "$ref": "#/components/schemas/DutyResult"
+              },
+              {
+                "$ref": "#/components/schemas/Message"
+              },
+              {
+                "$ref": "#/components/schemas/MessageReadResult"
+              },
+              {
+                "$ref": "#/components/schemas/NotificationReadResult"
+              },
+              {
+                "$ref": "#/components/schemas/CashOfferResult"
+              }
+            ]
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "DutyCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/DutyResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "DutyCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DutyCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
         "required": [
           "data",
           "request_id"
         ],
+        "additionalProperties": false
+      },
+      "ParcelCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ParcelResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "ParcelCommandEnvelope": {
+        "type": "object",
         "properties": {
           "data": {
-            "type": "object"
+            "$ref": "#/components/schemas/ParcelCommand"
           },
           "request_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID"
           }
-        }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "MessageCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "MessageCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MessageCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "MessageReadCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/MessageReadResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "MessageReadCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MessageReadCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationReadCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/NotificationReadResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationReadCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationReadCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CashOfferCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "duty",
+              "claim",
+              "pickup",
+              "depart",
+              "deliver",
+              "fail",
+              "message.send",
+              "message.read",
+              "notification.read",
+              "cash.offer"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CashOfferResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "CashOfferCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CashOfferCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "HomeEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Home"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "TaskEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Task"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "FinalTaskEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Task"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "TripEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Trip"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CashEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CashDetail"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Command"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "DeliveredCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ParcelCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "TaskListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "ConversationListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              "unread_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "items",
+              "pagination",
+              "unread_count"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CashListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Cash"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "own_held_cents": {
+                    "$ref": "#/components/schemas/Cents"
+                  },
+                  "accounts_with_unresolved_difference": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "basis": {
+                    "const": "all_owned_cash_journals"
+                  }
+                },
+                "required": [
+                  "own_held_cents",
+                  "accounts_with_unresolved_difference",
+                  "basis"
+                ],
+                "additionalProperties": false
+              },
+              "earnings": {
+                "$ref": "#/components/schemas/Earnings"
+              }
+            },
+            "required": [
+              "items",
+              "pagination",
+              "summary",
+              "earnings"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "TripListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              "attribution": {
+                "const": "retained_assignment"
+              },
+              "date_basis": {
+                "const": "assignment_recorded_at"
+              }
+            },
+            "required": [
+              "items",
+              "pagination",
+              "attribution",
+              "date_basis"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "MessageListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "thread": {
+                "$ref": "#/components/schemas/Conversation"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "thread",
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
       },
       "Error": {
         "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "errors": {
+            "oneOf": [
+              {
+                "type": "array",
+                "maxItems": 0
+              },
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "cooldown": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300
+          }
+        },
         "required": [
           "code",
           "message",
           "errors",
           "request_id"
         ],
+        "additionalProperties": false
+      },
+      "ClaimBody": {
+        "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
+          "expected_version": {
+            "$ref": "#/components/schemas/Version"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "DutyBody": {
+        "type": "object",
+        "properties": {
+          "on_duty": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on_duty"
+        ],
+        "additionalProperties": false
+      },
+      "ScanBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/Version"
           },
-          "message": {
-            "type": "string"
+          "barcode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Submitted parcel waybill; shared ASCII trim/uppercase then exact match. No inferred stored barcode."
           },
-          "errors": {
-            "type": [
-              "object",
-              "array"
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "barcode"
+        ],
+        "additionalProperties": false
+      },
+      "DeliverBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "barcode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Submitted parcel waybill; shared ASCII trim/uppercase then exact match. No inferred stored barcode."
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
             ]
           },
-          "request_id": {
+          "proof_image_file": {
             "type": "string",
-            "format": "uuid"
+            "format": "binary",
+            "description": "Genuine JPEG/PNG/WebP, at most 5,242,880 bytes. Original file bytes fingerprint the retry."
           },
-          "cooldown": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 300
+          "recipient_name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255
+          },
+          "recipient_relationship": {
+            "type": "string",
+            "enum": [
+              "buyer",
+              "household",
+              "authorized_recipient"
+            ]
+          },
+          "cash_received": {
+            "$ref": "#/components/schemas/PesoAmount"
+          },
+          "change_given": {
+            "$ref": "#/components/schemas/PesoAmount"
+          },
+          "cash_confirmed": {
+            "oneOf": [
+              {
+                "const": true
+              },
+              {
+                "const": "1"
+              },
+              {
+                "const": "true"
+              },
+              {
+                "const": "yes"
+              },
+              {
+                "const": "on"
+              },
+              {
+                "const": 1
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "barcode",
+          "proof_image_file",
+          "recipient_name",
+          "recipient_relationship",
+          "cash_received",
+          "change_given",
+          "cash_confirmed"
+        ],
+        "additionalProperties": false
+      },
+      "FailBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "barcode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Submitted parcel waybill; shared ASCII trim/uppercase then exact match. No inferred stored barcode."
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "proof_image_file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Genuine JPEG/PNG/WebP, at most 5,242,880 bytes. Original file bytes fingerprint the retry."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "customer_unreachable",
+              "customer_unavailable",
+              "address_clarification",
+              "unsafe_conditions",
+              "cod_unavailable",
+              "customer_refused"
+            ]
+          },
+          "location_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "expected_version",
+          "barcode",
+          "notes",
+          "proof_image_file",
+          "reason",
+          "location_name"
+        ],
+        "additionalProperties": false
+      },
+      "SendBody": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Plain text normalized through the shared notes validator; markup and unsafe controls reject."
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "ReadMessageBody": {
+        "type": "object",
+        "properties": {
+          "through_message_id": {
+            "$ref": "#/components/schemas/ID"
+          }
+        },
+        "required": [
+          "through_message_id"
+        ],
+        "additionalProperties": false
+      },
+      "ReadNoticesBody": {
+        "type": "object",
+        "properties": {
+          "displayed_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "displayed_ids"
+        ],
+        "additionalProperties": false
+      },
+      "CashOfferBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "recipient_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/PesoAmount"
+          },
+          "evidence_reference": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "expected_version",
+          "recipient_id",
+          "amount",
+          "evidence_reference"
+        ],
+        "additionalProperties": false
+      },
+      "EmptyBody": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "Error401": {
+        "description": "Session lost",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error403": {
+        "description": "Denied account or ability",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error404": {
+        "description": "Hidden, unknown or unavailable retained resource",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error409": {
+        "description": "Stale intent, source or domain conflict",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error422": {
+        "description": "Invalid fields",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error429": {
+        "description": "Rate limit; respect Retry-After",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error503": {
+        "description": "Dependency unavailable",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store, private"
+          },
+          "X-Request-ID": {
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          "X-Content-Type-Options": {
+            "schema": {
+              "type": "string",
+              "const": "nosniff"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
           }
         }
       }
