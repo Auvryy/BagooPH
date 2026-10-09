@@ -34,7 +34,7 @@ class SellerOrderController extends Controller
         $owned = Order::whereHas('items', fn ($items) => $items->where('shop_id', $shop->id));
         $counts = $workspace->counts($owned, 'seller');
         $eligible = app(ShopEligibilityService::class)->isEligible($shop);
-        $orders = $workspace->stable($workspace->filter(clone $owned, 'seller', $status))
+        $query = $workspace->stable($workspace->filter(clone $owned, 'seller', $status))
             ->withCount('items')->withCount(['items as owned_items_count' => fn ($items) => $items->where('shop_id', $shop->id)])
             ->with([
                 'buyer' => fn ($buyer) => $buyer->select(['id', 'name', 'avatar', 'kyc_status'])->withCount([
@@ -45,7 +45,8 @@ class SellerOrderController extends Controller
                 'delivery.checkpoints',
                 'commissionLedger' => fn ($ledger) => $ledger->where('seller_id', $shop->user_id),
                 'items' => fn ($items) => $items->where('shop_id', $shop->id)->with('product.category')->orderBy('id'),
-            ])->paginate(10)->withQueryString();
+            ]);
+        $orders = $workspace->paginate($query, 10);
         foreach ($orders as $order) {
             $fullyOwned = (int) $order->items_count > 0 && (int) $order->items_count === (int) $order->owned_items_count;
             $order->setAttribute('has_mixed_shops', ! $fullyOwned);

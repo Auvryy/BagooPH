@@ -40,9 +40,8 @@ class BuyerProfileController extends Controller
         $status = $workspace->selection($request, 'buyer', 'order_status');
         $owned = Order::where('buyer_id', $user->id);
         $counts = $workspace->counts($owned, 'buyer');
-        $orders = $workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
-            ->with(['items.product.shop', 'delivery.courier:id,name'])
-            ->paginate(12)->withQueryString();
+        $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
+            ->with(['items.product.shop', 'delivery.courier:id,name']), 12);
         foreach ($orders as $order) {
             $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
         }

@@ -129,6 +129,21 @@ class SellerOrderWorkspaceTest extends TestCase
             ->has('recentOrders.0.items', 2)->missing('recentOrders.0.order'));
     }
 
+    public function test_marking_the_last_filtered_page_order_ready_refreshes_the_remaining_orders_instead_of_an_empty_workspace(): void
+    {
+        $orders = [];
+        for ($i = 0; $i < 11; $i++) {
+            $orders[] = $this->packed();
+        }
+        $this->actingAs($this->seller)->from(route('seller.orders.index', ['status' => 'to_pack', 'page' => 2]))
+            ->post(route('seller.orders.ready', $orders[0]))->assertSessionHas('success');
+        $this->get(route('seller.orders.index', ['status' => 'to_pack', 'page' => 2]))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 10)->where('orders.total', 10)->where('orders.current_page', 1)
+            ->where('counts.to_pack', 10)->where('counts.to_pickup', 1));
+        $this->get(route('seller.orders.index', ['status' => 'returned', 'page' => 99]))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 0)->where('orders.total', 0)->where('orders.current_page', 1));
+    }
+
     public function test_reverse_custody_filter_uses_actual_parcels_instead_of_a_dispute_claim_count(): void
     {
         $reverse = $this->order('delivery_failed');

@@ -34,7 +34,7 @@ class OrderHistoryController extends Controller
         return Inertia::render('Buyer/Orders', [
             'orderCounts' => $workspace->counts($owned, 'buyer'),
             'currentOrderStatus' => $status,
-            'orders' => $workspace->stable($workspace->filter(clone $owned, 'buyer', $status))->paginate(12)->withQueryString()
+            'orders' => $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status)), 12)
                 ->through(fn (Order $order) => $order->only(['id', 'order_number', 'status', 'total_amount', 'created_at'])),
             'canUsePortal' => $buyer->canAccessPortal(),
         ]);

@@ -72,6 +72,25 @@ class BuyerOrderWorkspaceTest extends TestCase
             ->missing('orders.data.0.shipping_address')->missing('orders.data.0.buyer_id')->missing('orders.data.0.notes'));
     }
 
+    public function test_receiving_the_last_filtered_page_order_returns_the_remaining_page_and_restricted_history_also_clamps(): void
+    {
+        $buyer = User::factory()->create();
+        $orders = Order::factory()->count(13)->create(['buyer_id' => $buyer->id, 'status' => 'delivered']);
+        foreach ($orders as $order) {
+            Delivery::factory()->create(['order_id' => $order->id, 'status' => 'delivered']);
+        }
+        $this->actingAs($buyer)->from('/buyer/orders?order_status=delivered&page=2')
+            ->post('/buyer/orders/'.$orders->first()->id.'/confirm')->assertSessionHas('success');
+        $this->get('/buyer/orders?order_status=delivered&page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 12)->where('orders.total', 12)->where('orders.current_page', 1)
+            ->where('orderCounts.delivered', 12)->where('orderCounts.completed', 1));
+        $buyer->update(['status' => 'suspended']);
+        $this->get('/buyer/orders?order_status=delivered&page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Buyer/Orders')->has('orders.data', 12)->where('orders.current_page', 1)->where('canUsePortal', false));
+        $this->get('/buyer/orders?order_status=returned&page=99')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 0)->where('orders.total', 0)->where('orders.current_page', 1));
+    }
+
     public function test_receipt_flags_require_owned_physical_delivery_and_the_existing_writer_refreshes_counts(): void
     {
         $buyer = User::factory()->create();

@@ -9,6 +9,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Logistics\PickupClaimService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 
 class OrderWorkspaceService
@@ -80,6 +81,16 @@ class OrderWorkspaceService
     public function stable(Builder $orders): Builder
     {
         return $orders->reorder()->orderByDesc('orders.created_at')->orderByDesc('orders.id');
+    }
+
+    public function paginate(Builder $orders, int $perPage): LengthAwarePaginator
+    {
+        $page = (clone $orders)->paginate($perPage)->withQueryString();
+        if ($page->currentPage() > $page->lastPage()) {
+            $page = (clone $orders)->paginate($perPage, ['*'], 'page', $page->lastPage())->withQueryString();
+        }
+
+        return $page;
     }
 
     public function canConfirmReceipt(Order $order, User $buyer): bool
