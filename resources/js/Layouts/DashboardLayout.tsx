@@ -84,12 +84,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
                 { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
+                { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
         }
 
         if (role === 'seller') {
             return [
+                { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
                 { name: 'Shop', href: route('seller.shops.index'), icon: Store, current: component === 'Seller/Shops' },
                 { 
                     name: 'Dashboard', 
