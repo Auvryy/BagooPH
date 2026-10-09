@@ -17,6 +17,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
@@ -60,6 +62,24 @@ class NotificationCenterService
         $user->notifications()->whereKey($id)->whereNull('read_at')->update(['read_at' => now(), 'updated_at' => now()]);
 
         return $notice->fresh();
+    }
+
+    public function acknowledgeDisplayed(User $user, array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        abort_unless(count($ids) >= 1 && count($ids) <= 50
+            && collect($ids)->every(fn ($id) => is_string($id) && Str::isUuid($id)), 422);
+
+        return DB::transaction(function () use ($user, $ids) {
+            $user = $this->current(User::whereKey($user->id)->lockForUpdate()->firstOrFail());
+            $records = $user->notifications()->whereIn('type', self::TYPES)->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
+            abort_unless($records->count() === count($ids), 404);
+            // UUID/time cutoffs can include a later unseen notice created in the same clock tick.
+            // Only explicitly displayed owned records may be acknowledged.
+            $user->notifications()->whereIn('type', self::TYPES)->whereIn('id', $ids)->whereNull('read_at')->update(['read_at' => now(), 'updated_at' => now()]);
+
+            return $records->pluck('id')->all();
+        });
     }
 
     public function present(DatabaseNotification $notice, User $user): array

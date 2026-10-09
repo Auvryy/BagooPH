@@ -12,7 +12,7 @@ class RiderAccountService
 {
     public const SETTINGS_ABILITIES = ['rider:settings:read', 'rider:settings:profile', 'rider:settings:password', 'rider:settings:emails'];
 
-    public const OPERATIONS_ABILITIES = ['rider:operations:read', 'rider:operations:work'];
+    public const OPERATIONS_ABILITIES = ['rider:operations:read', 'rider:operations:work', 'rider:operations:messages', 'rider:operations:notifications'];
 
     public function operationsAvailable(): bool
     {

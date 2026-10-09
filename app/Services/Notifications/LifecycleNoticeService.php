@@ -44,6 +44,18 @@ class LifecycleNoticeService
             return;
         }
         $milestone = $checkpoint->checkpoint_type;
+        if ($milestone === 'assigned_to_rider') {
+            $recipientId = $checkpoint->target_state['assigned_rider_id'] ?? null;
+            if ($recipientId) {
+                $this->store((int) $recipientId, 'parcel-event', 'checkpoint:'.$checkpoint->id, [
+                    'title' => 'You have a delivery assignment',
+                    'body' => 'Open your assignment and scan the parcel out of the destination hub.',
+                    'milestone' => $milestone, 'delivery_id' => $checkpoint->delivery_id, 'target' => 'courier-assignments',
+                ]);
+            }
+
+            return;
+        }
         $title = match ($milestone) {
             'assigned_pickup' => 'A pickup rider claimed the parcel',
             'picked_up' => 'The parcel was picked up',

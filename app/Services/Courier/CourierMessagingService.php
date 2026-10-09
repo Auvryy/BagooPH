@@ -4,12 +4,18 @@ namespace App\Services\Courier;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
 use App\Models\Message;
+use App\Models\Order;
 use App\Models\User;
+use App\Rules\ApplicationText;
 use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\Logistics\WaybillScanInputService;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class CourierMessagingService
 {
@@ -94,11 +100,21 @@ class CourierMessagingService
 
     public function acknowledge(User $rider, Delivery $delivery, string $phase, int $throughMessageId): void
     {
+        DB::transaction(function () use ($rider, $delivery, $phase, $throughMessageId) {
+            $order = Order::whereKey($delivery->order_id)->lockForUpdate()->firstOrFail();
+            $delivery = Delivery::whereKey($delivery->id)->where('order_id', $order->id)->lockForUpdate()->firstOrFail();
+            $rider = User::whereKey($rider->id)->lockForUpdate()->firstOrFail();
+            $this->acknowledgeCurrent($rider, $delivery, $phase, $throughMessageId);
+        });
+    }
+
+    private function acknowledgeCurrent(User $rider, Delivery $delivery, string $phase, int $throughMessageId): void
+    {
         if (! $rider->isEligibleCourier()) {
             throw new DomainException('This delivery conversation is not available to your account.');
         }
 
-        $accessible = $this->accessibleDeliveries($rider)->firstWhere('id', $delivery->id);
+        $accessible = $this->conversationQuery($rider)->whereKey($delivery->id)->first();
         $participant = $accessible
             ? collect($this->participantsForDelivery($accessible, $rider))->firstWhere('phase', $phase)
             : null;
@@ -129,9 +145,13 @@ class CourierMessagingService
             ->update(['is_read' => true]);
     }
 
-    public function send(User $rider, Delivery $delivery, string $body, ?string $phase = null): Message
+    public function send(User $rider, Delivery $delivery, string $body, ?string $phase = null, ?int $expectedParticipant = null, ?int $expectedAssignment = null): Message
     {
-        return DB::transaction(function () use ($rider, $delivery, $body, $phase) {
+        $body = app(WaybillScanInputService::class)->normalize(['notes' => $body])['notes'] ?? '';
+        Validator::make(['message' => $body], ['message' => ['required', 'string', new ApplicationText('notes', 1, 1000)]])->validate();
+
+        return DB::transaction(function () use ($rider, $delivery, $body, $phase, $expectedParticipant, $expectedAssignment) {
+            Order::whereKey($delivery->order_id)->lockForUpdate()->firstOrFail();
             $lockedDelivery = Delivery::with([
                 'order.buyer',
                 'order.items.product.shop.user',
@@ -140,6 +160,12 @@ class CourierMessagingService
             $participant = $this->activeParticipantForDelivery($lockedDelivery, $rider);
             if ($phase !== null && $participant['phase'] !== $phase) {
                 throw new DomainException('This conversation is no longer active. Refresh and select the current delivery conversation.');
+            }
+            $assignment = DeliveryCheckpoint::where('delivery_id', $lockedDelivery->id)->whereNull('source_checkpoint_id')
+                ->where('checkpoint_type', $participant['phase'] === 'pickup' ? 'assigned_pickup' : 'assigned_to_rider')->max('id');
+            if (($expectedParticipant !== null && $participant['user']->id !== $expectedParticipant)
+                || ($expectedAssignment !== null && (int) $assignment !== $expectedAssignment)) {
+                throw new DomainException('This conversation assignment or participant changed. Refresh before sending the draft.');
             }
             $messageBody = trim($body);
 
@@ -203,14 +229,19 @@ class CourierMessagingService
 
     private function accessibleDeliveries(User $rider): Collection
     {
+        return $this->conversationQuery($rider)->latest()->limit(50)->get();
+    }
+
+    public function conversationQuery(User $rider): Builder
+    {
         $current = User::find($rider->id);
         if (! $current?->isEligibleCourier()) {
-            return collect();
+            return Delivery::query()->whereRaw('1 = 0');
         }
         $profile = $current->courierProfile;
         $rider->setRelation('courierProfile', $profile);
         if (! $profile?->logistics_company_id || ! $profile->assigned_hub_id) {
-            return collect();
+            return Delivery::query()->whereRaw('1 = 0');
         }
 
         return Delivery::query()
@@ -227,13 +258,10 @@ class CourierMessagingService
             ->with([
                 'order.buyer',
                 'order.items.product.shop.user',
-            ])
-            ->latest()
-            ->limit(50)
-            ->get();
+            ]);
     }
 
-    private function participantsForDelivery(Delivery $delivery, User $rider): array
+    public function participantsForDelivery(Delivery $delivery, User $rider): array
     {
         $participants = [];
         $canWork = app(LogisticsEligibilityService::class)->isOperational($rider->courierProfile);

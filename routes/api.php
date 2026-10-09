@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\RiderAuthController;
+use App\Http\Controllers\Api\RiderMessagingController;
+use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderOperationsController;
 use App\Http\Controllers\Api\RiderParcelController;
 use App\Http\Controllers\Api\RiderSettingsController;
@@ -37,6 +39,17 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
             Route::get('trips/{trip}', [RiderTripController::class, 'show']);
             Route::get('trips/{trip}/checkpoints/{checkpoint}/proof', [RiderTripController::class, 'checkpointProof']);
             Route::get('trips/{trip}/attempts/{attempt}/proof', [RiderTripController::class, 'attemptProof']);
+            Route::get('conversations', [RiderMessagingController::class, 'index'])->name('rider.api.conversations');
+            Route::get('conversations/{thread}/messages', [RiderMessagingController::class, 'show']);
+            Route::get('notifications', [RiderNotificationController::class, 'index'])->name('rider.api.notifications');
+        });
+        Route::middleware([EnsureRiderAccountToken::class.':operations:messages', 'throttle:10,1'])->group(function () {
+            Route::post('conversations/{thread}/messages', [RiderMessagingController::class, 'send']);
+            Route::post('conversations/{thread}/read', [RiderMessagingController::class, 'read']);
+        });
+        Route::middleware([EnsureRiderAccountToken::class.':operations:notifications', 'throttle:10,1'])->group(function () {
+            Route::post('notifications/read-through', [RiderNotificationController::class, 'readThrough']);
+            Route::post('notifications/{notice}/read', [RiderNotificationController::class, 'read']);
         });
         Route::middleware([EnsureRiderAccountToken::class.':operations:work', 'throttle:10,1'])->group(function () {
             Route::patch('duty', [RiderOperationsController::class, 'duty']);
