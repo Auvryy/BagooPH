@@ -182,7 +182,7 @@ $registerSellerRoutes = function () {
         Route::post('/messages', [ChatController::class, 'sendMessage']);
         Route::post('/chat/send', [ChatController::class, 'sendMessage']);
         Route::get('/reviews', [SellerReviewController::class, 'index']);
-        Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply']);
+        Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1');
         Route::get('/disputes', [SellerDisputeController::class, 'index']);
         Route::get('/reports', [SellerDashboardController::class, 'reports']);
         Route::get('/settings', [SellerDashboardController::class, 'settings']);
@@ -412,7 +412,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
             Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
-            Route::post('/reviews', [BuyerReviewController::class, 'store'])->name('reviews.store');
+            Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
             Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
                 ->middleware('throttle:20,1')
@@ -519,7 +519,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
-    Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('reviews.reply');
+    Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
     Route::get('/disputes', [SellerDisputeController::class, 'index'])->name('disputes.index');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');

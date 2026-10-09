@@ -115,6 +115,8 @@ class Product extends Model
 
     protected $attributes = ['compliance_restricted' => false, 'moderation_version' => 0];
 
+    protected $hidden = ['verified_rating'];
+
     public function moderationDecisions(): HasMany
     {
         return $this->hasMany(ProductModerationDecision::class);
@@ -143,6 +145,25 @@ class Product extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class)->latest();
+    }
+
+    public function scopeWithReviewSummary(Builder $query): Builder
+    {
+        return $query->withAvg(['reviews as verified_rating' => fn (Builder $reviews) => $reviews->verifiedPurchase()], 'rating')
+            ->withCount(['reviews as verified_review_count' => fn (Builder $reviews) => $reviews->verifiedPurchase()]);
+    }
+
+    public function getRatingAttribute(mixed $value): mixed
+    {
+        return array_key_exists('verified_rating', $this->attributes)
+            ? ($this->attributes['verified_rating'] === null ? null : round((float) $this->attributes['verified_rating'], 2))
+            : ($value === null ? null : number_format((float) $value, 2, '.', ''));
+    }
+
+    public function scopeWhereVerifiedRatingAtLeast(Builder $query, float $rating): Builder
+    {
+        return $query->whereIn('products.id', Review::verifiedPurchase()->select('product_id')->groupBy('product_id')
+            ->havingRaw('AVG(reviews.rating) >= ?', [$rating]));
     }
 
     public function orderItems(): HasMany

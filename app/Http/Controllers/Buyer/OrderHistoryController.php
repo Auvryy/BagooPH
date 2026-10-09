@@ -42,7 +42,7 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'delivery.courier']);
+        $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier']);
 
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,

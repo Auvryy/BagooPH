@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\SellerSettlementEvent;
 use App\Rules\PhilippineContact;
 use App\Services\AccountSettingsService;
+use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\ProfileInputService;
@@ -282,7 +283,7 @@ class SellerDashboardController extends Controller
             $q->where('status', 'active');
         }]);
 
-        $products = Product::where('shop_id', $shop->id)
+        $products = Product::where('shop_id', $shop->id)->withReviewSummary()
             ->where('status', 'active')
             ->with('images')
             ->latest()
@@ -290,6 +291,7 @@ class SellerDashboardController extends Controller
 
         return Inertia::render('Marketplace/ShopDetail', [
             'shop' => $shop,
+            'shopStats' => app(ReviewService::class)->shopSummary($shop),
             'products' => $products,
             'isOwner' => true,
             'isPreview' => true,
