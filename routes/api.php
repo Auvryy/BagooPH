@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\RiderAuthController;
+use App\Http\Controllers\Api\RiderCashController;
 use App\Http\Controllers\Api\RiderMessagingController;
 use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderOperationsController;
@@ -42,6 +43,8 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
             Route::get('conversations', [RiderMessagingController::class, 'index'])->name('rider.api.conversations');
             Route::get('conversations/{thread}/messages', [RiderMessagingController::class, 'show']);
             Route::get('notifications', [RiderNotificationController::class, 'index'])->name('rider.api.notifications');
+            Route::get('cash', [RiderCashController::class, 'index'])->name('rider.api.cash');
+            Route::get('cash/{account}', [RiderCashController::class, 'show']);
         });
         Route::middleware([EnsureRiderAccountToken::class.':operations:messages', 'throttle:10,1'])->group(function () {
             Route::post('conversations/{thread}/messages', [RiderMessagingController::class, 'send']);
@@ -51,6 +54,8 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
             Route::post('notifications/read-through', [RiderNotificationController::class, 'readThrough']);
             Route::post('notifications/{notice}/read', [RiderNotificationController::class, 'read']);
         });
+        Route::post('cash/{account}/offer', [RiderCashController::class, 'offer'])
+            ->middleware([EnsureRiderAccountToken::class.':operations:cash', 'throttle:10,1']);
         Route::middleware([EnsureRiderAccountToken::class.':operations:work', 'throttle:10,1'])->group(function () {
             Route::patch('duty', [RiderOperationsController::class, 'duty']);
             Route::post('pickup-jobs/{job}/claim', [RiderOperationsController::class, 'claim']);
