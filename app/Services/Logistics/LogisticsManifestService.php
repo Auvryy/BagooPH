@@ -12,6 +12,7 @@ use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
+use App\Models\ParcelRecoveryCase;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
 use DomainException;
@@ -62,13 +63,22 @@ class LogisticsManifestService
             'destination_hub_id' => [...$this->idRules(), 'exists:logistics_hubs,id'],
             'vehicle_id' => [...$this->idRules(), 'exists:logistics_fleet,id'],
             'creation_token' => ['required', 'string', 'uuid'],
-            'direction' => ['required', Rule::in(['outbound', 'return'])],
+            'direction' => ['required', Rule::in(['outbound', 'return', 'recovery'])],
+            'parcel_recovery_case_id' => ['exclude_unless:direction,recovery', ...$this->idRules()],
         ])->validate();
         $fingerprint = $this->fingerprint($input);
 
         return DB::transaction(function () use ($actor, $company, $input, $issuedToken, $fingerprint) {
+            $recovery = ($input['direction'] === 'recovery') ? ParcelRecoveryCase::findOrFail($input['parcel_recovery_case_id']) : null;
+            $recoveryParcel = null;
+            if ($recovery) {
+                $orderId = Delivery::whereKey($recovery->delivery_id)->value('order_id');
+                $order = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
+                $recoveryParcel = Delivery::whereKey($recovery->delivery_id)->lockForUpdate()->firstOrFail();
+                $recoveryParcel->setRelation('order', $order);
+            }
             $driverId = LogisticsFleet::whereKey($input['vehicle_id'])->value('assigned_driver_id');
-            $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$input['source_hub_id'], $input['destination_hub_id']]);
+            $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$input['source_hub_id'], $input['destination_hub_id'], ...($recovery?->hub_ids ?? [])]);
             $actor = User::findOrFail($actor->id);
             if (! $this->eligibility->isCompanyAdministrator($actor, $company->id)) {
                 throw new AuthorizationException('This company is not managed by the current account.');
@@ -87,6 +97,17 @@ class LogisticsManifestService
             if (! is_string($issuedToken) || ! hash_equals($issuedToken, $input['creation_token'])) {
                 throw ValidationException::withMessages(['creation_token' => 'Refresh the manifest form before creating it.']);
             }
+            if ($recovery) {
+                $recovery = ParcelRecoveryCase::whereKey($recovery->id)->lockForUpdate()->firstOrFail();
+                abort_unless($recovery->logistics_company_id === $company->id, 403);
+                if ($recoveryParcel->current_hub_id !== (int) $input['source_hub_id']
+                    || app(ParcelRecoveryService::class)->nextHub($recovery, $recoveryParcel) !== (int) $input['destination_hub_id']) {
+                    throw new DomainException('Prepare only the next authorized recovery transfer from its actual current hub.');
+                }
+                if ($recovery->manifests()->where('recovery_leg_index', $recovery->leg_index)->exists()) {
+                    throw new DomainException('This recovery leg already has its retained manifest. Continue that original transfer.');
+                }
+            }
             $source = LogisticsHub::findOrFail($input['source_hub_id']);
             $destination = LogisticsHub::findOrFail($input['destination_hub_id']);
             $type = $this->legType($source, $destination);
@@ -96,6 +117,7 @@ class LogisticsManifestService
                 'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'created_by_id' => $actor->id,
                 'creation_token' => $input['creation_token'], 'creation_fingerprint' => $fingerprint, 'type' => $type, 'direction' => $input['direction'],
                 'status' => 'draft', 'version' => 1,
+                'parcel_recovery_case_id' => $recovery?->id, 'recovery_leg_index' => $recovery?->leg_index,
             ]);
             $this->event($manifest, $actor, 'created', [], $manifest->state(), ['vehicle_plate' => $vehicle->plate_number, 'vehicle_type' => $vehicle->vehicle_type], hubId: $source->id);
 
@@ -133,7 +155,11 @@ class LogisticsManifestService
             $orderIds = Delivery::whereIn('id', $deliveryIds)->pluck('order_id')->unique()->sort()->values();
             Order::whereIn('id', $orderIds)->orderBy('id')->lockForUpdate()->get();
             $deliveries = Delivery::whereIn('id', $deliveryIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-            $this->eligibility->lockNetwork($snapshot->logistics_company_id, [$actor->id, $snapshot->driver_id], [$snapshot->source_hub_id, $snapshot->destination_hub_id]);
+            $recovery = $snapshot->parcel_recovery_case_id ? ParcelRecoveryCase::findOrFail($snapshot->parcel_recovery_case_id) : null;
+            $this->eligibility->lockNetwork($snapshot->logistics_company_id, [$actor->id, $snapshot->driver_id], [$snapshot->source_hub_id, $snapshot->destination_hub_id, ...($recovery?->hub_ids ?? [])]);
+            if ($recovery) {
+                LogisticsManifest::whereIn('id', [$snapshot->id, $recovery->originalMember->manifest_id, $recovery->observation->manifest_id])->orderBy('id')->lockForUpdate()->get();
+            }
             $manifest = LogisticsManifest::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
             if ($manifest->parcels()->orderBy('delivery_id')->pluck('delivery_id')->all() !== $initialIds) {
                 throw new DomainException('The manifest parcel list changed. Refresh before continuing.');
@@ -159,6 +185,9 @@ class LogisticsManifestService
                 case 'load':
                     $this->requireStatus($manifest, 'draft');
                     $delivery = $deliveries->get($candidate->id);
+                    if ($manifest->direction === 'recovery' && ($candidate->id !== $recovery?->delivery_id || $manifest->recovery_leg_index !== $recovery->leg_index)) {
+                        throw new DomainException('A recovery manifest may carry only the parcel and leg from its original recovery case.');
+                    }
                     if (! $delivery || $this->direction($delivery) !== $manifest->direction || $this->nextHub($delivery) !== $manifest->destination_hub_id || $delivery->current_hub_id !== $manifest->source_hub_id
                         || $delivery->logistics_company_id !== $manifest->logistics_company_id) {
                         throw new DomainException('This parcel is not expected on this source and destination route.');
@@ -210,11 +239,16 @@ class LogisticsManifestService
                         $scan = $this->event($manifest, $actor, 'parcel_dispatched', DeliveryCheckpoint::state($delivery),
                             ['delivery_status' => $this->transitStatus($manifest)], ['source_scan_reference' => $load->reference, 'vehicle_plate' => $vehicle->plate_number, 'vehicle_type' => $vehicle->vehicle_type],
                             $member, $load->barcode_scanned, $manifest->source_hub_id);
-                        $updated = app(OrderStateMachineService::class)->transition($delivery, $this->transitStatus($manifest), $actor, [
-                            'hub_id' => $manifest->source_hub_id, 'barcode' => $load->barcode_scanned, 'manifest_scan_event_id' => $scan->id,
-                            'manifest_number' => $manifest->reference, 'expected_status' => $delivery->status,
-                            'notes' => $input['notes'] ?? 'Departed on the recorded manifest.',
-                        ]);
+                        if ($manifest->direction === 'recovery') {
+                            app(ParcelRecoveryService::class)->depart($manifest, $delivery, $actor, $scan);
+                            $updated = $delivery;
+                        } else {
+                            $updated = app(OrderStateMachineService::class)->transition($delivery, $this->transitStatus($manifest), $actor, [
+                                'hub_id' => $manifest->source_hub_id, 'barcode' => $load->barcode_scanned, 'manifest_scan_event_id' => $scan->id,
+                                'manifest_number' => $manifest->reference, 'expected_status' => $delivery->status,
+                                'notes' => $input['notes'] ?? 'Departed on the recorded manifest.',
+                            ]);
+                        }
                         $payload['parcels'][] = ['delivery_id' => $updated->id, 'scan_reference' => $scan->reference];
                     }
                     break;
@@ -246,11 +280,15 @@ class LogisticsManifestService
                     $target = $this->receiptStatus($manifest);
                     $scan = $this->event($manifest, $actor, 'parcel_received', DeliveryCheckpoint::state($delivery),
                         ['delivery_status' => $target], [], $parcel, $input['barcode'], $hubId, $input['notes']);
-                    app(OrderStateMachineService::class)->transition($delivery, $target, $actor, [
-                        'hub_id' => $hubId, 'barcode' => $input['barcode'], 'manifest_scan_event_id' => $scan->id,
-                        'manifest_number' => $manifest->reference, 'expected_status' => $delivery->status,
-                        'notes' => $input['notes'] ?? 'Received at the recorded destination hub.',
-                    ]);
+                    if ($manifest->direction === 'recovery') {
+                        app(ParcelRecoveryService::class)->receive($manifest, $delivery, $actor, $scan);
+                    } else {
+                        app(OrderStateMachineService::class)->transition($delivery, $target, $actor, [
+                            'hub_id' => $hubId, 'barcode' => $input['barcode'], 'manifest_scan_event_id' => $scan->id,
+                            'manifest_number' => $manifest->reference, 'expected_status' => $delivery->status,
+                            'notes' => $input['notes'] ?? 'Received at the recorded destination hub.',
+                        ]);
+                    }
                     $payload = ['physical_scan_reference' => $scan->reference];
                     break;
                 case 'report-discrepancy':
@@ -289,6 +327,9 @@ class LogisticsManifestService
                     $this->requireNotes($input);
                     Validator::make($input, ['barcode' => $this->inputs->barcodeRules(true)])->validate();
                     $source = $this->discrepancy($manifest, $input);
+                    if (ParcelRecoveryCase::where('observation_event_id', $source->id)->where('state', '!=', 'withdrawn')->exists()) {
+                        throw new DomainException('This observation has a physical recovery case. Continue its original scans and handovers.');
+                    }
                     if (! in_array($source->payload['kind'], ['extra', 'wrong_hub'], true)) {
                         throw new DomainException('Only an observed waybill recording error uses a correction scan.');
                     }
@@ -316,6 +357,13 @@ class LogisticsManifestService
                         if ($correction) {
                             $parcel = $manifest->parcels()->whereKey($correction->manifest_parcel_id)->whereNotNull('received_at')->first();
                             $support = $parcel ? $correction : null;
+                        }
+                        if (! $support) {
+                            $completion = $manifest->events()->where('event_type', 'recovery-completed')->get()
+                                ->first(fn ($event) => ($event->payload['source_event_id'] ?? null) === $source->id);
+                            if ($completion && app(ParcelRecoveryService::class)->completionSupport($completion)) {
+                                $support = $completion;
+                            }
                         }
                     }
                     if (! $support) {
@@ -357,6 +405,9 @@ class LogisticsManifestService
 
     public function nextHub(Delivery $delivery): int
     {
+        if ($recovery = app(ParcelRecoveryService::class)->physical($delivery)) {
+            return app(ParcelRecoveryService::class)->nextHub($recovery, $delivery);
+        }
         if ($this->direction($delivery) === 'return') {
             return app(DeliveryReturnService::class)->nextHub($delivery);
         }
@@ -399,6 +450,9 @@ class LogisticsManifestService
 
     public function transitStatus(LogisticsManifest $manifest): string
     {
+        if ($manifest->direction === 'recovery') {
+            return ParcelRecoveryService::IN_TRANSIT;
+        }
         if ($manifest->direction === 'return') {
             return 'return_in_transit';
         }
@@ -409,6 +463,9 @@ class LogisticsManifestService
 
     public function route(Delivery $delivery): array
     {
+        if ($recovery = app(ParcelRecoveryService::class)->physical($delivery)) {
+            return app(ParcelRecoveryService::class)->recoveryRoute($recovery);
+        }
         $route = app(DeliveryReturnService::class)->forwardRoute($delivery);
         if ($this->direction($delivery) === 'return') {
             $return = app(DeliveryReturnService::class)->route($delivery);
@@ -420,11 +477,19 @@ class LogisticsManifestService
 
     public function direction(Delivery $delivery): string
     {
+        if (app(ParcelRecoveryService::class)->physical($delivery)) {
+            return 'recovery';
+        }
+
         return in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned'], true) ? 'return' : 'outbound';
     }
 
     public function receiptStatus(LogisticsManifest $manifest): string
     {
+        if ($manifest->direction === 'recovery') {
+            return ParcelRecoveryService::HELD;
+        }
+
         return $manifest->direction === 'return' ? 'return_to_sender'
             : ($manifest->destinationHub->isMotherHub() ? OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB : OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB);
     }
@@ -488,6 +553,17 @@ class LogisticsManifestService
 
     private function verifyRecordedLeg(LogisticsManifest $manifest, LogisticsManifestParcel $parcel): void
     {
+        if ($manifest->direction === 'recovery') {
+            $case = $manifest->recoveryCase;
+            if (! $case || $case->delivery_id !== $parcel->delivery_id || $case->leg_index !== $manifest->recovery_leg_index
+                || $manifest->source_hub_id !== ($case->hub_ids[$case->leg_index] ?? null)
+                || $manifest->destination_hub_id !== ($case->hub_ids[$case->leg_index + 1] ?? null)
+                || $this->legType($manifest->sourceHub, $manifest->destinationHub) !== $manifest->type) {
+                throw new DomainException('The arriving manifest must match its original authorized recovery leg.');
+            }
+
+            return;
+        }
         $route = $parcel->route_snapshot;
         $sourceTier = in_array($manifest->source_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
             ? 'regional_mother_hub' : 'local_bayan_hub';
@@ -555,7 +631,7 @@ class LogisticsManifestService
 
     private function fingerprint(array $input): string
     {
-        foreach (['source_hub_id', 'destination_hub_id', 'vehicle_id', 'version', 'parcel_id', 'source_event_id'] as $key) {
+        foreach (['source_hub_id', 'destination_hub_id', 'vehicle_id', 'version', 'parcel_id', 'source_event_id', 'parcel_recovery_case_id'] as $key) {
             if (isset($input[$key])) {
                 $input[$key] = (int) $input[$key];
             }

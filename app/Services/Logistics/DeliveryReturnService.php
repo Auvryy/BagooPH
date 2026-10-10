@@ -10,6 +10,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
+use App\Models\ParcelRecoveryCase;
 use App\Models\PickupClaim;
 use App\Models\PickupClaimEvent;
 use App\Models\Shop;
@@ -97,6 +98,24 @@ class DeliveryReturnService
         $position = 0;
         $custody = DeliveryCheckpoint::findOrFail($route->source_checkpoint_id)->custody_after;
         foreach ($parcel->checkpoints()->where('id', '>', $route->source_checkpoint_id)->orderBy('id')->get() as $checkpoint) {
+            if (in_array($checkpoint->checkpoint_type, ['parcel_recovery_intake', 'parcel_recovery_departed', 'parcel_recovery_received'], true)) {
+                $case = ParcelRecoveryCase::where('reference', $checkpoint->custody_after['parcel_recovery_reference'] ?? null)->first();
+                $event = $case?->events()->where('reference', $checkpoint->custody_after['parcel_recovery_event_reference'] ?? null)->first();
+                $expectedType = match ($checkpoint->checkpoint_type) {
+                    'parcel_recovery_intake' => 'intake', 'parcel_recovery_departed' => 'transfer_departed', default => 'transfer_received',
+                };
+                if (! $case || $case->delivery_id !== $parcel->id || $case->original_direction !== 'return'
+                    || ($case->route_snapshot['return_route_reference'] ?? null) !== $route->reference || ! $event
+                    || $event->event_type !== $expectedType || $event->actor_id !== $checkpoint->scanned_by_id
+                    || $event->hub_id !== $checkpoint->hub_id || $event->barcode_scanned !== $checkpoint->barcode_scanned
+                    || $event->source_state !== $checkpoint->source_state || $event->target_state !== $checkpoint->target_state
+                    || $checkpoint->custody_before !== $custody) {
+                    throw new DomainException('Reverse recovery must retain its linked actual scan and original custody chain.');
+                }
+                $custody = $checkpoint->custody_after;
+
+                continue;
+            }
             if ($checkpoint->checkpoint_type === 'return_in_transit') {
                 $scan = $this->transportEvidence($checkpoint, $route, 'parcel_dispatched');
                 if ($position >= count($route->hub_ids) - 1 || $scan->manifest->source_hub_id !== $route->hub_ids[$position]
@@ -107,8 +126,18 @@ class DeliveryReturnService
                 $custody = $checkpoint->custody_after;
             } elseif ($checkpoint->checkpoint_type === 'return_to_sender') {
                 $scan = $this->transportEvidence($checkpoint, $route, 'parcel_received');
-                if ($position >= count($route->hub_ids) - 1 || ($custody['kind'] ?? null) !== 'manifest'
-                    || ($custody['manifest_id'] ?? null) !== $scan->manifest_id || $checkpoint->custody_before !== $custody
+                $case = isset($scan->payload['parcel_recovery_reference'])
+                    ? ParcelRecoveryCase::where('reference', $scan->payload['parcel_recovery_reference'])->first() : null;
+                $recovered = $case && $case->state === 'completed' && $case->original_direction === 'return'
+                    && $case->delivery_id === $parcel->id && $case->expected_hub_id === $scan->hub_id
+                    && $case->original_manifest_parcel_id === $scan->manifest_parcel_id
+                    && ($case->route_snapshot['return_route_reference'] ?? null) === $route->reference
+                    && ($case->custody_snapshot['manifest_id'] ?? null) === $scan->manifest_id
+                    && ($custody['kind'] ?? null) === 'hub' && ($custody['hub_id'] ?? null) === $case->expected_hub_id
+                    && ($custody['parcel_recovery_reference'] ?? null) === $case->reference
+                    && $case->events()->where('event_type', 'completed')->where('manifest_event_id', $scan->id)->exists();
+                $arriving = ($custody['kind'] ?? null) === 'manifest' && ($custody['manifest_id'] ?? null) === $scan->manifest_id;
+                if ($position >= count($route->hub_ids) - 1 || (! $arriving && ! $recovered) || $checkpoint->custody_before !== $custody
                     || $scan->manifest->source_hub_id !== $route->hub_ids[$position]
                     || $scan->manifest->destination_hub_id !== $route->hub_ids[$position + 1]) {
                     throw new DomainException('The reverse receipt does not match its real arriving manifest.');

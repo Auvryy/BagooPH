@@ -9,6 +9,9 @@ use App\Models\DeliveryCheckpoint;
 class PublicTrackingService
 {
     private const CHECKPOINT_LOCATIONS = [
+        'parcel_recovery_intake' => 'Parcel received for route recovery',
+        'parcel_recovery_departed' => 'Parcel travelling on its recovery route',
+        'parcel_recovery_received' => 'Recovery transfer received at a sorting hub',
         'order_placed' => 'BagooPH',
         'placed' => 'BagooPH',
         'confirmed' => 'Seller preparation',

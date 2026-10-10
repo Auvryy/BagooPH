@@ -20,6 +20,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
+use App\Models\ParcelRecoveryCase;
 use App\Models\PickupClaim;
 use App\Models\PickupClaimEvent;
 use App\Models\RestrictionAffectedWork;
@@ -28,6 +29,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
@@ -65,7 +67,7 @@ class ExceptionOversightService
         $source = self::SOURCES[$kind][0]::findOrFail($id);
         $manifest = $kind === 'manifest' ? $source->manifest : null;
         abort_if($kind === 'manifest' && $source->event_type !== 'report-discrepancy', 404);
-        $parcel = $kind === 'manifest' ? $source->parcel?->delivery : Delivery::find($source->delivery_id);
+        $parcel = $kind === 'manifest' ? ($source->parcel?->delivery ?? ParcelRecoveryCase::where('observation_event_id', $source->id)->first()?->delivery) : Delivery::find($source->delivery_id);
         $order = $parcel?->order ?? ($kind === 'restriction' ? Order::find($source->order_id) : null);
         $companyId = $manifest?->logistics_company_id ?? $parcel?->logistics_company_id;
 
@@ -119,6 +121,9 @@ class ExceptionOversightService
         $latest = $history->last();
         $work = $kind === 'restriction' ? $context['source'] : null;
         $recoveryUrl = null;
+        if ($kind === 'manifest' && in_array($context['source']->payload['kind'] ?? null, ['extra', 'wrong_hub'], true)) {
+            $recoveryUrl = '/hub/parcel-recovery/'.$context['source']->id;
+        }
         if ($work && $context['parcel']) {
             try {
                 app(RestrictedCustodyRecoveryService::class)->proposal($actor, $work);
@@ -215,6 +220,10 @@ class ExceptionOversightService
             $member = $evidence?->parcel;
             if ($member?->received_at && in_array($evidence->event_type, ['parcel_received', 'correct-discrepancy'], true)) {
                 return ['manifest_resolution' => $resolution->reference, 'supporting_receipt' => $evidence->reference];
+            }
+            if ($evidence && ($receipt = app(ParcelRecoveryService::class)->completionSupport($evidence))) {
+                return ['manifest_resolution' => $resolution->reference, 'supporting_receipt' => $receipt->reference,
+                    'parcel_recovery' => $evidence->payload['recovery_event_reference']];
             }
 
             return [];

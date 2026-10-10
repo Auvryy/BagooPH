@@ -65,6 +65,9 @@ class LifecycleNoticeService
             'out_for_delivery' => 'Your parcel is out for delivery',
             'delivery_failed' => 'The delivery attempt was unsuccessful',
             'delivered' => 'Your parcel was delivered',
+            'parcel_recovery_intake' => 'Your parcel is being recovered onto its route',
+            'parcel_recovery_departed' => 'Your parcel is travelling on its recovery route',
+            'parcel_recovery_received' => 'A recovery transfer reached a sorting hub',
             default => null,
         };
         if (! $title) {
