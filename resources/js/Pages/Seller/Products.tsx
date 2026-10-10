@@ -4,6 +4,7 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
+import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
 import { 
     Package, 
     Plus, 
@@ -72,9 +73,7 @@ interface Props {
     products: PaginatedData<Product>;
     categories: Category[];
     shop: Shop;
-    filters?: {
-        search?: string;
-    };
+    filters?: SellerInventoryFilters;
 }
 
 export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
@@ -84,6 +83,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [productPendingRemoval, setProductPendingRemoval] = useState<Product | null>(null);
     const [isRemovingProduct, setIsRemovingProduct] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [categoryFilter, setCategoryFilter] = useState(String(filters.category_id ?? ''));
+    const [statusFilter, setStatusFilter] = useState<SellerInventoryFilters['status']>(filters.status ?? 'all');
+    const [stockFilter, setStockFilter] = useState<SellerInventoryFilters['stock']>(filters.stock ?? 'all');
+    const [filtering, setFiltering] = useState(false);
+    const createSubmitting = useRef(false);
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -153,7 +157,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     useEffect(() => {
         setSearchQuery(filters.search || '');
-    }, [filters.search]);
+        setCategoryFilter(String(filters.category_id ?? ''));
+        setStatusFilter(filters.status ?? 'all');
+        setStockFilter(filters.stock ?? 'all');
+    }, [filters.search, filters.category_id, filters.status, filters.stock]);
 
     const resizeDescription = (textarea: HTMLTextAreaElement | null) => {
         if (!textarea) return;
@@ -174,6 +181,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         image_files: File[];
         gallery_manifest: string;
         description: string;
+        status: 'active' | 'draft';
     }>({
         name: '',
         category_id: categories[0]?.id || '',
@@ -186,6 +194,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         image_files: [],
         gallery_manifest: '',
         description: '',
+        status: 'active',
     });
 
     const editForm = useForm<{
@@ -451,7 +460,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 id: s.id || `s_init_${idx}`,
                 name: s.name,
                 extra_price: Number(s.extra_price || 0),
-                stock: Number(s.stock || product.stock),
+                stock: sellerVariantStock(s.stock, product.stock),
             })),
         };
         setEditVariants(variantsData);
@@ -481,9 +490,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
-        if (createSlashedPriceError) {
+        if (createSlashedPriceError || createSubmitting.current) {
             return;
         }
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        const status = newListingStatus(submitter?.value);
 
         const filesToUpload: File[] = [];
         const manifest = createGallery.map((item) => {
@@ -520,14 +531,17 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
         createForm.transform((data) => ({
             ...data,
+            status,
             gallery_manifest: JSON.stringify(manifest),
             image_files: filesToUpload,
             featured_image: createGallery[0]?.url || '',
             variants: syncedVariants ? JSON.stringify(syncedVariants) : '',
         }));
 
+        createSubmitting.current = true;
         createForm.post(route('seller.products.store'), {
             forceFormData: true,
+            onFinish: () => { createSubmitting.current = false; },
             onSuccess: () => {
                 setIsCreateOpen(false);
                 createForm.reset();
@@ -1870,20 +1884,32 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     const submitProductSearch = (event: React.FormEvent) => {
         event.preventDefault();
-        const search = searchQuery.trim();
-        router.get(route('seller.products.index'), search ? { search } : {}, {
+        if (filtering) return;
+        router.get(route('seller.products.index'), sellerInventoryQuery({ search: searchQuery, category_id: categoryFilter, status: statusFilter, stock: stockFilter }), {
             preserveScroll: true,
             replace: true,
+            onStart: () => setFiltering(true),
+            onFinish: () => setFiltering(false),
         });
     };
 
     const clearProductSearch = () => {
         setSearchQuery('');
-        router.get(route('seller.products.index'), {}, {
+        router.get(route('seller.products.index'), sellerInventoryQuery({ category_id: categoryFilter, status: statusFilter, stock: stockFilter }), {
             preserveScroll: true,
             replace: true,
         });
     };
+
+    const clearProductFilters = () => {
+        setSearchQuery('');
+        setCategoryFilter('');
+        setStatusFilter('all');
+        setStockFilter('all');
+        router.get(route('seller.products.index'), {}, { preserveScroll: true, replace: true });
+    };
+
+    const hasFilters = Object.keys(sellerInventoryQuery(filters)).length > 0;
 
     return (
         <DashboardLayout
@@ -1904,7 +1930,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             <div className="space-y-6 font-sans">
                 
                 {/* Search and Stats Filter */}
-                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-300 shadow-2xs space-y-4">
                     <div className="flex items-center gap-2 font-sans text-xs text-slate-600">
                         <Package className="w-4 h-4 text-[#E00D42]" />
                         <span>
@@ -1912,34 +1938,69 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         </span>
                     </div>
 
-                    <form onSubmit={submitProductSearch} className="flex w-full sm:w-auto items-center gap-2">
-                        <div className="w-full sm:w-80 relative font-sans text-xs">
-                            <input
-                                type="search"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                maxLength={100}
-                                placeholder="Search all products by title or SKU..."
-                                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
-                            />
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={clearProductSearch}
-                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700"
-                                    aria-label="Clear product search"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
+                    <form onSubmit={submitProductSearch} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        <div className="font-sans text-xs xl:col-span-2">
+                            <label htmlFor="inventory-search" className="mb-1.5 block font-bold text-slate-700">Search listings</label>
+                            <div className="relative">
+                                <input
+                                    id="inventory-search"
+                                    type="search"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    maxLength={100}
+                                    placeholder="Search all products by title or SKU..."
+                                    className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
+                                />
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={clearProductSearch}
+                                        disabled={filtering}
+                                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+                                        aria-label="Clear product search"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                        <button
-                            type="submit"
-                            className="rounded-sm bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-[#E00D42]"
-                        >
-                            Search
-                        </button>
+                        <div>
+                            <label htmlFor="inventory-category" className="mb-1.5 block text-xs font-bold text-slate-700">Category</label>
+                            <select id="inventory-category" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
+                                <option value="">All approved categories</option>
+                                {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="inventory-status" className="mb-1.5 block text-xs font-bold text-slate-700">Listing status</label>
+                            <select id="inventory-status" value={statusFilter} onChange={e => setStatusFilter(e.target.value as SellerInventoryFilters['status'])} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
+                                <option value="all">All listing statuses</option>
+                                <option value="active">Active</option>
+                                <option value="draft">Draft</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="inventory-stock" className="mb-1.5 block text-xs font-bold text-slate-700">Available stock</label>
+                            <select id="inventory-stock" value={stockFilter} onChange={e => setStockFilter(e.target.value as SellerInventoryFilters['stock'])} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
+                                <option value="all">All stock levels</option>
+                                <option value="low_stock">Active: low stock (1–5)</option>
+                                <option value="out_of_stock">Active: out of stock (0)</option>
+                                <option value="in_stock">Active: in stock (1+)</option>
+                            </select>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 xl:col-span-5">
+                            <button
+                                type="submit"
+                                disabled={filtering}
+                                className="rounded-sm bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-[#E00D42] disabled:opacity-50"
+                            >
+                                {filtering ? 'Applying…' : 'Apply filters'}
+                            </button>
+                            {hasFilters && <button type="button" onClick={clearProductFilters} disabled={filtering} className="rounded-sm border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Clear filters</button>}
+                            <p className="text-xs text-slate-500">Stock filters use active listing quantities. Drafts stay off the marketplace.</p>
+                        </div>
                     </form>
                 </div>
 
@@ -1962,8 +2023,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 {products.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="py-12 text-center text-slate-400">
-                                            {filters.search
-                                                ? `No products match “${filters.search}”.`
+                                            {hasFilters
+                                                ? 'No listings match these filters. Clear or change the filters to see other products.'
                                                 : 'No products have been listed yet.'}
                                         </td>
                                     </tr>
@@ -2011,7 +2072,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                         onClick={() => openStockEditor(product)}
                                                         aria-label={`Update available stock for ${product.name}`}
                                                         className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
-                                                            product.stock > 10 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
+                                                            product.stock > 5 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
                                                         }`}
                                                     >
                                                         <Box className="h-3 w-3" />
@@ -2020,6 +2081,18 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                     <p className="text-[10px] text-slate-500">
                                                         {Number(product.open_order_units || 0)} reserved in open orders · Click to update
                                                     </p>
+                                                    {product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
+                                                        <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option2_name || 'Variant'} quantities ({product.variants.sizes.length})</summary>
+                                                        <ul className="mt-2 space-y-1">
+                                                            {product.variants.sizes.map((variant, index) => <li key={variant.id || index}>{variant.name}: <strong>{sellerVariantStock(variant.stock, product.stock)}</strong>{variant.stock == null ? ' (listing stock)' : ' available'}</li>)}
+                                                        </ul>
+                                                    </details> : null}
+                                                    {product.variants?.colors?.length ? <details className="text-[11px] text-slate-600">
+                                                        <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option1_name || 'Color'} availability ({product.variants.colors.length})</summary>
+                                                        <ul className="mt-2 space-y-1">
+                                                            {product.variants.colors.map((variant, index) => <li key={variant.id || index}>{variant.name}: {variant.in_stock === false ? 'Unavailable' : 'Available'}</li>)}
+                                                        </ul>
+                                                    </details> : null}
                                                 </div>
                                             </td>
                                             <td className="py-4 px-4">
@@ -2282,10 +2355,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-base sm:text-lg text-slate-900 leading-tight">
-                                        Publish New Product Listing
+                                        New Product Listing
                                     </h3>
                                     <p className="text-xs text-slate-500 font-sans mt-1">
-                                        Add catalog details, pricing, variations & gallery photos
+                                        Add listing details, then save a private draft or publish.
                                     </p>
                                 </div>
                             </div>
@@ -2441,17 +2514,17 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             </div>
 
                             {/* Sticky Action Footer */}
-                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
-                                <div className="text-xs text-slate-500 font-sans">
+                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
+                                <div className="text-xs text-slate-500 font-sans min-w-0">
                                     {createForm.data.name ? (
                                         <span className="truncate max-w-[140px] sm:max-w-xs block font-bold text-slate-800">
                                             {createForm.data.name}
                                         </span>
                                     ) : (
-                                        <span>Status: <strong className="text-emerald-700">Ready to publish</strong></span>
+                                        <span>Complete required details to save or publish.</span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2.5">
+                                <div className="flex flex-wrap items-center gap-2.5">
                                     <button
                                         type="button"
                                         onClick={() => setIsCreateOpen(false)}
@@ -2461,11 +2534,22 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     </button>
                                     <button
                                         type="submit"
+                                        name="status"
+                                        value="draft"
+                                        disabled={createForm.processing || createSlashedPriceError}
+                                        className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl transition disabled:opacity-50 text-xs"
+                                    >
+                                        Save draft
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        name="status"
+                                        value="active"
                                         disabled={createForm.processing || createSlashedPriceError}
                                         className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5"
                                     >
                                         <Plus className="w-4 h-4" />
-                                        <span>Publish Listing</span>
+                                        <span>{createForm.processing ? 'Saving…' : 'Publish'}</span>
                                     </button>
                                 </div>
                             </div>

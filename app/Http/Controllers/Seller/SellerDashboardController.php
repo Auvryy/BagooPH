@@ -11,6 +11,7 @@ use App\Models\SellerSettlementEvent;
 use App\Rules\PhilippineContact;
 use App\Services\AccountSettingsService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\Orders\OrderWorkspaceService;
@@ -34,7 +35,7 @@ class SellerDashboardController extends Controller
         $shop = $this->getActiveShop($request);
 
         $totalProducts = Product::where('shop_id', $shop->id)->count();
-        $lowStockCount = Product::where('shop_id', $shop->id)->where('stock', '<=', 5)->count();
+        $stockCounts = app(SellerInventoryService::class)->stockCounts($shop->id);
         $salesSummary = $this->salesMetrics->dashboardSummary($shop->id);
         $shopOrders = fn () => Order::query()->whereHas(
             'items',
@@ -60,7 +61,7 @@ class SellerDashboardController extends Controller
             'stats' => [
                 ...$salesSummary,
                 'totalProducts' => $totalProducts,
-                'lowStockCount' => $lowStockCount,
+                ...$stockCounts,
                 'pendingPackCount' => $counts['to_pack'],
                 'readyPickupCount' => $counts['to_pickup'],
                 'shippedCount' => $counts['in_transit'],

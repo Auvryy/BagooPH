@@ -59,6 +59,8 @@ Scoped native Rider backend review: October 9, 2026. All five core API batches h
 
 Scoped buyer/seller BS01-BS02 review: October 9, 2026. Completed-purchase reviews, persisted seller replies and verified rating summaries now join grouped, paginated owned-order workspaces. The final 521-case commerce regression, 63 frontend checks and production build pass. The complete 2,904-case run had one obsolete pagination assertion, corrected and verified in the subsequent retests below. These scoped improvements do not change the overall role scores or start BS03-BS05.
 
+Scoped seller BS03 inventory/drafts review: October 10, 2026. Validated draft creation, retained inventory filters, matching active-stock alerts and zero-preserving variant edits pass 575 affected-flow tests and 69 frontend checks, plus the production build. Inventory usability is assessed at 4/10 -> 8/10 within this batch. BS04-BS05, deployment and browser/device acceptance remain separate; overall role scores are unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -75,6 +77,7 @@ Scoped buyer/seller BS01-BS02 review: October 9, 2026. Completed-purchase review
 | Seller fulfillment | Implemented | A central lifecycle service enforces `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`, shop ownership, and the pre-custody cancellation boundary. |
 | Purchase reviews and seller replies | Implemented; locally verified | BS01 binds one review to an owned completed order item, preserves unchanged retries and legacy content, persists one owned seller reply, and derives public averages/counts from verified purchases. The October 9 commerce review records migration, privacy, rollback and interface evidence, with deployment and PostgreSQL limits. |
 | Buyer and seller order workspaces | Implemented; locally verified | BS02 groups seller items under original orders, paginates owned history, separates delivery/completion and exceptions, and exposes existing-authority action flags. Seller batches commit together; cancellation validates current reasons and retains exactly-once stock/custody rules. Mixed-shop legacy history is read-only. See the October 9 commerce review below. |
+| Seller inventory and drafts | Implemented; locally verified | BS03 creates validated drafts or active listings, retains scoped search/category/status/stock selections across stable pages, preserves zero variant quantities and links dashboard stock counts to matching worklists. Publishing retains approval, category and moderation gates. See the October 10 inventory review below. |
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
@@ -2251,3 +2254,99 @@ required migrations, refresh applicable caches/workers and confirm the scheduler
 Then obtain a fresh approved bearer, require operations version 1, inspect Home
 and authorized queues/detail, and reconcile commands using authorized test data.
 Mobile duty and claim writes stay disabled until those release checks pass.
+
+## Seller inventory and drafts review — October 10, 2026
+
+The selected [BS03 plan](buyer-seller-plan/03-seller-inventory-and-drafts.md)
+is implemented locally on `feat/seller-inventory-and-drafts`, following the
+published BS01-BS02 order/review work. This delivery stops at BS03; saved products
+and Buy again remain separate BS04 and BS05 batches.
+
+Sellers can choose **Save draft** or **Publish** in the existing listing drawer.
+Both require the existing complete, valid listing details. Creation accepts only
+`draft` or `active`; older requests without a status retain active creation.
+Editing continues to support active, draft and archived listings. Drafts stay
+outside catalogue queries and public product detail. Current account/shop
+approval, approved category scope and platform moderation remain enforced on the
+server. Publishing a moderated draft retains its restriction and immutable
+review history. Duplicate custom SKUs now return a field validation error before
+creation or editing, while the current product may retain its own SKU.
+
+The inventory worklist validates search, category, listing status, stock selection
+and page values. Search continues to match names or SKUs throughout the owned
+catalogue. Categories come from the shop's approved active scope. Pagination
+retains the normalized selections, uses updated time plus product ID as its stable
+order, and clamps stale pages after matching listings change. Clearing search
+retains the other selected filters; Clear filters resets the worklist.
+
+Dashboard alerts and inventory stock filters share one definition: active listing
+stock of **1-5** is low stock, **0** is out of stock, and positive stock is in stock.
+Drafts and archives are excluded. These are listing quantities, not sums of
+variant quantities or a claim of public moderation eligibility. Existing
+restricted-product feedback remains visible. Variant quantity/availability
+sections show the stored size stock and color availability separately. Opening
+and saving the editor preserves an explicit numeric zero; missing/null size stock
+uses the existing listing-stock fallback. No stock schema, warehouse workflow or
+extra-shop controls were added.
+
+The seller page retains its existing merchant layout, crimson actions, typography,
+listing table and drawers. New filters have labels and responsive grid layout;
+variant sections use native disclosure controls. Draft/publish submissions are
+guarded while pending, preserve rejected input and close/reset only after the
+saved response. Buyer, rider and global portal styling was not changed.
+
+Implementation and acceptance references:
+[SellerInventoryService.php](../app/Services/Commerce/SellerInventoryService.php),
+[SellerProductController.php](../app/Http/Controllers/Seller/SellerProductController.php),
+[SellerDashboardController.php](../app/Http/Controllers/Seller/SellerDashboardController.php),
+[seller products](../resources/js/Pages/Seller/Products.tsx),
+[seller dashboard](../resources/js/Pages/Seller/Dashboard.tsx),
+[seller inventory helpers](../resources/js/utils/sellerInventory.ts),
+[SellerInventoryTest.php](../tests/Feature/Seller/SellerInventoryTest.php) and
+[commerce frontend checks](../tests/Frontend/commerce.test.mjs).
+
+### Verification and limits
+
+| Check | Final result |
+|---|---|
+| BS03 acceptance within the affected-flow run | 50 tests, 612 assertions; passing |
+| Seller, buyer, variant/gallery and product-moderation regression | 575 tests, 6,965 assertions; passing |
+| All existing frontend test files, including six inventory additions | 69 tests; passing |
+| Production TypeScript/Vite build through Docker | Passing |
+| Scoped PHP formatting and Git whitespace check | Passing |
+
+Acceptance includes both seller portal hosts, zero/null variant stock,
+create/save/reload, draft publication and archival, invalid fields and statuses,
+duplicate custom SKUs, combined filters and pagination, stock boundaries,
+foreign writes, fresh account/shop/category restrictions and moderated publishing.
+The first acceptance run exposed fixture errors involving repeated unique SKUs,
+unrefreshed model snapshots and buyer links on a seller host; those fixtures were
+corrected while retaining their original acceptance intent. The final run above
+includes all 50 cases and has zero failures or errors.
+
+PHP tests used isolated SQLite `:memory:` with array cache/session/mail and
+separate ignored runtime storage. No development or production database was
+migrated, seeded or reset; this batch adds no migration. Machine-local logs and
+XML remain under ignored `.codex/seller-inventory`. The repository-wide PHP suite
+was not run for this scoped seller change. PostgreSQL concurrency, rendered
+browser/device behavior and Azure acceptance were not established by these
+checks. Draft creation still requires complete listing details; partial drafts,
+import/export, warehouse automation and a redesigned stock model are outside the
+selected batch.
+
+**Scoped engineering assessment: seller inventory/drafts 4/10 -> 8/10.** Previously
+creation always published, the editor could replace a sold-out size with listing
+stock, and the low-stock dashboard count included zero-stock drafts/archives.
+The selected batch now has explicit drafts, safe zero quantities, validated
+worklists, matching alerts and rejection coverage. This rating measures that
+bounded seller workflow; it does not raise overall seller, buyer or project
+readiness or certify live deployment.
+
+Local implementation commits:
+
+- `00150c6` — `feat(seller): validate drafts and share inventory filters`
+- `bbfaf40` — `feat(seller): expose draft actions and inventory worklists`
+
+This evidence is saved in `docs(seller): record inventory and draft verification`;
+its generated commit hash is reported in the handoff. Publication, merge,
+deployment and live acceptance remain separate user-controlled steps.
