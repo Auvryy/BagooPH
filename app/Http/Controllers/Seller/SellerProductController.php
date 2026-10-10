@@ -7,12 +7,14 @@ use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,31 +23,20 @@ class SellerProductController extends Controller
 {
     use HasSellerShop;
 
-    public function __construct(private readonly SellerSalesMetricsService $salesMetrics) {}
+    public function __construct(
+        private readonly SellerSalesMetricsService $salesMetrics,
+        private readonly SellerInventoryService $inventory,
+    ) {}
 
     public function index(Request $request): Response
     {
-        $validated = $request->validate([
-            'search' => 'nullable|string|max:100',
-        ]);
         $shop = $this->getActiveShop($request);
-        $search = trim((string) ($validated['search'] ?? ''));
-        $products = $this->salesMetrics
+        $filters = $this->inventory->selection($request, $shop);
+        $query = $this->salesMetrics
             ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
-            ->when($search !== '', function ($query) use ($search) {
-                $pattern = "%{$search}%";
-                $query->where(function ($productQuery) use ($pattern) {
-                    $productQuery
-                        ->whereLike('name', $pattern, caseSensitive: false)
-                        ->orWhereLike('sku', $pattern, caseSensitive: false);
-                });
-            })
             ->withCount('orderItems')
-            ->with(['category', 'images'])
-            ->latest('updated_at')
-            ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
+            ->with(['category', 'images']);
+        $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
         $categories = Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get();
         $products->through(function (Product $product) {
@@ -65,9 +56,7 @@ class SellerProductController extends Controller
             'products' => $products,
             'categories' => $categories,
             'shop' => $shop,
-            'filters' => [
-                'search' => $search,
-            ],
+            'filters' => $filters,
         ]);
     }
 
@@ -86,7 +75,7 @@ class SellerProductController extends Controller
             'price' => 'required|numeric|min:0.01',
             'compare_at_price' => 'nullable|numeric|gt:price',
             'stock' => 'required|integer|min:0',
-            'sku' => 'nullable|string|max:50',
+            'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
@@ -94,6 +83,7 @@ class SellerProductController extends Controller
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
             'variants' => 'nullable',
+            'status' => 'sometimes|required|in:active,draft',
             'compliance_restricted' => 'prohibited',
             'moderation_version' => 'prohibited',
         ], [
@@ -122,12 +112,12 @@ class SellerProductController extends Controller
             'shop_id' => $shop->id,
             'slug' => $slug,
             'featured_image' => $defaultFallback,
-            'status' => 'active',
+            'status' => $validated['status'] ?? 'active',
         ]);
 
         $this->syncProductImages($product, $request, $defaultFallback);
 
-        return back()->with('success', 'Product created successfully.');
+        return back()->with('success', $product->status === 'draft' ? 'Product draft saved.' : 'Product published successfully.');
     }
 
     public function update(Request $request, Product $product): RedirectResponse
@@ -149,7 +139,7 @@ class SellerProductController extends Controller
             'price' => 'required|numeric|min:0.01',
             'compare_at_price' => 'nullable|numeric|gt:price',
             'stock' => 'required|integer|min:0',
-            'sku' => 'nullable|string|max:50',
+            'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
