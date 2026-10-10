@@ -2668,3 +2668,52 @@ Local implementation commits:
 
 This acceptance evidence is retained in a separate documentation commit.
 Publication, merge and deployment remain user-owned release steps.
+
+## October 10, 2026: parcel recovery review
+
+The follow-up review compared the recovery plan with its services, migration,
+hub interfaces and acceptance checks. It found three operational guidance issues:
+
+| Finding | Before review fixes | After review fixes |
+|---|---|---|
+| Refreshed submission authority | An unchanged case could keep an expired manifest creation token after another manifest was prepared in the same session. Source tokens were also tied to the case reset. | Refreshed server tokens update independently, preserving entered notes, waybill and vehicle choice when the case is unchanged. |
+| Manifest discrepancy links | A sending handler could see a recovery link while lacking permission to open that observation, resulting in a 404. | Links use the viewer's actual recovery scope. Assigned receivers and handlers on an authorized recovery route retain their supported links. |
+| Receiving-hub attention | Counts followed only the original observed facility, hiding incoming recovery transfers and held parcels at an intermediate Mother Hub. | Counts include dispatched recovery arrivals and actual held recovery custody in the selected owned facility. The original observation remains visible until its separate review is resolved. |
+
+Two added acceptance cases failed against the previous implementation and passed
+after the fixes: scoped discrepancy links and actual two-leg recovery attention.
+The attention check covers arrival, intermediate receipt, completed recovery and
+the original facility's remaining discrepancy review. The token update follows
+the existing manifest form pattern; rendered refresh interaction was not tested.
+
+| Review verification | Result |
+|---|---|
+| Recovery, manifest custody, hub workspace, reverse custody and admin exception oversight | 164 tests, 12,032 assertions; zero failures, errors or skips |
+| Recovery cases included above | 49 tests, 5,432 assertions; passing |
+| All frontend checks | 80 tests; passing |
+| TypeScript/Vite production build through Docker | Passing; Vite 11.10 seconds |
+| Changed PHP formatting and whitespace | Passing |
+
+All PHP checks used isolated SQLite `:memory:`. The earlier 3,097-test full
+regression remains evidence for the initial implementation; this review reran
+the affected suites after its presentation changes. No business transition,
+custody writer, migration or financial rule changed during these fixes.
+
+**Scoped engineering assessment:** recovery guidance **7/10 -> 8/10** after
+accounting for the newly found issues. Overall physical unexpected-parcel
+recovery remains **8/10**, compared with **0/10** before this branch. The fixes
+make existing recovery work visible and its permitted actions usable; they do
+not verify production PostgreSQL triggers, simultaneous requests, deployed
+operations or browser/device interactions. Restricted-resource recovery and
+unknown parcels retain the earlier stopping boundary. Deployment still requires
+the additive recovery migration, without a database reset.
+
+Review implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `856a466` | `fix(logistics): scope recovery links and receiving attention` |
+| `fc147f1` | `fix(logistics): refresh recovery submission tokens` |
+
+This review evidence is retained in a separate local documentation commit.
+Publication, merge and deployment remain user-owned steps.
