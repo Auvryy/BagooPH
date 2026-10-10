@@ -34,5 +34,8 @@
         "leaflet": "1.9.4",
         "qrcode.react": "^4.2.0",
         "three": "^0.185.1"
+    },
+    "overrides": {
+        "postcss-selector-parser": "7.1.6"
     }
 }

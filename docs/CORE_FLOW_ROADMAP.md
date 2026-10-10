@@ -61,6 +61,8 @@ Scoped buyer/seller BS01-BS02 review: October 9, 2026. Completed-purchase review
 
 Scoped seller BS03 inventory/drafts review: October 10, 2026. Validated draft creation, retained inventory filters, matching active-stock alerts and zero-preserving variant edits pass 575 affected-flow tests and 69 frontend checks, plus the production build. Inventory usability is assessed at 4/10 -> 8/10 within this batch. BS04-BS05, deployment and browser/device acceptance remain separate; overall role scores are unchanged.
 
+Scoped dependency/database configuration review: October 10, 2026. Available security fixes are locked and installed, the shared stylesheet remains identical, and database host publication is limited to localhost. All 2,958 PHP tests, 69 frontend checks, 9 deployment checks and the production build pass. Composer has zero advisories; npm retains five high entries from one unpatched build-tool chain. The scoped configuration assessment is 6/10 -> 8/10; Azure exposure and overall role/project ratings remain unverified or unchanged. See the dated review below.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -2350,3 +2352,95 @@ Local implementation commits:
 This evidence is saved in `docs(seller): record inventory and draft verification`;
 its generated commit hash is reported in the handoff. Publication, merge,
 deployment and live acceptance remain separate user-controlled steps.
+
+## Dependency and database configuration review — October 10, 2026
+
+The selected security cleanup follows the published seller inventory batch on
+`fix/dependency-and-database-security`. It updates available dependency fixes and
+restricts database host publication before the next buyer features. BS04 and
+BS05 remain separate planned deliveries; this batch does not start them.
+
+Only `league/commonmark` changes in the PHP lockfile, from 2.10.1 to 2.10.3. The
+[maintainer's release notes](https://commonmark.thephpleague.com/releases/)
+identify 2.10.2 as the security release for the raw HTML filtering bypass and
+GFM table parsing denial of service; 2.10.3 retains those fixes. Composer's fresh
+locked audit now reports no advisories or abandoned packages.
+
+The npm lockfile updates Axios 1.19.0 to 1.20.0, qs 6.15.3 to 6.16.0 and
+source-map-js 1.2.1 to 1.2.2 within their existing dependency ranges. The existing
+Tailwind and nested CSS consumers use an exact `postcss-selector-parser` 7.1.6
+override for the
+[maintainer's linear-time selector fix](https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf).
+The parser's major version changes insertion iteration behavior; comparison of
+the generated `resources/css/app.css` output before and after this update
+produced identical 175,400-byte CSS without warnings. The override should be
+revisited when the consuming packages support the patched parser themselves.
+Tailwind remains on 3.4.19 and the portals retain their current design.
+
+The all-dependency npm audit decreases from ten flagged package entries
+(seven high, three moderate) to five high entries. These five represent the same
+unpatched `braces` issue propagated through chokidar, micromatch, fast-glob and
+Tailwind, not five separate demonstrated application exploits. The
+[advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) and fresh registry
+lookup show no patched braces release. In the inspected dependency graph and
+application source this path handles trusted repository build/watch patterns;
+no application endpoint or browser import was found that accepts user-supplied
+globs. This is a scoped reachability assessment, not proof of general immunity.
+The warning remains visible: a reviewed build-tool migration or upstream patch
+is still needed. The suggested Tailwind 4 migration is deferred to its own
+compatibility and design work; no forced audit fix or advisory suppression is
+used here. Runtime Inertia dependencies were reviewed even though the manifest
+places its frontend packages under development dependencies.
+
+Compose now explicitly binds PostgreSQL to
+`127.0.0.1:${FORWARD_DB_PORT:-5432}:5432`. Both the default and a custom host port
+retain the same localhost boundary. Laravel still connects to `db:5432` on the
+shared bridge network, with the existing health dependency and `bagoo_pgdata`
+volume. No development container or database was recreated, migrated, seeded or
+reset. The
+[deployment guide](WEB_AUTH_DEPLOYMENT.md#database-host-access) explains applying
+the binding through the existing deploy command, checking the actual published
+address, preserving the volume and separately reviewing effective Azure inbound
+rules. It also records Docker's pre-28 localhost-publishing caveat.
+
+### Verification and limits
+
+| Check | Final result |
+|---|---|
+| Composer validation and locked security audit | Valid; zero advisories or abandoned packages |
+| npm all-dependency security audit | Five high entries remain, all from the documented unpatched build-tool chain |
+| Generated application CSS comparison | Identical before/after, without warnings |
+| Existing frontend checks | 69 passing |
+| Deployment checks, including default/custom DB binding and internal access/volume configuration | 9 passing |
+| Production TypeScript/Vite build in Docker with the deploy helper's 1 GiB heap setting | Passing |
+| Complete PHP regression | 2,958 tests, 59,380 assertions; zero failures, errors or skips |
+| Git whitespace and changed-file review | Passing |
+
+A host `npm ci` attempt hit existing Docker-owned module permissions. The
+supported Docker install succeeded; it installed the locked packages with
+scripts disabled, and the subsequent frontend checks and production build
+passed. PHP checks used isolated SQLite `:memory:`, array cache/session/mail and
+ignored runtime storage under `.codex/security-cleanup`. Audit outputs, CSS
+comparison artifacts and verification logs remain ignored there.
+
+Actual deployment, server Docker/firewall/NSG state, public reachability and
+rendered browser/device acceptance were not checked. These commits do not prove
+that Azure had a publicly reachable database or that its running mapping has
+changed. Existing registration email enumeration and the broader production
+security review remain separate scope; overall role/project ratings are
+unchanged.
+
+**Scoped engineering assessment: dependency and database configuration
+6/10 -> 8/10.** The available audited dependency fixes are applied and checked
+without changing the portal stylesheet, and database host publication has an
+explicit localhost boundary with deployment acceptance checks. The residual
+build-tool advisory and unverified live infrastructure limit this assessment.
+
+Local implementation commits:
+
+- `2ed7af4` — `fix(security): update vulnerable application dependencies`
+- `53ceaf6` — `fix(deploy): bind database host access to localhost`
+
+This evidence is saved in `docs(security): record dependency and database verification`;
+its generated commit hash is reported in the handoff. Publication, merge and
+deployment remain user-controlled steps.
