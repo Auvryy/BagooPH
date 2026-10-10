@@ -12,6 +12,7 @@ interface ProductCardProps {
     isSuccess?: boolean;
     actionLabel?: string;
     className?: string;
+    saveControl?: React.ReactNode;
 }
 
 export default function ProductCard({
@@ -22,6 +23,7 @@ export default function ProductCard({
     isSuccess = false,
     actionLabel = 'Add to Bag',
     className = '',
+    saveControl,
 }: ProductCardProps) {
     const priceNum = Number(product.price);
     const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
@@ -53,10 +55,10 @@ export default function ProductCard({
     const isOutOfStock = Number(product.stock) <= 0;
 
     return (
-        <Link
-            href={targetUrl}
+        <article
             className={`group bg-white rounded-lg border border-slate-300 overflow-hidden hover:shadow-xl hover:border-slate-400 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
         >
+            <Link href={targetUrl} className="flex flex-1 flex-col">
             {/* 1. Product Image Container with Discount Badge at bottom of image */}
             <div className="relative aspect-square bg-slate-100 overflow-hidden">
                 {product.featured_image ? (
@@ -154,6 +156,8 @@ export default function ProductCard({
                 </div>
             </div>
 
+            </Link>
+            {saveControl && <div className="px-2.5 pb-2.5">{saveControl}</div>}
             {/* Optional Quick Add Action (only rendered if explicitly passed) */}
             {onQuickAdd && (
                 <div className="px-2.5 pb-2.5 pt-0">
@@ -191,6 +195,6 @@ export default function ProductCard({
                     </button>
                 </div>
             )}
-        </Link>
+        </article>
     );
 }

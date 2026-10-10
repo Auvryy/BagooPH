@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
-use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -394,7 +393,7 @@ class SellerProductController extends Controller
             abort(403, 'Unauthorized product deletion.');
         }
 
-        if ($product->orderItems()->exists() || $product->reviews()->exists() || CartItem::where('product_id', $product->id)->exists() || $product->moderationDecisions()->exists()) {
+        if ($product->hasRetainedReferences()) {
             $product->update(['status' => 'archived']);
 
             return back()->with('success', 'Product archived to preserve its references and history.');

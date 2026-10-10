@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Cart;
 use App\Models\Message;
+use App\Models\SavedProduct;
 use App\Models\Shop;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
@@ -114,6 +115,8 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'cartCount' => $cartCount,
+            'savedProductIds' => fn () => $user && $user->isBuyer() && $user->canAccessPortal()
+                ? SavedProduct::where('buyer_id', $user->id)->pluck('product_id') : [],
             'unreadMessagesCount' => $unreadMessagesCount,
             'notificationSummary' => app(NotificationCenterService::class)->summary($user),
             'flash' => [

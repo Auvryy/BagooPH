@@ -12,6 +12,8 @@ const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-commerce-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
     stdin: { contents: `export { default as ProductCard } from '@/Components/ProductCard';
+        export { default as SavedProducts } from '@/Pages/Buyer/SavedProducts';
+        export { default as Search } from '@/Pages/Buyer/Search';
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
         export { default as Store } from '@/Pages/Marketplace/ShopDetail';
         export { default as Reviews } from '@/Pages/Seller/Reviews';
@@ -221,4 +223,31 @@ test('dashboard stock alerts link to separate active inventory worklists', async
     assert.match(html, /status=active&amp;stock=low_stock/); assert.match(html, /2 low stock \(1–5\)/);
     assert.match(html, /status=active&amp;stock=out_of_stock/); assert.match(html, /1 out of stock/);
     assert.doesNotMatch(html, /Stock healthy/);
+});
+
+
+test('saved products keep buyer styling, sold-out labels and removal controls without restricted listing links', async () => {
+    const html = await render(ui.SavedProducts, 'Buyer/SavedProducts', {
+        savedProductIds: [3, 99], entries: paginated([
+            { id: 1, product_id: 3, product: { ...product, stock: 0 }, available: false, unavailable_reason: 'Out of stock' },
+            { id: 2, product_id: 99, product: null, available: false, unavailable_reason: 'This saved product is currently unavailable.' },
+        ]),
+    });
+    assert.match(html, /Saving does not reserve stock/);
+    assert.match(html, /Out of stock/); assert.match(html, /Saved product unavailable/);
+    assert.equal((html.match(/Remove from saved/g) || []).length, 2);
+    assert.equal((html.match(/aria-pressed="true"/g) || []).length, 2);
+    assert.match(html, /disabled=""[^>]*>Unavailable for purchase/);
+    assert.doesNotMatch(html, /buyer\/products\/show\/99/);
+});
+
+test('catalogue guests follow sign-in to save and invalid ranges show readable feedback', async () => {
+    const html = await render(ui.Search, 'Buyer/Search', {
+        auth: { user: null }, products: paginated([product]), categories: [], relatedProducts: [],
+        filters: { sort: 'price_asc', min_price: '200', max_price: '100' },
+        errors: { max_price: 'The maximum price must be at least the minimum price.' },
+    });
+    assert.match(html, /href="\/login"[^>]*>[\s\S]*?Sign in to save/);
+    assert.match(html, /role="alert"/); assert.match(html, /maximum price must be at least/);
+    assert.doesNotMatch(html, /aria-pressed="true"/);
 });

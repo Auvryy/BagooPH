@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Commerce\BuyerDiscoveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -97,7 +98,7 @@ class BuyerHomeController extends Controller
 
         // 4. 14 Verified Departments with Visual Data
         $categories = Category::where('is_active', true)
-            ->withCount('products')
+            ->withCount(['products' => fn ($products) => $products->availableForSale()])
             ->orderBy('id')
             ->get();
 
@@ -105,72 +106,12 @@ class BuyerHomeController extends Controller
         $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
-        // Search Filter (Product name, description, SKU, and matching category or shop name)
-        if ($request->filled('search')) {
-            $search = trim($request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('description', 'ilike', "%{$search}%")
-                    ->orWhere('sku', 'ilike', "%{$search}%")
-                    ->orWhereHas('category', function ($catQ) use ($search) {
-                        $catQ->where('name', 'ilike', "%{$search}%");
-                    })
-                    ->orWhereHas('shop', function ($shopQ) use ($search) {
-                        $shopQ->where('name', 'ilike', "%{$search}%");
-                    });
-            });
+        $discovery = app(BuyerDiscoveryService::class);
+        if ($request->input('sort') === 'new_arrivals' || (! $request->filled('sort') && $request->input('tab') === 'new_arrivals')) {
+            $request->query->set('sort', 'newest');
         }
-
-        // Category Filter
-        if ($request->filled('category') && $request->input('category') !== 'all') {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->input('category'));
-            });
-        }
-
-        // Price Range Filters
-        if ($request->filled('min_price') && is_numeric($request->input('min_price'))) {
-            $query->where('price', '>=', (float) $request->input('min_price'));
-        }
-        if ($request->filled('max_price') && is_numeric($request->input('max_price'))) {
-            $query->where('price', '<=', (float) $request->input('max_price'));
-        }
-
-        // In Stock Filter
-        if ($request->boolean('in_stock') || $request->input('in_stock') === '1') {
-            $query->where('stock', '>', 0);
-        }
-
-        // Rating Filter (e.g. 4 stars and above)
-        if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->whereVerifiedRatingAtLeast((float) $request->input('rating'));
-        }
-
-        // Sort Engine
-        $sort = $request->input('sort', $request->input('tab', 'relevance'));
-        switch ($sort) {
-            case 'price_asc':
-                $query->orderBy('price', 'asc');
-                break;
-            case 'price_desc':
-                $query->orderBy('price', 'desc');
-                break;
-            case 'top_sales':
-                $query->orderBy('sales_count', 'desc');
-                break;
-            case 'top_rated':
-                $query->orderBy('verified_rating', 'desc');
-                break;
-            case 'newest':
-            case 'new_arrivals':
-                $query->latest();
-                break;
-            default:
-                $query->orderBy('sales_count', 'desc')->orderBy('verified_rating', 'desc');
-                break;
-        }
-
-        $feedProducts = $query->paginate(18)->withQueryString();
+        $filters = $discovery->selection($request);
+        $feedProducts = $discovery->paginate($discovery->filter($query, $filters), $filters, 18);
 
         // 5b. Related / Suggested Products (when search is active or when feed has few results)
         $relatedProducts = [];
@@ -247,16 +188,9 @@ class BuyerHomeController extends Controller
             'relatedProducts' => $relatedProducts,
             'vouchers' => $vouchers,
             'activeShipment' => $activeShipment,
-            'filters' => [
-                'search' => $request->input('search', ''),
-                'category' => $request->input('category', 'all'),
-                'sort' => $sort,
-                'min_price' => $request->input('min_price', ''),
-                'max_price' => $request->input('max_price', ''),
-                'in_stock' => $request->boolean('in_stock'),
-                'rating' => $request->input('rating', ''),
-                'tab' => $request->input('tab', 'all'),
-            ],
+            'filters' => [...$filters, 'tab' => match ($filters['sort']) {
+                'newest' => 'new_arrivals', 'top_sales', 'top_rated' => $filters['sort'], default => 'all',
+            }],
         ]);
     }
 }

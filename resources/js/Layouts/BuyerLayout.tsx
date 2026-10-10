@@ -405,6 +405,10 @@ export default function BuyerLayout({
                                                     <span>My Orders</span>
                                                 </Link>
 
+                                                <Link href={route('buyer.saved-products.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
+                                                    <Heart className="h-4 w-4 text-[#E00D42]" /><span>Saved products</span>
+                                                </Link>
+
                                                 <Link 
                                                     href={route('buyer.messages')} 
                                                     className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"

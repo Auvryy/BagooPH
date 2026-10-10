@@ -80,6 +80,7 @@ Scoped dependency/database configuration review: October 10, 2026. Available sec
 | Purchase reviews and seller replies | Implemented; locally verified | BS01 binds one review to an owned completed order item, preserves unchanged retries and legacy content, persists one owned seller reply, and derives public averages/counts from verified purchases. The October 9 commerce review records migration, privacy, rollback and interface evidence, with deployment and PostgreSQL limits. |
 | Buyer and seller order workspaces | Implemented; locally verified | BS02 groups seller items under original orders, paginates owned history, separates delivery/completion and exceptions, and exposes existing-authority action flags. Seller batches commit together; cancellation validates current reasons and retains exactly-once stock/custody rules. Mixed-shop legacy history is read-only. See the October 9 commerce review below. |
 | Seller inventory and drafts | Implemented; locally verified | BS03 creates validated drafts or active listings, retains scoped search/category/status/stock selections across stable pages, preserves zero variant quantities and links dashboard stock counts to matching worklists. Publishing retains approval, category and moderation gates. See the October 10 inventory review below. |
+| Buyer discovery and saved products | Implemented; locally verified | BS04 shares validated literal search and stable catalogue pagination, retains buyer-owned saved products across sessions and hides unavailable listing details. Saving never reserves stock; saved references require seller archival. See the October 10 discovery review below. |
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
@@ -2444,3 +2445,46 @@ Local implementation commits:
 This evidence is saved in `docs(security): record dependency and database verification`;
 its generated commit hash is reported in the handoff. Publication, merge and
 deployment remain user-controlled steps.
+
+
+## October 10, 2026: BS04 buyer discovery and saved products
+
+The selected BS04/BS05 branch is `feat/buyer-discovery-and-buy-again`, based on
+merged security and BS03 work at `4b3dd3f`. This entry accepts BS04 independently;
+BS05 is the next selected batch on the same branch.
+
+Home and the catalogue now share trimmed search, a 100-character limit, literal
+`%`, `_` and escape-character handling, validated category/sort/price/rating/stock
+filters and a stable ID tie-breaker. Invalid ranges produce visible feedback.
+Pagination retains validated filters and recovers from a removed last page.
+Home retains its New Arrivals alias. Review filtering uses verified purchases
+and an explicit numeric threshold; top-rated results put unrated listings last.
+
+Approved buyers can save products from Home, search and product details and
+open Saved products from their account menu. The database retains one entry per
+buyer/product. Repeated saves/removals preserve other buyers' entries, and
+sign-out does not erase the list. Stock is never reserved or decremented.
+Sold-out public products retain their label; archived, moderated or otherwise
+ineligible products retain only an unavailable placeholder with a removal
+control. Their current name, shop, image and price are not serialized. Saved
+references also prevent hard deletion and cause seller removal to archive.
+
+Verification uses isolated SQLite `:memory:` and a dedicated test storage/cache
+path. The final BS04 acceptance run passed **40 tests / 644 assertions**. The
+catalogue and seller inventory/eligibility regression passed **135 tests /
+1,727 assertions**; the final Home alias change was separately included in the
+40-test acceptance run. Commerce frontend rendering checks passed **18 tests**,
+and TypeScript plus the production Vite build passed. Changed PHP formatting
+and whitespace were checked. These checks do not establish browser/device
+presentation or simultaneous PostgreSQL locking behavior.
+
+Scoped engineering assessments: discovery **5/10 -> 8/10** and persistent saved
+products **0/10 -> 8/10**. Buyers receive consistent filters, useful validation
+and a persistent owned list. These ratings apply to those features only;
+rendered-device acceptance, release and the separate Buy again gate remain.
+
+Release requires the additive `2026_10_10_190000_create_saved_products_table`
+migration and the frontend build before normal traffic uses the new shared
+saved IDs. `./bagoo.sh deploy` runs the normal migrations and build, followed by
+`./bagoo.sh verify`; do not reset or reseed the live database. The development
+and Azure databases were not migrated during verification.

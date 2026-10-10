@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import SavedProductButton from '@/Components/SavedProductButton';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
 import { 
@@ -404,7 +405,7 @@ export default function BuyerProductDetail({
                             ))}
                         </div>
 
-                        {/* Share & Wishlist Bar */}
+                        {/* Share and saved products */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-2.5 text-xs font-sans text-slate-500 border-t border-slate-200">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-bold uppercase text-[10px]">Share:</span>
@@ -418,6 +419,7 @@ export default function BuyerProductDetail({
                                     <span>Share Product</span>
                                 </button>
                             </div>
+                            <SavedProductButton productId={product.id} />
                             <div className="flex items-center gap-1 text-[#E00D42] font-bold min-w-0">
                                 <ShieldCheck className="w-4 h-4" />
                                 <span className="truncate">BagooPH Buyer Protection</span>

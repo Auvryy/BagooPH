@@ -298,6 +298,7 @@ export type PageProps<
     };
     categories?: Category[];
     cartCount: number;
+    savedProductIds?: number[];
     unreadMessagesCount?: number;
     notificationSummary?: { available: boolean; unread: number | null };
     flash: {
