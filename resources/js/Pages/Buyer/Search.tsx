@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
+import CatalogueErrors from '@/Components/CatalogueErrors';
+import SavedProductButton from '@/Components/SavedProductButton';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Search as SearchIcon, 
@@ -105,6 +107,7 @@ export default function SearchPage({
 
     return (
         <BuyerLayout categories={categories}>
+            <CatalogueErrors />
             <Head>
                 <title>{filters.search ? `Search: "${filters.search}" — BagooPH` : 'Product Catalog & Search — BagooPH'}</title>
                 <meta name="description" content={filters.search ? `Explore search results for "${filters.search}" on BagooPH. Find authentic products from verified merchants with nationwide Cash on Delivery.` : 'Browse all categories and authentic products on BagooPH with nationwide Cash on Delivery.'} />
@@ -458,7 +461,7 @@ export default function SearchPage({
                                             {relatedProducts.map((product) => (
                                                 <ProductCard
                                                     key={product.id}
-                                                    product={product}
+                                                    product={product} saveControl={<SavedProductButton productId={product.id} />}
                                                     href={route('buyer.products.show', product.slug)}
                                                 />
                                             ))}
@@ -471,7 +474,7 @@ export default function SearchPage({
                                 {products.data.map((product) => (
                                     <ProductCard
                                         key={product.id}
-                                        product={product}
+                                        product={product} saveControl={<SavedProductButton productId={product.id} />}
                                         href={route('buyer.products.show', product.slug)}
                                     />
                                 ))}
@@ -489,7 +492,7 @@ export default function SearchPage({
                                     {relatedProducts.map((p) => (
                                         <ProductCard
                                             key={p.id}
-                                            product={p}
+                                            product={p} saveControl={<SavedProductButton productId={p.id} />}
                                             href={route('buyer.products.show', p.slug)}
                                         />
                                     ))}

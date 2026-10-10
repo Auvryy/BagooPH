@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\ReviewService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,109 +19,21 @@ class BuyerProductController extends Controller
      */
     public function search(Request $request): Response
     {
-        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
-            ->where('status', 'active');
-
-        // Search Query (Name, Description, SKU, Category, and Shop Name)
-        if ($request->filled('search')) {
-            $search = trim($request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('description', 'ilike', "%{$search}%")
-                    ->orWhere('sku', 'ilike', "%{$search}%")
-                    ->orWhereHas('category', function ($catQ) use ($search) {
-                        $catQ->where('name', 'ilike', "%{$search}%");
-                    })
-                    ->orWhereHas('shop', function ($shopQ) use ($search) {
-                        $shopQ->where('name', 'ilike', "%{$search}%");
-                    });
-            });
-        }
-
-        // Category Filter
-        if ($request->filled('category') && $request->input('category') !== 'all') {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->input('category'));
-            });
-        }
-
-        // Price Filters
-        if ($request->filled('min_price') && is_numeric($request->input('min_price'))) {
-            $query->where('price', '>=', (float) $request->input('min_price'));
-        }
-        if ($request->filled('max_price') && is_numeric($request->input('max_price'))) {
-            $query->where('price', '<=', (float) $request->input('max_price'));
-        }
-
-        // In Stock Filter
-        if ($request->boolean('in_stock') || $request->input('in_stock') === '1') {
-            $query->where('stock', '>', 0);
-        }
-
-        // Rating Filter (e.g. 4 stars and above)
-        if ($request->filled('rating') && is_numeric($request->input('rating'))) {
-            $query->whereVerifiedRatingAtLeast((float) $request->input('rating'));
-        }
-
-        // Sorting
-        $sort = $request->input('sort', 'relevance');
-        switch ($sort) {
-            case 'price_asc':
-                $query->orderBy('price', 'asc');
-                break;
-            case 'price_desc':
-                $query->orderBy('price', 'desc');
-                break;
-            case 'top_sales':
-                $query->orderBy('sales_count', 'desc');
-                break;
-            case 'top_rated':
-                $query->orderBy('verified_rating', 'desc');
-                break;
-            case 'newest':
-                $query->latest();
-                break;
-            default:
-                $query->orderBy('sales_count', 'desc')->orderBy('verified_rating', 'desc');
-                break;
-        }
-
-        $products = $query->paginate(24)->withQueryString();
-
+        $discovery = app(BuyerDiscoveryService::class);
+        $filters = $discovery->selection($request);
+        $products = $discovery->paginate($discovery->filter($discovery->catalogue(), $filters), $filters);
         $categories = Category::where('is_active', true)
-            ->withCount('products')
-            ->orderBy('id')
-            ->get();
-
-        // Related / Recommended Products
-        $matchedIds = $products->pluck('id')->toArray();
-        $relatedQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
-            ->where('status', 'active')
-            ->whereNotIn('id', $matchedIds);
-
-        if ($request->filled('category') && $request->input('category') !== 'all') {
-            $relatedQuery->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->input('category'));
-            });
+            ->withCount(['products' => fn ($query) => $query->availableForSale()])->orderBy('id')->get();
+        $related = $discovery->catalogue()->whereNotIn('products.id', $products->pluck('id'));
+        if ($filters['category'] !== 'all') {
+            $related->whereHas('category', fn ($query) => $query->where('slug', $filters['category']));
         }
-
-        $relatedProducts = $relatedQuery->orderBy('sales_count', 'desc')
-            ->take(6)
-            ->get();
 
         return Inertia::render('Buyer/Search', [
             'products' => $products,
             'categories' => $categories,
-            'relatedProducts' => $relatedProducts,
-            'filters' => [
-                'search' => $request->input('search', ''),
-                'category' => $request->input('category', 'all'),
-                'sort' => $sort,
-                'min_price' => $request->input('min_price', ''),
-                'max_price' => $request->input('max_price', ''),
-                'in_stock' => $request->boolean('in_stock'),
-                'rating' => $request->input('rating', ''),
-            ],
+            'relatedProducts' => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
+            'filters' => $filters,
         ]);
     }
 

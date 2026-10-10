@@ -12,6 +12,9 @@ const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-commerce-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
     stdin: { contents: `export { default as ProductCard } from '@/Components/ProductCard';
+        export { default as BuyAgain } from '@/Pages/Buyer/BuyAgain';
+        export { default as SavedProducts } from '@/Pages/Buyer/SavedProducts';
+        export { default as Search } from '@/Pages/Buyer/Search';
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
         export { default as Store } from '@/Pages/Marketplace/ShopDetail';
         export { default as Reviews } from '@/Pages/Seller/Reviews';
@@ -221,4 +224,66 @@ test('dashboard stock alerts link to separate active inventory worklists', async
     assert.match(html, /status=active&amp;stock=low_stock/); assert.match(html, /2 low stock \(1–5\)/);
     assert.match(html, /status=active&amp;stock=out_of_stock/); assert.match(html, /1 out of stock/);
     assert.doesNotMatch(html, /Stock healthy/);
+});
+
+
+test('saved products keep buyer styling, sold-out labels and removal controls without restricted listing links', async () => {
+    const html = await render(ui.SavedProducts, 'Buyer/SavedProducts', {
+        savedProductIds: [3, 99], entries: paginated([
+            { id: 1, product_id: 3, product: { ...product, stock: 0 }, available: false, unavailable_reason: 'Out of stock' },
+            { id: 2, product_id: 99, product: null, available: false, unavailable_reason: 'This saved product is currently unavailable.' },
+        ]),
+    });
+    assert.match(html, /Saving does not reserve stock/);
+    assert.match(html, /Out of stock/); assert.match(html, /Saved product unavailable/);
+    assert.equal((html.match(/Remove from saved/g) || []).length, 2);
+    assert.equal((html.match(/aria-pressed="true"/g) || []).length, 2);
+    assert.match(html, /disabled=""[^>]*>Unavailable for purchase/);
+    assert.doesNotMatch(html, /buyer\/products\/show\/99/);
+});
+
+test('catalogue guests follow sign-in to save and invalid ranges show readable feedback', async () => {
+    const html = await render(ui.Search, 'Buyer/Search', {
+        auth: { user: null }, products: paginated([product]), categories: [], relatedProducts: [],
+        filters: { sort: 'price_asc', min_price: '200', max_price: '100' },
+        errors: { max_price: 'The maximum price must be at least the minimum price.' },
+    });
+    assert.match(html, /href="\/login"[^>]*>[\s\S]*?Sign in to save/);
+    assert.match(html, /role="alert"/); assert.match(html, /maximum price must be at least/);
+    assert.doesNotMatch(html, /aria-pressed="true"/);
+});
+
+
+test('Buy again previews original variants and changed prices while disabling unavailable selections', async () => {
+    const html = await render(ui.BuyAgain, 'Buyer/BuyAgain', {
+        order: { id: 40, order_number: 'BGO-REPEAT' }, requestToken: 'test-token', submitUrl: '/buyer/orders/40/buy-again', bagUrl: '/cart',
+        items: [
+            { order_item_id: 10, original_quantity: 2, previous_unit_price: '100.00', current_unit_price: '150.00', color: 'Red', size: 'M', name: 'Everyday Bag', image: null, product_url: '/product/everyday-bag', maximum_quantity: 1, can_select: true, unavailable_reason: null },
+            { order_item_id: 11, original_quantity: 1, previous_unit_price: '200.00', current_unit_price: null, color: 'Blue', size: 'L', name: 'Purchased item', image: null, product_url: null, maximum_quantity: 0, can_select: false, unavailable_reason: 'This listing is currently unavailable.' },
+        ],
+    });
+    assert.match(html, /Buy again/); assert.match(html, /Price changed/);
+    assert.match(html, /Original quantity: 2 · Red · M/); assert.match(html, /Original quantity: 1 · Blue · L/);
+    assert.match(html, /id="buy-again-item-11"[^>]*disabled=""/);
+    assert.match(html, /id="buy-again-quantity-10"[^>]*max="1"[^>]*value="1"/);
+    assert.match(html, /1 selected/); assert.match(html, /If one selection fails, nothing is added/);
+    assert.match(html, /original purchase stays unchanged/); assert.match(html, /normal checkout/);
+});
+
+test('a Buy again preview with no eligible selections cannot submit', async () => {
+    const html = await render(ui.BuyAgain, 'Buyer/BuyAgain', {
+        order: { id: 40, order_number: 'BGO-REPEAT' }, items: [], requestToken: 'test-token', submitUrl: '/buyer/orders/40/buy-again', bagUrl: '/cart',
+    });
+    assert.match(html, /No items are available/);
+    assert.match(html, /type="submit"[^>]*disabled=""/);
+    assert.match(html, /0 selected/);
+});
+
+test('completed purchase details show Buy again only with ordinary portal access and an owned action URL', async () => {
+    const props = {
+        order: { id: 4, order_number: 'BGO-REPEAT', status: 'completed', total_amount: 250, subtotal: 250, shipping_fee: 0, created_at: '2026-10-01', items: [] },
+        canUsePortal: true, buyAgainUrl: '/buyer/orders/4/buy-again', canConfirmReceipt: false, pickupClaim: null, pickupHub: null, pickupCodeUrl: null, orderNotices: [],
+    };
+    assert.match(await render(ui.Detail, 'Buyer/OrderDetail', props), /href="\/buyer\/orders\/4\/buy-again"[^>]*>Buy again/);
+    assert.doesNotMatch(await render(ui.Detail, 'Buyer/OrderDetail', { ...props, canUsePortal: false, buyAgainUrl: null }), />Buy again</);
 });

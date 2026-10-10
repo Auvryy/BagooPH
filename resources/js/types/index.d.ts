@@ -248,6 +248,7 @@ export interface Order {
     created_at: string;
     completed_at?: string | null;
     can_confirm_receipt?: boolean;
+    can_buy_again?: boolean;
     has_mixed_shops?: boolean;
     can_fulfill?: boolean;
     can_accept_and_pack?: boolean;
@@ -298,6 +299,7 @@ export type PageProps<
     };
     categories?: Category[];
     cartCount: number;
+    savedProductIds?: number[];
     unreadMessagesCount?: number;
     notificationSummary?: { available: boolean; unread: number | null };
     flash: {

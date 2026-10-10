@@ -34,8 +34,7 @@ class Product extends Model
         });
 
         static::deleting(function (Product $product) {
-            if ($product->orderItems()->exists() || $product->reviews()->exists()
-                || CartItem::where('product_id', $product->id)->exists() || $product->moderationDecisions()->exists()) {
+            if ($product->hasRetainedReferences()) {
                 throw new LogicException('Referenced products must be archived to preserve their history.');
             }
         });
@@ -163,11 +162,18 @@ class Product extends Model
     public function scopeWhereVerifiedRatingAtLeast(Builder $query, float $rating): Builder
     {
         return $query->whereIn('products.id', Review::verifiedPurchase()->select('product_id')->groupBy('product_id')
-            ->havingRaw('AVG(reviews.rating) >= ?', [$rating]));
+            ->havingRaw('AVG(reviews.rating) >= CAST(? AS DECIMAL(10, 2))', [$rating]));
     }
 
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function hasRetainedReferences(): bool
+    {
+        return $this->orderItems()->exists() || $this->reviews()->exists()
+            || CartItem::where('product_id', $this->id)->exists() || $this->moderationDecisions()->exists()
+            || SavedProduct::where('product_id', $this->id)->exists();
     }
 }

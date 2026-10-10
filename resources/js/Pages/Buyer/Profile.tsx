@@ -735,6 +735,7 @@ export default function BuyerProfile({
                                                             <span>{receiptPending === order.id ? 'Confirming…' : 'Confirm Received'}</span>
                                                         </button>
                                                     )}
+                                                    {order.can_buy_again && <Link href={route('buyer.orders.buy-again', order.id)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
 
                                                     <Link
                                                         href={route('buyer.orders.show', order.id)}

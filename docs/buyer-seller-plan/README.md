@@ -22,6 +22,11 @@ delivery branch while retaining separate commits, scope and acceptance gates.
 The user selected BS01 and BS02 together; their bounded delivery branch is
 `feat/buyer-seller-review-and-orders`. This does not start BS03-BS05.
 
+The separately selected BS04 and BS05 delivery uses
+`feat/buyer-discovery-and-buy-again`, with BS04 implemented and accepted before
+BS05 starts. Each batch retains its own checks and logical commit; this
+selection does not authorize additional commerce or logistics features.
+
 ## Design and boundaries
 
 Buyer and seller retain distinct portal styles. New pages, controls and dialogs

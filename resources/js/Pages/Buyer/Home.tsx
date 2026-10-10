@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
+import CatalogueErrors from '@/Components/CatalogueErrors';
+import SavedProductButton from '@/Components/SavedProductButton';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Zap, 
@@ -308,6 +310,7 @@ export default function BuyerHome({
 
     return (
         <BuyerLayout categories={categories}>
+            <CatalogueErrors />
             <Head>
                 <title>Official Marketplace — BagooPH | Philippine E-Commerce & On-Demand Delivery</title>
                 <meta name="description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD). Explore electronics, fashion, lifestyle, and local goods with real-time parcel tracking." />
@@ -786,7 +789,7 @@ export default function BuyerHome({
                                         {relatedProducts.map((product) => (
                                             <ProductCard
                                                 key={product.id}
-                                                product={product}
+                                                product={product} saveControl={<SavedProductButton productId={product.id} />}
                                                 href={route('buyer.products.show', product.slug)}
                                             />
                                         ))}
@@ -799,7 +802,7 @@ export default function BuyerHome({
                             {feedProducts.data.map((product) => (
                                 <ProductCard
                                     key={product.id}
-                                    product={product}
+                                    product={product} saveControl={<SavedProductButton productId={product.id} />}
                                     href={route('buyer.products.show', product.slug)}
                                 />
                             ))}
@@ -817,7 +820,7 @@ export default function BuyerHome({
                                 {relatedProducts.map((p) => (
                                     <ProductCard
                                         key={p.id}
-                                        product={p}
+                                        product={p} saveControl={<SavedProductButton productId={p.id} />}
                                         href={route('buyer.products.show', p.slug)}
                                     />
                                 ))}
