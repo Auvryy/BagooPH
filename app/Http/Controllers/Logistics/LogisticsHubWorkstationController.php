@@ -7,6 +7,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\PickupClaim;
 use App\Models\User;
@@ -19,6 +20,7 @@ use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\WaybillScanInputService;
 use DomainException;
@@ -183,6 +185,12 @@ class LogisticsHubWorkstationController extends Controller
             ])
             ->count();
 
+        $unexpected = app(ParcelRecoveryService::class)->observations($user)->whereIn('hub_id', $scopeHubIds)
+            ->whereHas('manifest', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0));
+        $resolvedUnexpected = LogisticsManifestEvent::where('event_type', 'resolve-discrepancy')
+            ->whereIn('manifest_id', $unexpected->clone()->select('manifest_id'))->get(['payload'])->pluck('payload.source_event_id');
+        $unexpectedCount = $unexpected->whereNotIn('id', $resolvedUnexpected)->count();
+
         $attentionQueue = [
             [
                 'key' => 'failed_delivery',
@@ -218,6 +226,10 @@ class LogisticsHubWorkstationController extends Controller
                 ])->count(),
                 'href' => route('hub.scan.station'),
                 'tone' => 'neutral',
+            ],
+            [
+                'key' => 'parcel_recovery', 'label' => 'Unexpected parcels needing recovery', 'count' => $unexpectedCount,
+                'href' => route('hub.parcel-recovery.index'), 'tone' => 'warning',
             ],
         ];
 
