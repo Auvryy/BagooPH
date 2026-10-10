@@ -19,7 +19,9 @@ const bundle = buildSync({
         export { default as Purchases } from '@/Pages/Buyer/Profile';
         export { default as RestrictedOrders } from '@/Pages/Buyer/Orders';
         export { default as SellerOrders } from '@/Pages/Seller/Orders';
-        export { default as Dashboard } from '@/Pages/Seller/Dashboard';`,
+        export { default as Dashboard } from '@/Pages/Seller/Dashboard';
+        export { default as Inventory } from '@/Pages/Seller/Products';
+        export { newListingStatus, sellerInventoryQuery, sellerVariantStock } from '@/utils/sellerInventory';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -153,4 +155,70 @@ test('seller dashboard groups recent orders and links actual return and exceptio
     assert.match(html, /status=delivered/); assert.match(html, /status=completed/);
     assert.match(html, /Post-delivery disputes remain unavailable\./);
     assert.doesNotMatch(html, /Return Claims/);
+});
+
+test('inventory retains all filters and page links while displaying actual zero and legacy variant stock', async () => {
+    const listing = { ...product, status: 'active', stock: 20, category_id: 5, category: { id: 5, name: 'Pet Supplies' }, description: 'A daily carrier.', variants: {
+        option1_name: 'Finish', option2_name: 'Size',
+        sizes: [{ id: 's', name: 'Small', stock: 0 }, { id: 'l', name: 'Large', stock: null }],
+        colors: [{ id: 'blue', name: 'Blue', in_stock: false }, { id: 'red', name: 'Red', in_stock: true }],
+    } };
+    const url = '/seller/products?search=carrier&category_id=5&status=active&stock=low_stock&page=2';
+    const html = await render(ui.Inventory, 'Seller/Products', {
+        shop, categories: [{ id: 5, name: 'Pet Supplies' }],
+        filters: { search: 'carrier', category_id: 5, status: 'active', stock: 'low_stock' },
+        products: { ...paginated([listing]), total: 11, last_page: 2, links: [
+            { url: null, label: 'Previous', active: false }, { url, label: 'Next', active: false },
+        ] },
+    }, 'seller');
+    assert.match(html, /<input[^>]*id="inventory-search"[^>]*value="carrier"/);
+    assert.match(html, /<option value="5" selected="">Pet Supplies/);
+    assert.match(html, /<option value="active" selected="">Active/);
+    assert.match(html, /<option value="low_stock" selected="">Active: low stock/);
+    assert.match(html, /search=carrier&amp;category_id=5&amp;status=active&amp;stock=low_stock&amp;page=2/);
+    assert.match(html, /Small: <strong>0<\/strong> available/);
+    assert.match(html, /Large: <strong>20<\/strong> \(listing stock\)/);
+    assert.match(html, /Blue: Unavailable/); assert.match(html, /Red: Available/);
+    assert.match(html, /Drafts stay off the marketplace\./);
+    assert.doesNotMatch(html, /My Purchases|Seller shop switching/);
+});
+
+test('inventory distinguishes filtered empty results and marks six units as healthy stock', async () => {
+    const base = { shop, categories: [], filters: { status: 'draft' }, products: paginated([]) };
+    const empty = await render(ui.Inventory, 'Seller/Products', base, 'seller');
+    assert.match(empty, /No listings match these filters/); assert.match(empty, /Clear filters/);
+    const populated = await render(ui.Inventory, 'Seller/Products', {
+        ...base, filters: {}, products: paginated([{ ...product, stock: 6, status: 'active', description: '' }]),
+    }, 'seller');
+    assert.match(populated, /border-emerald-300[^"<]*"[^>]*>[\s\S]*?6 available/);
+});
+
+test('inventory query resets pagination and keeps category and stock when search is cleared', () => {
+    const selected = { search: ' carrier ', category_id: 5, status: 'active', stock: 'out_of_stock', page: 8 };
+    assert.deepEqual(ui.sellerInventoryQuery(selected), { search: 'carrier', category_id: '5', status: 'active', stock: 'out_of_stock' });
+    assert.deepEqual(ui.sellerInventoryQuery({ ...selected, search: '' }), { category_id: '5', status: 'active', stock: 'out_of_stock' });
+    assert.deepEqual(ui.sellerInventoryQuery({ search: ' ', category_id: null, status: 'all', stock: 'all' }), {});
+});
+
+test('editing and serializing size quantities keeps numeric and string zero rather than copying listing stock', () => {
+    const sizes = [0, '0', null, undefined, 5].map((stock, index) => ({ id: String(index), stock: ui.sellerVariantStock(stock, 20) }));
+    const saved = JSON.parse(JSON.stringify({ sizes }));
+    assert.deepEqual(saved.sizes.map(size => size.stock), [0, 0, 20, 20, 5]);
+    assert.equal(ui.sellerVariantStock(null, 0), 0);
+});
+
+test('the clicked draft or publish submitter selects the intended creation status', () => {
+    assert.equal(ui.newListingStatus('draft'), 'draft');
+    assert.equal(ui.newListingStatus('active'), 'active');
+    assert.equal(ui.newListingStatus(null), 'active');
+});
+
+test('dashboard stock alerts link to separate active inventory worklists', async () => {
+    const html = await render(ui.Dashboard, 'Seller/Dashboard', {
+        shop, dailySales: [], recentOrders: [], topProducts: [],
+        stats: { totalProducts: 9, lowStockCount: 2, outOfStockCount: 1, completedGrossSales: 0, completedUnits: 0, completedOrderCount: 0, averageCompletedOrderValue: 0, estimatedSellerShare: 0, openOrderValue: 0, openUnits: 0, openOrderCount: 0, pendingPackCount: 0, readyPickupCount: 0, shippedCount: 0, completedCount: 0, deliveredCount: 0, deliveryIssueCount: 0, returnedCount: 0, cancelledCount: 0, returnCount: 0 },
+    }, 'seller');
+    assert.match(html, /status=active&amp;stock=low_stock/); assert.match(html, /2 low stock \(1–5\)/);
+    assert.match(html, /status=active&amp;stock=out_of_stock/); assert.match(html, /1 out of stock/);
+    assert.doesNotMatch(html, /Stock healthy/);
 });

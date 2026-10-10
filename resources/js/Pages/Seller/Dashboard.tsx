@@ -23,6 +23,7 @@ interface Props {
     stats: {
         totalProducts: number;
         lowStockCount: number;
+        outOfStockCount: number;
         completedGrossSales: number;
         completedUnits: number;
         completedOrderCount: number;
@@ -230,11 +231,12 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Available stock status</span>
-                            <span className={`font-bold ${stats.lowStockCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                {stats.lowStockCount > 0 ? `${stats.lowStockCount} low stock` : 'Stock healthy'}
-                            </span>
+                        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2 text-[11px] font-sans">
+                            <span className="text-slate-500">Active listing stock</span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                <Link href={route('seller.products.index', { status: 'active', stock: 'low_stock' })} className="font-bold text-amber-700 hover:underline focus-visible:outline-[#E00D42]">{stats.lowStockCount} low stock (1–5)</Link>
+                                <Link href={route('seller.products.index', { status: 'active', stock: 'out_of_stock' })} className="font-bold text-rose-700 hover:underline focus-visible:outline-[#E00D42]">{stats.outOfStockCount ?? 0} out of stock</Link>
+                            </div>
                         </div>
                     </div>
                 </div>
