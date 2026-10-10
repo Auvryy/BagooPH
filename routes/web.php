@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ProductModerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Buyer\BuyAgainController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
@@ -405,6 +406,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::middleware('buyer.approved')->group(function () {
             Route::get('/saved-products', [SavedProductController::class, 'index'])->name('saved-products.index');
+            Route::get('/orders/{order}/buy-again', [BuyAgainController::class, 'show'])->whereNumber('order')->name('orders.buy-again');
+            Route::post('/orders/{order}/buy-again', [BuyAgainController::class, 'store'])->whereNumber('order')->name('orders.buy-again.store');
             Route::post('/saved-products/{product}', [SavedProductController::class, 'store'])->whereNumber('product')->name('saved-products.store');
             Route::delete('/saved-products/{product}', [SavedProductController::class, 'destroy'])->whereNumber('product')->name('saved-products.destroy');
             Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');

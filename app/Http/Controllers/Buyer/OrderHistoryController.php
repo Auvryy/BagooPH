@@ -53,6 +53,8 @@ class OrderHistoryController extends Controller
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,
             'canUsePortal' => $user->isBuyer() && $user->canAccessPortal(),
+            'buyAgainUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
+                ? route('buyer.orders.buy-again', $order, absolute: false) : null,
             'canConfirmReceipt' => $ownedBuyerOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user),
             'pickupClaim' => $ownedBuyerOrder && $order->delivery ? PickupClaim::where('delivery_id', $order->delivery->id)->first()?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null,
             'pickupHub' => $ownedBuyerOrder && $order->delivery ? $order->delivery->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null,

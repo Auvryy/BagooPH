@@ -26,6 +26,7 @@ import {
 interface Props {
     order: Order;
     canUsePortal: boolean;
+    buyAgainUrl?: string | null;
     canConfirmReceipt: boolean;
     pickupClaim: { reference: string; status: string; expires_at: string; code_issued_at: string | null; locked_until: string | null } | null;
     pickupHub: {name: string; address: string; operating_hours: string | null} | null;
@@ -33,7 +34,7 @@ interface Props {
     orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
@@ -243,6 +244,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, canConfirmReceip
                                 <span>Rate & Upload Photos</span>
                             </button>
                         )}
+                        {canUsePortal && buyAgainUrl && <Link href={buyAgainUrl} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
                         {order.status === 'completed' && (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">
                                 <Check className="w-4 h-4 text-emerald-600" />

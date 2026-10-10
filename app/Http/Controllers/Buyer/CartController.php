@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\CartLineService;
 use App\Services\Commerce\InventoryService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -28,10 +29,7 @@ class CartController extends Controller
         $sessionId = $request->session()->getId();
 
         if ($userId) {
-            return Cart::firstOrCreate(
-                ['user_id' => $userId],
-                ['session_id' => $sessionId]
-            );
+            return app(CartLineService::class)->ownedCart($request->user(), $sessionId);
         }
 
         return Cart::firstOrCreate(
@@ -68,7 +66,7 @@ class CartController extends Controller
         ]);
     }
 
-    public function store(Request $request, InventoryService $inventory): RedirectResponse
+    public function store(Request $request, CartLineService $lines): RedirectResponse
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -82,7 +80,7 @@ class CartController extends Controller
         $color = $this->normalizeOption($validated['color'] ?? null);
         $size = $this->normalizeOption($validated['size'] ?? null);
 
-        $product = DB::transaction(function () use ($request, $cart, $validated, $quantity, $color, $size, $inventory) {
+        $product = DB::transaction(function () use ($request, $cart, $validated, $quantity, $color, $size, $lines) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             try {
                 $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']], $request->user() ? [$request->user()->id] : [])->get($validated['product_id']);
@@ -96,60 +94,7 @@ class CartController extends Controller
                 throw ValidationException::withMessages(['product_id' => 'This product is no longer available.']);
             }
 
-            if ($product->stock <= 0) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'This product is currently out of stock.',
-                ]);
-            }
-
-            $productItems = CartItem::query()
-                ->where('cart_id', $cart->id)
-                ->where('product_id', $product->id)
-                ->lockForUpdate()
-                ->get();
-            $item = $productItems->first(
-                fn (CartItem $cartItem) => $cartItem->color === $color && $cartItem->size === $size
-            );
-            $newQuantity = ($item?->quantity ?? 0) + $quantity;
-
-            try {
-                $maximum = $inventory->maximumCartLineQuantity(
-                    $product,
-                    $productItems,
-                    $color,
-                    $size,
-                    $item?->id
-                );
-            } catch (\RuntimeException $exception) {
-                throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
-            }
-
-            if ($newQuantity > $maximum) {
-                $existing = $item?->quantity ?? 0;
-                $remaining = max(0, $maximum - $existing);
-                $message = $remaining > 0
-                    ? "You already have {$existing} in your Shopping Bag. You can add only {$remaining} more."
-                    : "Your Shopping Bag already contains the maximum available quantity of {$maximum}.";
-
-                throw ValidationException::withMessages(['quantity' => $message]);
-            }
-
-            if ($item) {
-                $item->update([
-                    'quantity' => $newQuantity,
-                    'unit_price' => $product->price,
-                ]);
-            } else {
-                $skuSnapshot = $product->sku.($color ? "-{$color}" : '').($size ? "-{$size}" : '');
-                $cart->items()->create([
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'unit_price' => $product->price,
-                    'color' => $color,
-                    'size' => $size,
-                    'sku_snapshot' => $skuSnapshot,
-                ]);
-            }
+            $lines->addLocked($cart, $product, $quantity, $color, $size);
 
             return $product;
         });

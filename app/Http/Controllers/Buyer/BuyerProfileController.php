@@ -44,6 +44,7 @@ class BuyerProfileController extends Controller
             ->with(['items.product.shop', 'delivery.courier:id,name']), 12);
         foreach ($orders as $order) {
             $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
+            $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
         }
 
         $initialTab = $request->query('tab', 'orders');
