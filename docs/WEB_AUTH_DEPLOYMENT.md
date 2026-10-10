@@ -48,6 +48,38 @@ NODE_OPTIONS=--max-old-space-size=1536 ./bagoo.sh deploy
 
 If deployment stops during the build, complete a successful deployment and verification before treating new backend routes as ready. A database reset or dependency upgrade is not required to recover a Node heap-limit failure.
 
+## Database host access
+
+Compose binds the PostgreSQL host port to `127.0.0.1`, including when
+`FORWARD_DB_PORT` selects another port. Host tools can connect locally; Laravel
+continues to connect to `db:5432` over the shared Docker network. Keep the app's
+`DB_HOST=db`; the host binding does not change the database credentials or the
+`bagoo_pgdata` volume.
+
+After publishing and pulling this change, `./bagoo.sh deploy` recreates the
+database container as needed to apply the new binding while retaining its named
+volume. This can briefly interrupt database connections. Run the usual deployment
+verification, then inspect the actual published address:
+
+```bash
+docker compose port db 5432
+```
+
+Expect `127.0.0.1:5432`, or `127.0.0.1:<FORWARD_DB_PORT>` for a custom port. A
+restart alone does not apply a changed Compose port mapping. Remote database
+administration can use an SSH tunnel to localhost instead of a public database
+port. Do not remove the named volume or reset the database for this change.
+
+Review the deployed Docker version, host firewall and Azure network security
+group's effective inbound rules separately. Database ports must not have an
+Internet allow rule, including broad port ranges; SSH access should be scoped to
+the administrator's source addresses. See the
+[Docker port publishing guide](https://docs.docker.com/engine/network/port-publishing/)
+and [Azure network security group guide](https://learn.microsoft.com/en-us/azure/virtual-network/manage-network-security-group).
+Docker versions before 28 have a documented localhost-publishing caveat for
+hosts on the same network segment. Local Compose checks do not establish the
+server's Docker version, firewall rules or Internet reachability.
+
 ## Notification scheduling
 
 The existing Laravel scheduler needs an actual invocation every minute, or a managed `schedule:work` process. It runs both pickup holding checks and `notifications:deliver-pending`; immediate notification delivery happens after the business transaction commits. `schedule:list` shows registered schedules but does not prove that a scheduler process is running.

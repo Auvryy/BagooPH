@@ -45,7 +45,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
-      - "${FORWARD_DB_PORT:-5432}:5432"
+      - "127.0.0.1:${FORWARD_DB_PORT:-5432}:5432"
     volumes:
       - bagoo_pgdata:/var/lib/postgresql/data
     networks:
