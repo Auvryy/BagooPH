@@ -185,7 +185,19 @@ class LogisticsHubWorkstationController extends Controller
             ])
             ->count();
 
-        $unexpected = app(ParcelRecoveryService::class)->observations($user)->whereIn('hub_id', $scopeHubIds)
+        $unexpected = app(ParcelRecoveryService::class)->observations($user)
+            ->where(function ($query) use ($scopeHubIds) {
+                $query->whereIn('hub_id', $scopeHubIds)
+                    ->orWhereHas('recoveryCase', fn ($case) => $case
+                        ->where(function ($work) use ($scopeHubIds) {
+                            $work->where('state', 'held')->whereHas('delivery', fn ($parcel) => $parcel
+                                ->where('status', ParcelRecoveryService::HELD)->whereIn('current_hub_id', $scopeHubIds));
+                            $work->orWhere(function ($arriving) use ($scopeHubIds) {
+                                $arriving->where('state', 'in_transit')->whereHas('manifests', fn ($manifest) => $manifest
+                                    ->where('status', 'dispatched')->whereIn('destination_hub_id', $scopeHubIds));
+                            });
+                        }));
+            })
             ->whereHas('manifest', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0));
         $resolvedUnexpected = LogisticsManifestEvent::where('event_type', 'resolve-discrepancy')
             ->whereIn('manifest_id', $unexpected->clone()->select('manifest_id'))->get(['payload'])->pluck('payload.source_event_id');

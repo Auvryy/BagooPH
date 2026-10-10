@@ -10,6 +10,7 @@ use App\Models\LogisticsManifest;
 use App\Models\User;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\ParcelRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -54,6 +55,9 @@ class LogisticsManifestController extends Controller
             $selected = $manifestQuery()->findOrFail($selected->id);
             $source = $selected->sourceHub;
             $destination = $selected->destinationHub;
+            $discrepancies = $this->service->openDiscrepancies($selected);
+            $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
+                ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
                 'canManage' => $actor->isLogistics() && $company?->id === $selected->logistics_company_id,
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
@@ -63,10 +67,10 @@ class LogisticsManifestController extends Controller
                     'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(),
                     'receipt_condition' => $parcel->receipt_condition,
                 ]),
-                'discrepancies' => $this->service->openDiscrepancies($selected)->map(fn ($event) => [
+                'discrepancies' => $discrepancies->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'kind' => $event->payload['kind'],
                     'parcel_id' => $event->manifest_parcel_id, 'barcode' => $event->barcode_scanned, 'reason' => $event->reason,
-                    'recoveryUrl' => in_array($event->payload['kind'], ['extra', 'wrong_hub'], true)
+                    'recoveryUrl' => in_array($event->id, $readableRecoveryIds, true)
                         ? ($request->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$event->id : null,
                 ]),
                 'events' => $selected->events()->with('actor')->orderBy('id')->get()->map(fn ($event) => [

@@ -280,6 +280,45 @@ class ParcelRecoveryTest extends TestCase
         $this->assertSame('/hub/parcel-recovery/'.$observation->id, $detail['recoveryUrl']);
     }
 
+    public function test_manifest_discrepancy_links_require_the_viewers_recovery_scope(): void
+    {
+        [$parcel, $observation, $manager, $receiver] = $this->incident();
+        $manifest = $observation->manifest;
+        $sender = $this->flowHandler($manifest->sourceHub);
+        $this->actingAs($sender)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
+            ->component('Hub/Manifests')->where('selectedManifest.discrepancies.0.recoveryUrl', null));
+        $this->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
+        $this->actingAs($receiver)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
+            ->where('selectedManifest.discrepancies.0.recoveryUrl', '/hub/parcel-recovery/'.$observation->id));
+
+        $case = $this->authorizeCase($observation, $manager);
+        $this->assertContains($manifest->source_hub_id, $case->hub_ids);
+        $this->actingAs($sender)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
+            ->where('selectedManifest.discrepancies.0.recoveryUrl', '/hub/parcel-recovery/'.$observation->id));
+        $this->get('/hub/parcel-recovery/'.$observation->id)->assertOk();
+    }
+
+    public function test_recovery_attention_follows_the_next_receiver_and_intermediate_custody(): void
+    {
+        [$parcel, $observation, $manager, $handler] = $this->incident('in_transit_to_destination_hub', 'in_transit_to_destination_hub', 'Los Banos');
+        $case = $this->authorizeCase($observation, $manager);
+        $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
+        $manifest = $this->dispatchTransfer($case->fresh(), $manager);
+        $motherHandler = $this->flowHandler($manifest->destinationHub);
+        $this->actingAs($motherHandler)->withSession(['active_hub_id' => $manifest->destination_hub_id])
+            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page
+            ->where('attentionQueue.4.key', 'parcel_recovery')->where('attentionQueue.4.count', 1));
+        $this->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
+        $this->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
+
+        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
+        $this->transfer($case->fresh(), $manager);
+        $this->actingAs($motherHandler)->withSession(['active_hub_id' => $manifest->destination_hub_id])
+            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 0));
+        $this->actingAs($handler)->withSession(['active_hub_id' => $case->observed_hub_id])
+            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
+    }
+
     public function test_recovered_mother_hub_receipt_allows_normal_delivery_and_only_the_buyer_completes_it(): void
     {
         [$parcel, $observation, $manager, $handler] = $this->incident();
