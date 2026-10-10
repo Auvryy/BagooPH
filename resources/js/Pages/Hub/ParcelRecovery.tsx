@@ -47,6 +47,8 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
         transfer.setData({ vehicle_id: '', creation_token: creationToken ?? '', direction: 'recovery',
             parcel_recovery_case_id: selected?.case?.id ?? 0, source_hub_id: selected?.case?.currentHubId ?? 0, destination_hub_id: selected?.case?.nextHubId ?? 0 });
     }, [selected?.id, selected?.case?.version]);
+    useEffect(() => form.setData('source_token', selected?.sourceToken ?? ''), [selected?.sourceToken]);
+    useEffect(() => transfer.setData('creation_token', creationToken ?? ''), [creationToken]);
     const command = (action: 'authorize' | 'intake' | 'withdraw') => {
         if (!selected || pending.current || form.processing || transfer.processing) return;
         pending.current = true;
