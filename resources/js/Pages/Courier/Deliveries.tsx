@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, Package, Search, Truck } from 'lucide-react';
+import { Banknote, Camera, Package, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
 import { CourierDashboardSummary, CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
 import { CourierDialog, CourierEmpty, CourierFieldError, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
 import { courierDate, courierGreeting, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
-import { PageProps } from '@/types';
+import { PageProps, OrderTracking } from '@/types';
+import { currentCourierAction } from '@/utils/orderTracking';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 import { cashInputCents } from '@/utils/codCash';
 
 interface PickupTask {
+    tracking?: OrderTracking | null;
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
@@ -24,6 +26,7 @@ interface PickupTask {
 }
 
 interface FinalMileTask {
+    tracking?: OrderTracking | null;
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
@@ -127,8 +130,17 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     }, [proof]);
 
     const resetAction = () => { setTarget(null); setNotes(''); setBarcode(''); setProof(null); setErrors({}); };
+    useEffect(() => {
+        if (target && !pending.current && !currentCourierAction(target, pickups, deliveries)) {
+            setTarget(null); setProof(null); setErrors({ status: 'This parcel changed. Check its refreshed tracking before another action.' });
+        }
+    }, [target, queues, loadingId]);
     const openAction = (id: number, trackingNumber: string, status: ActionTarget['status']) => {
         if (pending.current) return;
+        if (!currentCourierAction({ id, status }, pickups, deliveries)) {
+            setErrors({ status: 'This parcel changed. Refresh tracking before another action.' });
+            return;
+        }
         setNotes(''); setBarcode(''); setProof(null); setErrors({});
         setFailureReason(''); setAttemptLocation(''); setRequestToken(recoveryRequestToken);
         setRecipientName(''); setRecipientRelationship(''); setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
@@ -161,6 +173,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (!target || pending.current) return;
+        if (!currentCourierAction(target, pickups, deliveries)) { setErrors({ status: 'This parcel changed. Refresh tracking before another action.' }); return; }
         if (!barcode.trim()) {
             setErrors({ barcode: 'Enter the code scanned from the parcel waybill.' });
             return;
@@ -213,7 +226,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Dashboard" subtitle={scope?.isAssigned ? 'Your day, one handoff at a time. Let’s keep each parcel moving.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
-                <div className="flex justify-end"><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
+                <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
+                    if (pending.current) return;
+                    pending.current = true; setLoadingId(-1); setErrors({});
+                    router.reload({ only: ['scope', 'isOnline', 'stats', 'queues', 'recoveryRequestToken', 'flash'],
+                        onError: setErrors, onFinish: () => { pending.current = false; setLoadingId(null); },
+                    });
+                }} className={`${courierButton} gap-2`}><RefreshCw className="h-4 w-4" aria-hidden="true" />{loadingId === -1 ? 'Refreshing…' : 'Refresh tracking'}</button><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
                 <CourierDashboardSummary available={stats?.availablePickups ?? available.length} pickups={activeCount} deliveries={stats?.finalMileTasks ?? deliveries.length} completedToday={stats?.completedToday} onSelect={viewQueue} />
                 {!isOnline && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
                 {scope?.isAssigned && !scope.isOperational && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
@@ -226,12 +245,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 {mapJobs.length > 1 && <label className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600" htmlFor="current-parcel">Choose a parcel<select id="current-parcel" value={selectedMapJob?.key ?? ''} onChange={(event) => showOnMap(event.target.value)} className={`${courierInput} mt-0 min-w-0 flex-1 text-sm sm:max-w-md`}>{mapJobs.map((job) => <option key={job.key} value={job.key}>{job.trackingNumber} · {job.stage}</option>)}</select><span className="text-xs">{mapJobs.length} {normalizedSearch ? 'matching' : 'queued'} parcels</span></label>}
                 {!target && <CourierFieldError message={errors.status || Object.values(errors).find(Boolean)} />}
                 {selectedMapJob ? <div id="rider-job-map" ref={mapRegion}>
-                    {selectedPickup && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedPickup.merchant, label: 'Seller pickup point' }, { place: selectedPickup.originHub, label: 'Origin Bayan Hub' }]} currentStop={collected ? 1 : 0} parcelLabel={`${selectedPickup.itemCount} ${selectedPickup.itemCount === 1 ? 'item' : 'items'} · Pickup leg`} phone={collected ? null : selectedPickup.merchant.phone} messageDeliveryId={!collected && selectedPickup.canMessage ? selectedPickup.id : undefined} messagePhase="pickup">
+                    {selectedPickup && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedPickup.merchant, label: 'Seller pickup point' }, { place: selectedPickup.originHub, label: 'Origin Bayan Hub' }]} currentStop={collected ? 1 : 0} parcelLabel={`${selectedPickup.itemCount} ${selectedPickup.itemCount === 1 ? 'item' : 'items'} · Pickup leg`} phone={collected ? null : selectedPickup.merchant.phone} messageDeliveryId={!collected && selectedPickup.canMessage ? selectedPickup.id : undefined} messagePhase="pickup" tracking={selectedPickup.tracking}>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Parcel details</summary><div className="space-y-2 pb-4"><p>Order: {selectedPickup.orderNumber || 'Not provided'}</p><p>Items: {selectedPickup.itemCount}</p><p>Assigned: {courierDate(selectedPickup.assignedAt)}</p>{collected && selectedPickup.canMessage && <Link href={`${courierPath('/messages')}?delivery=${selectedPickup.id}&phase=pickup`} className={courierButton}>Message seller</Link>}</div></details>
                         {tab === 'available' && <><button type="button" onClick={() => claim(selectedPickup.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full`}>{loadingId === selectedPickup.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="mt-2 text-sm leading-relaxed text-slate-600">{claimReason}</p>}</>}
                         {selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
                     </CourierCurrentJob>}
-                    {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile">
+                    {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile" tracking={selectedDelivery.tracking}>
                         <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmountCents === null ? null : selectedDelivery.payment.codAmountCents / 100) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Record counted cash with delivery. Hub handover and platform reconciliation follow separately.</p>}</div>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order: {selectedDelivery.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
                         {selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}

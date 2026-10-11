@@ -20,8 +20,10 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Orders\OrderTrackingService;
 use App\Services\ProfileInputService;
 use DomainException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,6 +82,9 @@ class CourierDeliveryController extends Controller
                 ->where('delivered_at', '<', $todayEnd)
                 ->count();
         }
+
+        $parcels = new Collection([...$availableJobs, ...$pickupTasks, ...$finalMileTasks]);
+        $parcels->loadMissing(array_map(fn ($relation) => substr($relation, strlen('delivery.')), OrderTrackingService::relations(history: false)));
 
         return Inertia::render('Courier/Deliveries', [
             'recoveryRequestToken' => (string) Str::uuid(),
@@ -430,6 +435,7 @@ class CourierDeliveryController extends Controller
             'trackingNumber' => $delivery->tracking_number,
             'orderNumber' => $delivery->order?->order_number,
             'status' => $delivery->status,
+            'tracking' => $delivery->order ? app(OrderTrackingService::class)->present($delivery->order, history: false, parcel: $delivery) : null,
             'itemCount' => $delivery->order?->items?->sum('quantity') ?? 0,
             'merchant' => [
                 'name' => $delivery->pickup_store_name,
@@ -456,6 +462,7 @@ class CourierDeliveryController extends Controller
             'trackingNumber' => $delivery->tracking_number,
             'orderNumber' => $delivery->order?->order_number,
             'status' => $delivery->status,
+            'tracking' => $delivery->order ? app(OrderTrackingService::class)->present($delivery->order, history: false, parcel: $delivery) : null,
             'recipient' => [
                 'name' => $delivery->delivery_recipient_name,
                 'address' => $delivery->delivery_address,

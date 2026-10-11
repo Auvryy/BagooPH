@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertCircle, ArrowRight, Check, Clock, Copy, MapPin, Package, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, Clock, Copy, MapPin, Package, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
 import { PageProps } from '@/types';
 
@@ -26,45 +26,10 @@ interface Props {
     searchedNumber: string;
     notFound: boolean;
     validationMessage: string | null;
+    statusLabels: Record<string, string>;
+    checkpointLabels: Record<string, string>;
+    observedAt?: string | null;
 }
-
-const statusLabels: Record<string, string> = {
-    placed: 'Order placed',
-    confirmed: 'Seller confirmed',
-    preparing: 'Seller preparing',
-    ready_for_pickup: 'Ready for pickup',
-    picked_up: 'Picked up from seller',
-    at_sorting_center: 'Moving through the hub network',
-    sorted: 'Sorted at destination hub',
-    assigned_to_rider: 'Assigned to delivery rider',
-    out_for_delivery: 'Out for delivery',
-    delivered: 'Delivered',
-    completed: 'Buyer confirmed receipt',
-    delivery_failed: 'Delivery attempt failed',
-    returned: 'Returned to seller',
-    cancelled: 'Order cancelled',
-};
-
-const checkpointLabels: Record<string, string> = {
-    ...statusLabels,
-    order_placed: 'Order placed',
-    seller_pack: 'Seller packed the parcel',
-    assigned_pickup: 'Pickup rider assigned',
-    courier_pickup: 'Seller pickup recorded',
-    arrived_at_origin_hub: 'Received at origin Bayan Hub',
-    in_transit_to_mother_hub: 'Departed for Mother Hub',
-    arrived_at_mother_hub: 'Received at Mother Hub',
-    sorted_to_line_haul: 'Sorted at Mother Hub',
-    in_transit_to_destination_hub: 'Departed for destination Bayan Hub',
-    arrived_at_destination_hub: 'Received at destination Bayan Hub',
-    sorted_to_barangay_bin: 'Sorted for the delivery area',
-    ready_for_hub_pickup: 'Ready for hub self-pickup',
-    customer_collected: 'Collected at destination hub',
-    doorstep_handover: 'Recipient handoff recorded',
-    buyer_confirmed: 'Buyer confirmed receipt',
-    buyer_completed: 'Buyer confirmed receipt',
-    return_to_sender: 'Return to seller in progress',
-};
 
 function formatDate(value: string | null): string {
     if (!value) return 'Not recorded';
@@ -75,7 +40,7 @@ function formatDate(value: string | null): string {
     }).format(new Date(value));
 }
 
-export default function Tracking({ parcel, searchedNumber, notFound, validationMessage }: Props) {
+export default function Tracking({ parcel, searchedNumber, notFound, validationMessage, statusLabels = {}, checkpointLabels = {}, observedAt }: Props) {
     const { auth } = usePage<PageProps>().props;
     const [inputNumber, setInputNumber] = useState(searchedNumber);
     const [searching, setSearching] = useState(false);
@@ -180,6 +145,12 @@ export default function Tracking({ parcel, searchedNumber, notFound, validationM
                                     <p aria-live="polite" className="mt-1 text-xs text-slate-500">{copyMessage}</p>
                                 </div>
                                 <span className={`self-start rounded-xs border px-2.5 py-1.5 text-xs font-bold ${statusStyle}`}>{statusLabels[parcel.status] ?? 'Status recorded'}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                                <p>Checked {formatDate(observedAt ?? null)} · Philippine time</p>
+                                <button type="button" disabled={searching} onClick={() => router.get(route('track.show'), { number: parcel.tracking_number }, {
+                                    preserveScroll: true, onStart: () => setSearching(true), onFinish: () => setSearching(false),
+                                })} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-4 w-4" aria-hidden="true" />{searching ? 'Refreshing…' : 'Refresh tracking'}</button>
                             </div>
                             {exception && <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{parcel.status === 'delivery_failed' ? 'The latest delivery attempt was unsuccessful. Check your account for follow-up details.' : parcel.status === 'returned' ? 'The parcel has been returned to the seller.' : 'This order was cancelled.'}</p>}
                             {parcel.status === 'delivered' && <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">Delivery is recorded. The buyer can confirm receipt from their orders page.</p>}

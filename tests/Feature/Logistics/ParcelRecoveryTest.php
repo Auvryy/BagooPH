@@ -201,6 +201,7 @@ class ParcelRecoveryTest extends TestCase
         $original = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
         $case = $this->authorizeCase($observation, $manager);
         $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
+        $this->assertOwnedRecoveryTracking($parcel, 'Held for route recovery', LogisticsHub::findOrFail($observation->hub_id)->name);
         $before = $this->snapshot($parcel);
         $this->actingAs($this->flowHandler($original->destinationHub))->postJson('/hub/manifests/'.$original->id.'/receive', $this->flowManifestPayload($original, ['barcode' => $parcel->tracking_number]))->assertConflict();
         $this->actingAs($manager)->postJson('/hub/manifests/'.$observation->manifest_id.'/resolve-discrepancy', $this->flowManifestPayload($observation->manifest, ['source_event_id' => $observation->id, 'notes' => 'A manager reason cannot replace receiving evidence.']))->assertConflict();
@@ -568,8 +569,40 @@ class ParcelRecoveryTest extends TestCase
         $this->actingAs($sender)->postJson($base.'/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->delivery->tracking_number]))->assertOk();
         $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($sender)->postJson($base.'/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
+        $this->assertOwnedRecoveryTracking($case->delivery, 'Travelling on a recovery route', 'Hub transport (handover recorded)');
 
         return $manifest->fresh();
+    }
+
+    private function assertOwnedRecoveryTracking(Delivery $parcel, string $stage, string $holder): void
+    {
+        $previousActor = auth()->user();
+        $parcel = $parcel->fresh(['order.buyer', 'order.shop.user']);
+        $before = $this->snapshot($parcel);
+        $label = $parcel->order->status === 'delivery_failed' ? 'Delivery issue' : 'Moving through the hub network';
+        $buyerStarted = now()->timestamp;
+        $response = $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('order.tracking.status_label', $label)
+                ->where('order.tracking.stage_label', $stage)->where('order.tracking.custodian', $holder)
+                ->where('order.tracking.notice', null)->where('order.tracking.responsible', 'Logistics company and assigned handlers')
+                ->missing('order.delivery.latest_custody_checkpoint'));
+        $tracking = $response->inertiaProps('order.tracking');
+        $this->assertGreaterThanOrEqual($buyerStarted, strtotime($tracking['observed_at']));
+        $this->assertLessThanOrEqual(now()->timestamp, strtotime($tracking['observed_at']));
+        $sellerStarted = now()->timestamp;
+        $sellerResponse = $this->actingAs($parcel->order->shop->user)->withSession(['active_seller_shop_id' => $parcel->order->shop->id])
+            ->get('http://localhost/seller/orders')->assertOk()->assertInertia(function (Assert $page) use ($tracking) {
+                foreach ($tracking as $field => $value) {
+                    if ($field !== 'observed_at') {
+                        $page->where('orders.data.0.tracking.'.$field, $value);
+                    }
+                }
+            });
+        $sellerObserved = strtotime($sellerResponse->inertiaProps('orders.data.0.tracking.observed_at'));
+        $this->assertGreaterThanOrEqual($sellerStarted, $sellerObserved);
+        $this->assertLessThanOrEqual(now()->timestamp, $sellerObserved);
+        $this->assertSame($before, $this->snapshot($parcel));
+        $this->actingAs($previousActor);
     }
 
     private function prepareTransfer(ParcelRecoveryCase $case, User $manager, string $base = '/hub'): LogisticsManifest

@@ -2950,3 +2950,87 @@ Local implementation commits:
 This evidence is retained in a separate documentation commit; its generated
 hash is reported in the handoff. Publication, merge and deployment remain
 user-owned steps.
+
+## October 11, 2026: consistent recorded order tracking
+
+The selected [tracking consistency batch](ORDER_TRACKING_CONSISTENCY.md) is
+implemented on `feat/order-tracking-consistency`, based on `89ffb2c`. It aligns
+the buyer, seller, rider web and hub read views with the recorded commercial
+state and physical journey. The scoped acceptance and regression evidence is
+recorded below; publication and deployment remain separate user-owned steps.
+
+| Area | Before this batch | Implemented behavior |
+|---|---|---|
+| Order labels | Separate buyer, seller and public mappings described the same order differently. Buyer preparation could look finished; the seller badge described Preparing as Packed / Ready to Ship. | A shared server vocabulary keeps seller preparation, pickup readiness, delivery and buyer receipt confirmation distinct. Known legacy aliases normalize for display without updating stored state. Unknown states require review. |
+| Recorded journey | Buyer detail inferred a five-step bar, omitted the hub journey and labelled counter collection as a doorstep handover. Seller history displayed internal checkpoint codes. | Buyer and seller details show original chronological timestamp/ID checkpoints, readable Bayan-Hub and Mother-Hub transfers, actual recorded custody, the next responsible actor and a specific next step. Mirrors cannot replace or duplicate original events. |
+| Assignment and custody | Assigned rider information could be mistaken for physical collection. | Only an original retained custody checkpoint establishes the displayed holder. Hub assignment remains hub custody until departure. A rider handling both legs in the same municipality is labelled by the actual handover phase; that journey still visits a Mother Hub. Missing or conflicting records show a review notice instead of invented progress. |
+| Failures and returns | Failed, returned and cancelled orders could restart normal preparation guidance. | The latest actual failed attempt supplies its reason and retained retry date. A previous attempt's approval cannot schedule a new failure. Hub receipt, scheduled retry, released retry, reverse transit, seller staging and seller receipt have separate explanations and preserved history. |
+| Secure counter collection | Code availability was not explicit in the buyer page and claim timing could become stale. The collected-state message used an unsupported state name. | Staging, expiry, verification lock, one-time issuance, actual collection and buyer confirmation are separate. The page rechecks expiry/unlock from the current clock and hides unavailable code controls. Code issuance also rejects an active verification lock under the existing server transaction. Reads do not expire a claim, start a return or consume a code. |
+| Refresh and stale actions | Seller dialogs retained copied order objects after the page changed. Users had no consistent explicit tracking refresh. | Buyer lists/detail, restricted order history, seller workspace, rider dashboard and public tracker provide Refresh tracking. Detail views record when data was observed. Seller dialogs resolve the current row and close when it leaves the page or loses its action. Rider outcomes recheck the current task. Buyer detail refreshes portal access, receipt and code actions together and prevents duplicate refreshes. |
+| Privacy and authority | Seller detail serialized raw checkpoint records; public status inference could assume progress for unknown records. | Owned tracking uses a display-only projection without raw private proof, attempt or checkpoint internals. Public JSON retains its existing masked schema, coarse milestone locations and empty action list. Rider/hub operational guidance and all existing mutation authorities remain role-owned server checks. |
+
+Verification evidence:
+
+- The final regression coverage includes **34 tracking acceptance cases** and
+  both same-municipality rider phase cases. They exercise actual seller preparation, pickup,
+  Mother-Hub transfers, delivery, failure, retry, reverse route, seller receipt,
+  cancellation and buyer-only completion. Explicit read fixtures cover known
+  legacy aliases, missing/conflicting records and mirrored/backdated history.
+- The final same-municipality phase checks passed: **2 cases, 106 assertions**,
+  using actual checkout and handover actions, the same assigned rider and a
+  required Mother-Hub visit. These cases reproduce the earlier incorrect
+  pickup label after final-mile departure and verify its correction.
+- All **119 frontend checks passed**, including actual page/component renders,
+  refreshed seller selections, current pickup claim windows, masked public
+  labels, rider action checks and invocation of the buyer refresh handler.
+  That handler check verifies updated access/actions and duplicate-click
+  prevention. Server rendering is not browser or device testing.
+- The final **TypeScript/Vite production build passed** (Vite: 19.50 seconds).
+  Changed PHP formatting passed for all 17 files, and whitespace checks passed.
+- The final broader isolated SQLite `:memory:` coverage verifies **1,726
+  distinct cases with 63,722 assertions**, across the buyer, seller, courier,
+  logistics, finance, cross-role flow, end-to-end and public tracking feature
+  directories. This is combined evidence from the broad run and the complete
+  affected recovery rerun, with no remaining failures, errors or skipped cases.
+  The broader run passed all 1,677 cases outside `ParcelRecoveryTest` and found
+  two assertions incorrectly requiring separate requests' observation times to
+  be identical. Their parcel facts agreed; each timestamp differed by one
+  second. The comparison now checks every shared tracking fact and validates
+  each observation against its own request interval. The whole affected class
+  then passed: **49 cases, 6,328 assertions**. Production code was unchanged
+  between those runs. Recovery results replace the corresponding broad-run
+  cases rather than being counted twice; this is not a claim of a single green
+  full-project suite. Earlier overlapping or interrupted runs are not added.
+
+The initial focused baseline had one existing cross-role assertion mismatch:
+manifest guidance retained the selected facility as `/hub/manifests?hub_id=…`,
+while the assertion expected an unscoped URL. The corrected expectation retains
+the actual facility; no production guidance or authorization was weakened.
+
+The scoped assessment is **order-tracking clarity 6.5/10 before ->
+8.5/10 after**. The previous normal-progress
+inference could mislead users; the implemented views distinguish order state,
+parcel stage, recorded holder, exceptions and the next responsible action.
+Overall role/security scores and full Phase 6 readiness are not increased.
+
+Remaining limits: Azure deployment, PostgreSQL execution/concurrency,
+rendered-browser/device behavior and production-scale latency are unverified.
+Refresh gives a new recorded observation, not a continuously live feed.
+This batch does not add rates, disputes/refunds or native Flutter features;
+their existing delivery boundaries remain. No schema change or database reset
+is required.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `f22faaa` | `docs(orders): define tracking consistency acceptance` |
+| `1219468` | `fix(orders): unify recorded tracking across web portals` |
+| `5533825` | `fix(logistics): block pickup code issuance during verification lock` |
+| `28d0e62` | `test(flows): preserve selected hub in manifest guidance` |
+| `c260b27` | `fix(orders): show truthful journeys and refresh current actions` |
+| `b309ec0` | `test(orders): validate observation times per tracking request` |
+
+The final evidence is retained in a separate documentation commit; its generated
+hash is reported in the handoff. Publication, merge and deployment remain
+user-owned steps.

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
+import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
+import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
 import { Order, PageProps } from '@/types';
 import { 
     Package, 
@@ -31,25 +33,53 @@ interface Props {
     pickupClaim: { reference: string; status: string; expires_at: string; code_issued_at: string | null; locked_until: string | null } | null;
     pickupHub: {name: string; address: string; operating_hours: string | null} | null;
     pickupCodeUrl: string | null;
+    pickupCodeAvailable?: boolean;
     orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
     const [pickupCode,setPickupCode] = useState<string | null>(null);
     const [codeError,setCodeError] = useState('');
     const [codeBusy,setCodeBusy] = useState(false);
+    const codePending = useRef(false);
+    const [currentTime, setCurrentTime] = useState(Date.now);
+    const counterWindow = pickupClaim ? claimWindow(pickupClaim, Math.max(currentTime, Date.now())) : 'unavailable';
+    useEffect(() => {
+        const delay = nextClaimBoundary(pickupClaim, Date.now());
+        if (delay === null) return;
+        const timer = window.setTimeout(() => setCurrentTime(Date.now()), delay);
+        return () => window.clearTimeout(timer);
+    }, [pickupClaim, currentTime]);
+    useEffect(() => { setPickupCode(null); setCodeError(''); }, [order.id, pickupClaim?.reference]);
+    const activeClaim = useRef({ orderId: order.id, reference: pickupClaim?.reference });
+    activeClaim.current = { orderId: order.id, reference: pickupClaim?.reference };
+    const [trackingRefreshing, setTrackingRefreshing] = useState(false);
+    const [trackingError, setTrackingError] = useState('');
+    const refreshPending = useRef(false);
+    const refreshTracking = () => {
+        if (refreshPending.current || codePending.current) return;
+        refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
+        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
+            onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
+            onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
+        });
+    };
     const showPickupCode = async () => {
-        if (!pickupCodeUrl || codeBusy) return;
+        if (!pickupCodeUrl || codePending.current || refreshPending.current || !pickupCodeAvailable || !pickupClaim || claimWindow(pickupClaim, Date.now()) !== 'ready' || pickupClaim.code_issued_at || pickupCode) return;
+        codePending.current = true;
+        const requestedClaim = { orderId: order.id, reference: pickupClaim.reference };
         setCodeBusy(true); setCodeError('');
         try { const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
             const response = await fetch(pickupCodeUrl,{method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
-            const result = await response.json(); if (!response.ok) throw new Error(result.message ?? 'Unable to show the pickup code.');
-            setPickupCode(result.code);
+            if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Your session may have changed. Refresh the page and sign in again if needed.');
+            const result = await response.json(); if (!response.ok) throw new Error(response.status >= 500 ? 'Code access is temporarily unavailable. Refresh tracking and try again.' : result.message ?? 'Unable to show the pickup code.');
+            if (typeof result.code !== 'string' || !result.code) throw new Error('The pickup code was not returned. Refresh tracking before trying again.');
+            if (activeClaim.current.orderId === requestedClaim.orderId && activeClaim.current.reference === requestedClaim.reference) setPickupCode(result.code);
         } catch (error) { setCodeError(error instanceof Error ? error.message : 'Unable to show the pickup code.'); }
-        finally { setCodeBusy(false); }
+        finally { codePending.current = false; setCodeBusy(false); }
     };
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const reviewableItems = (order.items ?? []).filter(item => !item.review);
@@ -119,65 +149,6 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
         });
     };
 
-    // Canonical 13-Stage Bagoo Delivery Milestones
-    const isPacked = ['preparing', 'processing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status);
-    const isPickedUp = ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) || ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
-    const isInTransit = ['at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) || ['at_sorting_center', 'sorted', 'assigned_to_rider', 'in_transit', 'out_for_delivery', 'delivered'].includes(delivery?.status || '');
-    const isDelivered = ['delivered', 'completed'].includes(order.status) || delivery?.status === 'delivered';
-    const isCompleted = order.status === 'completed';
-
-    // Determine the exact active next step index (0 to 4)
-    let nextStepIndex = 1;
-    if (isDelivered) {
-        nextStepIndex = -1; // All complete
-    } else if (isInTransit) {
-        nextStepIndex = 4; // Delivered
-    } else if (isPickedUp) {
-        nextStepIndex = 3; // In Transit
-    } else if (isPacked) {
-        nextStepIndex = 2; // Courier Picked Up
-    } else {
-        nextStepIndex = 1; // Merchant Packaging
-    }
-
-    const steps = [
-        { 
-            key: 'placed', 
-            label: 'Order Placed', 
-            done: true, 
-            isNext: false,
-            subtext: order.payment_status === 'paid' ? 'Payment Verified' : 'Order Placed (COD)' 
-        },
-        { 
-            key: 'packaging', 
-            label: 'Merchant Packaging', 
-            done: isPacked, 
-            isNext: nextStepIndex === 1,
-            subtext: isPacked ? 'Prepared by Shop' : 'Waiting for Merchant' 
-        },
-        { 
-            key: 'pickup', 
-            label: 'Courier Picked Up', 
-            done: isPickedUp, 
-            isNext: nextStepIndex === 2,
-            subtext: isPickedUp ? 'Handed to Dispatch' : 'Waiting for Courier' 
-        },
-        { 
-            key: 'in_transit', 
-            label: 'In Transit', 
-            done: isInTransit, 
-            isNext: nextStepIndex === 3,
-            subtext: isInTransit ? 'On Route to Destination' : 'Pending Transit' 
-        },
-        { 
-            key: 'delivered', 
-            label: 'Delivered', 
-            done: isDelivered, 
-            isNext: nextStepIndex === 4,
-            subtext: isDelivered ? 'Received at Doorstep' : 'Doorstep Drop-off' 
-        },
-    ];
-
     const formatPrice = (amount?: number | string | null) => {
         const numeric = Number(amount || 0);
         return new Intl.NumberFormat('en-PH', {
@@ -190,13 +161,18 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
     return (
         <BuyerOrderAccessLayout canUsePortal={canUsePortal}>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
-            {pickupClaim && <section className="mb-5 space-y-3 rounded-lg border border-slate-300 bg-white p-4">
-                <h2 className="font-bold text-slate-900">Your hub pickup</h2><p className="text-sm text-slate-700">{pickupHub?.name} · {pickupHub?.address}</p><p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
-                <p className="text-sm text-slate-700">Collect before {new Date(pickupClaim.expires_at).toLocaleString('en-PH')}. Bring your valid photo ID and exact COD payment.</p>
-                {pickupClaim.status === 'ready' && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
-                {pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
-                {pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Contact the hub if it was lost.</p>}
-                {pickupClaim.status !== 'ready' && <p className="text-sm font-semibold capitalize text-slate-700">Pickup {pickupClaim.status}</p>}
+            {pickupClaim && <section aria-label="Your hub pickup" className="mb-5 space-y-3 rounded-xl border border-slate-300 bg-white p-4">
+                <h2 className="font-bold text-slate-900">Your hub pickup</h2>
+                <p className="text-sm text-slate-700">{pickupHub?.name ?? 'Hub details not recorded'} · {pickupHub?.address}</p>
+                <p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
+                {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID and exact COD payment.</p>}
+                {counterWindow === 'expired' && <p role="status" className="text-sm font-semibold text-amber-900">The collection deadline has passed. Refresh tracking for the hub's return review.</p>}
+                {counterWindow === 'locked' && <p role="status" className="text-sm font-semibold text-amber-900">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</p>}
+                {counterWindow === 'unavailable' && <p className="text-sm font-semibold text-slate-700">{pickupClaim.status === 'collected' ? (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.') : 'The recorded pickup state needs hub review.'}</p>}
+                {counterWindow === 'ready' && pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy || trackingRefreshing} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
+                {counterWindow === 'ready' && pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
+                {counterWindow === 'ready' && pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Use the code you saved; contact the hub if it was lost.</p>}
+                {counterWindow === 'ready' && !pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <p className="text-sm text-slate-700">Refresh tracking to check whether code access is available. Contact the hub if it remains unavailable.</p>}
                 {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
             </section>}
             {orderNotices.length > 0 && <section className="mb-5 rounded-lg border border-slate-300 bg-white p-4"><h2 className="font-bold">Order notices</h2><ul className="mt-3 space-y-2">{orderNotices.map(notice => <li key={notice.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 py-2 text-sm"><span>{notice.data.title} · {new Date(notice.created_at).toLocaleString('en-PH')}</span>{!notice.read_at && <button className="font-semibold text-[#E00D42]" onClick={() => router.patch(route('buyer.orders.notice-read',notice.id),{},{preserveScroll:true})}>Mark read</button>}</li>)}</ul></section>}
@@ -215,7 +191,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                             Order #{order.order_number}
                         </h1>
                         <p className="text-xs text-slate-500 font-sans mt-0.5">
-                            Placed on {new Date(order.created_at).toLocaleString()}
+                            Placed on {trackingDate(order.created_at)} · Philippine time
                         </p>
                     </div>
 
@@ -254,90 +230,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                     </div>
                 </div>
 
-                {/* 1. 5-STEP DELIVERY MILESTONE TRACKER */}
-                <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-200 text-xs">
-                        <div className="flex items-center gap-2">
-                            <Truck className="w-4 h-4 text-[#E00D42]" />
-                            <span className="font-bold text-slate-900 text-sm">Live Delivery Tracking Milestones</span>
-                        </div>
-
-                        {delivery && (
-                            <span className="text-[#E00D42] font-bold font-sans text-xs break-all">
-                                Tracking No: {delivery.tracking_number}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Milestone Progress Tracker with Connecting Lines & Active Yellow/Amber Next Step */}
-                    <div className="relative py-2 font-sans">
-                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 sm:gap-2 relative">
-                            {steps.map((step, idx) => {
-                                const isNext = step.isNext;
-                                const isDone = step.done;
-                                return (
-                                    <div key={step.key} className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-2 relative group">
-                                        
-                                        {/* Horizontal Connecting Line (Desktop) */}
-                                        {idx < steps.length - 1 && (
-                                            <div className="hidden sm:block absolute top-5 left-1/2 w-full h-0.5 z-0">
-                                                <div className={`w-full h-full ${
-                                                    steps[idx + 1].done
-                                                        ? 'bg-[#E00D42]'
-                                                        : steps[idx + 1].isNext
-                                                        ? 'border-t-2 border-dashed border-amber-400'
-                                                        : 'border-t-2 border-dashed border-slate-200'
-                                                }`} />
-                                            </div>
-                                        )}
-
-                                        {/* Step Circle */}
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition relative z-10 ${
-                                            isDone
-                                                ? 'bg-[#E00D42] text-white shadow-md'
-                                                : isNext
-                                                ? 'bg-amber-50 text-amber-800 border-2 border-amber-400 shadow-sm ring-4 ring-amber-100'
-                                                : 'bg-slate-100 text-slate-400 border border-slate-200'
-                                        }`}>
-                                            {isDone ? (
-                                                <Check className="w-5 h-5" />
-                                            ) : isNext ? (
-                                                <span className="font-bold text-amber-700">{idx + 1}</span>
-                                            ) : (
-                                                idx + 1
-                                            )}
-
-                                            {/* Pulsing Next Step Indicator Pill */}
-                                            {isNext && (
-                                                <span className="absolute -top-2.5 px-2 py-0.5 rounded-full bg-amber-500 text-white font-sans text-[10px] font-bold shadow-xs animate-pulse">
-                                                    Next
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Step Text Info */}
-                                        <div className="flex flex-col sm:items-center">
-                                            <span className={`text-xs font-bold ${
-                                                isDone 
-                                                    ? 'text-slate-900' 
-                                                    : isNext 
-                                                    ? 'text-amber-800 font-extrabold' 
-                                                    : 'text-slate-400'
-                                            }`}>
-                                                {step.label}
-                                            </span>
-                                            <span className={`text-xs ${
-                                                isNext ? 'text-amber-700 font-semibold' : 'text-slate-400'
-                                            }`}>
-                                                {step.subtext}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
+                <OrderTrackingPanel tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy} error={trackingError} />
 
                 {/* 2. DISPATCH & COURIER TELEMETRY */}
                 {delivery && (
@@ -351,12 +244,12 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                                 <span className="text-slate-400 text-[11px] font-semibold block">Courier Service</span>
                                 <p className="font-bold text-slate-900 text-sm">{delivery.logistics_partner}</p>
-                                <p className="text-indigo-600 font-semibold">{delivery.status.toUpperCase()}</p>
+                                <p className="text-indigo-600 font-semibold">{order.tracking?.stage_label ?? 'Parcel stage not loaded'}</p>
                             </div>
 
                             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                                <span className="text-slate-400 text-[11px] font-semibold block">Pickup Merchant Hub</span>
-                                <p className="font-bold text-slate-900 text-sm">{delivery.pickup_store_name || 'Bagoo Prime Store'}</p>
+                                <span className="text-slate-400 text-[11px] font-semibold block">Seller pickup</span>
+                                <p className="font-bold text-slate-900 text-sm">{delivery.pickup_store_name || 'Seller name not recorded'}</p>
                                 <p className="text-slate-500 text-xs truncate">{delivery.pickup_address}</p>
                             </div>
 

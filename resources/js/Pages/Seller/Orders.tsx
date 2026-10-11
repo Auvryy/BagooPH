@@ -5,6 +5,8 @@ import WaybillCamera from '@/Components/WaybillCamera';
 import Barcode from '@/Components/Barcode';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import OrderTrackingPanel, { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
+import { currentOrderSelection } from '@/utils/orderTracking';
 import { sellerOrderStages } from '@/utils/orderWorkspace';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
 import { 
@@ -49,11 +51,11 @@ interface Props {
 }
 
 export default function SellerOrders({ orders, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts, cancellationReasons, batchLimit }: Props) {
-    const [selectedOrderForWaybill, setSelectedOrderForWaybill] = useState<any | null>(null);
-    const [selectedOrderForQr, setSelectedOrderForQr] = useState<any | null>(null);
-    const [orderToAcceptAndPack, setOrderToAcceptAndPack] = useState<any | null>(null);
-    const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any | null>(null);
-    const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
+    const [waybillSelection, setSelectedOrderForWaybill] = useState<any | null>(null);
+    const [qrSelection, setSelectedOrderForQr] = useState<any | null>(null);
+    const [packSelection, setOrderToAcceptAndPack] = useState<any | null>(null);
+    const [detailSelection, setSelectedOrderForDetails] = useState<any | null>(null);
+    const [cancelSelection, setOrderToCancel] = useState<any | null>(null);
     const [cancelReason, setCancelReason] = useState(cancellationReasons[0]);
     const [cancelNotes, setCancelNotes] = useState('');
     const [chatOrder, setChatOrder] = useState<any | null>(null);
@@ -67,14 +69,14 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const writePending = useRef(false);
     const saved = (page: any) => !page.props.flash?.error;
 
-    const [returnOrder, setReturnOrder] = useState<any | null>(null);
+    const [returnSelection, setReturnOrder] = useState<any | null>(null);
     const [returnBarcode, setReturnBarcode] = useState('');
     const [returnNotes, setReturnNotes] = useState('');
     const [returnErrors, setReturnErrors] = useState<Record<string, string>>({});
     const returnPending = useRef(false);
     const receiveReturn = (event: React.FormEvent) => {
         event.preventDefault();
-        if (!returnOrder || returnPending.current) return;
+        if (!returnOrder?.delivery || returnPending.current || refreshPending.current) return;
         returnPending.current = true;
         setIsSubmitting(true);
         setReturnErrors({});
@@ -91,6 +93,35 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         quantity: (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0),
         subtotal: (order.items ?? []).reduce((sum, item) => sum + Number(item.subtotal), 0),
     }));
+    const waybillItem = currentOrderSelection(items, waybillSelection);
+    const selectedOrderForWaybill = waybillItem?.order.can_print_waybill ? waybillItem : null;
+    const qrItem = currentOrderSelection(items, qrSelection);
+    const selectedOrderForQr = qrItem?.order.can_print_waybill ? qrItem : null;
+    const selectedOrderForDetails = currentOrderSelection(items, detailSelection);
+    const packItem = currentOrderSelection(items, packSelection);
+    const orderToAcceptAndPack = packItem && (packItem.order.can_accept_and_pack || packItem.order.can_pack) ? packItem : null;
+    const cancelItem = currentOrderSelection(items, cancelSelection);
+    const orderToCancel = cancelItem?.order.can_cancel ? cancelItem : null;
+    const returnItem = currentOrderSelection(orders.data, returnSelection);
+    const returnOrder = returnItem?.delivery?.return_ready_for_receipt ? returnItem : null;
+    useEffect(() => {
+        if (detailSelection && !selectedOrderForDetails) setSelectedOrderForDetails(null);
+        if (waybillSelection && !selectedOrderForWaybill) setSelectedOrderForWaybill(null);
+        if (qrSelection && !selectedOrderForQr) setSelectedOrderForQr(null);
+        if (packSelection && !orderToAcceptAndPack) setOrderToAcceptAndPack(null);
+        if (cancelSelection && !orderToCancel) setOrderToCancel(null);
+        if (returnSelection && !returnOrder) setReturnOrder(null);
+    }, [orders.data]);
+    const [trackingRefreshing, setTrackingRefreshing] = useState(false);
+    const refreshPending = useRef(false);
+    const refreshTracking = () => {
+        if (refreshPending.current || writePending.current || returnPending.current) return;
+        refreshPending.current = true; setTrackingRefreshing(true); setActionError('');
+        router.reload({ only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'flash'],
+            onError: errors => setActionError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
+            onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
+        });
+    };
     const [isTabLoading, setIsTabLoading] = useState(false);
     useEffect(() => { setSelectedOrderIds([]); }, [currentStatus, orders.current_page]);
 
@@ -165,7 +196,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     };
 
     const runOrderAction = (name: string, orderId: number) => {
-        if (!shopEligible || writePending.current) return;
+        if (!shopEligible || writePending.current || refreshPending.current) return;
         writePending.current = true; setIsSubmitting(true); setActionError('');
         router.post(route(name, orderId), {}, { preserveScroll: true,
             onError: errors => setActionError(Object.values(errors).join(' ')),
@@ -178,7 +209,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const handleSchedulePickup = (orderId: number) => runOrderAction('seller.orders.ready', orderId);
 
     const handleBatchSchedulePickup = () => {
-        if (!shopEligible || !selectedOrderIds.length || writePending.current) return;
+        if (!shopEligible || !selectedOrderIds.length || writePending.current || refreshPending.current) return;
         writePending.current = true; setIsSubmitting(true); setActionError('');
         router.post(route('seller.orders.batchReady'), { order_ids: selectedOrderIds }, { preserveScroll: true,
             onError: errors => setActionError(Object.values(errors).join(' ')),
@@ -189,7 +220,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
     const handleConfirmCancel = (event: React.FormEvent) => {
         event.preventDefault();
-        if (!orderToCancel || !shopEligible || writePending.current) return;
+        if (!orderToCancel || !shopEligible || writePending.current || refreshPending.current) return;
         writePending.current = true; setIsSubmitting(true); setActionError('');
         router.post(route('seller.orders.cancel', orderToCancel.order_id), { reason: cancelReason, notes: cancelNotes }, { preserveScroll: true,
             onError: errors => setActionError(Object.values(errors).join(' ')),
@@ -235,79 +266,6 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         setSelectedOrderIds(prev => 
             prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
         );
-    };
-
-    const getStatusPill = (status: string) => {
-        switch (status) {
-            case 'placed':
-            case 'pending':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-rose-50 text-[#E00D42] border border-rose-200 text-[11px] font-bold font-sans flex items-center gap-1.5 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
-                        <span>New Order (Action Required)</span>
-                    </span>
-                );
-            case 'confirmed':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
-                        <Box className="w-3 h-3 text-amber-600" />
-                        <span>To Pack</span>
-                    </span>
-                );
-            case 'preparing':
-            case 'processing':
-            case 'packaging':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
-                        <Truck className="w-3 h-3 text-blue-600" />
-                        <span>Packed — Ready for Pickup</span>
-                    </span>
-                );
-            case 'ready_for_pickup':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold font-sans flex items-center gap-1.5">
-                        <Clock className="w-3 h-3 text-blue-600" />
-                        <span>Ready for Pickup</span>
-                    </span>
-                );
-            case 'picked_up':
-            case 'at_sorting_center':
-            case 'sorted':
-            case 'assigned_to_rider':
-            case 'out_for_delivery':
-            case 'shipped':
-            case 'in_transit':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
-                        <Truck className="w-3 h-3 text-slate-500" />
-                        <span>In Transit</span>
-                    </span>
-                );
-            case 'delivered':
-                return <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 text-[11px] font-semibold">Delivered · awaiting buyer confirmation</span>;
-            case 'completed':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>Completed</span>
-                    </span>
-                );
-            case 'returned':
-                return <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-semibold">Returned</span>;
-            case 'failed':
-            case 'delivery_failed':
-                return <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-300 text-[11px] font-semibold">Delivery issue</span>;
-            case 'canceled':
-            case 'cancelled':
-                return (
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-medium font-sans flex items-center gap-1.5">
-                        <Ban className="w-3 h-3 text-slate-400" />
-                        <span>Cancelled</span>
-                    </span>
-                );
-            default:
-                return <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium font-sans uppercase">{status}</span>;
-        }
     };
 
     const renderCustomerInsight = (buyer?: any, isCompact: boolean = false) => {
@@ -425,6 +383,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-sans">
                             <Package className="w-4 h-4 text-slate-400" />
                             <span>Showing <strong>{filteredItems.length}</strong> of {orders.total} orders</span>
+                            <button type="button" disabled={trackingRefreshing || isSubmitting || isTabLoading} onClick={refreshTracking} className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{trackingRefreshing ? 'Refreshing…' : 'Refresh tracking'}</button>
                         </div>
 
                         {/* Bulk Action Button if items selected */}
@@ -556,7 +515,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                         </div>
 
                                         <div className="flex items-center gap-2 shrink-0">
-                                            {getStatusPill(orderStatus)}
+                                            {<OrderTrackingStatus tracking={item.order?.tracking} />}
                                         </div>
                                     </div>
 
@@ -988,20 +947,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             </p>
                         </div>
 
-                        {/* Logistics Checkpoints Timeline if any */}
-                        {selectedOrderForDetails.order?.delivery?.checkpoints && selectedOrderForDetails.order.delivery.checkpoints.length > 0 && (
-                            <div className="space-y-2 text-xs">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Logistics Checkpoints</span>
-                                <div className="space-y-2 pl-2 border-l-2 border-slate-200 font-sans">
-                                    {selectedOrderForDetails.order.delivery.checkpoints.map((cp: any) => (
-                                        <div key={cp.id} className="space-y-0.5 text-xs">
-                                            <p className="font-bold text-slate-800">{cp.location_name} — {cp.checkpoint_type}</p>
-                                            <p className="text-slate-500 text-[11px]">{cp.notes || 'Status verified'}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <OrderTrackingPanel compact tracking={selectedOrderForDetails.order?.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || isSubmitting} error={actionError} />
 
                         <div className="pt-2 flex justify-end">
                             <button

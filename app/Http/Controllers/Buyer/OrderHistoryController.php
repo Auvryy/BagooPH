@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\PickupClaim;
 use App\Services\BuyerAccessService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,8 +34,12 @@ class OrderHistoryController extends Controller
         return Inertia::render('Buyer/Orders', [
             'orderCounts' => $workspace->counts($owned, 'buyer'),
             'currentOrderStatus' => $status,
-            'orders' => $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status)), 12)
-                ->through(fn (Order $order) => $order->only(['id', 'order_number', 'status', 'total_amount', 'created_at'])),
+            'orders' => $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
+                ->with(OrderTrackingService::relations(history: false)), 12)
+                ->through(fn (Order $order) => [
+                    ...$order->only(['id', 'order_number', 'status', 'total_amount', 'created_at']),
+                    'tracking' => app(OrderTrackingService::class)->present($order, history: false),
+                ]),
             'canUsePortal' => $buyer->canAccessPortal(),
         ]);
     }
@@ -48,16 +52,23 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier']);
+        $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier', ...OrderTrackingService::relations()]);
+        $tracking = app(OrderTrackingService::class);
+        $canConfirmReceipt = $ownedBuyerOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user);
+        $pickupClaim = $ownedBuyerOrder ? $order->delivery?->pickupClaim?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null;
+        $pickupHub = $ownedBuyerOrder ? $order->delivery?->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null;
+        $pickupCodeAvailable = $ownedBuyerOrder && $tracking->canShowPickupCode($order);
+        $tracking->attach($order);
 
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,
             'canUsePortal' => $user->isBuyer() && $user->canAccessPortal(),
             'buyAgainUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
                 ? route('buyer.orders.buy-again', $order, absolute: false) : null,
-            'canConfirmReceipt' => $ownedBuyerOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user),
-            'pickupClaim' => $ownedBuyerOrder && $order->delivery ? PickupClaim::where('delivery_id', $order->delivery->id)->first()?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null,
-            'pickupHub' => $ownedBuyerOrder && $order->delivery ? $order->delivery->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null,
+            'canConfirmReceipt' => $canConfirmReceipt,
+            'pickupClaim' => $pickupClaim,
+            'pickupHub' => $pickupHub,
+            'pickupCodeAvailable' => $pickupCodeAvailable,
             'pickupCodeUrl' => $ownedBuyerOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
             'orderNotices' => $ownedBuyerOrder ? $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
                 ->where('data->order_id', $order->id)->latest()->get()

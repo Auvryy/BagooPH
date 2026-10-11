@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -28,5 +29,10 @@ class DeliveryAttempt extends Model
     public function delivery(): BelongsTo
     {
         return $this->belongsTo(Delivery::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(DeliveryRecoveryEvent::class);
     }
 }

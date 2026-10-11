@@ -79,6 +79,9 @@ class PickupClaimService
             app(BuyerAccessService::class)->requireExistingOrders($buyer, $parcel->order);
             $claim = $this->claim($parcel);
             $this->assertReady($parcel, $claim);
+            if ($claim->locked_until?->isFuture()) {
+                throw new DomainException('Counter verification is temporarily locked. Wait until the recorded unlock time before requesting the code.');
+            }
             if ($claim->code_hash || $claim->code_issued_at) {
                 throw new DomainException('The code was already shown once. It cannot be revealed again. Contact the hub if it was lost.');
             }

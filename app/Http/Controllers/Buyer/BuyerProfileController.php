@@ -11,6 +11,7 @@ use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\IdentityCorrectionService;
+use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
 use App\Services\VerificationDocumentService;
@@ -41,10 +42,11 @@ class BuyerProfileController extends Controller
         $owned = Order::where('buyer_id', $user->id);
         $counts = $workspace->counts($owned, 'buyer');
         $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
-            ->with(['items.product.shop', 'delivery.courier:id,name']), 12);
+            ->with(['items.product.shop', 'delivery.courier:id,name', ...OrderTrackingService::relations(history: false)]), 12);
         foreach ($orders as $order) {
             $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
             $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
+            app(OrderTrackingService::class)->attach($order, history: false);
         }
 
         $initialTab = $request->query('tab', 'orders');

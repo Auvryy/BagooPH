@@ -204,7 +204,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             $this->assertSame($expectedStatus, $delivery->fresh()->status);
             $this->actingAs($operator)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
                 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk()->assertJsonPath('prompt.requires_confirmation', false)
-                ->assertJsonPath('prompt.manifest_url', '/hub/manifests');
+                ->assertJsonPath('prompt.manifest_url', '/hub/manifests?hub_id='.$hub->id);
             $this->confirmFlowManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
 
             return;

@@ -25,12 +25,12 @@ class HubParcelWorkstationTest extends TestCase
     public static function stages(): array
     {
         return [
-            'pickup intake' => ['picked_up', 'origin_bayan_hub_id', 'scan', 'Picked Up'],
-            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'manifest', 'At Sorting Center'],
-            'Mother Hub sort' => ['arrived_at_mother_hub', 'origin_mother_hub_id', 'scan', 'At Sorting Center'],
-            'Mother Hub transfer' => ['sorted_to_line_haul', 'origin_mother_hub_id', 'manifest', 'At Sorting Center'],
-            'destination sort' => ['arrived_at_destination_hub', 'destination_bayan_hub_id', 'sort', 'At Sorting Center'],
-            'assigned rider has not departed' => ['assigned_to_rider', 'destination_bayan_hub_id', 'wait', 'Assigned To Rider'],
+            'pickup intake' => ['picked_up', 'origin_bayan_hub_id', 'scan', 'Picked up from seller'],
+            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'manifest', 'Moving through the hub network'],
+            'Mother Hub sort' => ['arrived_at_mother_hub', 'origin_mother_hub_id', 'scan', 'Moving through the hub network'],
+            'Mother Hub transfer' => ['sorted_to_line_haul', 'origin_mother_hub_id', 'manifest', 'Moving through the hub network'],
+            'destination sort' => ['arrived_at_destination_hub', 'destination_bayan_hub_id', 'sort', 'Moving through the hub network'],
+            'assigned rider has not departed' => ['assigned_to_rider', 'destination_bayan_hub_id', 'wait', 'Assigned to delivery rider'],
         ];
     }
 
@@ -251,7 +251,7 @@ class HubParcelWorkstationTest extends TestCase
         $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
         $before = $this->snapshot($parcel);
         $this->actingAs($this->flowHandler($hub))->get('/hub/deliveries')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('deliveries.data.0.guidance.can_act', false)->where('deliveries.data.0.guidance.order_status', 'Placed')
+            ->where('deliveries.data.0.guidance.can_act', false)->where('deliveries.data.0.guidance.order_status', 'Order placed')
             ->where('deliveries.data.0.guidance.next_step', 'Review the order and parcel stages'));
         $this->assertSame($before, $this->snapshot($parcel));
     }
@@ -395,7 +395,7 @@ class HubParcelWorkstationTest extends TestCase
         $this->actingAs($handler)->get($base.'/scan?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('basePath', $path)->where('counterTotal', 1)->where('stats.ready_pickup', 0)
             ->where('counterPickups.0.destination_bin', null)->where('counterPickups.0.guidance.action', 'scan')
-            ->where('counterPickups.0.guidance.order_status', 'At Sorting Center')->where('counterPickups.0.guidance.custodian', $hub->name));
+            ->where('counterPickups.0.guidance.order_status', 'Moving through the hub network')->where('counterPickups.0.guidance.custodian', $hub->name));
         $this->postJson($base.'/scan', ['hub_id' => $hub->id, 'barcode' => $parcel->tracking_number, 'mode' => 'inspect'])->assertOk()
             ->assertJsonPath('delivery.destination_bin', null)->assertJsonPath('delivery.guidance.action', 'scan')
             ->assertJsonPath('delivery.guidance.ready_for_collection', false)->assertJsonPath('prompt.requires_confirmation', true);

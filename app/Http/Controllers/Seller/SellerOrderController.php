@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ShopEligibilityService;
 use DomainException;
@@ -42,7 +43,7 @@ class SellerOrderController extends Controller
                     'orders as completed_orders_count' => fn ($orders) => $orders->where('status', 'completed')
                         ->whereHas('items', fn ($items) => $items->where('shop_id', $shop->id)),
                 ]),
-                'delivery.checkpoints',
+                ...OrderTrackingService::relations(),
                 'commissionLedger' => fn ($ledger) => $ledger->where('seller_id', $shop->user_id),
                 'items' => fn ($items) => $items->where('shop_id', $shop->id)->with('product.category')->orderBy('id'),
             ]);
@@ -64,6 +65,7 @@ class SellerOrderController extends Controller
                     $delivery->setAttribute('return_ready_for_receipt', false);
                 }
             }
+            app(OrderTrackingService::class)->attach($order);
         }
 
         return Inertia::render('Seller/Orders', [

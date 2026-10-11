@@ -8,10 +8,10 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\PickupClaimEvent;
 use App\Models\User;
+use App\Services\Orders\OrderTrackingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class HubParcelWorkstationService
 {
@@ -154,7 +154,7 @@ class HubParcelWorkstationService
         $manager = $actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $parcel->logistics_company_id);
         $guide = [
             'stage' => self::STAGES[$parcel->status] ?? 'Unrecognized parcel stage',
-            'order_status' => Str::headline($parcel->order?->status ?? 'unknown'),
+            'order_status' => OrderTrackingService::label($parcel->order, $parcel),
             'custodian' => $this->custodian($parcel, $custody),
             'custody_recorded_at' => $parcel->latestCustodyCheckpoint?->created_at->toIso8601String(),
             'next_step' => 'Review the parcel records', 'responsible' => 'Company administrator',
