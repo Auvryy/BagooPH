@@ -616,24 +616,37 @@ export default function BuyerProfile({
                                     onRefresh={() => loadOrderPage(orders.current_page > 1 ? `${route('buyer.profile')}?page=${orders.current_page}` : route('buyer.profile'), { tab: 'orders', order_status: currentOrderStatus })}
                                 />
 
-                                <div ref={orderScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Purchase results" tabIndex={0} className="buyer-profile-scroll mt-4 space-y-4 lg:mt-0" aria-busy={orderBusy}>
+                                <div ref={orderScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Purchase results" tabIndex={0} className={`buyer-profile-scroll mt-4 space-y-4 lg:mt-0 ${filteredOrders.length === 0 ? 'flex flex-col' : ''}`} aria-busy={orderBusy}>
                                 {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                                 {orderBusy && <p role="status" className="text-xs text-slate-500">Loading orders…</p>}
 
                                 {/* Orders List Cards */}
                                 {filteredOrders.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
-                                        <Package className="w-12 h-12 text-slate-300 mx-auto" />
-                                        <h3 className="text-base font-bold text-slate-800">No orders found in this status</h3>
-                                        <p className="text-xs text-slate-500 font-sans">
-                                            Discover verified tactical apparel, bags, and EDC gear on BagooPH.
-                                        </p>
-                                        <Link
-                                            href={route('buyer.index')}
-                                            className="inline-block px-5 py-2.5 bg-[#E00D42] text-white rounded-xl text-xs font-sans font-bold uppercase shadow-xs"
-                                        >
-                                            Explore Marketplace
-                                        </Link>
+                                    <div className="flex min-h-[20rem] flex-1 flex-col rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xs sm:p-12 lg:min-h-0">
+                                        <div className="m-auto w-full max-w-md space-y-3">
+                                            <Package className="mx-auto h-12 w-12 text-slate-300" aria-hidden="true" />
+                                            <h3 className="text-base font-bold text-slate-800">No orders found in this status</h3>
+                                            <p className="text-xs leading-5 text-slate-500">
+                                                {showingOrderIssues ? 'You have no orders with this issue. Choose another status or return to My Purchases & Orders.' : 'Your orders will appear here. Browse the marketplace to find something for your Bag.'}
+                                            </p>
+                                            {showingOrderIssues ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={orderBusy || receiptPending !== null}
+                                                    onClick={() => openPurchaseGroup('progress')}
+                                                    className="rounded-xl bg-[#E00D42] px-5 py-2.5 text-xs font-bold text-white shadow-xs disabled:opacity-50"
+                                                >
+                                                    View purchases
+                                                </button>
+                                            ) : (
+                                                <Link
+                                                    href={route('buyer.index')}
+                                                    className="inline-block rounded-xl bg-[#E00D42] px-5 py-2.5 text-xs font-bold uppercase text-white shadow-xs"
+                                                >
+                                                    Explore Marketplace
+                                                </Link>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     filteredOrders.map((order) => (
@@ -1224,8 +1237,8 @@ export default function BuyerProfile({
 
                         {/* TAB 3: DELIVERY ADDRESS BOOK */}
                         {activeTab === 'addresses' && (
-                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Delivery addresses" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Delivery addresses" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex flex-col gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+                                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                                     <div>
                                         <h3 className="text-base font-black text-slate-900">PSGC Delivery Address Book</h3>
                                         <p className="text-xs text-slate-500 font-sans">Manage doorstep drop-off destinations for Bagoo Express riders</p>
@@ -1240,9 +1253,16 @@ export default function BuyerProfile({
                                     </button>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className={addresses.length === 0 ? 'flex min-h-[16rem] flex-1 flex-col gap-4 lg:min-h-0' : 'space-y-4'}>
                                     {addressActionError && <p role="alert" className="text-sm text-rose-700">{addressActionError}</p>}
                                     {addressPending !== null && <p role="status" className="text-sm text-slate-600">Updating your address book...</p>}
+                                    {addresses.length === 0 && (
+                                        <div className="m-auto w-full max-w-md space-y-3 py-6 text-center">
+                                            <MapPin className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
+                                            <h4 className="text-base font-bold text-slate-800">No saved addresses</h4>
+                                            <p className="text-sm leading-6 text-slate-600">Add a delivery address to make your next checkout easier.</p>
+                                        </div>
+                                    )}
                                     {addresses.map((addr) => (
                                         <div
                                             key={addr.id}
@@ -1302,15 +1322,15 @@ export default function BuyerProfile({
 
                         {/* TAB 4: BAGOO WALLET */}
                         {activeTab === 'wallet' && (
-                            <section data-buyer-profile-scroll scroll-region="" aria-label="Bagoo Wallet" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs">
-                                <div className="flex items-center gap-3">
-                                    <Wallet className="h-6 w-6 shrink-0 text-[#E00D42]" aria-hidden="true" />
+                            <section data-buyer-profile-scroll scroll-region="" role="region" aria-label="Bagoo Wallet" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex min-h-[20rem] flex-col rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs lg:min-h-0">
+                                <div className="m-auto w-full max-w-md space-y-3 text-center">
+                                    <Wallet className="mx-auto h-8 w-8 text-[#E00D42]" aria-hidden="true" />
                                     <h3 className="text-lg font-bold text-slate-900">Bagoo Wallet</h3>
+                                    <p className="font-semibold text-slate-800">Currently unavailable</p>
+                                    <p className="text-sm leading-6 text-slate-600">
+                                        Wallet balances, top-ups and wallet payments are not available yet. Checkout uses cash on delivery.
+                                    </p>
                                 </div>
-                                <p className="mt-5 font-semibold text-slate-800">Currently unavailable</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">
-                                    Wallet balances, top-ups and wallet payments are not available yet. Checkout uses cash on delivery.
-                                </p>
                             </section>
                         )}
 
