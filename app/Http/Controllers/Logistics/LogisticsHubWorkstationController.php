@@ -9,12 +9,12 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
-use App\Models\PickupClaim;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -62,20 +62,6 @@ class LogisticsHubWorkstationController extends Controller
                     $returning->whereIn('destination_bayan_hub_id', $hubIds)->whereNull('current_hub_id')->whereRaw("deliveries.status = 'delivery_failed'");
                 });
         });
-    }
-
-    /**
-     * Scope the registry to parcels physically at the facility or waiting for
-     * that facility's first custody scan. Route legs alone do not grant
-     * visibility to a hub that has not received the parcel.
-     */
-    protected function scopeDeliveryRegistryAtHub($query, ?LogisticsHub $hub)
-    {
-        if (! $hub) {
-            return $query->whereKey(0);
-        }
-
-        return $this->scopeDeliveriesAtHubs($query, [$hub->id], $hub->logistics_company_id);
     }
 
     /**
@@ -552,16 +538,25 @@ class LogisticsHubWorkstationController extends Controller
     /**
      * Filterable parcels and waybill registry.
      */
-    public function deliveries(Request $request): Response
+    public function deliveries(Request $request, HubParcelWorkstationService $workstation): Response
     {
+        $filters = $request->validate(['search' => 'nullable|string|max:120', 'status' => 'nullable|string|max:80', 'delivery_type' => 'nullable|string|in:all,doorstep,hub_self_pickup']);
         $user = $request->user();
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
-        $search = trim($request->query('search', ''));
-        $statusFilter = $request->query('status', 'all');
-        $deliveryType = $request->query('delivery_type', 'all');
+        $search = trim($filters['search'] ?? '');
+        $statusFilter = $filters['status'] ?? 'all';
+        $deliveryType = $filters['delivery_type'] ?? 'all';
 
-        $query = Delivery::with([
+        $basePath = $request->is('hub/*') ? '/hub' : '';
+        $eligibleRiders = $this->eligibility->riderCandidates($activeHub)->get()->map(fn ($profile) => [
+            'id' => $profile->user_id,
+            'name' => $profile->user?->name ?? 'Rider',
+            'assigned_barangay' => $profile->assigned_barangay,
+            'vehicle_type' => $profile->vehicle_type,
+        ])->values();
+
+        $query = $workstation->registry($activeHub)->with([
             'order.buyer',
             'order.items.product',
             'originBayanHub',
@@ -569,9 +564,11 @@ class LogisticsHubWorkstationController extends Controller
             'destinationBayanHub',
             'destinationMotherHub',
             'assignedRider',
+            'courier',
             'currentHub',
-        ])
-            ->where(fn ($q) => $this->scopeDeliveryRegistryAtHub($q, $activeHub));
+            'latestCustodyCheckpoint',
+            'pickupClaim',
+        ]);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -581,15 +578,13 @@ class LogisticsHubWorkstationController extends Controller
             });
         }
 
-        if ($statusFilter !== 'all') {
-            $query->where('status', $statusFilter);
-        }
+        $workstation->filter($query, $statusFilter, $activeHub);
 
         if ($deliveryType !== 'all') {
             $query->where('delivery_type', $deliveryType);
         }
 
-        $deliveries = $query->latest()->paginate(15)->withQueryString()->through(function ($d) use ($activeHub) {
+        $deliveries = $query->latest()->paginate(15)->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath) {
             $isAwaitingOriginIntake = $activeHub
                 && $d->status === OrderStateMachineService::STATUS_PICKED_UP
                 && $d->origin_bayan_hub_id === $activeHub->id
@@ -605,7 +600,7 @@ class LogisticsHubWorkstationController extends Controller
                 'shipping_city' => $d->order?->shipping_city ?? 'N/A',
                 'status' => $d->status,
                 'delivery_type' => $d->delivery_type,
-                'destination_bin' => $d->destination_bin ?? 'STAGE: UNASSIGNED',
+                'destination_bin' => $d->destination_bin,
                 'current_hub' => $d->currentHub?->name ?? ($isAwaitingOriginIntake ? 'Awaiting origin hub intake' : 'In Transit'),
                 'awaiting_origin_intake' => (bool) $isAwaitingOriginIntake,
                 'items' => $d->order?->items?->map(fn ($item) => [
@@ -618,35 +613,18 @@ class LogisticsHubWorkstationController extends Controller
                 'payment_method' => $d->order?->payment_method ?? 'cod',
                 'item_count' => $d->order?->items?->count() ?? 1,
                 'created_at' => $d->created_at->format('M d, Y H:i'),
+                'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders, $basePath),
             ];
         });
-
-        $registryQuery = fn () => $this->scopeDeliveryRegistryAtHub(Delivery::query(), $activeHub);
-
-        $counts = [
-            'all' => $registryQuery()->count(),
-            'in_hub' => $registryQuery()->whereIn('status', ['arrived_at_origin_hub', 'arrived_at_mother_hub', 'arrived_at_destination_hub', 'sorted_to_barangay_bin'])->count(),
-            'out_for_delivery' => $registryQuery()->where('status', 'out_for_delivery')->count(),
-            'ready_pickup' => Delivery::where('destination_bayan_hub_id', $activeHub?->id ?? 0)->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)->where('delivery_type', 'hub_self_pickup')->whereIn('status', ['ready_for_hub_pickup', 'arrived_at_destination_hub'])->count(),
-            'completed' => $registryQuery()->whereIn('status', ['delivered', 'customer_collected'])->count(),
-        ];
-
-        $eligibleRiders = $this->eligibility->riderCandidates($activeHub)
-            ->get()
-            ->map(fn ($profile) => [
-                'id' => $profile->user_id,
-                'name' => $profile->user?->name ?? 'Rider',
-                'assigned_barangay' => $profile->assigned_barangay,
-                'vehicle_type' => $profile->vehicle_type,
-            ])
-            ->values();
 
         return Inertia::render('Hub/Deliveries', [
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'deliveries' => $deliveries,
-            'counts' => $counts,
+            'counts' => $workstation->counts($activeHub),
             'eligibleRiders' => $eligibleRiders,
+            'basePath' => $basePath,
+            'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
             'filters' => [
                 'search' => $search,
                 'status' => $statusFilter,
@@ -658,17 +636,20 @@ class LogisticsHubWorkstationController extends Controller
     /**
      * Counter self-pickup workstation.
      */
-    public function counter(Request $request): Response
+    public function counter(Request $request, HubParcelWorkstationService $workstation): Response
     {
+        $filters = $request->validate(['search' => 'nullable|string|max:120']);
         $user = $request->user();
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
-        $search = trim($request->query('search', ''));
+        $search = trim($filters['search'] ?? '');
+        $basePath = $request->is('hub/*') ? '/hub' : '';
 
-        $query = Delivery::with(['order.buyer', 'order.items.product'])
+        $query = Delivery::with(['order.buyer', 'order.items.product', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'pickupClaim'])
             ->where('delivery_type', 'hub_self_pickup')
             ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
             ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
+            ->where('current_hub_id', $activeHub?->id ?? 0)
             ->whereIn('status', [
                 OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
                 OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
@@ -683,7 +664,7 @@ class LogisticsHubWorkstationController extends Controller
             });
         }
 
-        $counterParcels = $query->latest()->get()->map(function ($d) {
+        $counterParcels = $query->latest()->get()->map(function ($d) use ($workstation, $activeHub, $user, $basePath) {
             return [
                 'id' => $d->id,
                 'tracking_number' => $d->tracking_number,
@@ -691,7 +672,7 @@ class LogisticsHubWorkstationController extends Controller
                 'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
                 'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
                 'status' => $d->status,
-                'destination_bin' => $d->destination_bin ?? 'SHELF-A1',
+                'destination_bin' => $d->destination_bin,
                 'total_amount' => (float) ($d->order?->total_amount ?? 0),
                 'payment_method' => $d->order?->payment_method ?? 'cod',
                 'item_count' => $d->order?->items?->count() ?? 1,
@@ -700,9 +681,10 @@ class LogisticsHubWorkstationController extends Controller
                     'quantity' => $item->quantity,
                     'price' => (float) $item->price,
                 ]) ?? [],
-                'arrived_at' => $d->updated_at->format('M d, H:i'),
+                'arrived_at' => $d->pickupClaim?->ready_at->timezone('Asia/Manila')->format('M d, H:i'),
                 'buyer_id' => $d->order->buyer_id,
-                'claim' => PickupClaim::where('delivery_id', $d->id)->first()?->only(['reference', 'status', 'expires_at', 'locked_until']),
+                'claim' => $d->pickupClaim?->only(['reference', 'status', 'expires_at', 'locked_until']),
+                'guidance' => $workstation->guidance($d, $activeHub, $user, collect(), $basePath),
             ];
         });
 
@@ -711,15 +693,19 @@ class LogisticsHubWorkstationController extends Controller
             ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
             ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
             ->where('status', OrderStateMachineService::STATUS_CUSTOMER_COLLECTED)
-            ->latest('updated_at')
-            ->limit(5)
+            ->whereHas('pickupClaim', fn ($claim) => $claim->where('status', 'collected')->whereNotNull('consumed_at'))
+            ->with('pickupClaim')
+            ->latest('id')
+            ->limit(25)
             ->get()
+            ->filter(fn (Delivery $parcel) => app(PickupClaimService::class)->hasCollectionEvidence($parcel))
+            ->take(5)
             ->map(fn ($d) => [
                 'id' => $d->id,
                 'tracking_number' => $d->tracking_number,
                 'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
-                'collected_at' => $d->updated_at->diffForHumans(),
-            ]);
+                'collected_at' => $d->pickupClaim->consumed_at->diffForHumans(),
+            ])->values();
 
         return Inertia::render('Hub/CounterPickup', [
             'activeHub' => $activeHub,
@@ -729,6 +715,13 @@ class LogisticsHubWorkstationController extends Controller
             'canConfigureHours' => $activeHub && $this->eligibility->isCompanyAdministrator($request->user(), $activeHub->logistics_company_id),
             'recentlyCollected' => $recentlyCollected,
             'search' => $search,
+            'basePath' => $basePath,
+            'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
+            'counterCounts' => [
+                'shown' => $counterParcels->count(),
+                'ready' => $counterParcels->where('guidance.ready_for_collection', true)->count(),
+                'blocked' => $counterParcels->where('guidance.ready_for_collection', false)->count(),
+            ],
         ]);
     }
 

@@ -57,6 +57,9 @@ class ParcelRecoveryTest extends TestCase
         $this->assertSame($originalState, $parcel->fresh()->getRawOriginal(), 'Authorization cannot invent a physical handover.');
         $intake = $this->casePayload($case, ['barcode' => $parcel->tracking_number]);
         $this->actingAs($handler)->postJson($base.'/parcel-recovery/'.$observation->id.'/intake', $intake)->assertOk();
+        $this->get($base.'/deliveries?hub_id='.$observation->hub_id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('deliveries.data.0.id', $parcel->id)->where('deliveries.data.0.guidance.action', $case->fresh()->state === 'completed' ? 'manifest' : 'recovery')
+            ->where('deliveries.data.0.guidance.can_act', true));
         $after = $this->snapshot($parcel);
         $this->postJson($base.'/parcel-recovery/'.$observation->id.'/intake', $intake)->assertOk();
         $this->assertSame($after, $this->snapshot($parcel));
