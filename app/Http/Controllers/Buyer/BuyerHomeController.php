@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
@@ -97,10 +96,7 @@ class BuyerHomeController extends Controller
         ];
 
         // 4. 14 Verified Departments with Visual Data
-        $categories = Category::where('is_active', true)
-            ->withCount(['products' => fn ($products) => $products->availableForSale()])
-            ->orderBy('id')
-            ->get();
+        $categories = app(BuyerDiscoveryService::class)->categories();
 
         // 5. "Daily Discover" & Search Product Feed
         $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
@@ -122,9 +118,7 @@ class BuyerHomeController extends Controller
                 ->whereNotIn('id', $matchedIds);
 
             if ($request->filled('category') && $request->input('category') !== 'all') {
-                $relatedQuery->whereHas('category', function ($q) use ($request) {
-                    $q->where('slug', $request->input('category'));
-                });
+                $relatedQuery->whereIn('category_id', $discovery->categoryIds($filters['category']));
             }
 
             $relatedProducts = $relatedQuery->orderBy('sales_count', 'desc')

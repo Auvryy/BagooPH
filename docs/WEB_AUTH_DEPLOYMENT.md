@@ -94,6 +94,13 @@ docker compose exec -T app php artisan tinker --execute='dump(["total_products" 
 
 A shop needs an active approved seller, one of the 14 active master categories, and its current matching Platform Admin approval record. An `active` shop flag alone is insufficient. Legacy demo shops with missing category/review records can have products in the database while contributing no public catalogue entries.
 
+Department browsing includes active child categories. The reserved demo products
+live in an accessory child category, so an exact-category-only filter previously
+hid them when browsing the parent department, even with valid approval. Publish
+and deploy the department-filter fix before considering any data repair. It
+requires no product deletion, reseeding or database reset. Inactive categories,
+restricted shops and products remain excluded by the existing eligibility rules.
+
 Each seller now has one shop created at registration. The initial seller application review covers that shop; the seller opens it automatically after approval. Ordinary legacy shops still need the actual owner evidence and Platform Admin review.
 
 After publishing and pulling the one-shop repair, the deployment helper must install `2026_10_08_100000_enforce_one_shop_per_seller`. It adds unique ownership without moving data. If it reports existing duplicate ownership, resolve those accounts through a reviewed data decision before deployment; do not delete shops or orders to make migration pass.

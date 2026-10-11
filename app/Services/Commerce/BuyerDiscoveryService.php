@@ -5,9 +5,11 @@ namespace App\Services\Commerce;
 use App\Models\Category;
 use App\Models\Product;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -47,6 +49,24 @@ class BuyerDiscoveryService
             ->availableForSale()->withReviewSummary();
     }
 
+    public function categoryIds(string $slug): array
+    {
+        $category = Category::where('slug', $slug)->where('is_active', true)->first();
+
+        return $category ? app(ShopEligibilityService::class)->categoryTreeIds($category) : [];
+    }
+
+    public function categories(): Collection
+    {
+        $counts = Product::availableForSale()->selectRaw('category_id, count(*) as product_count')->groupBy('category_id')->pluck('product_count', 'category_id');
+        $categories = Category::where('is_active', true)->orderBy('id')->get();
+
+        return $categories->each(function (Category $category) use ($counts, $categories) {
+            $ids = app(ShopEligibilityService::class)->categoryTreeIds($category, $categories);
+            $category->setAttribute('products_count', (int) $counts->only($ids)->sum());
+        });
+    }
+
     public function filter(Builder $products, array $filters): Builder
     {
         if ($filters['search'] !== '') {
@@ -60,7 +80,7 @@ class BuyerDiscoveryService
             });
         }
         if ($filters['category'] !== 'all') {
-            $products->whereHas('category', fn (Builder $category) => $category->where('slug', $filters['category']));
+            $products->whereIn('products.category_id', $this->categoryIds($filters['category']));
         }
         if ($filters['min_price'] !== '') {
             $products->where('price', '>=', $filters['min_price']);

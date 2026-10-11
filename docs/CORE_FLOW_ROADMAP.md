@@ -3295,3 +3295,29 @@ historical orders or settlements were rewritten.
 Implementation commits: `e535acc docs: require readable commit descriptions`,
 `8e8f834 fix(checkout): share accurate voucher quotes across purchases`, and
 `1617c20 fix(buyer): show real offers and refreshed purchase totals`.
+
+### October 11, 2026: seeded products in department browsing
+
+The demo seeder already places its catalogue in an approved shop's active
+accessory child category. The buyer discovery filter matched only the selected
+category slug, so selecting the parent master department returned no fixture
+products while products added directly to the parent could appear. The focused
+regression reproduced **0 instead of 17 products** before the fix.
+
+[BuyerDiscoveryService](../app/Services/Commerce/BuyerDiscoveryService.php) now
+includes active descendants using the existing shop category traversal. Buyer
+home, search, related suggestions and department counts use that scope. Shop
+approval, product restrictions, inactive ancestors and normal stock filters
+remain authoritative. No seed rows, credentials, prices, stock or order history
+were changed, and a database reset is unnecessary. The read-only local check
+returned **17 department-visible products**, with **0 direct-parent products**.
+
+Verification: **53 isolated SQLite checks / 790 assertions passed** across the
+seller demo seeder and buyer discovery/saved-product suites; focused PHP style
+checks passed. Coverage includes fresh and repeat seed preservation, both buyer
+pages, deeper descendants and exclusion under an inactive ancestor. No frontend
+source changed. Azure deployment and browser/device checks are not claimed.
+Scoped assessment: **department discovery consistency 5/10 -> 8.5/10**; seeded
+and manually created products follow the same approved category tree. Existing
+older shops without approval still need their documented review or reserved
+fixture repair, as described in [deployment guidance](WEB_AUTH_DEPLOYMENT.md).

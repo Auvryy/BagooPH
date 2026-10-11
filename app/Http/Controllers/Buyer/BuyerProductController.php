@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\Category;
 use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\ReviewService;
@@ -22,11 +21,10 @@ class BuyerProductController extends Controller
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
         $products = $discovery->paginate($discovery->filter($discovery->catalogue(), $filters), $filters);
-        $categories = Category::where('is_active', true)
-            ->withCount(['products' => fn ($query) => $query->availableForSale()])->orderBy('id')->get();
+        $categories = $discovery->categories();
         $related = $discovery->catalogue()->whereNotIn('products.id', $products->pluck('id'));
         if ($filters['category'] !== 'all') {
-            $related->whereHas('category', fn ($query) => $query->where('slug', $filters['category']));
+            $related->whereIn('category_id', $discovery->categoryIds($filters['category']));
         }
 
         return Inertia::render('Buyer/Search', [
