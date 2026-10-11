@@ -3034,3 +3034,52 @@ Local implementation commits:
 The final evidence is retained in a separate documentation commit; its generated
 hash is reported in the handoff. Publication, merge and deployment remain
 user-owned steps.
+
+### October 11, 2026: buyer profile navigation and separate exception filters
+
+The buyer profile now keeps its existing marketplace styling while separating
+purchase navigation from the content being read. This delivery changes profile
+presentation and scrolling; the existing order and account authorities remain
+the server-owned source of truth.
+
+| Area | Before | Implemented behavior |
+|---|---|---|
+| Purchase filters | Eight status buttons shared a horizontally scrolling strip, pushing later choices out of view. | All, To ship, In transit, Delivered and Completed remain visible in a responsive button grid. Delivery issue, Returned and Cancelled have a separate labelled More statuses selector, with their actual counts and the current selection. |
+| Desktop purchases | Reading a long order list moved the profile navigation and filters with the page. | The two-column workspace uses the available viewport height. Its sidebar and purchase controls stay outside the independently scrolling order results, including empty states, errors and pagination. |
+| Account and Security | Long settings forms moved the sidebar out of view. | Contact, identity and password settings share a focusable content scroll region beside the stationary sidebar. Other existing profile sections also retain bounded content and their card padding. |
+| Footer and responsive access | Page scrolling was the only way to navigate a long workspace. | On desktop, wheel input over stationary controls or empty panels cannot spill into the outer page; overflowing panels use contained native scrolling. Scrolling outside the workspace still reaches the normal footer. Below 1024px, the profile retains ordinary stacked page scrolling. Short desktop windows allow the sidebar to scroll internally so lower links remain reachable. |
+| Refresh and navigation | Existing filters, counts, receipt actions and partial reloads supplied the order workspace. | The same server-filtered requests, counts and action guards remain in use. Selecting a different status or page resets the results region to its top; a same-page refresh preserves the reading position through Inertia scroll-region handling. |
+
+Verification evidence:
+
+- **37 frontend checks passed**: nine new profile checks plus the existing
+  commerce and account settings suites. They exercise the actual rendered
+  profile/filter components, direct exception selections, disabled controls,
+  request handlers, paging/refresh parameters, scroll-region placement,
+  desktop-only CSS scope, native wheel boundaries, viewport/header resize
+  measurement and listener cleanup.
+- **36 backend regression cases passed, with 443 assertions**, for buyer order
+  workspaces, addresses, avatars and profile settings, using isolated SQLite
+  `:memory:` inside the local application container.
+- The **TypeScript/Vite production build passed through Docker**; Vite finished
+  in 14.82 seconds. The buyer profile manifest includes its dedicated stylesheet,
+  and the generated asset contains the bounded workspace and scroll-containment
+  rules. Whitespace and frontend syntax checks passed.
+- Host-only checks encountered a Vite cache permission error and a missing PHP
+  GD extension. The corresponding Docker build and complete selected PHP
+  regression rerun passed. These environment errors are not counted as passing
+  host checks.
+
+The scoped assessment is **buyer profile navigation 6.5/10 before -> 8.5/10
+after**. Purchase progress and exception choices are easier to find, and long
+orders/settings retain their navigation context. This does not raise overall
+buyer transaction, security or flow readiness ratings. Browser/device wheel,
+touch and keyboard behavior and Azure deployment remain unverified; the
+frontend evidence uses server rendering and controlled DOM/event checks.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `6a55b3f` | `fix(buyer): separate exception filters from purchase progress` |
+| `ae33224` | `fix(buyer): keep profile navigation beside scrolling content` |
