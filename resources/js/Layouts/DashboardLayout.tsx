@@ -30,6 +30,7 @@ import {
     ScanLine,
     Building2,
     Banknote,
+    AlertTriangle,
 } from 'lucide-react';
 
 interface Props {
@@ -167,11 +168,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     current: component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan') 
                 },
                 { 
-                    name: 'Facility Network', 
+                    name: 'Facility Network',
                     href: route('hub.network'), 
                     icon: Building2, 
                     current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
                 },
+                { name: 'Manifests', href: route('hub.manifests.index'), icon: Truck, current: component === 'Hub/Manifests' },
+                { name: 'Parcel recovery', href: route('hub.parcel-recovery.index'), icon: AlertTriangle, current: component === 'Hub/ParcelRecovery' },
                 { 
                     name: 'Fleet Management', 
                     href: route('hub.fleet'), 

@@ -10,6 +10,7 @@ use App\Models\LogisticsManifest;
 use App\Models\User;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\ParcelRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -54,6 +55,9 @@ class LogisticsManifestController extends Controller
             $selected = $manifestQuery()->findOrFail($selected->id);
             $source = $selected->sourceHub;
             $destination = $selected->destinationHub;
+            $discrepancies = $this->service->openDiscrepancies($selected);
+            $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
+                ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
                 'canManage' => $actor->isLogistics() && $company?->id === $selected->logistics_company_id,
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
@@ -63,9 +67,11 @@ class LogisticsManifestController extends Controller
                     'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(),
                     'receipt_condition' => $parcel->receipt_condition,
                 ]),
-                'discrepancies' => $this->service->openDiscrepancies($selected)->map(fn ($event) => [
+                'discrepancies' => $discrepancies->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'kind' => $event->payload['kind'],
                     'parcel_id' => $event->manifest_parcel_id, 'barcode' => $event->barcode_scanned, 'reason' => $event->reason,
+                    'recoveryUrl' => in_array($event->id, $readableRecoveryIds, true)
+                        ? ($request->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$event->id : null,
                 ]),
                 'events' => $selected->events()->with('actor')->orderBy('id')->get()->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'type' => $event->event_type,
@@ -89,7 +95,7 @@ class LogisticsManifestController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction']),
+            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction', 'parcel_recovery_case_id']),
                 $request->session()->get('manifest_creation_token'));
             $request->session()->forget('manifest_creation_token');
         } catch (DomainException $error) {
@@ -121,7 +127,9 @@ class LogisticsManifestController extends Controller
         return $manifest->state() + ['type' => $manifest->type, 'included_count' => $manifest->included_count,
             'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier']),
             'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier']),
-            'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driver->name];
+            'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driver->name,
+            'recoveryUrl' => $manifest->parcel_recovery_case_id
+                ? (request()->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$manifest->recoveryCase->observation_event_id : null];
     }
 
     private function conflict(Request $request, DomainException $error): JsonResponse|RedirectResponse

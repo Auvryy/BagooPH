@@ -35,6 +35,7 @@ use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
+use App\Http\Controllers\Logistics\ParcelRecoveryController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
@@ -87,6 +88,20 @@ $registerCodRoutes = function (bool $named = false) {
     if ($named) {
         foreach ($routes as $name => $route) {
             $route->name('cod.'.$name);
+        }
+    }
+};
+
+$registerParcelRecoveryRoutes = function (bool $named = false) {
+    $routes = [
+        'index' => Route::get('/parcel-recovery', [ParcelRecoveryController::class, 'index']),
+        'show' => Route::get('/parcel-recovery/{observation}', [ParcelRecoveryController::class, 'show'])->whereNumber('observation'),
+        'authorize' => Route::post('/parcel-recovery/{observation}/authorize', [ParcelRecoveryController::class, 'authorize'])->whereNumber('observation'),
+        'command' => Route::post('/parcel-recovery/{observation}/{action}', [ParcelRecoveryController::class, 'command'])->whereNumber('observation')->where('action', 'intake|withdraw'),
+    ];
+    if ($named) {
+        foreach ($routes as $name => $route) {
+            $route->name('parcel-recovery.'.$name);
         }
     }
 };
@@ -239,7 +254,7 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
     });
 };
 
-$registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $registerCodRoutes) {
+$registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $registerCodRoutes, $registerParcelRecoveryRoutes) {
     Route::get('/', function () {
         if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
             return redirect('/dashboard');
@@ -256,7 +271,8 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
     Route::get('/hub/login', fn () => redirect('/login'));
     Route::get('/hub/register', fn () => redirect('/register'));
 
-    Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes) {
+    Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes, $registerParcelRecoveryRoutes) {
+        $registerParcelRecoveryRoutes();
         $registerCodRoutes();
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
@@ -594,7 +610,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 | Logistics Hub Workstation Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes) {
+Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes, $registerParcelRecoveryRoutes) {
     Route::get('/', function (Request $request) {
         $user = auth()->user();
         if ($user) {
@@ -608,7 +624,8 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         return app(AuthenticatedSessionController::class)->createHub();
     })->name('index');
 
-    Route::middleware(['auth', 'role:logistics,admin'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes) {
+    Route::middleware(['auth', 'role:logistics,admin'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes, $registerParcelRecoveryRoutes) {
+        $registerParcelRecoveryRoutes(true);
         $registerCodRoutes(true);
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');

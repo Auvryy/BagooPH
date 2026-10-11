@@ -63,6 +63,8 @@ Scoped seller BS03 inventory/drafts review: October 10, 2026. Validated draft cr
 
 Scoped dependency/database configuration review: October 10, 2026. Available security fixes are locked and installed, the shared stylesheet remains identical, and database host publication is limited to localhost. All 2,958 PHP tests, 69 frontend checks, 9 deployment checks and the production build pass. Composer has zero advisories; npm retains five high entries from one unpatched build-tool chain. The scoped configuration assessment is 6/10 -> 8/10; Azure exposure and overall role/project ratings remain unverified or unchanged. See the dated review below.
 
+Scoped logistics parcel recovery review: October 10, 2026. Company-authorized actual intake and recovery manifests restore recognized unexpected/wrong-hub parcels to their original expected receipt while preserving route, history and commercial state. The 3,097-case full regression passes, followed by 65 final recovery/hub checks after a scoped manifest-link refinement; 80 frontend checks and the production build pass. Physical recovery is assessed at 0/10 -> 8/10 within this batch. Deployment, PostgreSQL execution and broader restricted-resource recovery remain separate.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -84,7 +86,7 @@ Scoped dependency/database configuration review: October 10, 2026. Available sec
 | Buyer Buy again | Implemented; locally verified | BS05 previews owned completed purchases against current catalogue, variants, prices and Bag limits. Selected items commit together, successful retries retain their original result, and normal checkout creates the next purchase. See the October 10 Buy again review below. |
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
-| Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. True extra/wrong-hub physical recovery and later exception paths remain open. |
+| Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. The October 10 recovery batch adds company-authorized intake and actual recovery manifests for recognized unexpected/wrong-hub parcels, retaining the original route and receiving obligation. Unknown parcels, unsupported restricted-resource recovery, deployed acceptance and simultaneous PostgreSQL verification remain separate. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
@@ -1376,7 +1378,7 @@ Acceptance: two-shop checkout produces two isolated fulfillment units; invalid t
 
 ### Phase 2: Mother-Hub and Manifest Custody
 
-**State: Partial.** Durable manifests and their actual load, dispatch, individual receipt, discrepancy and closure actions are scoped verified below. Ordered hub scans and mandatory Mother-Hub custody are enforced. Genuine extra/wrong-hub physical recovery and simultaneous PostgreSQL verification remain open.
+**State: Partial.** Durable manifests and their actual load, dispatch, individual receipt, discrepancy and closure actions are scoped verified below. Ordered hub scans and mandatory Mother-Hub custody are enforced. The October 10 batch adds verified physical recovery of recognized unexpected/wrong-hub parcels through assigned-handler intake and recorded transfers to their original expected hub. Unsupported restricted-resource recovery, deployed acceptance and simultaneous PostgreSQL verification remain open.
 
 - Add feeder and line-haul manifests with source, destination, vehicle, dispatcher, receiver, timestamps, and included parcels.
 - Require manifest outbound and receiving-facility inbound scans.
@@ -1420,7 +1422,7 @@ B16-B18 acceptance: delivery or buyer completion alone does not reconcile COD or
 
 ### Phase 6: Cross-Role Cleanup
 
-**State: Partial.** Rider ownership, persistent availability, phase-limited task data, delivery-linked messaging, real proof upload, truthful profile/trip history, and normal-path cross-role validation are complete. Failed-delivery recovery, COD reconciliation, and broader portal cleanup remain.
+**State: Partial.** Rider ownership, persistent availability, phase-limited task data, delivery-linked messaging, real proof upload, truthful profile/trip history, and normal-path cross-role validation are complete. Role-owned recovery and financial flows have scoped local evidence below. Broader portal cleanup and unsupported restricted-resource recovery remain.
 
 - Use the assigned final-mile rider for delivery earnings.
 - Present canonical statuses and Mother-Hub checkpoints consistently in every portal.
@@ -2569,3 +2571,149 @@ unexpected/wrong-hub parcels before selecting its bounded implementation.
 Recording a discrepancy or correcting an observed waybill entry does not
 establish actual parcel handover. This recommendation does not start logistics
 work, add status overrides or authorize rider-mobile changes.
+
+## October 10, 2026: unexpected and wrong-hub parcel recovery
+
+The selected [parcel recovery plan](logistics-plan/01-parcel-recovery.md) is
+implemented on `feat/logistics-parcel-recovery`, based on merged `main` at
+`03662bf`. A company administrator can authorize a recognized same-company
+waybill against its unresolved arrival observation, original dispatched manifest
+and retained transport custody. Authorization alone changes no physical custody.
+An assigned receiving handler must scan the actual parcel at the observed hub.
+
+The case freezes the original manifest member, checkout/return route, source
+checkpoint, observed facility and expected receiving hub. Recovery manifests use
+the existing load, seal, departure, individual receipt and closure controls. Each
+leg requires a Mother Hub: two Bayan endpoints use the original leg's Mother Hub;
+Mother-to-Mother transfers require the responsible driver's wing truck. Unknown
+waybills and unsupported sources remain unresolved. An unused authorization can
+be withdrawn without changing parcel custody; received parcels require actual
+transfers.
+
+The final actual receipt at the original expected hub records the original
+manifest's receiving evidence and restores its supported inbound state. Original
+membership and observations remain retained. Commercial order state, inventory
+and money are unchanged during recovery. Normal delivery, buyer-only completion
+and reverse routing to the owning seller remain separate actual actions.
+Company discrepancy resolution and admin oversight require linked recovery and
+original receipt evidence, rather than a manager note or status edit.
+
+An owned, paginated logistics worklist shows current responsibility, blockers,
+the required hubs, permitted next action and retained history. Links to manifests
+are shown only when the current viewer can open the existing manifest workspace. Manifest pages,
+navigation and dashboard attention counts link to it. Available vehicle choices
+exclude busy or unavailable drivers; command validation rechecks eligibility.
+The interface uses the existing logistics layout, typeface, accent and controls.
+Public tracking exposes only safe recorded recovery milestones, and existing
+durable lifecycle notices receive the actual checkpoint sources.
+
+| Verification | Result |
+|---|---|
+| Final recovery acceptance, including continued normal delivery and reverse seller receipt | 47 tests, 5,119 assertions; passing |
+| All frontend checks, including the recovery worklist and scoped manifest links | 80 tests; passing |
+| Full application regression before the final manifest-link refinement | 3,097 tests, 65,663 assertions; zero failures, errors or skips |
+| Final TypeScript/Vite production build through Docker | Passing; Vite 10.87 seconds |
+| Final recovery and hub workspace retest after the manifest-link refinement | 65 tests, 5,464 assertions; passing |
+| Changed PHP formatting and whitespace | Passing |
+
+The full regression includes the unchanged 69-case manifest custody suite,
+14 reverse-custody cases and 14 admin exception-oversight cases. The final
+manifest-link refinement affects only recovery presentation and is covered by
+the subsequent 47 recovery and 18 hub workspace cases, all 80 frontend checks
+and the final production build.
+
+The recovery acceptance exercises correct-hub extra intake, wrong Bayan/Mother
+receipt, required Mother detours, actual Mother-to-Mother line-haul and hub
+subdomains. It rejects unknown or foreign scope, unauthorized floor actions,
+restricted handlers, changed routes, stale reviews/scans, changed retries,
+duplicate active recovery and duplicate/skipped transfer legs. Failed initial
+and final receiving evidence rolls custody, manifest projections and case history
+back together; a repeated successful receipt retains one result. Model and
+direct-database checks retain case/event identity and earlier manifest guards.
+Unused migration rollback/reinstall retains those guards; used history prevents
+rollback. Admin support and public tracking privacy are checked independently.
+
+**Scoped engineering assessment:** physical unexpected-parcel recovery
+**0/10 -> 8/10**; hub recovery guidance **2/10 -> 8/10**. Missing physical handling
+now has evidenced scans and transport, while handlers can see the responsible
+next step and its blockers. These scores cover this feature and its isolated
+acceptance, without raising unrelated overall role/project scores.
+
+Release requires the additive migration
+[`2026_10_10_200000_create_parcel_recovery_cases`](../database/migrations/2026_10_10_200000_create_parcel_recovery_cases.php).
+After user publication and pull, `./bagoo.sh deploy` applies migrations and builds
+assets, then `./bagoo.sh verify` checks assets and pending migrations. Keep existing
+records; a database reset or demo reseed is unnecessary. This migration preserves
+earlier manifest history and refuses rollback after any recovery case is recorded.
+Production PostgreSQL trigger/locking execution, simultaneous requests, deployed
+operations and rendered browser/device interactions remain unverified. All PHP
+checks use isolated SQLite `:memory:`; development/production databases were not
+migrated or reset.
+
+**Next boundary:** stop for user review/publication of this recovery branch.
+Remaining restricted seller/resource/carrier recovery needs its own bounded
+authority and handover contract. A later Phase 6 logistics workstation cleanup
+can improve canonical stage labels, responsibility and next-action guidance using
+the existing screens, including replacing fixed success claims with recorded
+outcomes. General redesign, rates, refunds and native mobile work
+require separate selection.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `8c735b3` | `docs(logistics): define unexpected parcel recovery scope` |
+| `60ef654` | `feat(logistics): recover misplaced parcels through recorded custody` |
+| `4614210` | `feat(logistics): guide hub recovery with scoped history` |
+
+This acceptance evidence is retained in a separate documentation commit.
+Publication, merge and deployment remain user-owned release steps.
+
+## October 10, 2026: parcel recovery review
+
+The follow-up review compared the recovery plan with its services, migration,
+hub interfaces and acceptance checks. It found three operational guidance issues:
+
+| Finding | Before review fixes | After review fixes |
+|---|---|---|
+| Refreshed submission authority | An unchanged case could keep an expired manifest creation token after another manifest was prepared in the same session. Source tokens were also tied to the case reset. | Refreshed server tokens update independently, preserving entered notes, waybill and vehicle choice when the case is unchanged. |
+| Manifest discrepancy links | A sending handler could see a recovery link while lacking permission to open that observation, resulting in a 404. | Links use the viewer's actual recovery scope. Assigned receivers and handlers on an authorized recovery route retain their supported links. |
+| Receiving-hub attention | Counts followed only the original observed facility, hiding incoming recovery transfers and held parcels at an intermediate Mother Hub. | Counts include dispatched recovery arrivals and actual held recovery custody in the selected owned facility. The original observation remains visible until its separate review is resolved. |
+
+Two added acceptance cases failed against the previous implementation and passed
+after the fixes: scoped discrepancy links and actual two-leg recovery attention.
+The attention check covers arrival, intermediate receipt, completed recovery and
+the original facility's remaining discrepancy review. The token update follows
+the existing manifest form pattern; rendered refresh interaction was not tested.
+
+| Review verification | Result |
+|---|---|
+| Recovery, manifest custody, hub workspace, reverse custody and admin exception oversight | 164 tests, 12,032 assertions; zero failures, errors or skips |
+| Recovery cases included above | 49 tests, 5,432 assertions; passing |
+| All frontend checks | 80 tests; passing |
+| TypeScript/Vite production build through Docker | Passing; Vite 11.10 seconds |
+| Changed PHP formatting and whitespace | Passing |
+
+All PHP checks used isolated SQLite `:memory:`. The earlier 3,097-test full
+regression remains evidence for the initial implementation; this review reran
+the affected suites after its presentation changes. No business transition,
+custody writer, migration or financial rule changed during these fixes.
+
+**Scoped engineering assessment:** recovery guidance **7/10 -> 8/10** after
+accounting for the newly found issues. Overall physical unexpected-parcel
+recovery remains **8/10**, compared with **0/10** before this branch. The fixes
+make existing recovery work visible and its permitted actions usable; they do
+not verify production PostgreSQL triggers, simultaneous requests, deployed
+operations or browser/device interactions. Restricted-resource recovery and
+unknown parcels retain the earlier stopping boundary. Deployment still requires
+the additive recovery migration, without a database reset.
+
+Review implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `856a466` | `fix(logistics): scope recovery links and receiving attention` |
+| `fc147f1` | `fix(logistics): refresh recovery submission tokens` |
+
+This review evidence is retained in a separate local documentation commit.
+Publication, merge and deployment remain user-owned steps.

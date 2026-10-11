@@ -14,13 +14,13 @@ class LogisticsManifest extends Model
 
     protected $hidden = ['creation_token', 'creation_fingerprint'];
 
-    protected $casts = ['sealed_at' => 'datetime', 'dispatched_at' => 'datetime', 'received_at' => 'datetime', 'closed_at' => 'datetime', 'version' => 'integer'];
+    protected $casts = ['sealed_at' => 'datetime', 'dispatched_at' => 'datetime', 'received_at' => 'datetime', 'closed_at' => 'datetime', 'version' => 'integer', 'recovery_leg_index' => 'integer'];
 
     protected static function booted(): void
     {
         static::creating(fn (self $manifest) => $manifest->reference = 'MFT-'.strtoupper((string) Str::uuid()));
         static::updating(function (self $manifest) {
-            if ($manifest->isDirty(['reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'created_by_id', 'creation_token', 'creation_fingerprint', 'type', 'direction', 'created_at'])) {
+            if ($manifest->isDirty(['reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'created_by_id', 'creation_token', 'creation_fingerprint', 'type', 'direction', 'created_at', 'parcel_recovery_case_id', 'recovery_leg_index'])) {
                 throw new LogicException('Manifest identity must be retained.');
             }
         });
@@ -60,6 +60,11 @@ class LogisticsManifest extends Model
     public function events(): HasMany
     {
         return $this->hasMany(LogisticsManifestEvent::class, 'manifest_id');
+    }
+
+    public function recoveryCase(): BelongsTo
+    {
+        return $this->belongsTo(ParcelRecoveryCase::class, 'parcel_recovery_case_id');
     }
 
     public function state(): array
