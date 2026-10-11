@@ -2,9 +2,9 @@
 
 namespace App\Services\Logistics;
 
-use App\Enums\OrderStatus;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Services\Orders\OrderTrackingService;
 
 class PublicTrackingService
 {
@@ -12,6 +12,9 @@ class PublicTrackingService
         'parcel_recovery_intake' => 'Parcel received for route recovery',
         'parcel_recovery_departed' => 'Parcel travelling on its recovery route',
         'parcel_recovery_received' => 'Recovery transfer received at a sorting hub',
+        'failed_delivery_hub_return' => 'Destination Bayan Hub',
+        'delivery_rescheduled' => 'Destination Bayan Hub',
+        'expired_pickup_return_started' => 'Destination Bayan Hub',
         'order_placed' => 'BagooPH',
         'placed' => 'BagooPH',
         'confirmed' => 'Seller preparation',
@@ -49,7 +52,7 @@ class PublicTrackingService
     public function find(string $trackingCode): ?array
     {
         $delivery = Delivery::query()
-            ->with(['order', 'checkpoints' => fn ($query) => $query->oldest('created_at')->orderBy('id')])
+            ->with(['order', 'checkpoints' => fn ($query) => $query->whereNull('source_checkpoint_id')->oldest('created_at')->orderBy('id')])
             ->where('tracking_number', $trackingCode)
             ->first();
 
@@ -64,7 +67,7 @@ class PublicTrackingService
             $delivery->order?->shipping_city,
             $delivery->order?->shipping_province,
         ]));
-        $status = $this->commercialStatus($delivery);
+        $status = OrderTrackingService::commercialStatus($delivery->order, $delivery);
 
         return [
             'tracking_number' => $delivery->tracking_number,
@@ -83,34 +86,6 @@ class PublicTrackingService
                     'created_at' => $checkpoint->created_at->toISOString(),
                 ])->values()->all(),
         ];
-    }
-
-    private function commercialStatus(Delivery $delivery): string
-    {
-        $orderStatus = $delivery->order?->status;
-
-        if ($orderStatus === 'pending') {
-            return OrderStatus::PLACED->value;
-        }
-        if (in_array($orderStatus, ['processing', 'packaging'], true)) {
-            return OrderStatus::PREPARING->value;
-        }
-        if ($orderStatus !== 'shipped' && OrderStatus::tryFrom($orderStatus ?? '')) {
-            return $orderStatus;
-        }
-
-        return match ($delivery->status) {
-            'unassigned', 'assigned', 'assigned_pickup' => OrderStatus::READY_FOR_PICKUP->value,
-            'picked_up' => OrderStatus::PICKED_UP->value,
-            'sorted_to_barangay_bin', 'ready_for_hub_pickup' => OrderStatus::SORTED->value,
-            'assigned_to_rider' => OrderStatus::ASSIGNED_TO_RIDER->value,
-            'out_for_delivery' => OrderStatus::OUT_FOR_DELIVERY->value,
-            'delivered', 'customer_collected' => OrderStatus::DELIVERED->value,
-            'failed', 'delivery_failed', 'return_to_sender', 'return_in_transit' => OrderStatus::DELIVERY_FAILED->value,
-            'returned' => OrderStatus::RETURNED->value,
-            'cancelled' => OrderStatus::CANCELLED->value,
-            default => OrderStatus::AT_SORTING_CENTER->value,
-        };
     }
 
     private function maskName(?string $name): string

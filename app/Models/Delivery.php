@@ -241,4 +241,9 @@ class Delivery extends Model
     {
         return $this->hasOne(PickupClaim::class);
     }
+
+    public function latestAttempt(): HasOne
+    {
+        return $this->hasOne(DeliveryAttempt::class)->ofMany('attempt_number', 'max');
+    }
 }

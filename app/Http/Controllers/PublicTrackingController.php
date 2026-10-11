@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Logistics\PublicTrackingService;
+use App\Services\Orders\OrderTrackingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,6 +38,9 @@ class PublicTrackingController extends Controller
             'notFound' => $notFound,
             'validationMessage' => $validationMessage,
             'availableActions' => [],
+            'statusLabels' => OrderTrackingService::LABELS,
+            'checkpointLabels' => OrderTrackingService::EVENTS,
+            'observedAt' => now()->toIso8601String(),
         ]);
     }
 
