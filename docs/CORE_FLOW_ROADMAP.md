@@ -3149,3 +3149,78 @@ This does not change transaction readiness or the empty-panel rating above.
 Initial disclosure implementation: `ac2f332 fix(buyer): collapse nested purchase navigation`.
 
 Active-section implementation: `2345e14 fix(buyer): expand submenu for active purchases`.
+
+### October 11, 2026: voucher experience audit and proposed deliveries
+
+The [voucher experience plan](voucher-plan/README.md) is a researched proposal,
+not implemented campaign management or authorization to execute every batch.
+It defines V01 accurate quotes, V02 redemption and funding records, V03 seller
+and Platform Admin campaigns, and V04 buyer saving/selection, followed by a
+combined acceptance gate. Official public references and their regional
+limits are recorded in [the source notes](voucher-plan/REFERENCES.md).
+
+Current static findings:
+
+- [Buyer profile](../resources/js/Pages/Buyer/Profile.tsx) displays two
+  hardcoded offers with a fixed “3 Available” badge. These do not establish
+  actual buyer ownership, expiry, redemption eligibility or quota.
+- [Checkout](../resources/js/Pages/Checkout/Index.tsx) already offers selection,
+  but computes discounts locally and posts one voucher_code. Its shipping
+  offer preview zeroes the fee without applying the voucher's actual cap.
+  The [checkout controller](../app/Http/Controllers/Buyer/CheckoutController.php)
+  supplies active/unexpired offers without the final service's complete
+  selected-shop eligibility, and its aggregate fee preview differs from
+  final per-shop fees.
+- [Buyer voucher apply](../app/Http/Controllers/Buyer/VoucherController.php)
+  previews the entire Bag and validates amount without an explicit shop
+  scope. Generic minimum-spend errors can hide another invalidity reason.
+- [CheckoutOrderService](../app/Services/Orders/CheckoutOrderService.php)
+  already locks voucher use inside its transaction, applies shop scope,
+  allocates platform discounts and counts one use per successful checkout.
+  Signed submissions preserve original-result replay. Existing platform
+  allocation weights every discount kind by merchandise; a shipping
+  discount needs weights and bounds based on eligible shipping instead.
+- The [voucher schema](../database/migrations/2026_08_23_111910_create_vouchers_table.php)
+  has nullable shop scope and global used_count, but no saved offers,
+  per-buyer redemption history, campaign revision or funding budget.
+  Its null-on-delete shop link makes an immutable issuer essential before
+  introducing broader campaign discovery.
+- [Seller campaign writes](../app/Http/Controllers/Seller/SellerVoucherController.php)
+  use approved owned-shop mutation gates and basic creation/toggle/delete.
+  They lack an upper percentage bound, scheduled start, per-buyer limit,
+  funded budget and immutable published terms. Code uniqueness is checked
+  before uppercase normalization. The
+  [seller screen](../resources/js/Pages/Seller/Vouchers.tsx) aggregates the
+  current page, calls uses claims and displays a static shipping offer.
+  No dedicated Platform Admin voucher writer was found in the inspected
+  routes/controllers.
+- [Seller settlement](../app/Services/Finance/SellerSettlementService.php)
+  preserves original-product 10%/90% gross accounting and records aggregate
+  discounts separately. It does not establish an explicit issuer-funded
+  promotional expense. Stacking requires reviewed funding and net-payout
+  records, not a cosmetic second selector.
+- [Seller cancellation](../app/Services/Orders/OrderLifecycleService.php)
+  restores stock before custody but does not restore voucher use. The
+  proposal preserves that behavior and sibling allocations; any future
+  unspent funding release needs its own exact-once recorded boundary.
+
+Recommended first release: one fixed/capped product offer per selected shop
+plus one Bagoo product OR shipping offer per checkout. Buyers save and choose
+real offers, with optional code entry and an explicit No voucher choice.
+Saving reserves neither quota nor funding. Preserve original gross commission,
+separate promotional expense from shipping, and keep all old order/settlement
+snapshots. Rich targeting, cashback, wallet, quota-restoration and refund
+automation remain deferred.
+
+Planning assessment from static evidence: **buyer voucher experience 4/10**,
+**seller voucher management 5/10**. These scores cover truthful offer discovery,
+preview consistency and campaign controls, not overall buyer/seller readiness.
+Planning does not improve those implementation scores. The proposed
+**8.5/10 target** applies only after the scoped acceptance cases pass.
+
+Verification for this planning delivery: relevant code/contracts and official
+sources inspected; documentation links and whitespace checked. The existing
+**12 buyer-profile frontend checks passed**, including immediate submenu
+expansion for active purchases and hiding in other sections. No application
+code or schema changed; no new voucher runtime checks, production build,
+browser/device check or deployment is claimed.
