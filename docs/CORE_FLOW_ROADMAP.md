@@ -65,6 +65,8 @@ Scoped dependency/database configuration review: October 10, 2026. Available sec
 
 Scoped logistics parcel recovery review: October 10, 2026. Company-authorized actual intake and recovery manifests restore recognized unexpected/wrong-hub parcels to their original expected receipt while preserving route, history and commercial state. The 3,097-case full regression passes, followed by 65 final recovery/hub checks after a scoped manifest-link refinement; 80 frontend checks and the production build pass. Physical recovery is assessed at 0/10 -> 8/10 within this batch. Deployment, PostgreSQL execution and broader restricted-resource recovery remain separate.
 
+Scoped logistics workstation review: October 11, 2026. Registry/counter guidance separates commercial state, physical custody and authorized next steps. Review corrected delayed claim-window updates and collection history ordered by parcel creation. The final 57-case affected-flow selection, 91 frontend checks and production build pass. Guidance usability is assessed at 5/10 -> 8/10; scanner cleanup, queue capacity and deployed acceptance remain separate. Known dependency advisory limits are unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -2805,3 +2807,76 @@ Local implementation commits:
 
 This evidence is retained in a separate local documentation commit, with its
 generated hash reported in the handoff.
+
+## October 11, 2026: workstation reliability and security review
+
+Review of `feat/logistics-workstation-cleanup` found two reproducible reliability
+defects in the implemented counter interface. Both are corrected without a new
+schema or a change to role, custody, claim, COD or order-transition authority.
+
+| Finding | Before correction | Verified behavior |
+|---|---|---|
+| Counter clock after a preserved page refresh | A claim expiring in 60 seconds could schedule its display update 7,260,001 milliseconds later because the effect used the earlier mount clock. | The effect schedules against the current clock: 60,001 milliseconds in the same case. It skips elapsed lock/expiry boundaries and schedules the earliest remaining deadline. Existing submit and server expiry checks remain authoritative. |
+| Recent collection ordering | A newer parcel ID appeared before an older parcel collected more recently. | Candidates are ordered by the original claim's recorded `consumed_at`, with parcel ID only breaking ties. The 25-candidate/five-result limit, company/facility scope and full collection-evidence filter remain. Both root and hub-subdomain real collection flows pass. |
+
+The production counter effect is exercised with controlled hook/clock callbacks
+in [counter clock tests](../tests/Frontend/hub-counter-clock.test.mjs), rather
+than a duplicated timer calculation. Actual buyer code access, handler release,
+retained custody and COD writers establish the two-parcel ordering cases in
+[workstation tests](../tests/Feature/Logistics/HubParcelWorkstationTest.php).
+These checks do not constitute rendered-browser or background-tab testing.
+
+Fresh verification: the initial affected-flow selection passed 55 tests and
+3,643 assertions. After the history correction, all 57 workstation, hub-suite
+and secure-pickup cases passed with 3,971 assertions on isolated SQLite
+`:memory:`. All 91 frontend cases passed, including four new clock cases. The
+Docker TypeScript/Vite production build passed in 10.17 seconds; changed PHP
+formatting and whitespace passed. The before/after selections overlap and are
+not additional full-project regression totals.
+
+Server authorization, actual-facility scope, restricted/unavailable riders,
+private owner-only claim access, failed-code lockouts, expiry during verification,
+exact COD evidence, rollback and buyer-only completion retain passing affected
+checks. Search/status values remain bound query inputs and the new guidance is
+rendered as text. No new access-control or claim-consumption bypass was
+reproduced within this review. Azure configuration, PostgreSQL concurrency and
+whole-website penetration testing were not performed.
+
+The current locked PHP advisory audit reports zero advisories and abandoned
+packages. The production-only npm audit reports zero known advisories. The full
+npm audit still reports five high entries through `braces` 3.0.3 and its
+development dependency chain, matching the already documented October 10
+dependency review. The [upstream advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+describes recursive-pattern process failure and lists no published patch. The
+observed Tailwind content patterns are repository-controlled; this review did
+not identify a public request supplying these patterns. These are advisory
+snapshots, not proof that every application or deployment risk is absent.
+Dependency maintenance should revisit a compatible fix when available.
+
+**Scoped rating:** workstation guidance remains **5/10 before the cleanup ->
+8/10 after implementation and this review**. The two corrections improve live
+readiness feedback and trustworthy collection history. Overall role, security
+and cross-role scores are not increased; Phase 6 remains partial.
+
+Necessary next selections, in order:
+
+1. **Scanner guidance consistency.** The existing scanner still supplies
+   `STAGE: SELF-PICKUP-SHELF` when no shelf/bin is recorded, and displays that
+   fallback as a location. Reuse actual custody, staging and blocker guidance
+   when moving from the registry/counter into the scanner. Preserve handler
+   authority and the existing logistics style.
+2. **Counter queue capacity.** The counter still loads every matching parcel
+   through `get()` and performs per-parcel readiness queries. Add bounded
+   pagination and review query growth while preserving scoped search, truthful
+   queue totals and original collection-evidence checks. This is a source-backed
+   capacity gap; production load/latency has not been measured.
+3. **Remaining Phase 6 tracking consistency.** Review buyer, seller, rider and
+   hub views against the same commercial state and retained physical journey,
+   then repair confirmed differences in each portal's own design. Separate this
+   from new rates, disputes/refunds or other deferred features.
+
+Local correction commits: `4ec6110 fix(logistics): refresh counter deadlines from
+the current clock`; `0bc7bfc fix(logistics): order recent collections by recorded
+handover time`. This review evidence is retained in a separate documentation
+commit, with its generated hash reported in the handoff. Publication, merge and
+deployment remain user-owned steps.
