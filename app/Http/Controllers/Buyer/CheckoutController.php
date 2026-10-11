@@ -6,14 +6,12 @@ use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\LogisticsHub;
-use App\Models\Product;
-use App\Models\Voucher;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\KycSubmissionService;
 use App\Services\Orders\CheckoutOrderService;
+use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\CheckoutSubmissionService;
-use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,26 +60,14 @@ class CheckoutController extends Controller
             return redirect()->route('buyer.cart')->with('error', 'Please select at least one item from your shopping bag to checkout.');
         }
 
-        // Calculate subtotal directly from latest product database prices
-        $subtotal = 0;
-        foreach ($checkoutItems as $item) {
-            $currentProduct = Product::find($item->product_id);
-            if (! $currentProduct || ! app(ShopEligibilityService::class)->productIsEligible($currentProduct)) {
-                return redirect()->route('buyer.cart')->with('error', 'One or more items in your bag are currently unavailable.');
-            }
-            $subtotal += $currentProduct->price * $item->quantity;
+        $quotes = app(CheckoutQuoteService::class);
+        try {
+            $checkoutItems = $quotes->selectedItems($user, $checkoutItems->pluck('id')->all());
+            $quote = $quotes->quote($checkoutItems);
+        } catch (CheckoutException $exception) {
+            return redirect()->route('buyer.cart')->with('error', $exception->getMessage());
         }
-
-        $shippingFee = $subtotal > 1500 ? 0.00 : 50.00;
-        $total = $subtotal + $shippingFee;
-
-        // Fetch available platform and merchant vouchers
-        $availableVouchers = Voucher::where('is_active', true)
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->latest()
-            ->get();
+        $available = $quotes->offers($checkoutItems);
 
         // Approved/verified is the reviewed authorization state. Do not infer
         // a pending review from a missing path in the shared user payload.
@@ -97,11 +83,12 @@ class CheckoutController extends Controller
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $checkoutItems,
-            'subtotal' => $subtotal,
-            'shippingFee' => $shippingFee,
-            'total' => $total,
+            'subtotal' => $quote['subtotal'],
+            'shippingFee' => $quote['shipping_fee'],
+            'total' => $quote['total'],
+            'quote' => $quote,
             'user' => $user,
-            'availableVouchers' => $availableVouchers,
+            'availableVouchers' => $available['offers'],
             'kycStatus' => $kycStatus,
             'kycFeedback' => $user->kyc_feedback,
             'addresses' => $addresses,

@@ -11,6 +11,7 @@ use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\IdentityCorrectionService;
+use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
@@ -50,6 +51,7 @@ class BuyerProfileController extends Controller
         }
 
         $initialTab = $request->query('tab', 'orders');
+        $available = app(CheckoutQuoteService::class)->offers();
 
         return Inertia::render('Buyer/Profile', [
             ...app(AccountSettingsService::class)->presentation($user),
@@ -61,6 +63,8 @@ class BuyerProfileController extends Controller
             'orderCounts' => $counts,
             'currentOrderStatus' => $status,
             'initialTab' => $initialTab,
+            'availableVouchers' => $available['offers'],
+            'availableVoucherCount' => $available['count'],
         ]);
     }
 

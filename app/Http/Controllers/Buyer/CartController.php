@@ -9,14 +9,18 @@ use App\Models\Product;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\CartLineService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Orders\CheckoutQuoteService;
 use App\Services\ShopEligibilityService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class CartController extends Controller
 {
@@ -38,15 +42,34 @@ class CartController extends Controller
         );
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|JsonResponse
     {
         $cart = $this->getCart($request);
         $cart->load(['items.product.shop']);
         $eligibleIds = Product::availableForSale()->whereIn('id', $cart->items->pluck('product_id'))->pluck('id');
         foreach ($cart->items as $item) {
+            if ($item->product) {
+                $item->setAttribute('unit_price', $item->product->price);
+            }
             $available = $eligibleIds->contains($item->product_id) && $item->product?->stock > 0;
             $item->setAttribute('available_for_purchase', $available);
             $item->setAttribute('unavailable_reason', $available ? null : 'This listing is unavailable for new purchases. You can remove it from your Bag.');
+        }
+
+        if ($request->expectsJson()) {
+            $data = $request->validate(['item_ids' => ['required', 'array', 'list', 'min:1']]);
+            $ids = app(CommerceInputService::class)->selection($data['item_ids']);
+            $selected = $cart->items->whereIn('id', $ids);
+            if ($selected->count() !== count($ids) || $selected->contains(fn ($item) => ! $item->available_for_purchase)) {
+                return response()->json(['message' => 'One or more selected Shopping Bag items are unavailable.'], 422);
+            }
+            try {
+                app(InventoryService::class)->assertCheckoutAvailability($selected, $selected->pluck('product')->keyBy('id'));
+            } catch (RuntimeException $exception) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+
+            return response()->json(['quote' => app(CheckoutQuoteService::class)->quote($selected)]);
         }
 
         // Default sort: Most recent product added/updated is the first row
@@ -63,6 +86,7 @@ class CartController extends Controller
             'cart' => $cart,
             'items' => $items,
             'total' => $cart->total,
+            'quote' => app(CheckoutQuoteService::class)->quote($items->where('available_for_purchase', true)->take(1)),
         ]);
     }
 
@@ -84,7 +108,7 @@ class CartController extends Controller
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             try {
                 $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']], $request->user() ? [$request->user()->id] : [])->get($validated['product_id']);
-            } catch (\RuntimeException $exception) {
+            } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages(['product_id' => $exception->getMessage()]);
             }
             if ($request->user()) {
@@ -126,7 +150,7 @@ class CartController extends Controller
                 ->firstOrFail();
             try {
                 $product = app(ShopEligibilityService::class)->lockSaleProducts([$lockedItem->product_id], $request->user() ? [$request->user()->id] : [])->get($lockedItem->product_id);
-            } catch (\RuntimeException $exception) {
+            } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
             }
             if ($request->user()) {
@@ -149,7 +173,7 @@ class CartController extends Controller
                     $lockedItem->size,
                     $lockedItem->id
                 );
-            } catch (\RuntimeException $exception) {
+            } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
             }
 
