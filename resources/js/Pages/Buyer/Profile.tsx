@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerLayout from '@/Layouts/BuyerLayout';
-import { buyerOrderStages } from '@/utils/orderWorkspace';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
@@ -574,29 +574,14 @@ export default function BuyerProfile({
                         {/* TAB 1: MY PURCHASES & ORDERS (DEFAULT ACTIVE TAB) */}
                         {activeTab === 'orders' && (
                             <div className="space-y-4">
-                                <div className="flex justify-end"><button type="button" disabled={orderBusy || receiptPending !== null} onClick={() => loadOrderPage(orders.current_page > 1 ? `${route('buyer.profile')}?page=${orders.current_page}` : route('buyer.profile'), { tab: 'orders', order_status: currentOrderStatus })} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{orderBusy ? 'Refreshing…' : 'Refresh tracking'}</button></div>
-                                
-                                {/* Status Filter Strip */}
-                                <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-sans text-xs">
-                                    {buyerOrderStages.map((tab) => {
-                                        const isActive = selectedOrderStatus === tab.id;
-                                        return (
-                                            <button
-                                                key={tab.id}
-                                                type="button"
-                                                disabled={orderBusy || receiptPending !== null}
-                                                onClick={() => loadOrderPage(route('buyer.profile'), { tab: 'orders', order_status: tab.id })}
-                                                className={`flex-1 py-2 px-3 rounded-xl font-bold uppercase transition text-center whitespace-nowrap text-xs ${
-                                                    isActive
-                                                        ? 'bg-[#E00D42] text-white shadow-xs'
-                                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                {tab.label} ({orderCounts[tab.id] ?? 0})
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                <BuyerOrderFilters
+                                    selected={selectedOrderStatus}
+                                    counts={orderCounts}
+                                    disabled={orderBusy || receiptPending !== null}
+                                    refreshing={orderBusy}
+                                    onChange={status => loadOrderPage(route('buyer.profile'), { tab: 'orders', order_status: status })}
+                                    onRefresh={() => loadOrderPage(orders.current_page > 1 ? `${route('buyer.profile')}?page=${orders.current_page}` : route('buyer.profile'), { tab: 'orders', order_status: currentOrderStatus })}
+                                />
 
                                 {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                                 {orderBusy && <p role="status" className="text-xs text-slate-500">Loading orders…</p>}
