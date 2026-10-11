@@ -15,6 +15,7 @@ use App\Models\ProductModerationDecision;
 use App\Models\RestrictionDecision;
 use App\Models\ShopReviewDecision;
 use App\Models\User;
+use App\Models\VoucherCampaignAction;
 use App\Services\ExceptionOversightService;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,7 +25,14 @@ class GovernanceNoticeService
 
     public function record(Model $event): void
     {
-        if ($event instanceof KycDecision) {
+        if ($event instanceof VoucherCampaignAction && in_array($event->action, ['suspend', 'reinstate'], true)) {
+            $sellerId = $event->voucher?->shop?->user_id;
+            if ($sellerId) {
+                $this->send($event, 'voucher_campaign', [$sellerId => 'seller-vouchers'],
+                    $event->action === 'suspend' ? 'Your voucher campaign was suspended' : 'Your voucher campaign suspension was cleared',
+                    'Campaign '.$event->voucher->code.': '.$event->reason.'. Placed orders keep their original savings.');
+            }
+        } elseif ($event instanceof KycDecision) {
             $this->send($event, 'kyc_review', [$event->user_id => 'account-status'],
                 $event->decision === 'approved' ? 'Your application review was approved' : 'Your application needs a correction',
                 'Open your account status for the review outcome and permitted next steps. Activity and resource eligibility still apply.');

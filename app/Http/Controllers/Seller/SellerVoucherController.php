@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
-use App\Models\Shop;
+use App\Http\Controllers\HandlesVoucherCampaignWrites;
 use App\Models\Voucher;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherCampaignService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,105 +14,64 @@ use Inertia\Response;
 
 class SellerVoucherController extends Controller
 {
-    use HasSellerShop;
+    use HandlesVoucherCampaignWrites, HasSellerShop;
 
-    private function getShop(Request $request): Shop
+    public function index(Request $request, VoucherCampaignService $campaigns): Response
     {
-        return $this->getActiveShop($request);
+        $shop = $this->getActiveShop($request);
+
+        return Inertia::render('Seller/Vouchers', [...$campaigns->listing($request->user(), $shop), 'shop' => $shop]);
     }
 
-    public function index(Request $request): Response
+    public function show(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): Response
     {
-        $shop = $this->getShop($request);
-        $vouchers = Voucher::where('shop_id', $shop->id)
-            ->latest()
-            ->paginate(15);
-
-        return Inertia::render('Seller/Vouchers', [
-            'vouchers' => $vouchers,
-            'shop' => $shop,
-        ]);
+        return Inertia::render('Seller/VoucherHistory', [...$campaigns->detail($request->user(), $voucher, $this->getActiveShop($request)),
+            'backUrl' => $request->is('seller/*') ? '/seller/vouchers' : '/vouchers']);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, VoucherCampaignService $campaigns): RedirectResponse
     {
-        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->storeInShop($request));
+        return $this->campaignWrite($request, fn () => app(ShopEligibilityService::class)->mutate($request, function () use ($request, $campaigns) {
+            $campaigns->saveDraft($request->user(), $request->all(), shop: $this->getActiveShop($request));
+
+            return back()->with('success', 'Voucher draft saved. Review the terms before publishing.');
+        }));
     }
 
-    private function storeInShop(Request $request): RedirectResponse
+    public function update(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
-        $shop = $this->getShop($request);
+        return $this->campaignWrite($request, fn () => app(ShopEligibilityService::class)->mutate($request, function () use ($request, $voucher, $campaigns) {
+            $campaigns->saveDraft($request->user(), $request->all(), $voucher, $this->getActiveShop($request));
 
-        $validated = $request->validate([
-            'code' => 'required|string|max:30|unique:vouchers,code',
-            'name' => 'required|string|max:100',
-            'description' => 'nullable|string|max:255',
-            'discount_type' => 'required|in:fixed,percent',
-            'discount_value' => 'required|numeric|min:1',
-            'min_spend' => 'required|numeric|min:0',
-            'max_discount' => 'nullable|numeric|min:1',
-            'usage_limit' => 'nullable|integer|min:1',
-            'expires_at' => 'nullable|date|after:today',
-        ]);
-
-        Voucher::create([
-            ...$validated,
-            'code' => strtoupper(trim($validated['code'])),
-            'shop_id' => $shop->id,
-            'issuer_type' => 'shop',
-            'is_active' => false,
-            'used_count' => 0,
-        ]);
-
-        return back()->with('success', "Voucher draft '{$validated['code']}' saved. Funding and usage limits need review before publication.");
+            return back()->with('success', 'Revised draft saved. Published terms and placed orders keep their history.');
+        }));
     }
 
-    public function toggle(Request $request, Voucher $voucher): RedirectResponse
+    public function action(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
-        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->toggleInShop($request, $voucher));
+        return $this->campaignWrite($request, fn () => app(ShopEligibilityService::class)->mutate($request, function () use ($request, $voucher, $campaigns) {
+            $campaigns->act($request->user(), $voucher, $request->all(), $this->getActiveShop($request));
+
+            return back()->with('success', 'Campaign change recorded. Placed orders keep their original savings.');
+        }));
     }
 
-    private function toggleInShop(Request $request, Voucher $voucher): RedirectResponse
+    public function toggle(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
-        $shop = $this->getShop($request);
-
-        if ($voucher->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
-            abort(403);
-        }
-
+        $shop = $this->getActiveShop($request);
+        abort_unless($voucher->shop_id === $shop->id, 403);
         if ($voucher->archived_at || ! $voucher->current_revision_id) {
-            return back()->with('error', 'This voucher needs reviewed funding and limits before it can be activated.');
+            return back()->with('error', 'Save complete funded draft terms before publishing a campaign.');
         }
+        $request->merge(['action' => $voucher->is_active ? 'pause' : 'resume']);
 
-        $voucher->update([
-            'is_active' => ! $voucher->is_active,
-        ]);
-
-        $status = $voucher->is_active ? 'activated' : 'deactivated';
-
-        return back()->with('success', "Voucher '{$voucher->code}' has been {$status}.");
+        return $this->action($request, $voucher, $campaigns);
     }
 
-    public function destroy(Request $request, Voucher $voucher): RedirectResponse
+    public function destroy(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
-        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->destroyInShop($request, $voucher));
-    }
+        $request->merge(['action' => 'archive']);
 
-    private function destroyInShop(Request $request, Voucher $voucher): RedirectResponse
-    {
-        $shop = $this->getShop($request);
-
-        if ($voucher->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
-            abort(403);
-        }
-
-        if ($voucher->current_revision_id || $voucher->used_count > 0 || $voucher->archived_at) {
-            $voucher->update(['is_active' => false, 'archived_at' => $voucher->archived_at ?? now()]);
-
-            return back()->with('success', "Voucher '{$voucher->code}' archived; its history is retained.");
-        }
-        $voucher->delete();
-
-        return back()->with('success', "Voucher '{$voucher->code}' removed.");
+        return $this->action($request, $voucher, $campaigns);
     }
 }

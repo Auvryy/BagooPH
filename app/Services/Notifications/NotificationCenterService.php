@@ -123,6 +123,9 @@ class NotificationCenterService
         if ($target === 'seller-products' && $user->isSeller() && $user->canAccessPortal()) {
             return '/seller/products';
         }
+        if ($target === 'seller-vouchers' && $user->isSeller() && $user->canAccessPortal()) {
+            return '/seller/vouchers';
+        }
         try {
             if ($target === 'seller-settlement') {
                 app(SellerSettlementService::class)->scoped($user)->whereKey((int) ($data['order_id'] ?? 0))->firstOrFail();

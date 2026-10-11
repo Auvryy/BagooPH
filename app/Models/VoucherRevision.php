@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -60,6 +61,16 @@ class VoucherRevision extends VoucherEvidence
     public function balance(): HasOne
     {
         return $this->hasOne(VoucherRevisionBalance::class);
+    }
+
+    public function budgetIncreases(): HasMany
+    {
+        return $this->hasMany(VoucherCampaignAction::class)->where('action', 'budget_increased');
+    }
+
+    public function approvedBudget(): int
+    {
+        return $this->budget_cents + (int) ($this->budget_increases_sum_budget_increase_cents ?? $this->budgetIncreases()->sum('budget_increase_cents'));
     }
 
     public function terms(): array

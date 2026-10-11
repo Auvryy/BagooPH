@@ -89,7 +89,7 @@ class CheckoutQuoteService
                 break;
             }
             $balance = $revision->balance;
-            if ($amount > $revision->budget_cents - $balance->committed_cents - $balance->spent_cents) {
+            if ($amount > $revision->approvedBudget() - $balance->committed_cents - $balance->spent_cents) {
                 $reason = 'This voucher has reached its available funding limit.';
                 break;
             }
@@ -140,11 +140,11 @@ class CheckoutQuoteService
 
     public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24, ?User $buyer = null, ?Collection $selected = null): array
     {
-        $query = VoucherRevision::with(['voucher', 'shop:id,name', 'balance'])
+        $query = VoucherRevision::with(['voucher', 'shop:id,name', 'balance'])->withSum('budgetIncreases', 'budget_increase_cents')
             ->whereHas('voucher', fn (Builder $q) => $q->where('is_active', true)->whereNull('archived_at')->whereColumn('current_revision_id', 'voucher_revisions.id'))
             ->where('starts_at', '<=', now())->where('ends_at', '>', now())
             ->whereHas('balance', fn (Builder $q) => $q->whereColumn('redemption_count', '<', 'voucher_revisions.global_limit')
-                ->whereRaw('committed_cents + spent_cents < voucher_revisions.budget_cents'))
+                ->whereRaw("committed_cents + spent_cents < voucher_revisions.budget_cents + coalesce((select sum(budget_increase_cents) from voucher_campaign_actions where voucher_revision_id = voucher_revisions.id and action = 'budget_increased'), 0)"))
             ->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereHas('shop', fn (Builder $shop) => $shop->eligible()));
         if ($items !== null) {
             $query->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereIn('shop_id', $items->pluck('product.shop_id')->unique()));
