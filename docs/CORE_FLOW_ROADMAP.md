@@ -3321,3 +3321,86 @@ Scoped assessment: **department discovery consistency 5/10 -> 8.5/10**; seeded
 and manually created products follow the same approved category tree. Existing
 older shops without approval still need their documented review or reserved
 fixture repair, as described in [deployment guidance](WEB_AUTH_DEPLOYMENT.md).
+
+### October 11, 2026: V02 voucher redemptions, funding and stacking
+
+Implemented [V02](voucher-plan/02-redemptions-and-funding.md) on
+`feat/voucher-redemption-foundation`, after V01 was merged. Immutable campaign
+revisions retain the explicit shop/platform issuer, payer, creator, period,
+money terms, finite budget and global/per-buyer limits. Buyer bookmarks are
+unique and removable without reserving funding or quota; new saving controls
+remain V04 work.
+
+[VoucherSelectionService](../app/Services/Orders/VoucherSelectionService.php)
+validates one product offer per selected shop and one Bagoo product or shipping
+offer. Sorted selections enter a versioned checkout fingerprint. Shop discounts
+run first; platform product percentages use remaining merchandise, while
+qualification uses original eligible merchandise without shipping. Integer
+cents and deterministic allocation retain exact order totals, actual fee
+reductions and each order/parcel's payer. Offer cards calculate their own saving
+alongside the other selected slots.
+
+Final checkout locks campaigns and balances in consistent ID order after its
+existing owned Bag and product locks. Per-buyer uses are checked while holding
+the same campaign balance lock. Orders, stock, redemptions, commitments, usage
+counters and confirmation links persist atomically, backed by unique
+constraints. Each campaign consumes one use per checkout, including multi-shop
+allocations. Original results survive expiry, pause and exhaustion; altered
+input stays rejected. Version-one confirmations retain their original result.
+
+[VoucherFundingService](../app/Services/Vouchers/VoucherFundingService.php) records
+append-only commitments, payment expenses and cancellation releases. Settlement
+retains the original 10% commission and 90% gross seller share, with separate
+promotional costs and a visible net payout. The documented example remains
+PHP 1,000 products + PHP 50 shipping - PHP 100 shop - PHP 50 Bagoo = PHP 900 COD,
+split into PHP 800 net seller, PHP 50 net platform and PHP 50 separate shipping.
+Shop offers cannot create a negative seller payout; a funded platform subsidy
+may exceed commission without inventing logistics income. Buyer confirmation,
+original COD reconciliation, admin authority and private payment evidence remain
+required. Expenses and payment evidence roll back together.
+
+Authorized seller cancellation before custody releases only the cancelled
+allocation's unspent commitment, once, without restoring use counters or
+redistributing discounts to sibling orders. Claimed parcels, physical returns
+and failed delivery do not authorize that release or a cash refund. Buyers see
+this policy at checkout. Gross/net amounts also appear in settlement lists,
+detail and financial oversight evidence, using existing portal styling.
+
+The additive migration preserves original totals, legacy voucher references,
+usage baselines and paid settlements. Existing campaigns become archived with
+unknown funding; no buyer history or payer is fabricated. Old paid records
+remain evidenced at their recorded amount; zero-discount authorizations can
+still record payment. Unfunded historical discounts require review before a new
+seller release. New seller offers are clearly drafts until V03 supplies reviewed
+publication. Published/history records are archived instead of deleted.
+
+Verification:
+
+- **876 isolated SQLite memory tests / 20,805 assertions passed** across buyer,
+  seller, finance, seeders and selected lifecycle/combination suites. Coverage
+  includes budget and quota boundaries, ownership, stacking and cent allocation,
+  first-use uniqueness, storage-failure rollback, expired replay, partial
+  cancellation, expense rollback and legacy migration.
+- **75 frontend checks passed** across buyer vouchers/profile, commerce,
+  finance and order tracking. The nine finance checks were rerun successfully
+  after adding net amounts to the read-only evidence view.
+- PHP style checks, `git diff --check`, and the TypeScript/Vite production build
+  passed. No browser/device or production concurrency tests were performed.
+- Applied only the new migration to confirmed local PostgreSQL. Read-only
+  before/after checks retained **9 verified demo accounts, 17 products and 3
+  orders**, with matching original stock/prices, order amounts/references and
+  usage fingerprints. There were no local settlement records to migrate;
+  historical settlement preservation is established by isolated tests. No reset,
+  reseeding, Azure migration or deployment occurred. This operational migration
+  does not establish PostgreSQL concurrency behavior.
+
+Scoped assessment: **V02 funding and redemption integrity 3/10 -> 8/10**.
+Discounts now have accountable payers, exact allocations, finite spending/use
+limits and evidenced net seller amounts. This does not rate the complete voucher
+experience or the whole buyer/seller flows. V03 campaign publication, V04 saving
+and richer selection, PostgreSQL concurrency checks and post-custody refund
+policy remain separate work.
+
+Implementation commits: `c427981 feat(vouchers): retain immutable campaign and funding records`,
+`cbaa289 feat(checkout): allocate funded shop and platform vouchers`, and
+`67fca1e feat(vouchers): show stacked savings and funded net proceeds`.
