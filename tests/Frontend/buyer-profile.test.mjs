@@ -59,6 +59,28 @@ function nodes(node, predicate) {
     return found.concat([node.props?.children].flat(Infinity).flatMap(child => nodes(child, predicate)));
 }
 
+test('an empty offers panel is centered and its badge reflects actual records', async () => {
+    const html = await render({ initialTab: 'vouchers', availableVouchers: [], availableVoucherCount: 0 });
+    assert.match(html, /0 Available/);
+    assert.match(html, /flex min-h-48 flex-1 flex-col items-center justify-center/);
+    assert.match(html, /No available offers/);
+    assert.doesNotMatch(html, /3 Available|WELCOME100|FREESHIP60|Claimed Vouchers|READY AT CHECKOUT/);
+});
+
+test('the profile displays genuine available offers and an honest cap without claiming they are saved', async () => {
+    const html = await render({ initialTab: 'vouchers', availableVoucherCount: 1, availableVouchers: [{
+        id: 1, code: 'BAGOO_SHIP', name: 'Bagoo shipping offer', description: 'For eligible deliveries.',
+        discount_type: 'free_shipping', discount_value: 75, min_spend: 500, max_discount: 30,
+        shop_id: null, shop_name: null, issuer: 'platform', expires_at: null,
+    }] });
+    assert.match(html, /1 Available/);
+    assert.match(html, /Available Offers/);
+    assert.match(html, /BAGOO_SHIP/);
+    assert.match(html, /Shipping discount up to ₱30\.00/);
+    assert.match(html, /Minimum spend ₱500\.00/);
+    assert.doesNotMatch(html, /Claimed|100% OFF SHIPPING|Automatically|WELCOME100|FREESHIP60/);
+});
+
 test('purchase progress stays in five buttons and Order issues sits directly below purchases in the sidebar', async () => {
     const html = await render();
     const nav = html.match(/<nav aria-label="Purchase status"[\s\S]*?<\/nav>/)[0];

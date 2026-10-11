@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import usePurchaseQuote, { PurchaseQuote } from '@/hooks/usePurchaseQuote';
 import { Cart, CartItem, PageProps } from '@/types';
 import { 
     ShoppingBag, 
@@ -25,9 +26,10 @@ interface Props {
     cart: Cart;
     items: CartItem[];
     total: number;
+    quote?: PurchaseQuote;
 }
 
-export default function CartIndex({ cart, items, total }: Props) {
+export default function CartIndex({ cart, items, quote: initialQuote }: Props) {
     // Determine the most recently added or updated product in the bag
     const getMostRecentItemId = (itemList: CartItem[]): number | null => {
         if (!itemList || itemList.length === 0) return null;
@@ -59,6 +61,7 @@ export default function CartIndex({ cart, items, total }: Props) {
         Object.fromEntries(items.map((item) => [item.id, String(item.quantity)]))
     );
     const [quantityErrors, setQuantityErrors] = useState<Record<number, string>>({});
+    const [quantityUpdates, setQuantityUpdates] = useState(0);
     const { auth } = usePage<PageProps>().props;
 
     useEffect(() => {
@@ -173,8 +176,10 @@ export default function CartIndex({ cart, items, total }: Props) {
         setQuantityErrors((current) => ({ ...current, [item.id]: '' }));
         if (newQty === item.quantity) return;
 
+        setQuantityUpdates(current => current + 1);
         router.patch(route('cart.update', item.id), { quantity: newQty }, {
             preserveScroll: true,
+            onFinish: () => setQuantityUpdates(current => Math.max(0, current - 1)),
             onError: (errors) => {
                 setQuantityDrafts((current) => ({ ...current, [item.id]: String(item.quantity) }));
                 setQuantityErrors((current) => ({
@@ -220,9 +225,15 @@ export default function CartIndex({ cart, items, total }: Props) {
     };
 
     const selectedItems = selectableItems.filter(item => selectedIds.includes(item.id));
-    const subtotal = selectedItems.reduce((sum, item) => sum + (Number(item.unit_price) * item.quantity), 0);
-    const shipping = selectedItems.length === 0 ? 0 : (subtotal > 1500 ? 0 : (subtotal > 0 ? 50 : 0));
-    const grandTotal = Math.max(0, subtotal + shipping);
+    const pricing = usePurchaseQuote({
+        item_ids: selectedIds,
+        bag: true,
+        revision: JSON.stringify([quantityUpdates, items.map(item => [item.id, item.quantity, item.product?.price, item.available_for_purchase])]),
+    }, initialQuote);
+    const subtotal = pricing.quote.subtotal;
+    const quotedItems = new Map(pricing.quote.items.map(item => [item.id, item]));
+    const shipping = pricing.quote.shipping_fee;
+    const grandTotal = pricing.quote.total;
 
     const formatPrice = (amount?: number | string | null) => {
         const numeric = Number(amount || 0);
@@ -232,6 +243,8 @@ export default function CartIndex({ cart, items, total }: Props) {
             minimumFractionDigits: 2,
         }).format(numeric);
     };
+
+    const quotePrice = (amount: number) => pricing.pending || quantityUpdates > 0 ? 'Updating…' : pricing.failure ? 'Unavailable' : formatPrice(amount);
 
     return (
         <BuyerLayout>
@@ -435,7 +448,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                         </div>
                                                         <div className="flex items-center gap-2 text-xs font-sans">
                                                             <span className="font-black text-[#E00D42]">
-                                                                {formatPrice(item.unit_price)}
+                                                                {selectedIds.includes(item.id) ? quotePrice(quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)) : formatPrice(item.unit_price)}
                                                             </span>
                                                             <span className="text-slate-400">•</span>
                                                             <span className="text-slate-500 text-[11px]">
@@ -495,7 +508,7 @@ export default function CartIndex({ cart, items, total }: Props) {
                                                     </div>
 
                                                     <span className="font-bold text-slate-900 min-w-[80px] text-right">
-                                                        {formatPrice(Number(item.unit_price) * item.quantity)}
+                                                        {selectedIds.includes(item.id) ? quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.unit_price) * item.quantity) : formatPrice(Number(item.unit_price) * item.quantity)}
                                                     </span>
 
                                                     <button
@@ -524,13 +537,13 @@ export default function CartIndex({ cart, items, total }: Props) {
                                 <div className="space-y-2 text-slate-600">
                                     <div className="flex justify-between">
                                         <span>Merchandise Subtotal ({selectedItems.length} selected):</span>
-                                        <span className="font-bold text-slate-900">{formatPrice(subtotal)}</span>
+                                        <span className="font-bold text-slate-900">{quotePrice(subtotal)}</span>
                                     </div>
 
                                     <div className="flex justify-between">
                                         <span>Courier Shipping Fee:</span>
                                         <span className={shipping === 0 ? 'text-emerald-600 font-bold' : 'font-bold text-slate-900'}>
-                                            {shipping === 0 ? 'FREE' : formatPrice(shipping)}
+                                            {quotePrice(shipping)}
                                         </span>
                                     </div>
                                 </div>
@@ -538,10 +551,13 @@ export default function CartIndex({ cart, items, total }: Props) {
                                 <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
                                     <span className="font-bold text-slate-900">Total Payment:</span>
                                     <span className="text-xl font-black text-[#E00D42] font-sans">
-                                        {formatPrice(grandTotal)}
+                                        {quotePrice(grandTotal)}
                                     </span>
                                 </div>
 
+                                {selectedIds.length > 0 && <p role="status" aria-live="polite" className="text-xs text-slate-600">
+                                    {pricing.pending || quantityUpdates > 0 ? 'Updating selected items and per-shop shipping…' : pricing.failure || 'Shipping is calculated separately for each shop.'}
+                                </p>}
                                 {selectedIds.length === 0 ? (
                                     <button
                                         type="button"
@@ -586,6 +602,10 @@ export default function CartIndex({ cart, items, total }: Props) {
                                             <span>Verify ID to Continue ({selectedIds.length})</span>
                                         </button>
                                     </>
+                                ) : !pricing.ready || quantityUpdates > 0 ? (
+                                    <button type="button" disabled className="w-full rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-500">
+                                        {pricing.pending || quantityUpdates > 0 ? 'Updating total…' : 'Total unavailable'}
+                                    </button>
                                 ) : (
                                     <Link
                                         href={route('checkout.index', { items: selectedIds.join(',') })}
