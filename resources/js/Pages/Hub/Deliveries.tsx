@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Package, 
     Search, 
@@ -27,7 +28,7 @@ interface DeliveryItem {
     shipping_city: string;
     status: string;
     delivery_type: string;
-    destination_bin: string;
+    destination_bin: string | null;
     current_hub: string;
     awaiting_origin_intake: boolean;
     destination_hub: string;
@@ -37,6 +38,7 @@ interface DeliveryItem {
     item_count: number;
     items: Array<{ name: string; quantity: number }>;
     created_at: string;
+    guidance: ParcelGuidance;
 }
 
 interface Props {
@@ -62,7 +64,7 @@ interface Props {
         in_hub: number;
         out_for_delivery: number;
         ready_pickup: number;
-        completed: number;
+        handovers_today: number;
     };
     filters: {
         search: string;
@@ -75,19 +77,22 @@ interface Props {
         assigned_barangay: string | null;
         vehicle_type: string;
     }>;
+    basePath: string;
+    canScan: boolean;
 }
 
-export default function HubDeliveries({ activeHub, deliveries, counts, filters, eligibleRiders }: Props) {
+export default function HubDeliveries({ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedRiders, setSelectedRiders] = useState<Record<number, string>>({});
 
     const handleFilter = (status?: string, deliveryType?: string, search?: string) => {
         router.get(
-            route('hub.deliveries'),
+            `${basePath}/deliveries`,
             {
                 status: status !== undefined ? status : filters.status,
                 delivery_type: deliveryType !== undefined ? deliveryType : filters.delivery_type,
                 search: search !== undefined ? search : searchTerm,
+                hub_id: activeHub?.id,
             },
             { preserveState: true, preserveScroll: true }
         );
@@ -99,8 +104,10 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
     };
 
     const sortParcel = (delivery: DeliveryItem) => {
-        router.post(route('hub.sort'), {
+        if (!delivery.guidance.can_act || delivery.guidance.action !== 'sort') return;
+        router.post(`${basePath}/sort`, {
             delivery_id: delivery.id,
+            hub_id: activeHub?.id,
             barangay: delivery.destination_barangay,
             bin: delivery.destination_bin,
         }, { preserveScroll: true });
@@ -108,76 +115,41 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
 
     const assignRider = (delivery: DeliveryItem) => {
         const riderId = selectedRiders[delivery.id];
-        if (!riderId) return;
+        if (!delivery.guidance.can_act || delivery.guidance.action !== 'assign' || !delivery.guidance.eligible_rider_ids.includes(Number(riderId))) return;
 
-        router.post(route('hub.assignRider', delivery.id), {
+        router.post(`${basePath}/deliveries/${delivery.id}/assign-rider`, {
             rider_id: Number(riderId),
+            hub_id: activeHub?.id,
         }, { preserveScroll: true });
-    };
-
-    const getStatusPill = (status: string) => {
-        if (status === 'picked_up') {
-            return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-amber-50 text-amber-700 border border-amber-300">
-                    Awaiting origin intake
-                </span>
-            );
-        }
-
-        if (status === 'delivered' || status === 'customer_collected') {
-            return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-emerald-50 text-emerald-700 border border-emerald-300">
-                    {status.replace(/_/g, ' ')}
-                </span>
-            );
-        }
-        if (status === 'out_for_delivery') {
-            return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-amber-50 text-amber-700 border border-amber-300">
-                    Out for Delivery
-                </span>
-            );
-        }
-        if (status.includes('ready_for_hub_pickup') || status.includes('arrived_at_destination_hub')) {
-            return (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]">
-                    At Local Hub
-                </span>
-            );
-        }
-        return (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans bg-slate-100 text-slate-700 border border-slate-200">
-                {status.replace(/_/g, ' ')}
-            </span>
-        );
     };
 
     return (
         <DashboardLayout
             title="Parcels & Waybills"
-            subtitle="Waybill tracking registry & delivery staging bins"
+            subtitle="Current facility queue, recorded custody and next steps"
             actions={
                 <div className="flex items-center gap-2">
-                    <Link
-                        href={route('hub.scan.station')}
+                    {canScan && <Link
+                        href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
                     >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Floor Scanner</span>
-                    </Link>
+                    </Link>}
                 </div>
             }
         >
             <Head title="Parcels & Waybills — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <p className="text-sm text-slate-600">This queue includes parcels recorded at this facility and rider handovers awaiting intake. Today's handovers count distinct parcels released to transport, riders or buyers through retained scans.</p>
                 
                 {/* 1. TOP PARCEL KPI TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Total Tracked</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Facility Queue</span>
                                 <Package className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
@@ -188,65 +160,65 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Registry:</span>
-                            <span className="font-bold text-slate-800">Station Active</span>
+                            <span className="text-slate-500">Scope:</span>
+                            <span className="font-bold text-slate-800">This facility</span>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">In Sorting Hub</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Recorded Hub Custody</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {counts.in_hub}{' '}
-                                    <span className="text-xs font-bold text-slate-400">staged</span>
+                                    <span className="text-xs font-bold text-slate-400">held</span>
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Dock Flow:</span>
-                            <span className="font-bold text-[#E00D42]">Pending Dispatch</span>
+                            <span className="text-slate-500">Source:</span>
+                            <span className="font-bold text-[#E00D42]">Retained checkpoints</span>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Out for Delivery</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Counter Queue</span>
                                 <Truck className="w-3.5 h-3.5 text-amber-600" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {counts.out_for_delivery}{' '}
-                                    <span className="text-xs font-bold text-slate-400">on route</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Last-Mile:</span>
-                            <span className="font-bold text-amber-700">Active Transit</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Delivered / Collected</span>
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {counts.completed}{' '}
+                                    {counts.ready_pickup}{' '}
                                     <span className="text-xs font-bold text-slate-400">parcels</span>
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Success Rate:</span>
-                            <span className="font-bold text-emerald-700">100% Fulfilled</span>
+                            <span className="text-slate-500">Includes:</span>
+                            <span className="font-bold text-amber-700">Arrival and staging</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Recorded Handovers Today</span>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                            <div className="mt-2">
+                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                    {counts.handovers_today}{' '}
+                                    <span className="text-xs font-bold text-slate-400">parcels</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                            <span className="text-slate-500">Period:</span>
+                            <span className="font-bold text-emerald-700">Today, Asia/Manila</span>
                         </div>
                     </div>
                 </div>
@@ -290,17 +262,6 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleFilter('out_for_delivery')}
-                                className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
-                                    filters.status === 'out_for_delivery'
-                                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                OUT FOR DELIVERY ({counts.out_for_delivery})
-                            </button>
-                            <button
-                                type="button"
                                 onClick={() => handleFilter('ready_pickup')}
                                 className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
                                     filters.status === 'ready_pickup'
@@ -308,7 +269,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                         : 'text-slate-500 hover:text-slate-800'
                                 }`}
                             >
-                                SELF-PICKUP ({counts.ready_pickup})
+                                COUNTER QUEUE ({counts.ready_pickup})
                             </button>
                         </div>
 
@@ -334,10 +295,10 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                     <th className="py-2.5 px-3.5">Recipient / Destination</th>
                                     <th className="py-2.5 px-3.5">Delivery Mode</th>
                                     <th className="py-2.5 px-3.5">Sorting Bin</th>
-                                    <th className="py-2.5 px-3.5">Courier / Rider</th>
+                                    <th className="py-2.5 px-3.5">Assigned Delivery Rider</th>
                                     <th className="py-2.5 px-3.5">Order Value</th>
-                                    <th className="py-2.5 px-3.5 text-right">Status</th>
-                                    <th className="py-2.5 px-3.5 text-right">Hub Action</th>
+                                    <th className="py-2.5 px-3.5 ">Parcel Stage / Custody</th>
+                                    <th className="py-2.5 px-3.5 ">Next Step</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 text-xs">
@@ -394,7 +355,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
 
                                             <td className="py-3 px-3.5">
                                                 <span className="font-sans font-bold text-slate-800 px-1.5 py-0.5 rounded-xs bg-slate-100 border border-slate-300 text-[10px] inline-block">
-                                                    {delivery.destination_bin}
+                                                    {delivery.destination_bin ?? 'Not assigned'}
                                                 </span>
                                             </td>
 
@@ -411,12 +372,13 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                 </span>
                                             </td>
 
-                                            <td className="py-3 px-3.5 text-right">
-                                                {getStatusPill(delivery.status)}
+                                            <td className="py-3 px-3.5 min-w-[220px]">
+                                                <HubParcelState guidance={delivery.guidance} />
                                             </td>
 
-                                            <td className="py-3 px-3.5 text-right">
-                                                {delivery.status === 'arrived_at_destination_hub' && delivery.delivery_type === 'doorstep' && (
+                                            <td className="py-3 px-3.5 min-w-[260px] space-y-2">
+                                                <HubParcelNextStep guidance={delivery.guidance} />
+                                                {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
                                                     <button
                                                         type="button"
                                                         onClick={() => sortParcel(delivery)}
@@ -426,7 +388,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                     </button>
                                                 )}
 
-                                                {delivery.status === 'sorted_to_barangay_bin' && delivery.delivery_type === 'doorstep' && (
+                                                {delivery.guidance.can_act && delivery.guidance.action === 'assign' && (
                                                     <div className="flex items-center justify-end gap-1.5 min-w-[260px]">
                                                         <select
                                                             value={selectedRiders[delivery.id] || ''}
@@ -438,7 +400,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                         >
                                                             <option value="">Select area rider</option>
                                                             {eligibleRiders
-                                                                .filter((rider) => !rider.assigned_barangay || rider.assigned_barangay.toLowerCase() === delivery.destination_barangay.toLowerCase())
+                                                                .filter((rider) => delivery.guidance.eligible_rider_ids.includes(rider.id))
                                                                 .map((rider) => (
                                                                     <option key={rider.id} value={rider.id}>
                                                                         {rider.name}{rider.assigned_barangay ? ` — ${rider.assigned_barangay}` : ''}
@@ -447,7 +409,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                         </select>
                                                         <button
                                                             type="button"
-                                                            disabled={!selectedRiders[delivery.id]}
+                                                            disabled={!delivery.guidance.eligible_rider_ids.includes(Number(selectedRiders[delivery.id]))}
                                                             onClick={() => assignRider(delivery)}
                                                             className="px-2.5 py-1.5 rounded-xs bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
                                                         >
@@ -456,9 +418,6 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                     </div>
                                                 )}
 
-                                                {!['arrived_at_destination_hub', 'sorted_to_barangay_bin'].includes(delivery.status) && (
-                                                    <span className="text-[10px] text-slate-400">No action</span>
-                                                )}
                                             </td>
                                         </tr>
                                     ))
