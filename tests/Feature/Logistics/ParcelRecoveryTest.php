@@ -580,15 +580,27 @@ class ParcelRecoveryTest extends TestCase
         $parcel = $parcel->fresh(['order.buyer', 'order.shop.user']);
         $before = $this->snapshot($parcel);
         $label = $parcel->order->status === 'delivery_failed' ? 'Delivery issue' : 'Moving through the hub network';
+        $buyerStarted = now()->timestamp;
         $response = $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertOk()
             ->assertInertia(fn (Assert $page) => $page->where('order.tracking.status_label', $label)
                 ->where('order.tracking.stage_label', $stage)->where('order.tracking.custodian', $holder)
                 ->where('order.tracking.notice', null)->where('order.tracking.responsible', 'Logistics company and assigned handlers')
                 ->missing('order.delivery.latest_custody_checkpoint'));
         $tracking = $response->inertiaProps('order.tracking');
-        $this->actingAs($parcel->order->shop->user)->withSession(['active_seller_shop_id' => $parcel->order->shop->id])
-            ->get('http://localhost/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('orders.data.0.tracking', $tracking));
+        $this->assertGreaterThanOrEqual($buyerStarted, strtotime($tracking['observed_at']));
+        $this->assertLessThanOrEqual(now()->timestamp, strtotime($tracking['observed_at']));
+        $sellerStarted = now()->timestamp;
+        $sellerResponse = $this->actingAs($parcel->order->shop->user)->withSession(['active_seller_shop_id' => $parcel->order->shop->id])
+            ->get('http://localhost/seller/orders')->assertOk()->assertInertia(function (Assert $page) use ($tracking) {
+                foreach ($tracking as $field => $value) {
+                    if ($field !== 'observed_at') {
+                        $page->where('orders.data.0.tracking.'.$field, $value);
+                    }
+                }
+            });
+        $sellerObserved = strtotime($sellerResponse->inertiaProps('orders.data.0.tracking.observed_at'));
+        $this->assertGreaterThanOrEqual($sellerStarted, $sellerObserved);
+        $this->assertLessThanOrEqual(now()->timestamp, $sellerObserved);
         $this->assertSame($before, $this->snapshot($parcel));
         $this->actingAs($previousActor);
     }
