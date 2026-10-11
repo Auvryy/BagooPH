@@ -56,7 +56,8 @@ class HubParcelWorkstationService
             'all' => $query,
             'in_hub' => $query->where('current_hub_id', $hub?->id ?? 0)->whereNotIn('status', self::TERMINAL)
                 ->whereHas('latestCustodyCheckpoint', fn ($checkpoint) => $checkpoint->where('custody_after->kind', 'hub')->where('custody_after->hub_id', $hub?->id ?? 0)),
-            'ready_pickup' => $query->where('delivery_type', 'hub_self_pickup')->whereIn('status', ['arrived_at_destination_hub', 'ready_for_hub_pickup']),
+            'ready_pickup' => $query->where('delivery_type', 'hub_self_pickup')->where('destination_bayan_hub_id', $hub?->id ?? 0)
+                ->whereIn('status', ['arrived_at_destination_hub', 'ready_for_hub_pickup']),
             default => $query->whereRaw('deliveries.status = ?', [$status]),
         };
     }

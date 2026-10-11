@@ -185,6 +185,21 @@ class HubParcelWorkstationTest extends TestCase
         $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page->where('counterCounts.shown', 0));
     }
 
+    public function test_a_stale_pickup_label_cannot_put_another_facility_parcel_in_the_counter_group(): void
+    {
+        $parcel = $this->selfPickup(true);
+        $origin = LogisticsHub::findOrFail($parcel->origin_bayan_hub_id);
+        // Invalid legacy location: retain the destination checkpoint rather than inventing a receipt at the origin.
+        $parcel->update(['current_hub_id' => $origin->id]);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($this->flowHandler($origin))->get('/hub/deliveries?hub_id='.$origin->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counts.all', 1)->where('counts.ready_pickup', 0)->where('deliveries.data.0.guidance.can_act', false));
+        $this->get('/hub/deliveries?hub_id='.$origin->id.'&status=ready_pickup')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('deliveries.total', 0)->where('counts.ready_pickup', 0));
+        $this->get('/hub/counter?hub_id='.$origin->id)->assertOk()->assertInertia(fn (Assert $page) => $page->where('counterCounts.shown', 0));
+        $this->assertSame($before, $this->snapshot($parcel));
+    }
+
     public function test_locked_counter_claim_and_natural_expiry_are_read_only_blockers(): void
     {
         $parcel = $this->selfPickup(true);
