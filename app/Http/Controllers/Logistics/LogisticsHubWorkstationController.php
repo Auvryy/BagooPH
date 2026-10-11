@@ -695,6 +695,8 @@ class LogisticsHubWorkstationController extends Controller
             ->where('status', OrderStateMachineService::STATUS_CUSTOMER_COLLECTED)
             ->whereHas('pickupClaim', fn ($claim) => $claim->where('status', 'collected')->whereNotNull('consumed_at'))
             ->with('pickupClaim')
+            ->withMax('pickupClaim', 'consumed_at')
+            ->orderByDesc('pickup_claim_max_consumed_at')
             ->latest('id')
             ->limit(25)
             ->get()

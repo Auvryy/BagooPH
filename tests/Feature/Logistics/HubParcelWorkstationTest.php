@@ -290,6 +290,29 @@ class HubParcelWorkstationTest extends TestCase
             ->has('recentlyCollected', 1)->where('recentlyCollected.0.id', $parcel->id));
     }
 
+    #[DataProvider('portals')]
+    public function test_recent_collections_follow_actual_handover_time_instead_of_parcel_creation(string $base): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 11)->setTime(8, 0));
+        $older = $this->selfPickup(true);
+        $this->travel(1)->hours();
+        $newer = $this->selfPickup(true);
+        $hub = LogisticsHub::findOrFail($older->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        foreach ([$newer, $older] as $parcel) {
+            $code = $this->actingAs($parcel->order->buyer)->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertOk()->json('code');
+            $this->actingAs($handler)->postJson($base.'/release', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id,
+                'claim_code' => $code, 'buyer_id' => $parcel->order->buyer_id, 'recipient_name' => $parcel->order->buyer->name,
+                'identity_confirmed' => true, 'request_token' => (string) Str::uuid(), 'cash_received' => (string) $parcel->order->total_amount,
+                'change_given' => '0', 'cash_confirmed' => true])->assertOk();
+            $this->travel(1)->minutes();
+        }
+        $this->assertGreaterThan($older->id, $newer->id);
+        $this->assertTrue($older->fresh()->pickupClaim->consumed_at->greaterThan($newer->fresh()->pickupClaim->consumed_at));
+        $this->actingAs($handler)->get($base.'/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('recentlyCollected', 2)->where('recentlyCollected.0.id', $older->id)->where('recentlyCollected.1.id', $newer->id));
+    }
+
     private function selfPickup(bool $stage): Delivery
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));
