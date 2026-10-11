@@ -1,0 +1,35 @@
+@media (min-width: 1024px) {
+    .buyer-profile-workspace {
+        height: var(--buyer-profile-height, calc(100dvh - 16rem));
+        min-height: 20rem;
+        align-items: stretch;
+    }
+
+    .buyer-profile-sidebar,
+    .buyer-profile-scroll {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    .buyer-profile-sidebar {
+        height: 100%;
+    }
+
+    .buyer-profile-content,
+    .buyer-profile-orders {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+    }
+
+    .buyer-profile-orders,
+    .buyer-profile-scroll {
+        flex: 1;
+    }
+
+    .buyer-profile-scroll:not(.buyer-profile-card-scroll) {
+        padding: 2px 4px 4px;
+    }
+}

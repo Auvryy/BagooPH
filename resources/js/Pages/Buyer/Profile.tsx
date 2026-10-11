@@ -8,6 +8,8 @@ import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
+import { setupBuyerProfileWorkspace } from '@/utils/buyerProfileWorkspace';
+import '../../../css/buyer-profile.css';
 import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
     User as UserIcon, 
@@ -117,6 +119,18 @@ export default function BuyerProfile({
     });
 
     const selectedOrderStatus = currentOrderStatus;
+    const workspaceRef = useRef<HTMLDivElement>(null);
+    const orderScrollRef = useRef<HTMLDivElement>(null);
+    const accountScrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (workspaceRef.current) return setupBuyerProfileWorkspace(workspaceRef.current);
+    }, []);
+    useEffect(() => {
+        if (orderScrollRef.current) orderScrollRef.current.scrollTop = 0;
+    }, [selectedOrderStatus, orders.current_page]);
+    useEffect(() => {
+        if (accountScrollRef.current) accountScrollRef.current.scrollTop = 0;
+    }, [activeTab]);
     const [orderBusy, setOrderBusy] = useState(false);
     const [orderActionError, setOrderActionError] = useState('');
     const [receiptPending, setReceiptPending] = useState<number | null>(null);
@@ -456,10 +470,10 @@ export default function BuyerProfile({
                 />
 
                 {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div ref={workspaceRef} className="buyer-profile-workspace grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     {/* LEFT SIDEBAR NAVIGATION */}
-                    <div className="lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-5">
+                    <div data-buyer-profile-scroll scroll-region="" className="buyer-profile-sidebar lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-5">
                         
                         {/* User Identity Mini Card */}
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3.5">
@@ -569,11 +583,11 @@ export default function BuyerProfile({
                     </div>
 
                     {/* RIGHT CONTENT WORKSPACE */}
-                    <div className="lg:col-span-8 space-y-6">
+                    <div className="buyer-profile-content min-w-0 lg:col-span-8">
                         
                         {/* TAB 1: MY PURCHASES & ORDERS (DEFAULT ACTIVE TAB) */}
                         {activeTab === 'orders' && (
-                            <div className="space-y-4">
+                            <div className="buyer-profile-orders min-w-0 gap-4">
                                 <BuyerOrderFilters
                                     selected={selectedOrderStatus}
                                     counts={orderCounts}
@@ -583,6 +597,7 @@ export default function BuyerProfile({
                                     onRefresh={() => loadOrderPage(orders.current_page > 1 ? `${route('buyer.profile')}?page=${orders.current_page}` : route('buyer.profile'), { tab: 'orders', order_status: currentOrderStatus })}
                                 />
 
+                                <div ref={orderScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Purchase results" tabIndex={0} className="buyer-profile-scroll mt-4 space-y-4 lg:mt-0" aria-busy={orderBusy}>
                                 {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                                 {orderBusy && <p role="status" className="text-xs text-slate-500">Loading orders…</p>}
 
@@ -712,13 +727,13 @@ export default function BuyerProfile({
                                     <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders in this stage</span>
                                     <button type="button" disabled={!orders.next_page_url || orderBusy || receiptPending !== null} onClick={() => orders.next_page_url && loadOrderPage(orders.next_page_url)} className="rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-700 disabled:opacity-40">Next</button>
                                 </nav>}
-
+                                </div>
                             </div>
                         )}
 
                         {/* TAB 2: PERSONAL ACCOUNT & SECURITY */}
                         {activeTab === 'account' && (
-                            <div className="space-y-6">
+                            <div ref={accountScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Account and security settings" tabIndex={0} className="buyer-profile-scroll space-y-6">
                                 
                                 {/* Personal Profile Info Form */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
@@ -1190,7 +1205,7 @@ export default function BuyerProfile({
 
                         {/* TAB 3: DELIVERY ADDRESS BOOK */}
                         {activeTab === 'addresses' && (
-                            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Delivery addresses" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                     <div>
                                         <h3 className="text-base font-black text-slate-900">PSGC Delivery Address Book</h3>
@@ -1268,7 +1283,7 @@ export default function BuyerProfile({
 
                         {/* TAB 4: BAGOO WALLET */}
                         {activeTab === 'wallet' && (
-                            <section className="rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs">
+                            <section data-buyer-profile-scroll scroll-region="" aria-label="Bagoo Wallet" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs">
                                 <div className="flex items-center gap-3">
                                     <Wallet className="h-6 w-6 shrink-0 text-[#E00D42]" aria-hidden="true" />
                                     <h3 className="text-lg font-bold text-slate-900">Bagoo Wallet</h3>
@@ -1282,7 +1297,7 @@ export default function BuyerProfile({
 
                         {/* TAB 5: VOUCHERS & PROMOS */}
                         {activeTab === 'vouchers' && (
-                            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Vouchers and promos" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                 <div className="border-b border-slate-100 pb-4">
                                     <h3 className="text-base font-black text-slate-900">Claimed Vouchers & Promos</h3>
                                     <p className="text-xs text-slate-500 font-sans">Redeem discount vouchers automatically during checkout</p>
