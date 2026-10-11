@@ -5,12 +5,12 @@ interface Props {
     ordersCount: number;
     issueCount: number;
     disabled: boolean;
-    expanded: boolean;
-    onToggle: () => void;
     onSelect: (group: 'progress' | 'issues') => void;
 }
 
-export default function BuyerPurchaseNavigation({ active, ordersCount, issueCount, disabled, expanded, onToggle, onSelect }: Props) {
+export default function BuyerPurchaseNavigation({ active, ordersCount, issueCount, disabled, onSelect }: Props) {
+    const expanded = active !== null;
+
     return (
         <div className="space-y-1.5">
             <button
@@ -19,10 +19,7 @@ export default function BuyerPurchaseNavigation({ active, ordersCount, issueCoun
                 aria-current={active === 'progress' ? 'page' : undefined}
                 aria-expanded={expanded}
                 aria-controls="buyer-order-submenu"
-                onClick={() => {
-                    onToggle();
-                    onSelect('progress');
-                }}
+                onClick={() => onSelect('progress')}
                 className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left font-bold transition disabled:opacity-50 ${
                     active === 'progress' ? 'bg-[#E00D42] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                 }`}

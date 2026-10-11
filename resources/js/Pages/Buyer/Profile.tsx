@@ -122,11 +122,6 @@ export default function BuyerProfile({
 
     const selectedOrderStatus = currentOrderStatus;
     const showingOrderIssues = isBuyerOrderIssue(selectedOrderStatus);
-    const [purchasesExpanded, setPurchasesExpanded] = useState(activeTab === 'orders' && showingOrderIssues);
-    useEffect(() => {
-        if (activeTab !== 'orders') setPurchasesExpanded(false);
-        else if (showingOrderIssues) setPurchasesExpanded(true);
-    }, [activeTab, showingOrderIssues]);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const orderScrollRef = useRef<HTMLDivElement>(null);
     const accountScrollRef = useRef<HTMLDivElement>(null);
@@ -548,8 +543,6 @@ export default function BuyerProfile({
                                 ordersCount={ordersCount}
                                 issueCount={orderIssueCount}
                                 disabled={orderBusy || receiptPending !== null}
-                                expanded={activeTab === 'orders' && (purchasesExpanded || showingOrderIssues)}
-                                onToggle={() => setPurchasesExpanded(value => activeTab === 'orders' ? !(value || showingOrderIssues) : true)}
                                 onSelect={openPurchaseGroup}
                             />
                             {navItems.map((item) => {

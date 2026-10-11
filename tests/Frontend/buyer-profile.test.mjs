@@ -72,9 +72,8 @@ test('purchase progress stays in five buttons and Order issues sits directly bel
     assert.equal(globalThis.buyerProfileNavigation.active, 'progress');
     assert.equal(globalThis.buyerProfileNavigation.issueCount, 9);
     assert.equal(globalThis.buyerProfileNavigation.ordersCount, 45);
-    assert.equal(globalThis.buyerProfileNavigation.expanded, false);
-    assert.match(sidebar, /aria-expanded="false" aria-controls="buyer-order-submenu"/);
-    assert.match(sidebar, /id="buyer-order-submenu" hidden=""/);
+    assert.match(sidebar, /aria-expanded="true" aria-controls="buyer-order-submenu"/);
+    assert.doesNotMatch(sidebar, /id="buyer-order-submenu" hidden=""/);
 });
 
 test('direct exception links activate Order issues and the matching exception button', async () => {
@@ -89,7 +88,6 @@ test('direct exception links activate Order issues and the matching exception bu
         nodes(tree, node => node.type === 'button' && node.props['aria-pressed'])[0].props.onClick();
         assert.deepEqual(selections, [currentOrderStatus]);
         assert.equal(globalThis.buyerProfileNavigation.active, 'issues');
-        assert.equal(globalThis.buyerProfileNavigation.expanded, true);
         assert.match(html, /aria-expanded="true" aria-controls="buyer-order-submenu"/);
         assert.doesNotMatch(html, /aria-label="Purchase status"|buyer-more-statuses/);
     }
@@ -114,32 +112,37 @@ test('exception and progress buttons invoke existing status loads and controls d
 
 test('sidebar group buttons retain their selected states and disable together during order updates', () => {
     const selections = [];
-    let toggles = 0;
-    const props = { active: 'issues', ordersCount: 45, issueCount: 9, disabled: false, expanded: true,
-        onToggle: () => { toggles++; }, onSelect: group => selections.push(group) };
+    const props = { active: 'issues', ordersCount: 45, issueCount: 9, disabled: false,
+        onSelect: group => selections.push(group) };
     const buttons = nodes(ui.PurchaseNavigation(props), node => node.type === 'button');
     assert.equal(buttons[0].props['aria-current'], undefined);
     assert.equal(buttons[1].props['aria-current'], 'page');
     buttons.forEach(button => button.props.onClick());
     assert.deepEqual(selections, ['progress', 'issues']);
-    assert.equal(toggles, 1);
     assert.ok(nodes(ui.PurchaseNavigation({ ...props, disabled: true }), node => node.type === 'button').every(node => node.props.disabled));
     assert.ok(nodes(ui.PurchaseNavigation({ ...props, active: null }), node => node.type === 'button').every(node => node.props['aria-current'] === undefined));
 });
 
-test('purchase disclosure exposes its nested destination only when expanded and closes outside purchases', async () => {
-    for (const expanded of [false, true]) {
-        const tree = ui.PurchaseNavigation({ active: 'progress', ordersCount: 45, issueCount: 9,
-            disabled: false, expanded, onToggle() {}, onSelect() {} });
+test('purchase submenu opens immediately for every active purchase filter and stays hidden in other profile sections', async () => {
+    for (const active of ['progress', 'issues', null]) {
+        const tree = ui.PurchaseNavigation({ active, ordersCount: 45, issueCount: 9, disabled: false, onSelect() {} });
         const parent = nodes(tree, node => node.type === 'button')[0];
         const submenu = nodes(tree, node => node.props?.id === parent.props['aria-controls'])[0];
-        assert.equal(parent.props['aria-expanded'], expanded);
-        assert.equal(submenu.props.hidden, !expanded);
+        assert.equal(parent.props['aria-expanded'], active !== null);
+        assert.equal(submenu.props.hidden, active === null);
         assert.equal(nodes(submenu, node => node.type === 'button').length, 1);
     }
-    await render({ initialTab: 'account', currentOrderStatus: 'returned' });
-    assert.equal(globalThis.buyerProfileNavigation.active, null);
-    assert.equal(globalThis.buyerProfileNavigation.expanded, false);
+    for (const currentOrderStatus of ['all', 'to_ship', 'in_transit', 'delivered', 'completed']) {
+        const html = await render({ currentOrderStatus });
+        assert.match(html, /aria-expanded="true" aria-controls="buyer-order-submenu"/);
+        assert.doesNotMatch(html, /id="buyer-order-submenu" hidden=""/);
+    }
+    for (const initialTab of ['account', 'addresses', 'wallet', 'vouchers']) {
+        const html = await render({ initialTab, currentOrderStatus: 'returned' });
+        assert.equal(globalThis.buyerProfileNavigation.active, null);
+        assert.match(html, /aria-expanded="false" aria-controls="buyer-order-submenu"/);
+        assert.match(html, /id="buyer-order-submenu" hidden=""/);
+    }
 });
 
 test('switching purchase groups from another profile tab loads the existing status route and resets pagination', async () => {
