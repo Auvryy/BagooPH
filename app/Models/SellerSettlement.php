@@ -12,7 +12,9 @@ class SellerSettlement extends Model
     protected $guarded = ['id'];
 
     protected $casts = ['snapshot' => 'array', 'product_cents' => 'integer', 'seller_cents' => 'integer',
-        'commission_cents' => 'integer', 'shipping_cents' => 'integer', 'discount_cents' => 'integer'];
+        'commission_cents' => 'integer', 'shipping_cents' => 'integer', 'discount_cents' => 'integer',
+        'seller_promotion_cents' => 'integer', 'platform_promotion_cents' => 'integer', 'net_seller_cents' => 'integer',
+        'net_commission_cents' => 'integer', 'promotion_snapshot' => 'array'];
 
     protected static function booted(): void
     {
