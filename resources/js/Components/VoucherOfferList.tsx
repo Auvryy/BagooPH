@@ -7,7 +7,7 @@ const pesos = (value: number | string) => new Intl.NumberFormat('en-PH', { style
 export default function VoucherOfferList({ offers, busy = false, onSelect }: {
     offers: VoucherOffer[];
     busy?: boolean;
-    onSelect?: (code: string) => void;
+    onSelect?: (code: string, offer: VoucherOffer) => void;
 }) {
     if (offers.length === 0) {
         return <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
@@ -40,7 +40,7 @@ export default function VoucherOfferList({ offers, busy = false, onSelect }: {
                 <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
                     <span className="text-xs font-semibold text-slate-600">{offer.code}</span>
                     {onSelect ? <button type="button" disabled={busy || offer.eligible === false}
-                        onClick={() => onSelect(offer.code)}
+                        onClick={() => onSelect(offer.code, offer)}
                         className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-[#C20836] hover:bg-rose-50 disabled:opacity-50">
                         {offer.eligible === false ? 'Unavailable' : 'Use voucher'}
                         {offer.saving != null && offer.eligible !== false ? ' · Save ' + pesos(offer.saving) : ''}

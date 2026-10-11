@@ -4,6 +4,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import usePurchaseQuote, { PurchaseQuote, VoucherOffer } from '@/hooks/usePurchaseQuote';
+import { chooseVoucher, withoutVoucher } from '@/utils/voucherSelection';
 import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
@@ -162,6 +163,8 @@ export default function CheckoutIndex({
         payment_method: 'cod',
         notes: '',
         voucher_code: '',
+        platform_voucher_revision_id: null as number | null,
+        shop_voucher_revision_ids: {} as Record<number, number | null>,
         save_address: false,
     });
 
@@ -222,6 +225,8 @@ export default function CheckoutIndex({
         item_ids: data.item_ids,
         delivery_type: data.delivery_type,
         code: data.voucher_code,
+        platform_voucher_revision_id: data.platform_voucher_revision_id,
+        shop_voucher_revision_ids: data.shop_voucher_revision_ids,
         shipping_province: data.shipping_province,
         shipping_city: data.shipping_city,
         pickup_hub_id: data.delivery_type === 'hub_self_pickup' ? data.pickup_hub_id : '',
@@ -234,7 +239,7 @@ export default function CheckoutIndex({
     const quotedItems = new Map(quote.items.map(item => [item.id, item]));
     const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
-    const appliedVoucher = pricing.current ? quote.voucher : null;
+    const appliedVouchers = pricing.current ? quote.vouchers ?? (quote.voucher ? [quote.voucher] : []) : [];
     const finalShippingFee = quote.shipping_fee - quote.shipping_discount;
     const grandTotal = quote.total;
 
@@ -244,24 +249,35 @@ export default function CheckoutIndex({
     }, [JSON.stringify(quoteInput)]);
 
     useEffect(() => {
-        if (pricing.current && quote.voucher_error && data.voucher_code) {
-            setVoucherError(quote.voucher_error + ' The voucher has been removed.');
-            setData('voucher_code', '');
+        if (pricing.current && quote.voucher_error && (data.voucher_code || data.platform_voucher_revision_id || Object.values(data.shop_voucher_revision_ids).some(Boolean))) {
+            setVoucherError(quote.voucher_error + ' Choose your vouchers again.');
+            setData(prev => ({ ...prev, voucher_code: '', platform_voucher_revision_id: null, shop_voucher_revision_ids: {} }));
         }
-    }, [pricing.current, quote.voucher_error, data.voucher_code]);
+    }, [pricing.current, quote.voucher_error, data.voucher_code, data.platform_voucher_revision_id, data.shop_voucher_revision_ids]);
+
+    const selectOffer = (offer: VoucherOffer) => {
+        if (!offer.revision_id) return;
+        setVoucherError('');
+        setData(prev => ({ ...prev, ...chooseVoucher(prev, offer, appliedVouchers) }));
+    };
 
     const applyVoucher = (codeToApply?: string) => {
         const code = (codeToApply || voucherCodeInput).trim().toUpperCase();
         if (!code) return;
         setVoucherError('');
         setVoucherCodeInput(code);
+        const offer = pricing.offers.find(offer => offer.code === code);
+        if (offer?.revision_id) {
+            selectOffer(offer);
+            return;
+        }
         setData('voucher_code', code);
     };
 
-    const removeVoucher = () => {
+    const removeVoucher = (shopId: number | null) => {
         setVoucherError('');
         setVoucherCodeInput('');
-        setData('voucher_code', '');
+        setData(prev => ({ ...prev, ...withoutVoucher(prev, shopId, appliedVouchers) }));
     };
 
     const handlePromptConfirmation = (e: React.FormEvent) => {
@@ -906,49 +922,35 @@ export default function CheckoutIndex({
                                 <span>Platform & Shop Vouchers</span>
                             </div>
 
-                            {appliedVoucher ? (
-                                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between">
+                            <p className="text-[11px] leading-relaxed text-slate-600">Choose one product offer per shop and one Bagoo product or shipping offer.</p>
+                            {appliedVouchers.map(offer => {
+                                const saving = quote.redemptions?.find(use => use.revision_id === offer.revision_id)?.discount_cents;
+                                return <div key={offer.id} className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-3.5">
                                     <div className="space-y-0.5">
-                                        <span className="font-bold text-[#E00D42] block text-xs">{appliedVoucher.code}</span>
-                                        <span className="text-[11px] text-[#C20836]">
-                                            {formatPrice(quote.discount)} {appliedVoucher.discount_type === 'free_shipping' ? 'shipping discount applied' : 'discount applied'}
-                                        </span>
+                                        <span className="block text-xs font-bold text-[#E00D42]">{offer.code}</span>
+                                        <span className="text-[11px] text-[#C20836]">{formatPrice(saving === undefined ? quote.discount : saving / 100)} {offer.discount_type === 'free_shipping' ? 'shipping discount applied' : 'discount applied'}</span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={removeVoucher}
-                                        aria-label="Remove voucher"
-                                        className="text-[#E00D42] hover:text-[#C20836] p-1"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="space-y-2.5">
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={voucherCodeInput}
-                                            onChange={(e) => setVoucherCodeInput(e.target.value)}
-                                            placeholder="Enter voucher code"
-                                            aria-label="Voucher code"
-                                            className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => applyVoucher()}
-                                            disabled={pricing.pending || !voucherCodeInput.trim()}
-                                            className="px-4 py-2.5 bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold rounded-xl transition text-xs cursor-pointer shadow-xs disabled:opacity-50"
-                                        >
-                                            Apply
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                                    <button type="button" disabled={pricing.pending} onClick={() => removeVoucher(offer.shop_id)} aria-label={`Remove ${offer.code}`} className="p-1 text-[#E00D42] hover:text-[#C20836]"><X className="h-4 w-4" /></button>
+                                </div>;
+                            })}
+                            <div className="space-y-2 rounded-xl border border-slate-300 p-3">
+                                {[{ shop_id: null, shop_name: 'Bagoo offer' }, ...quote.shops].map(slot => {
+                                    const offer = appliedVouchers.find(offer => offer.shop_id === slot.shop_id);
+                                    return <div key={slot.shop_id ?? 'platform'} className="flex items-center justify-between gap-3">
+                                        <p className="min-w-0 text-[11px] text-slate-600">{slot.shop_name}: <span className="font-semibold">{offer?.code ?? 'No voucher'}</span></p>
+                                        <button type="button" disabled={pricing.pending} onClick={() => removeVoucher(slot.shop_id)} className="shrink-0 rounded-lg border border-slate-300 px-2 py-1.5 text-[11px] font-semibold hover:bg-slate-50 disabled:opacity-50">No voucher</button>
+                                    </div>;
+                                })}
+                            </div>
+                            <div className="flex gap-2">
+                                <input type="text" value={voucherCodeInput} onChange={event => setVoucherCodeInput(event.target.value)} placeholder="Optional voucher code" aria-label="Voucher code" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15" />
+                                <button type="button" onClick={() => applyVoucher()} disabled={pricing.pending || !voucherCodeInput.trim()} className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-black disabled:opacity-50">Apply</button>
+                            </div>
+                            <p className="text-[11px] leading-relaxed text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
                             {voucherError && <p role="alert" className="text-rose-700 text-[11px]">{voucherError}</p>}
                             <div className="max-h-80 overflow-y-auto border-t border-slate-200 pt-3">
                                 <p className="mb-3 font-semibold text-slate-600">Available offers for these items</p>
-                                <VoucherOfferList offers={pricing.offers} busy={pricing.pending || !!pricing.failure} onSelect={applyVoucher} />
+                                <VoucherOfferList offers={pricing.offers} busy={pricing.pending || !!pricing.failure} onSelect={(_code, offer) => selectOffer(offer)} />
                             </div>
                         </div>
 
@@ -1148,8 +1150,8 @@ export default function CheckoutIndex({
                                         <span className="font-bold text-slate-700 font-sans">CASH ON DELIVERY (COD)</span>
                                     </div>
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[11px] text-slate-400 font-semibold block">Applied Voucher</span>
-                                        <span className="font-bold text-slate-800">{appliedVoucher ? appliedVoucher.code : 'None'}</span>
+                                        <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>
+                                        <span className="font-bold text-slate-800">{appliedVouchers.length ? appliedVouchers.map(offer => offer.code).join(', ') : 'None'}</span>
                                     </div>
                                 </div>
 

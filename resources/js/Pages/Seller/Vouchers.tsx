@@ -3,21 +3,7 @@ import { createPortal } from 'react-dom';
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, Shop } from '@/types';
-import { 
-    Tag, 
-    Plus, 
-    Trash2, 
-    X, 
-    Check, 
-    Percent, 
-    DollarSign, 
-    Truck, 
-    Clock, 
-    Sparkles,
-    Calendar,
-    Layers,
-    Gift
-} from 'lucide-react';
+import { Tag, Plus, Trash2, X, Gift, Clock } from 'lucide-react';
 
 interface VoucherItem {
     id: number;
@@ -31,6 +17,8 @@ interface VoucherItem {
     usage_limit?: number;
     used_count: number;
     is_active: boolean;
+    current_revision_id?: number | null;
+    archived_at?: string | null;
     expires_at?: string;
     created_at: string;
 }
@@ -83,20 +71,21 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
     return (
         <DashboardLayout
             title="Vouchers"
-            subtitle="Manage discount codes and promotions"
+            subtitle="Keep voucher drafts and retained promotion history together"
             actions={
                 <button
                     onClick={() => setIsCreateOpen(true)}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-xl shadow-xs transition uppercase"
                 >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Create Voucher</span>
+                    <span>Save Draft</span>
                 </button>
             }
         >
             <Head title="Vouchers — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
+                <p className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-600">New vouchers are drafts. Offers need reviewed funding, an end date and usage limits before publication. Older offers keep their history and require funding review.</p>
                 
                 {/* 1. TOP PROMO STATS */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -106,31 +95,31 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                             <Tag className="w-4 h-4 text-[#E00D42]" />
                         </div>
                         <h3 className="text-2xl font-black text-slate-900 font-sans">
-                            {vouchers.data.filter(v => v.is_active).length} Vouchers
+                            {vouchers.data.filter(v => v.current_revision_id && v.is_active && !v.archived_at).length} Vouchers
                         </h3>
                         <p className="text-[11px] text-slate-400">Published to your store</p>
                     </div>
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-sans">
                         <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-                            <span>Customer Redemptions</span>
+                            <span>Recorded Uses</span>
                             <Gift className="w-4 h-4 text-emerald-600" />
                         </div>
                         <h3 className="text-2xl font-black text-slate-900 font-sans">
                             {vouchers.data.reduce((sum, v) => sum + v.used_count, 0)} Claims
                         </h3>
-                        <p className="text-[11px] text-slate-400">Total applied in checkout</p>
+                        <p className="text-[11px] text-slate-400">Retained current and older usage counts</p>
                     </div>
 
                     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2 font-sans">
                         <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-                            <span>Default Delivery Voucher</span>
-                            <Truck className="w-4 h-4 text-indigo-600" />
+                            <span>Awaiting Funding Review</span>
+                            <Clock className="w-4 h-4 text-[#E00D42]" />
                         </div>
                         <h3 className="text-2xl font-black text-slate-900 font-sans">
-                            FREESHIP
+                            {vouchers.data.filter(v => !v.current_revision_id).length} Vouchers
                         </h3>
-                        <p className="text-[11px] text-emerald-600 font-bold">Network standard active</p>
+                        <p className="text-[11px] text-slate-400">Drafts and older offers need reviewed terms</p>
                     </div>
                 </div>
 
@@ -139,7 +128,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                     <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
                         <div>
                             <h3 className="font-bold text-sm text-slate-900">Store Promotional Codes</h3>
-                            <p className="text-xs text-slate-400 font-sans">Manage store discounts applied by shoppers</p>
+                            <p className="text-xs text-slate-400 font-sans">Review drafts, funded offers and retained history</p>
                         </div>
                         <span className="text-xs font-sans text-slate-500">Showing {vouchers.data.length} vouchers</span>
                     </div>
@@ -160,7 +149,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                 {vouchers.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="py-12 text-center text-slate-400">
-                                            No store vouchers created yet. Click "Create Voucher" above to publish your first promotion.
+                                            No voucher drafts yet. Save a draft to prepare an offer for later funding review.
                                         </td>
                                     </tr>
                                 ) : (
@@ -180,17 +169,18 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                                 <span className="font-bold text-[#E00D42] font-sans">
                                                     {voucher.discount_type === 'percent' 
                                                         ? `${Number(voucher.discount_value)}% OFF` 
-                                                        : (voucher.discount_type === 'free_shipping' ? 'FREE DELIVERY' : formatPrice(voucher.discount_value) + ' OFF')}
+                                                        : (voucher.discount_type === 'free_shipping' ? 'SHIPPING DISCOUNT' : formatPrice(voucher.discount_value) + ' OFF')}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 font-sans">
                                                 {formatPrice(voucher.min_spend)}
                                             </td>
                                             <td className="py-4 px-4">
-                                                <span>{voucher.used_count} {voucher.usage_limit ? `/ ${voucher.usage_limit}` : 'claims'}</span>
+                                                <span>{voucher.used_count} {voucher.usage_limit ? `/ ${voucher.usage_limit}` : 'uses'}</span>
                                             </td>
                                             <td className="py-4 px-4">
                                                 <button
+                                                    disabled={!!voucher.archived_at || !voucher.current_revision_id}
                                                     onClick={() => handleToggle(voucher.id)}
                                                     className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition ${
                                                         voucher.is_active 
@@ -198,14 +188,14 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                                             : 'bg-slate-100 text-slate-500'
                                                     }`}
                                                 >
-                                                    {voucher.is_active ? 'Active' : 'Disabled'}
+                                                    {voucher.archived_at ? 'Archived' : !voucher.current_revision_id ? 'Draft' : voucher.is_active ? 'Active' : 'Paused'}
                                                 </button>
                                             </td>
                                             <td className="py-4 px-5 text-right space-x-1">
                                                 <button
                                                     onClick={() => handleDelete(voucher.id)}
                                                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                                    title="Delete Voucher"
+                                                    title={voucher.current_revision_id || voucher.used_count || voucher.archived_at ? "Archive voucher" : "Delete unused draft"}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -227,7 +217,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
                                 <Tag className="w-5 h-5 text-[#E00D42]" />
-                                <h3 className="font-bold text-base text-slate-900">Issue Store Voucher</h3>
+                                <h3 className="font-bold text-base text-slate-900">Save Voucher Draft</h3>
                             </div>
                             <button onClick={() => setIsCreateOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
                                 <X className="w-5 h-5" />
@@ -257,7 +247,6 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                     >
                                         <option value="fixed">Fixed Pesos (₱)</option>
                                         <option value="percent">Percentage (%)</option>
-                                        <option value="free_shipping">Free Delivery</option>
                                     </select>
                                 </div>
                             </div>
@@ -312,7 +301,7 @@ export default function SellerVouchers({ vouchers, shop }: Props) {
                                     disabled={form.processing}
                                     className="px-6 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-xl uppercase shadow-xs transition"
                                 >
-                                    Publish Promotion
+                                    Save Draft
                                 </button>
                             </div>
                         </form>

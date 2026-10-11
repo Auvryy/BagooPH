@@ -20,7 +20,8 @@ const root = resolve(import.meta.dirname, '../..');
 const pages = await build({
     stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index';
         export { default as Bag } from '@/Pages/Cart/Index';
-        export { default as Offers } from '@/Components/VoucherOfferList';`, resolveDir: root, loader: 'tsx' },
+        export { default as Offers } from '@/Components/VoucherOfferList';
+        export { chooseVoucher, withoutVoucher } from '@/utils/voucherSelection';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
     plugins: [{ name: 'quote-state-for-page-checks', setup(builder) {
@@ -247,5 +248,65 @@ test('changing quantities or delivery context invalidates the previous confirmat
         assert.equal(h.requests[1].args[1].delivery_type, 'hub_self_pickup');
         assert.equal(h.requests[1].args[1].shipping_city, 'Pasig');
         assert.equal(h.requests[1].args[1].pickup_hub_id, 3);
+    } finally { h.close(); }
+});
+
+test('stacked checkout shows each real saving and deducts the combined amount once', async () => {
+    const shop = { ...offer, id: 8, revision_id: 12, code: 'SHOP_100', name: 'Shop offer', shop_id: 1,
+        shop_name: 'Bagoo shop one', issuer: 'shop', discount_type: 'fixed', discount_value: 100 };
+    const platform = { ...offer, revision_id: 13, code: 'BAGOO_50', discount_type: 'fixed', discount_value: 50 };
+    const stacked = { ...quote, subtotal: 1000, shipping_fee: 50, shipping_discount: 0, discount: 150, total: 900,
+        voucher: null, vouchers: [shop, platform], redemptions: [{ revision_id: 12, discount_cents: 10000 },
+            { revision_id: 13, discount_cents: 5000 }], shops: [{ ...quote.shops[0], discount: 150, total: 900 }] };
+    globalThis.voucherQuoteState = { quote: stacked, offers: [shop, platform], current: true, pending: false, ready: true, failure: '' };
+    try {
+        const html = await render(ui.Checkout, 'Checkout/Index', { ...checkoutProps, quote: stacked });
+        assert.match(html, /SHOP_100/);
+        assert.match(html, /BAGOO_50/);
+        assert.match(html, /₱100\.00[\s\S]*?discount applied/);
+        assert.match(html, /₱50\.00[\s\S]*?discount applied/);
+        assert.match(html, /Total Payment:[\s\S]*?₱900\.00/);
+        assert.match(html, /No voucher/);
+        assert.match(html, /Cancelled orders keep their voucher use/);
+    } finally { delete globalThis.voucherQuoteState; }
+});
+
+test('changing one voucher slot preserves sibling and platform choices even with an older quote', () => {
+    const first = { ...offer, revision_id: 10, issuer: 'shop', shop_id: 1 };
+    const second = { ...offer, revision_id: 11, issuer: 'shop', shop_id: 2 };
+    const platform = { ...offer, revision_id: 12 };
+    const oldFirst = { ...first, revision_id: 9 };
+    const selection = { voucher_code: '', platform_voucher_revision_id: 12, shop_voucher_revision_ids: { 1: 10, 2: 11 } };
+    const changed = ui.chooseVoucher(selection, { ...first, revision_id: 14 }, [oldFirst, second, platform]);
+    assert.deepEqual(changed, { ...selection, shop_voucher_revision_ids: { 1: 14, 2: 11 } });
+    assert.deepEqual(ui.withoutVoucher(changed, 2, [oldFirst, second, platform]), {
+        ...selection, shop_voucher_revision_ids: { 1: 14, 2: null },
+    });
+    assert.deepEqual(ui.withoutVoucher(changed, null, [oldFirst, second, platform]), { ...changed, platform_voucher_revision_id: null });
+    assert.deepEqual(selection.shop_voucher_revision_ids, { 1: 10, 2: 11 });
+});
+
+test('a successfully applied code keeps its campaign when another slot is selected', () => {
+    const platform = { ...offer, revision_id: 12 };
+    const shop = { ...offer, revision_id: 13, issuer: 'shop', shop_id: 2 };
+    const code = { voucher_code: platform.code, platform_voucher_revision_id: null, shop_voucher_revision_ids: {} };
+    assert.deepEqual(ui.chooseVoucher(code, shop, [platform]), {
+        voucher_code: '', platform_voucher_revision_id: 12, shop_voucher_revision_ids: { 2: 13 },
+    });
+});
+
+test('quote refresh carries all revision selections and rejects stale totals after a slot changes', async () => {
+    const h = harness();
+    try {
+        const selected = { ...input, platform_voucher_revision_id: 12, shop_voucher_revision_ids: { 1: 10, 2: 11 } };
+        h.render(selected); h.flush();
+        assert.deepEqual(h.requests[0].args[1].shop_voucher_revision_ids, { 1: 10, 2: 11 });
+        assert.equal(h.requests[0].args[1].platform_voucher_revision_id, 12);
+        h.requests[0].resolve({ data: { quote } }); await settle();
+        assert.equal(h.render(selected).ready, true);
+        const changed = { ...selected, shop_voucher_revision_ids: { 1: null, 2: 11 } };
+        assert.equal(h.render(changed).ready, false); h.flush();
+        assert.deepEqual(h.requests[1].args[1].shop_voucher_revision_ids, { 1: null, 2: 11 });
+        assert.equal(h.requests[0].args[2].signal.aborted, true);
     } finally { h.close(); }
 });

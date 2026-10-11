@@ -3,6 +3,7 @@ import axios from 'axios';
 
 export interface VoucherOffer {
     id: number;
+    revision_id?: number;
     code: string;
     name: string | null;
     description: string | null;
@@ -30,12 +31,16 @@ export interface PurchaseQuote {
     items: { id: number; quantity: number; unit_price: number; subtotal: number }[];
     voucher: VoucherOffer | null;
     voucher_error: string | null;
+    vouchers?: VoucherOffer[];
+    redemptions?: { revision_id: number; discount_cents: number }[];
 }
 
 interface QuoteInput {
     item_ids: number[];
     delivery_type?: 'doorstep' | 'hub_self_pickup';
     code?: string;
+    platform_voucher_revision_id?: number | null;
+    shop_voucher_revision_ids?: Record<number, number | null>;
     shipping_province?: string;
     shipping_city?: string;
     pickup_hub_id?: string | number;
