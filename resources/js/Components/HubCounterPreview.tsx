@@ -7,6 +7,7 @@ export interface CounterPreviewParcel {
     id: number;
     tracking_number: string;
     buyer_name: string;
+    buyer_phone: string;
     order_number: string;
     destination_bin: string | null;
     total_amount: number;
@@ -22,7 +23,7 @@ export default function HubCounterPreview({ parcels, total, hubId, basePath }: {
 }) {
     const [search, setSearch] = useState('');
     const query = search.trim().toLowerCase();
-    const shown = parcels.filter(parcel => [parcel.tracking_number, parcel.order_number, parcel.buyer_name]
+    const shown = parcels.filter(parcel => [parcel.tracking_number, parcel.order_number, parcel.buyer_name, parcel.buyer_phone]
         .some(value => value.toLowerCase().includes(query)));
     const counterUrl = (value: string) => `${basePath}/counter?hub_id=${hubId}&search=${encodeURIComponent(value)}`;
 
@@ -34,7 +35,7 @@ export default function HubCounterPreview({ parcels, total, hubId, basePath }: {
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input aria-label="Search counter preview" value={search} onChange={event => setSearch(event.target.value)} maxLength={120}
-                        placeholder="Customer name, order number or tracking code" className="w-full rounded-xs border border-slate-300 py-2 pl-9 pr-3 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]" />
+                        placeholder="Customer name, phone, order number or tracking code" className="w-full rounded-xs border border-slate-300 py-2 pl-9 pr-3 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]" />
                 </div>
                 <Link href={counterUrl(search.trim())} className="rounded-xs border border-slate-300 px-3 py-2 text-center text-xs font-semibold text-[#E00D42] hover:bg-rose-50">Open full counter queue</Link>
             </div>

@@ -457,6 +457,28 @@ class HubParcelWorkstationTest extends TestCase
         $this->assertSame($before, $this->snapshot($parcel));
     }
 
+    #[DataProvider('portals')]
+    public function test_counter_phone_search_remains_within_the_actual_destination_facility(string $base): void
+    {
+        $parcel = $this->selfPickup(true);
+        $other = $this->selfPickup(true);
+        $phone = '09170000001';
+        $parcel->order->buyer->update(['phone' => $phone]);
+        $other->order->buyer->update(['phone' => $phone]);
+        // An explicit stale legacy location must not join the matching counter queue.
+        $other->update(['current_hub_id' => $other->origin_bayan_hub_id]);
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($this->flowHandler($hub))->get($base.'/counter?hub_id='.$hub->id.'&search='.$phone)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('search', $phone)->where('counterParcels.total', 1)->has('counterParcels.data', 1)
+            ->where('counterParcels.data.0.id', $parcel->id)->where('counterParcels.data.0.buyer_phone', $phone)
+            ->where('counterCounts.ready', 1));
+        $this->get($base.'/counter?hub_id='.$hub->id.'&search=09170000009')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterParcels.total', 0)->has('counterParcels.data', 0));
+        $this->get($base.'/counter?hub_id='.$other->origin_bayan_hub_id.'&search='.$phone)->assertForbidden();
+        $this->assertSame($before, $this->snapshot($parcel));
+    }
+
     private function selfPickup(bool $stage): Delivery
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));

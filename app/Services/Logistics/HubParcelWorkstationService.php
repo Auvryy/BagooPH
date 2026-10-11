@@ -50,7 +50,8 @@ class HubParcelWorkstationService
         if ($search !== '') {
             $query->where(fn ($match) => $match->where('tracking_number', 'like', "%{$search}%")
                 ->orWhereHas('order', fn ($order) => $order->where('order_number', 'like', "%{$search}%"))
-                ->orWhereHas('order.buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$search}%")));
+                ->orWhereHas('order.buyer', fn ($buyer) => $buyer->where(fn ($contact) => $contact
+                    ->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))));
         }
 
         return $query;

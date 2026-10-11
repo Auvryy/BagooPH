@@ -11,7 +11,7 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-scanner-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = await build({
-    stdin: { contents: "export { default as Scanner } from '@/Pages/Hub/ScanStation';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Scanner } from '@/Pages/Hub/ScanStation'; export { default as Preview } from '@/Components/HubCounterPreview';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
     plugins: [{ name: 'recorded-scanner-result', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, args => args.namespace === 'scanner-result'
@@ -20,6 +20,10 @@ const bundle = await build({
             import React from 'react'; export * from 'react'; export default React;
             export const useState = value => {
                 const state = React.useState(value);
+                if (value === '' && globalThis.scannerResult.previewSearch && !globalThis.scannerResult.previewApplied) {
+                    globalThis.scannerResult.previewApplied = true;
+                    return [globalThis.scannerResult.previewSearch, state[1]];
+                }
                 if (value === null && !globalThis.scannerResult.applied) {
                     globalThis.scannerResult.applied = true;
                     return [globalThis.scannerResult.value, state[1]];
@@ -31,7 +35,7 @@ const bundle = await build({
 });
 const path = join(temporary, 'scanner.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
-const { Scanner } = await import(pathToFileURL(path).href);
+const { Scanner, Preview } = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
 
@@ -47,15 +51,15 @@ const result = { confirmed: false,
         destination_bin: null, current_hub: hub, buyer: { name: 'Mara Santos', phone: '', barangay: 'Poblacion III', city: 'Santa Cruz' },
         order: { order_number: 'BGO-ORDER', total_amount: 950, payment_method: 'cod', items: [] }, guidance } };
 
-async function render(value, basePath = '/hub') {
-    globalThis.scannerResult = { applied: false, value };
+async function render(value, basePath = '/hub', Component = Scanner, overrides = {}, previewSearch = null) {
+    globalThis.scannerResult = { applied: false, value, previewSearch, previewApplied: false };
     try {
         let view;
         const response = await createInertiaApp({
             page: { component: 'Hub/ScanStation', props: { auth: { user: { id: 1, name: 'Ana Santos', role: 'logistics' } },
                 flash: {}, errors: {}, activeHub: hub, hubs: [hub], recentScans: [], pendingOriginIntake: [], counterPickups: [],
-                counterTotal: 0, basePath, stats: { parcels_in_hub: 1, ready_pickup: 0, dispatched_today: 0 } }, url: `${basePath}/scan`, version: null },
-            resolve: () => Scanner, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view),
+                counterTotal: 0, basePath, stats: { parcels_in_hub: 1, ready_pickup: 0, dispatched_today: 0 }, ...overrides }, url: `${basePath}/scan`, version: null },
+            resolve: () => Component, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view),
         });
         return response.body;
     } finally { delete globalThis.scannerResult; }
@@ -89,5 +93,17 @@ test('staged scanner results preserve real bins and link to secure verification 
         assert.match(html, /Staged for secure counter collection/);
         assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=BGO-SCANNER"`));
         assert.doesNotMatch(html, /Confirm custody action|Confirm Handover|Release to Buyer/);
+    }
+});
+
+test('scanner preview phone searches filter the visible rows and carry the same query to the full counter', async () => {
+    for (const basePath of ['/hub', '']) {
+        const parcel = { id: 5, tracking_number: 'BGO-PHONE-MATCH', order_number: 'BGO-PHONE-ORDER', buyer_name: 'Mara Santos',
+            buyer_phone: '09170000001', destination_bin: null, total_amount: 950, payment_method: 'cod', guidance };
+        const html = await render(null, basePath, Preview, { parcels: [parcel, { ...parcel, id: 6, tracking_number: 'BGO-OTHER-PHONE', buyer_phone: '09170000002' }],
+            total: 2, hubId: 2, basePath }, '09170000001');
+        assert.match(html, /BGO-PHONE-MATCH/);
+        assert.doesNotMatch(html, /BGO-OTHER-PHONE/);
+        assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=09170000001"`));
     }
 });

@@ -267,7 +267,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Scan or enter Tracking # / Recipient Name..."
+                            placeholder="Tracking code, order number, buyer name or phone..."
                             className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </form>
