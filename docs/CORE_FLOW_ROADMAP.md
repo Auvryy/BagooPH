@@ -2717,3 +2717,91 @@ Review implementation commits:
 
 This review evidence is retained in a separate local documentation commit.
 Publication, merge and deployment remain user-owned steps.
+
+## October 11, 2026: logistics workstation guidance
+
+The selected [workstation plan](logistics-plan/02-workstation-guidance.md) is
+locally implemented on `feat/logistics-workstation-cleanup`, starting from the
+merged parcel recovery delivery. This is a bounded Phase 6 interface and query
+cleanup; it does not complete all cross-role cleanup or introduce new custody,
+commercial, stock, cash, claim-code or settlement transitions.
+
+| Area | Before this batch | Current behavior |
+|---|---|---|
+| Parcel state and holder | Registry rows used raw stage words and an assigned-rider column without a recorded-custody summary. | Physical stage, actual commercial order status, recorded custodian and next responsible actor appear separately. Assignment retains hub custody until the departure scan. |
+| Operational guidance | Sorting/assignment controls followed status alone; many other parcels said "No action". | Guidance follows retained custody and existing services. Intake, Mother-Hub sorting, manifests, destination sorting, assignment, counter staging, retry review, seller receipt and parcel recovery expose their supported step or blocker. Company management does not gain handler scans. |
+| Registry groups | "In hub" and "Self-pickup" submitted group names as individual statuses, hiding their members. | Groups and counts share the same owned-facility query. Recorded hub custody includes the latest authoritative checkpoint; the counter group also requires this facility to be the recorded destination. Search narrows results while queue totals retain their stated scope. |
+| Outcome figures | The registry claimed "100% Fulfilled" and the counter claimed "100% Verified" regardless of their records. | The registry counts distinct parcels with recorded outgoing handovers during the Asia/Manila day. The counter distinguishes matching parcels ready for verification from blocked/staging work and displays up to five evidence-backed recent collections. No success percentage is invented. |
+| Counter safety and clarity | Arriving parcels were described as ready; absent shelf data received a sample shelf label. | Actual staging, claim, held custody, expiry and verification locks govern readiness. Missing shelf data says not staged. Original incoming manifest receiving and closure appear before another handover. Client deadline checks narrow readiness and release controls without changing stored claims. |
+
+Implementation uses
+[HubParcelWorkstationService](../app/Services/Logistics/HubParcelWorkstationService.php),
+the latest authoritative checkpoint relation on
+[Delivery](../app/Models/Delivery.php), and a read-only readiness method reusing
+the existing assertions in
+[PickupClaimService](../app/Services/Logistics/PickupClaimService.php).
+The existing claim mutation's identity checks retain the same conditions.
+Controllers coordinate the scoped reads; every submitted sort, assignment,
+scan, handover or review still passes its existing server validation and locks.
+
+Missing or conflicting custody/commercial state has no unsupported mutation
+control. Unavailable candidates and restricted assigned riders require review;
+guidance never reallocates an assignment or transfers custody. Receivers finish
+the actual incoming manifest before the next handover. A read cannot expire a
+claim, record a collection, change money or resolve a recovery observation.
+An already completed recovery resumes the original manifest work instead of
+offering a redundant recovery transfer. Unknown/unsupported records retain
+their explicit review boundary.
+
+The [registry](../resources/js/Pages/Hub/Deliveries.tsx) and
+[counter](../resources/js/Pages/Hub/CounterPickup.tsx) reuse
+[parcel guidance components](../resources/js/Components/HubParcelGuidance.tsx)
+inside their existing logistics shell. Existing typography, accent, local
+geometry, responsive grids, table scrolling and forms remain in place.
+Actions and filters preserve the selected facility and work on the root hub
+portal and hub subdomain. Recently collected history evaluates the latest 25
+scoped collection candidates and displays at most five with the existing full
+collection-evidence check; it is a bounded preview rather than a total count.
+
+| Verification | Evidence |
+|---|---|
+| Workstation, hub suite, secure pickup, parcel recovery, manifests, delivery attempts and returns | 218 tests, 16,842 assertions; passing on isolated SQLite `:memory:` |
+| Final counter-scope review after the last query refinement | All 23 workstation cases, 2,007 assertions; passing. This overlaps the broader run and adds the stale-location acceptance case. |
+| All frontend checks | 87 tests; passing, including seven server-rendered workstation cases and deadline/readiness controls |
+| TypeScript/Vite production build through Docker | Passing; Vite 15.15 seconds |
+| Changed PHP formatting and whitespace | Passing |
+
+Acceptance uses real flow writers for pickup, hub/manifest custody, sorting,
+assignment, restricted-rider review, pickup staging, failed code verification,
+collection, buyer completion and recovery. Deliberately invalid legacy fixtures
+prove missing/conflicting evidence cannot gain an action or a counter group.
+Root/subdomain scoping, empty/search-filtered queues, retained custody after
+assignment, Manila-day handover counts, natural expiry without read-side writes,
+and completed recovery guidance are covered. No development/production database
+was migrated or reset.
+
+**Scoped engineering assessment:** logistics workstation guidance and truthful
+queue presentation **5/10 -> 8/10**. Operators can identify who holds a parcel,
+who must act next and what blocks that action, using current source records.
+The broader physical recovery assessment remains **8/10**; this presentation
+work does not raise overall project readiness. Production PostgreSQL execution,
+deployment, rendered browser/device layout and live timer interactions remain
+unverified. This batch adds no schema; an older deployment still needs the
+already documented additive parcel-recovery migration.
+
+**Next boundary:** stop for user review/publication and deployment verification.
+Phase 6 remains partial. Broader portal cleanup and unsupported restricted
+seller/resource/carrier recovery require a separate selection; this branch does
+not authorize rates, refunds, native mobile work or a general redesign.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `34ffb96` | `docs(logistics): define workstation guidance acceptance` |
+| `bdcbf9a` | `feat(logistics): derive hub work from recorded parcel custody` |
+| `3c326ed` | `feat(logistics): show parcel guidance and truthful workstation counts` |
+| `4407a7a` | `fix(logistics): keep counter groups within the destination facility` |
+
+This evidence is retained in a separate local documentation commit, with its
+generated hash reported in the handoff.
