@@ -222,4 +222,16 @@ class Delivery extends Model
     {
         return $this->hasMany(DeliveryCheckpoint::class);
     }
+
+    public function latestCustodyCheckpoint(): HasOne
+    {
+        return $this->hasOne(DeliveryCheckpoint::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->whereNull('source_checkpoint_id')->whereNotNull('custody_after');
+        });
+    }
+
+    public function pickupClaim(): HasOne
+    {
+        return $this->hasOne(PickupClaim::class);
+    }
 }

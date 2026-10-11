@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Store, 
     Search, 
@@ -27,7 +28,7 @@ interface CounterParcel {
     claim: { reference: string; status: string; expires_at: string; locked_until: string | null } | null;
     buyer_phone: string;
     status: string;
-    destination_bin: string;
+    destination_bin: string | null;
     total_amount: number;
     payment_method: string;
     item_count: number;
@@ -36,7 +37,8 @@ interface CounterParcel {
         quantity: number;
         price: number;
     }>;
-    arrived_at: string;
+    arrived_at: string | null;
+    guidance: ParcelGuidance;
 }
 
 interface Props {
@@ -58,9 +60,12 @@ interface Props {
     search: string;
     requestToken: string;
     canConfigureHours: boolean;
+    basePath: string;
+    canScan: boolean;
+    counterCounts: { shown: number; ready: number; blocked: number };
 }
 
-export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours }: Props) {
+export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours, basePath, canScan, counterCounts }: Props) {
     const [searchTerm, setSearchTerm] = useState(search || '');
     const [selectedParcel, setSelectedParcel] = useState<CounterParcel | null>(null);
     const [recipientName, setRecipientName] = useState('');
@@ -75,17 +80,35 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     const pending = useRef(false);
     const [hours, setHours] = useState(activeHub?.operating_hours ?? '');
     const [submitting, setSubmitting] = useState(false);
+    const [currentTime, setCurrentTime] = useState(Date.now);
+    useEffect(() => {
+        const now = Date.now();
+        const boundaries = counterParcels.flatMap(parcel => [parcel.claim?.expires_at, parcel.claim?.locked_until])
+            .filter((value): value is string => Boolean(value)).map(value => new Date(value).getTime()).filter(value => value > now);
+        if (!boundaries.length) return;
+        const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(Math.min(...boundaries) - now + 1, 2_147_483_647));
+        return () => window.clearTimeout(timer);
+    }, [counterParcels, currentTime]);
+    const hasCurrentClaimWindow = (parcel: CounterParcel) => parcel.claim?.status === 'ready'
+        && new Date(parcel.claim.expires_at).getTime() > Math.max(currentTime, Date.now())
+        && (!parcel.claim.locked_until || new Date(parcel.claim.locked_until).getTime() <= Math.max(currentTime, Date.now()));
+    const canRelease = (parcel: CounterParcel) => parcel.guidance.can_act && parcel.guidance.action === 'counter' && hasCurrentClaimWindow(parcel);
+    const elapsedReady = counterParcels.filter(parcel => parcel.guidance.ready_for_collection && !hasCurrentClaimWindow(parcel)).length;
+    const readyNow = Math.max(0, counterCounts.ready - elapsedReady);
+    const blockedNow = Math.min(counterCounts.shown, counterCounts.blocked + elapsedReady);
+    const currentSelectedParcel = counterParcels.find(parcel => parcel.id === selectedParcel?.id);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
-            route('hub.counter'),
-            { search: searchTerm },
+            `${basePath}/counter`,
+            { search: searchTerm, hub_id: activeHub?.id },
             { preserveState: true, preserveScroll: true }
         );
     };
 
     const openReleaseModal = (parcel: CounterParcel) => {
+        if (!canRelease(parcel)) return;
         setSelectedParcel(parcel);
         setRecipientName(parcel.buyer_name);
         setClaimCode('');
@@ -94,12 +117,12 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
     const handleReleaseSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedParcel || pending.current) return;
+        if (!selectedParcel || !currentSelectedParcel || !canRelease(currentSelectedParcel) || pending.current) return;
         pending.current = true; setErrors({});
         setSubmitting(true);
 
         router.post(
-            route('hub.release'),
+            `${basePath}/release`,
             {
                 barcode,
                 claim_code: claimCode,
@@ -125,9 +148,9 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
         <DashboardLayout
             title="Counter Self-Pickup"
             subtitle="Customer handover verification & zero-fee claim desk"
-            actions={
+            actions={canScan &&
                 <Link
-                    href={route('hub.scan.station')}
+                    href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
                 >
                     <ScanLine className="w-3.5 h-3.5" />
@@ -138,7 +161,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(route('hub.counter.hours'),{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
+                <p className="text-sm text-slate-600">Readiness counts apply to the matching queue below. A handler verifies the buyer and cash at handover; the buyer confirms order receipt afterward.</p>
+                {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
                 {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. TOP STATS TILES */}
@@ -146,45 +170,45 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Awaiting Pickup</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Ready for Buyer Verification</span>
                                 <Store className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {counterParcels.length}{' '}
+                                    {readyNow}{' '}
                                     <span className="text-xs font-bold text-slate-400">ready</span>
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Station Shelves:</span>
-                            <span className="font-bold text-slate-800">Organized</span>
+                            <span className="text-slate-500">Requirements:</span>
+                            <span className="font-bold text-slate-800">Staging and valid claim</span>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Handover Fee</span>
-                                <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Needs Attention</span>
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-emerald-700 font-sans tracking-tight">
-                                    ₱0.00{' '}
-                                    <span className="text-xs font-bold text-emerald-700">FREE</span>
+                                <p className="text-2xl sm:text-3xl font-black text-amber-800 font-sans tracking-tight">
+                                    {blockedNow}{' '}
+                                    <span className="text-xs font-bold text-amber-800">parcels</span>
                                 </p>
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Customer Incentive:</span>
-                            <span className="font-bold text-emerald-700">Zero Shipping</span>
+                            <span className="text-slate-500">Next step:</span>
+                            <span className="font-bold text-amber-800">Review the blocker</span>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Recently Claimed</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Recent Verified Collections</span>
                                 <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
@@ -195,8 +219,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             </div>
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Today's Handover:</span>
-                            <span className="font-bold text-slate-800">100% Verified</span>
+                            <span className="text-slate-500">History:</span>
+                            <span className="font-bold text-slate-800">Up to five shown</span>
                         </div>
                     </div>
 
@@ -219,7 +243,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Self-Pickup Desk:</span>
-                            <span className="font-bold text-emerald-700">Open For Claims</span>
+                            <span className="font-bold text-emerald-700">{activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
                         </div>
                     </div>
                 </div>
@@ -239,7 +263,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                     <div className="text-xs font-sans text-slate-500 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>Verify Customer Government ID or SMS Claim Code before release</span>
+                        <span>Verify photo ID, the one-time claim code and exact COD before release</span>
                     </div>
                 </div>
 
@@ -252,11 +276,11 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             <div className="flex items-center gap-2">
                                 <Store className="w-4 h-4 text-slate-700" />
                                 <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
-                                    Parcels Ready For Customer Handover
+                                    Counter Parcel Queue
                                 </h3>
                             </div>
                             <span className="text-xs font-sans text-slate-500 font-bold">
-                                {counterParcels.length} on shelves
+                                {counterCounts.shown} matching parcels
                             </span>
                         </div>
 
@@ -278,7 +302,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                     {parcel.tracking_number}
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-bold">
-                                                    {parcel.destination_bin}
+                                                    {parcel.destination_bin ?? 'Not staged'}
                                                 </span>
                                                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-xs bg-slate-100 text-slate-600 border border-slate-200">
                                                     {parcel.payment_method}
@@ -297,9 +321,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                     </span>
                                                 )}
                                                 <span className="text-slate-400 font-sans text-[10px]">
-                                                    Arrived: {parcel.arrived_at}
+                                                    {parcel.arrived_at ? `Staged: ${parcel.arrived_at} Asia/Manila` : 'Awaiting staging'}
                                                 </span>
                                             </div>
+
+                                            <div className="mt-3 space-y-3"><HubParcelState guidance={parcel.guidance} /><HubParcelNextStep guidance={parcel.guidance.ready_for_collection && !hasCurrentClaimWindow(parcel)
+                                                ? { ...parcel.guidance, can_act: false, href: null, next_step: 'Review the current collection window', blocker: 'The collection window changed. Refresh the current checks before release.' }
+                                                : parcel.guidance} hideLink={parcel.guidance.action === 'counter'} /></div>
 
                                             {/* Item breakdown preview */}
                                             {parcel.items && parcel.items.length > 0 && (
@@ -326,13 +354,12 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                             <button
                                                 type="button"
                                                 onClick={() => openReleaseModal(parcel)}
-                                                disabled={!parcel.claim || parcel.claim.status !== 'ready' || Date.now() >= new Date(parcel.claim.expires_at).getTime()}
+                                                disabled={!canRelease(parcel)}
                                                 className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-sans shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 <span>Release</span>
                                             </button>
-                                            {parcel.claim?.status === 'expired' && <Link href={route('hub.scan.station')} className="text-xs font-semibold text-[#E00D42]">Scan to start its return</Link>}
                                         </div>
                                     </div>
                                 ))}
@@ -418,7 +445,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                         <form onSubmit={handleReleaseSubmit} className="space-y-3.5 mt-3.5">
                             <label className="block text-sm font-semibold">Actual parcel waybill<input required value={barcode} onChange={event => setBarcode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
-                            <WaybillCamera onScan={setBarcode} disabled={submitting} />
+                            <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} />
                             <label className="flex items-start gap-2 text-sm"><input type="checkbox" required checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-1 border-slate-300" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
                             <div>
                                 <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
@@ -471,6 +498,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </div>
                             )}
 
+                            {(!currentSelectedParcel || !canRelease(currentSelectedParcel)) && <p role="alert" className="text-sm text-amber-800">This parcel is no longer ready for release. Close this form and review its current checks.</p>}
                             {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-sm text-red-700">{value}</p>)}
                             <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-200 font-sans">
                                 <button
@@ -482,7 +510,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={submitting}
+                                    disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)}
                                     className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
                                 >
                                     {submitting ? 'Releasing...' : 'Confirm Handover'}

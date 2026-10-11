@@ -65,6 +65,8 @@ Scoped dependency/database configuration review: October 10, 2026. Available sec
 
 Scoped logistics parcel recovery review: October 10, 2026. Company-authorized actual intake and recovery manifests restore recognized unexpected/wrong-hub parcels to their original expected receipt while preserving route, history and commercial state. The 3,097-case full regression passes, followed by 65 final recovery/hub checks after a scoped manifest-link refinement; 80 frontend checks and the production build pass. Physical recovery is assessed at 0/10 -> 8/10 within this batch. Deployment, PostgreSQL execution and broader restricted-resource recovery remain separate.
 
+Scoped logistics workstation review: October 11, 2026. Registry/counter guidance separates commercial state, physical custody and authorized next steps. Review corrected delayed claim-window updates and collection history ordered by parcel creation. The final 57-case affected-flow selection, 91 frontend checks and production build pass. Guidance usability is assessed at 5/10 -> 8/10; scanner cleanup, queue capacity and deployed acceptance remain separate. Known dependency advisory limits are unchanged.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -2717,3 +2719,164 @@ Review implementation commits:
 
 This review evidence is retained in a separate local documentation commit.
 Publication, merge and deployment remain user-owned steps.
+
+## October 11, 2026: logistics workstation guidance
+
+The selected [workstation plan](logistics-plan/02-workstation-guidance.md) is
+locally implemented on `feat/logistics-workstation-cleanup`, starting from the
+merged parcel recovery delivery. This is a bounded Phase 6 interface and query
+cleanup; it does not complete all cross-role cleanup or introduce new custody,
+commercial, stock, cash, claim-code or settlement transitions.
+
+| Area | Before this batch | Current behavior |
+|---|---|---|
+| Parcel state and holder | Registry rows used raw stage words and an assigned-rider column without a recorded-custody summary. | Physical stage, actual commercial order status, recorded custodian and next responsible actor appear separately. Assignment retains hub custody until the departure scan. |
+| Operational guidance | Sorting/assignment controls followed status alone; many other parcels said "No action". | Guidance follows retained custody and existing services. Intake, Mother-Hub sorting, manifests, destination sorting, assignment, counter staging, retry review, seller receipt and parcel recovery expose their supported step or blocker. Company management does not gain handler scans. |
+| Registry groups | "In hub" and "Self-pickup" submitted group names as individual statuses, hiding their members. | Groups and counts share the same owned-facility query. Recorded hub custody includes the latest authoritative checkpoint; the counter group also requires this facility to be the recorded destination. Search narrows results while queue totals retain their stated scope. |
+| Outcome figures | The registry claimed "100% Fulfilled" and the counter claimed "100% Verified" regardless of their records. | The registry counts distinct parcels with recorded outgoing handovers during the Asia/Manila day. The counter distinguishes matching parcels ready for verification from blocked/staging work and displays up to five evidence-backed recent collections. No success percentage is invented. |
+| Counter safety and clarity | Arriving parcels were described as ready; absent shelf data received a sample shelf label. | Actual staging, claim, held custody, expiry and verification locks govern readiness. Missing shelf data says not staged. Original incoming manifest receiving and closure appear before another handover. Client deadline checks narrow readiness and release controls without changing stored claims. |
+
+Implementation uses
+[HubParcelWorkstationService](../app/Services/Logistics/HubParcelWorkstationService.php),
+the latest authoritative checkpoint relation on
+[Delivery](../app/Models/Delivery.php), and a read-only readiness method reusing
+the existing assertions in
+[PickupClaimService](../app/Services/Logistics/PickupClaimService.php).
+The existing claim mutation's identity checks retain the same conditions.
+Controllers coordinate the scoped reads; every submitted sort, assignment,
+scan, handover or review still passes its existing server validation and locks.
+
+Missing or conflicting custody/commercial state has no unsupported mutation
+control. Unavailable candidates and restricted assigned riders require review;
+guidance never reallocates an assignment or transfers custody. Receivers finish
+the actual incoming manifest before the next handover. A read cannot expire a
+claim, record a collection, change money or resolve a recovery observation.
+An already completed recovery resumes the original manifest work instead of
+offering a redundant recovery transfer. Unknown/unsupported records retain
+their explicit review boundary.
+
+The [registry](../resources/js/Pages/Hub/Deliveries.tsx) and
+[counter](../resources/js/Pages/Hub/CounterPickup.tsx) reuse
+[parcel guidance components](../resources/js/Components/HubParcelGuidance.tsx)
+inside their existing logistics shell. Existing typography, accent, local
+geometry, responsive grids, table scrolling and forms remain in place.
+Actions and filters preserve the selected facility and work on the root hub
+portal and hub subdomain. Recently collected history evaluates the latest 25
+scoped collection candidates and displays at most five with the existing full
+collection-evidence check; it is a bounded preview rather than a total count.
+
+| Verification | Evidence |
+|---|---|
+| Workstation, hub suite, secure pickup, parcel recovery, manifests, delivery attempts and returns | 218 tests, 16,842 assertions; passing on isolated SQLite `:memory:` |
+| Final counter-scope review after the last query refinement | All 23 workstation cases, 2,007 assertions; passing. This overlaps the broader run and adds the stale-location acceptance case. |
+| All frontend checks | 87 tests; passing, including seven server-rendered workstation cases and deadline/readiness controls |
+| TypeScript/Vite production build through Docker | Passing; Vite 15.15 seconds |
+| Changed PHP formatting and whitespace | Passing |
+
+Acceptance uses real flow writers for pickup, hub/manifest custody, sorting,
+assignment, restricted-rider review, pickup staging, failed code verification,
+collection, buyer completion and recovery. Deliberately invalid legacy fixtures
+prove missing/conflicting evidence cannot gain an action or a counter group.
+Root/subdomain scoping, empty/search-filtered queues, retained custody after
+assignment, Manila-day handover counts, natural expiry without read-side writes,
+and completed recovery guidance are covered. No development/production database
+was migrated or reset.
+
+**Scoped engineering assessment:** logistics workstation guidance and truthful
+queue presentation **5/10 -> 8/10**. Operators can identify who holds a parcel,
+who must act next and what blocks that action, using current source records.
+The broader physical recovery assessment remains **8/10**; this presentation
+work does not raise overall project readiness. Production PostgreSQL execution,
+deployment, rendered browser/device layout and live timer interactions remain
+unverified. This batch adds no schema; an older deployment still needs the
+already documented additive parcel-recovery migration.
+
+**Next boundary:** stop for user review/publication and deployment verification.
+Phase 6 remains partial. Broader portal cleanup and unsupported restricted
+seller/resource/carrier recovery require a separate selection; this branch does
+not authorize rates, refunds, native mobile work or a general redesign.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `34ffb96` | `docs(logistics): define workstation guidance acceptance` |
+| `bdcbf9a` | `feat(logistics): derive hub work from recorded parcel custody` |
+| `3c326ed` | `feat(logistics): show parcel guidance and truthful workstation counts` |
+| `4407a7a` | `fix(logistics): keep counter groups within the destination facility` |
+
+This evidence is retained in a separate local documentation commit, with its
+generated hash reported in the handoff.
+
+## October 11, 2026: workstation reliability and security review
+
+Review of `feat/logistics-workstation-cleanup` found two reproducible reliability
+defects in the implemented counter interface. Both are corrected without a new
+schema or a change to role, custody, claim, COD or order-transition authority.
+
+| Finding | Before correction | Verified behavior |
+|---|---|---|
+| Counter clock after a preserved page refresh | A claim expiring in 60 seconds could schedule its display update 7,260,001 milliseconds later because the effect used the earlier mount clock. | The effect schedules against the current clock: 60,001 milliseconds in the same case. It skips elapsed lock/expiry boundaries and schedules the earliest remaining deadline. Existing submit and server expiry checks remain authoritative. |
+| Recent collection ordering | A newer parcel ID appeared before an older parcel collected more recently. | Candidates are ordered by the original claim's recorded `consumed_at`, with parcel ID only breaking ties. The 25-candidate/five-result limit, company/facility scope and full collection-evidence filter remain. Both root and hub-subdomain real collection flows pass. |
+
+The production counter effect is exercised with controlled hook/clock callbacks
+in [counter clock tests](../tests/Frontend/hub-counter-clock.test.mjs), rather
+than a duplicated timer calculation. Actual buyer code access, handler release,
+retained custody and COD writers establish the two-parcel ordering cases in
+[workstation tests](../tests/Feature/Logistics/HubParcelWorkstationTest.php).
+These checks do not constitute rendered-browser or background-tab testing.
+
+Fresh verification: the initial affected-flow selection passed 55 tests and
+3,643 assertions. After the history correction, all 57 workstation, hub-suite
+and secure-pickup cases passed with 3,971 assertions on isolated SQLite
+`:memory:`. All 91 frontend cases passed, including four new clock cases. The
+Docker TypeScript/Vite production build passed in 10.17 seconds; changed PHP
+formatting and whitespace passed. The before/after selections overlap and are
+not additional full-project regression totals.
+
+Server authorization, actual-facility scope, restricted/unavailable riders,
+private owner-only claim access, failed-code lockouts, expiry during verification,
+exact COD evidence, rollback and buyer-only completion retain passing affected
+checks. Search/status values remain bound query inputs and the new guidance is
+rendered as text. No new access-control or claim-consumption bypass was
+reproduced within this review. Azure configuration, PostgreSQL concurrency and
+whole-website penetration testing were not performed.
+
+The current locked PHP advisory audit reports zero advisories and abandoned
+packages. The production-only npm audit reports zero known advisories. The full
+npm audit still reports five high entries through `braces` 3.0.3 and its
+development dependency chain, matching the already documented October 10
+dependency review. The [upstream advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+describes recursive-pattern process failure and lists no published patch. The
+observed Tailwind content patterns are repository-controlled; this review did
+not identify a public request supplying these patterns. These are advisory
+snapshots, not proof that every application or deployment risk is absent.
+Dependency maintenance should revisit a compatible fix when available.
+
+**Scoped rating:** workstation guidance remains **5/10 before the cleanup ->
+8/10 after implementation and this review**. The two corrections improve live
+readiness feedback and trustworthy collection history. Overall role, security
+and cross-role scores are not increased; Phase 6 remains partial.
+
+Necessary next selections, in order:
+
+1. **Scanner guidance consistency.** The existing scanner still supplies
+   `STAGE: SELF-PICKUP-SHELF` when no shelf/bin is recorded, and displays that
+   fallback as a location. Reuse actual custody, staging and blocker guidance
+   when moving from the registry/counter into the scanner. Preserve handler
+   authority and the existing logistics style.
+2. **Counter queue capacity.** The counter still loads every matching parcel
+   through `get()` and performs per-parcel readiness queries. Add bounded
+   pagination and review query growth while preserving scoped search, truthful
+   queue totals and original collection-evidence checks. This is a source-backed
+   capacity gap; production load/latency has not been measured.
+3. **Remaining Phase 6 tracking consistency.** Review buyer, seller, rider and
+   hub views against the same commercial state and retained physical journey,
+   then repair confirmed differences in each portal's own design. Separate this
+   from new rates, disputes/refunds or other deferred features.
+
+Local correction commits: `4ec6110 fix(logistics): refresh counter deadlines from
+the current clock`; `0bc7bfc fix(logistics): order recent collections by recorded
+handover time`. This review evidence is retained in a separate documentation
+commit, with its generated hash reported in the handoff. Publication, merge and
+deployment remain user-owned steps.

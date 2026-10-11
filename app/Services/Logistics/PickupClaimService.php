@@ -292,11 +292,34 @@ class PickupClaimService
         }
     }
 
+    public function collectionBlocker(Delivery $parcel, LogisticsHub $hub): ?string
+    {
+        $claim = $parcel->pickupClaim;
+        if (! $claim || ! $this->matchesClaim($parcel, $claim) || $claim->hub_id !== $hub->id || ! $hub->allows_self_pickup) {
+            return 'This parcel needs its original staging and claim at an enabled destination counter.';
+        }
+        try {
+            $this->assertReady($parcel, $claim);
+        } catch (DomainException $error) {
+            return $error->getMessage();
+        }
+        if ($claim->locked_until?->isFuture()) {
+            return 'Claim verification is locked until '.$claim->locked_until->timezone('Asia/Manila')->format('M d, H:i').' Asia/Manila.';
+        }
+
+        return null;
+    }
+
+    private function matchesClaim(Delivery $parcel, PickupClaim $claim): bool
+    {
+        return $claim->tracking_number_snapshot === $parcel->tracking_number && $claim->buyer_id === $parcel->order->buyer_id
+            && $claim->hub_id === $parcel->destination_bayan_hub_id && $parcel->delivery_type === 'hub_self_pickup';
+    }
+
     private function claim(Delivery $parcel): PickupClaim
     {
         $claim = PickupClaim::where('delivery_id', $parcel->id)->lockForUpdate()->first();
-        if (! $claim || $claim->tracking_number_snapshot !== $parcel->tracking_number || $claim->buyer_id !== $parcel->order->buyer_id
-            || $claim->hub_id !== $parcel->destination_bayan_hub_id || $parcel->delivery_type !== 'hub_self_pickup') {
+        if (! $claim || ! $this->matchesClaim($parcel, $claim)) {
             throw new DomainException('This parcel needs its original recorded pickup staging and claim.');
         }
 
