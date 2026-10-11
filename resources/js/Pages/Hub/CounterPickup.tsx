@@ -82,10 +82,11 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     const [submitting, setSubmitting] = useState(false);
     const [currentTime, setCurrentTime] = useState(Date.now);
     useEffect(() => {
+        const now = Date.now();
         const boundaries = counterParcels.flatMap(parcel => [parcel.claim?.expires_at, parcel.claim?.locked_until])
-            .filter((value): value is string => Boolean(value)).map(value => new Date(value).getTime()).filter(value => value > currentTime);
+            .filter((value): value is string => Boolean(value)).map(value => new Date(value).getTime()).filter(value => value > now);
         if (!boundaries.length) return;
-        const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(Math.min(...boundaries) - currentTime + 1, 2_147_483_647));
+        const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(Math.min(...boundaries) - now + 1, 2_147_483_647));
         return () => window.clearTimeout(timer);
     }, [counterParcels, currentTime]);
     const hasCurrentClaimWindow = (parcel: CounterParcel) => parcel.claim?.status === 'ready'
