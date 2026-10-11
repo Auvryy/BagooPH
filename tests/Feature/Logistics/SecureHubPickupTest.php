@@ -116,9 +116,16 @@ class SecureHubPickupTest extends TestCase
         $this->postJson($base.'/release', array_replace($payload, ['notes' => 'Changed evidence']))->assertConflict();
         $this->assertSame($before, $this->snapshot($parcel));
         $this->actingAs($this->createApprovedUser('buyer'))->post('http://localhost/buyer/orders/'.$parcel->order_id.'/confirm')->assertForbidden();
-        $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page->where('canConfirmReceipt', true));
+        $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
+            ->where('canConfirmReceipt', true)->where('pickupCodeAvailable', false)
+            ->where('order.tracking.commercial_status', 'delivered')->where('order.tracking.stage_label', 'Collected at hub counter')
+            ->where('order.tracking.custodian', 'Buyer (handover recorded)')->where('order.tracking.responsible', 'Buyer')
+            ->where('pickupClaim.status', 'collected')->missing('order.delivery.pickup_claim'));
         $this->post(route('buyer.orders.confirm', $parcel->order_id))->assertSessionHas('success');
         $this->assertSame('completed', $parcel->order->fresh()->status);
+        $this->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
+            ->where('canConfirmReceipt', false)->where('pickupCodeAvailable', false)
+            ->where('order.tracking.status_label', 'Buyer confirmed receipt')->where('order.tracking.stage_label', 'Collected at hub counter'));
         $this->assertSame('customer_collected', $parcel->fresh()->status);
         $this->assertSame('pending', $parcel->order->fresh()->payment_status);
         $this->assertNull($parcel->order->fresh()->commissionLedger);
@@ -172,16 +179,53 @@ class SecureHubPickupTest extends TestCase
     public function test_code_is_shown_once_to_owner_and_never_in_history_notices_or_public_tracking(): void
     {
         $parcel = $this->staged();
+        $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
+            ->where('pickupCodeAvailable', true)->where('order.tracking.stage_label', 'Staged for secure hub collection')->where('order.tracking.notice', null));
         $this->actingAs($this->createApprovedUser('buyer'))->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertForbidden();
         $this->actingAs($this->createApprovedUser('admin'))->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertForbidden();
         $code = $this->code($parcel);
         $this->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertConflict();
-        $this->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertOk()->assertDontSee($code)->assertDontSee('code_hash');
+        $this->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertOk()->assertDontSee($code)->assertDontSee('code_hash')
+            ->assertInertia(fn (Assert $page) => $page->where('pickupCodeAvailable', false));
         $this->getJson('/api/track/'.$parcel->tracking_number)->assertOk()->assertDontSee($code)->assertDontSee('code_hash');
         $this->assertStringNotContainsString($code, json_encode(DB::table('notifications')->get()));
         $this->assertStringNotContainsString($code, json_encode(DB::table('pickup_claim_events')->get()));
         $this->assertStringNotContainsString($code, json_encode(DB::table('delivery_checkpoints')->get()));
         $this->assertStringNotContainsString('code_hash', PickupClaim::sole()->toJson());
+    }
+
+    public function test_unissued_code_stays_unavailable_during_an_actual_counter_verification_lock(): void
+    {
+        $parcel = $this->staged();
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub));
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/hub/release', $this->payload($parcel, 'INVALID-CODE'))->assertStatus(422);
+        }
+        $this->assertNotNull(PickupClaim::sole()->locked_until);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
+            ->where('pickupCodeAvailable', false)->where('order.tracking.notice', null)
+            ->where('order.tracking.next_step', 'Counter verification is temporarily locked. Follow the recorded unlock time before trying again.'));
+        $this->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertConflict();
+        $this->assertSame($before, $this->snapshot($parcel));
+        $this->travel(15)->minutes();
+        $this->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page->where('pickupCodeAvailable', true));
+        $this->code($parcel);
+    }
+
+    public function test_tracking_reads_an_expired_claim_without_expiring_or_returning_it(): void
+    {
+        $parcel = $this->staged();
+        $this->travelTo(PickupClaim::sole()->expires_at);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
+            ->where('pickupCodeAvailable', false)->where('pickupClaim.status', 'ready')
+            ->where('order.tracking.next_step', 'The collection deadline has passed. Hub staff must review the uncollected parcel for return.'));
+        $this->postJson('http://localhost/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertConflict();
+        $this->assertSame($before, $this->snapshot($parcel));
+        $this->assertSame('ready_for_hub_pickup', $parcel->fresh()->status);
+        $this->assertDatabaseCount('delivery_return_routes', 0);
     }
 
     public function test_only_actual_destination_handler_can_release_and_company_manager_only_configures_hours(): void
