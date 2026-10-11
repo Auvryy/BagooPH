@@ -3404,3 +3404,37 @@ policy remain separate work.
 Implementation commits: `c427981 feat(vouchers): retain immutable campaign and funding records`,
 `cbaa289 feat(checkout): allocate funded shop and platform vouchers`, and
 `67fca1e feat(vouchers): show stacked savings and funded net proceeds`.
+
+### October 11, 2026 — V03 campaign management verification
+
+V03 now has seller-owned drafts and publication, scheduled starts, confirmed
+pause/resume, retained campaign endings, and new draft revisions for changed
+published terms. Platform Admin manages explicitly Bagoo-funded product or
+capped shipping offers. A reasoned shop-campaign suspension notifies its seller
+and cannot be bypassed with seller resume. Budget increases retain their actor,
+reason, old/new ceiling and current use counters without changing discount terms.
+
+The shared writer service rechecks account/shop approval and ownership, normalizes
+codes before uniqueness, enforces dated finite limits and affordable seller
+reductions, retains immutable audit records and rejects changed request retries.
+Lifecycle reporting excludes restricted shops from active offers. Campaign totals
+span the authorized query, with distinct bookmarks, successful uses, cancelled
+allocations, committed funding and settled expense. Seller and admin screens use
+the existing governance/seller layout with bounded forms and paginated history.
+
+Verification: 77 isolated SQLite campaign/quote/governance-notification checks and
+39 funding regression checks passed. The 35 seller checks were rerun after the
+final restriction-state adjustment. Seventeen frontend campaign/finance checks,
+PHP style checks, `git diff --check` and the TypeScript/Vite build passed. The
+additive campaign migration retained the local PostgreSQL application's 9 users,
+17 products, 3 orders and their original approval, stock and monetary values;
+there were no local voucher records. This operational migration does not prove
+PostgreSQL concurrency. No Azure deployment or browser/device check occurred.
+
+Scoped assessments: campaign writer integrity **3/10 -> 8/10** and campaign
+management interface **2/10 -> 8/10**. V04 owned collections, checkout pickers,
+best-combination selection and the combined acceptance handoff remain in progress
+on the same authorized branch. These scores do not rate the whole buyer/admin
+flows or deferred refund/targeting features.
+
+Backend commit: `9b9ab8f feat(vouchers): publish scoped campaigns with recorded budgets`.
