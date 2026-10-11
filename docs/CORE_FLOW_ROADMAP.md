@@ -3123,23 +3123,29 @@ Local implementation commits:
 | `e54a64b` | `fix(buyer): move order issues into profile navigation` |
 | `21a6f4e` | `fix(buyer): center empty profile panel messages` |
 
-### October 11, 2026: collapsible purchase submenu
+### October 11, 2026: active purchase submenu
 
-Order issues starts hidden on ordinary purchase and account pages. Clicking
-My Purchases & Orders opens or closes its submenu while retaining the existing
-purchase navigation. A subtle chevron reflects expansion, and a light vertical
-line marks Order issues as a nested destination. Leaving purchases hides the
-submenu. Direct issue links keep their selected entry visible, including while
-returning to the main list, so a failed request cannot hide the current issue
-destination. Native buttons expose `aria-expanded`/`aria-controls`, and the
-collapsed container uses `hidden` to keep its child out of keyboard navigation.
+Order issues is visible whenever the purchases section is active, including
+the first/default visit and every progress or issue filter. This supersedes the
+initial click-to-toggle behavior: the submenu now follows the selected section
+without separate expansion state. A subtle chevron reflects visibility, and a
+light vertical line marks Order issues as a nested destination. Account,
+addresses, wallet and vouchers hide the submenu. Native buttons expose
+`aria-expanded`/`aria-controls`, and the hidden container keeps its child out of
+keyboard navigation. Existing header destinations remain explicit: My Orders
+opens purchases, while Profile & Settings opens Account & Security.
 
-Verification: **40 frontend checks passed**, including disclosure state,
-parent-toggle callbacks, direct issue entry, other profile tabs and the existing
-commerce/account settings cases. The **TypeScript/Vite production build and
-whitespace checks passed**. Browser/device interaction remains unverified.
+Verification: **40 frontend checks passed**, including immediate expansion
+across all five progress filters and three issue filters, hiding in all four
+other profile sections, disabled navigation and existing commerce/account
+settings cases. The **TypeScript/Vite production build and whitespace checks
+passed**. Browser/device interaction remains unverified.
 Scoped assessment: **purchase navigation hierarchy 7.5/10 before -> 8.5/10
-after**; the relationship is clearer without keeping the submenu always open.
+after**; the relationship is clearer and follows the current purchase context.
+The follow-up activation assessment is **8/10 before -> 8.5/10 after**: a first
+visit to purchases no longer needs an extra click to reveal Order issues.
 This does not change transaction readiness or the empty-panel rating above.
 
-Local implementation: `ac2f332 fix(buyer): collapse nested purchase navigation`.
+Initial disclosure implementation: `ac2f332 fix(buyer): collapse nested purchase navigation`.
+
+Active-section implementation: `2345e14 fix(buyer): expand submenu for active purchases`.
