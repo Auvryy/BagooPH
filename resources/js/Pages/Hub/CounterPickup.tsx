@@ -50,7 +50,17 @@ interface Props {
         city_municipality: string;
         operating_hours: string | null;
     } | null;
-    counterParcels: CounterParcel[];
+    counterParcels: {
+        data: CounterParcel[];
+        current_page: number;
+        last_page: number;
+        total: number;
+        from: number | null;
+        to: number | null;
+        prev_page_url: string | null;
+        next_page_url: string | null;
+        first_page_url: string;
+    };
     recentlyCollected: Array<{
         id: number;
         tracking_number: string;
@@ -66,6 +76,7 @@ interface Props {
 }
 
 export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours, basePath, canScan, counterCounts }: Props) {
+    const pageParcels = counterParcels.data;
     const [searchTerm, setSearchTerm] = useState(search || '');
     const [selectedParcel, setSelectedParcel] = useState<CounterParcel | null>(null);
     const [recipientName, setRecipientName] = useState('');
@@ -83,20 +94,20 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     const [currentTime, setCurrentTime] = useState(Date.now);
     useEffect(() => {
         const now = Date.now();
-        const boundaries = counterParcels.flatMap(parcel => [parcel.claim?.expires_at, parcel.claim?.locked_until])
+        const boundaries = pageParcels.flatMap(parcel => [parcel.claim?.expires_at, parcel.claim?.locked_until])
             .filter((value): value is string => Boolean(value)).map(value => new Date(value).getTime()).filter(value => value > now);
         if (!boundaries.length) return;
         const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(Math.min(...boundaries) - now + 1, 2_147_483_647));
         return () => window.clearTimeout(timer);
-    }, [counterParcels, currentTime]);
+    }, [pageParcels, currentTime]);
     const hasCurrentClaimWindow = (parcel: CounterParcel) => parcel.claim?.status === 'ready'
         && new Date(parcel.claim.expires_at).getTime() > Math.max(currentTime, Date.now())
         && (!parcel.claim.locked_until || new Date(parcel.claim.locked_until).getTime() <= Math.max(currentTime, Date.now()));
     const canRelease = (parcel: CounterParcel) => parcel.guidance.can_act && parcel.guidance.action === 'counter' && hasCurrentClaimWindow(parcel);
-    const elapsedReady = counterParcels.filter(parcel => parcel.guidance.ready_for_collection && !hasCurrentClaimWindow(parcel)).length;
+    const elapsedReady = pageParcels.filter(parcel => parcel.guidance.ready_for_collection && !hasCurrentClaimWindow(parcel)).length;
     const readyNow = Math.max(0, counterCounts.ready - elapsedReady);
     const blockedNow = Math.min(counterCounts.shown, counterCounts.blocked + elapsedReady);
-    const currentSelectedParcel = counterParcels.find(parcel => parcel.id === selectedParcel?.id);
+    const currentSelectedParcel = pageParcels.find(parcel => parcel.id === selectedParcel?.id);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,7 +172,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                <p className="text-sm text-slate-600">Readiness counts apply to the matching queue below. A handler verifies the buyer and cash at handover; the buyer confirms order receipt afterward.</p>
+                <p className="text-sm text-slate-600">Readiness and attention counts apply to this page. The queue total includes all matching parcels. A handler verifies the buyer and cash at handover; the buyer confirms order receipt afterward.</p>
                 {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
                 {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
@@ -170,7 +181,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Ready for Buyer Verification</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Ready for Buyer Verification (this page)</span>
                                 <Store className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
@@ -189,7 +200,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Needs Attention</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Needs Attention (this page)</span>
                                 <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
                             </div>
                             <div className="mt-2">
@@ -280,21 +291,21 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </h3>
                             </div>
                             <span className="text-xs font-sans text-slate-500 font-bold">
-                                {counterCounts.shown} matching parcels
+                                {counterParcels.total} matching parcels
                             </span>
                         </div>
 
-                        {counterParcels.length === 0 ? (
+                        {pageParcels.length === 0 ? (
                             <div className="py-12 text-center font-sans">
                                 <Store className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                <p className="text-xs font-bold text-slate-700">No parcels waiting at this counter</p>
+                                <p className="text-xs font-bold text-slate-700">{counterParcels.total > 0 ? 'No parcels on this page' : 'No matching parcels at this counter'}</p>
                                 <p className="text-[11px] text-slate-400 mt-1">
-                                    When inbound parcels are sorted to the pickup shelf, they appear here.
+                                    Arrived parcels appear here before staging. Search or change pages to find a parcel.
                                 </p>
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-200 mt-1">
-                                {counterParcels.map((parcel) => (
+                                {pageParcels.map((parcel) => (
                                     <div key={parcel.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap font-sans">
@@ -302,7 +313,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                     {parcel.tracking_number}
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-bold">
-                                                    {parcel.destination_bin ?? 'Not staged'}
+                                                    {parcel.destination_bin?.trim() ? parcel.destination_bin : 'Shelf not recorded'}
                                                 </span>
                                                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-xs bg-slate-100 text-slate-600 border border-slate-200">
                                                     {parcel.payment_method}
@@ -365,6 +376,16 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 ))}
                             </div>
                         )}
+                        <div className="mt-4 pt-3 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <p className="text-slate-600">Showing {counterParcels.from ?? 0} to {counterParcels.to ?? 0} of {counterParcels.total} matching parcels. Page {counterParcels.current_page} of {counterParcels.last_page}.</p>
+                            <nav aria-label="Counter queue pages" className="flex items-center gap-2">
+                                {counterParcels.prev_page_url ? <Link href={counterParcels.prev_page_url} preserveScroll className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Previous</Link>
+                                    : <button type="button" disabled className="rounded-xs border border-slate-300 px-3 py-2 text-slate-400">Previous</button>}
+                                {counterParcels.next_page_url ? <Link href={counterParcels.next_page_url} preserveScroll className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Next</Link>
+                                    : <button type="button" disabled className="rounded-xs border border-slate-300 px-3 py-2 text-slate-400">Next</button>}
+                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-[#E00D42]">First page</Link>}
+                            </nav>
+                        </div>
                     </div>
 
                     {/* RIGHT (4 COLS): RECENTLY COLLECTED AUDIT LOG */}

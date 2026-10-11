@@ -638,55 +638,17 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function counter(Request $request, HubParcelWorkstationService $workstation): Response
     {
-        $filters = $request->validate(['search' => 'nullable|string|max:120']);
+        $filters = $request->validate(['search' => 'nullable|string|max:120', 'page' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:1000000']]);
         $user = $request->user();
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
         $search = trim($filters['search'] ?? '');
         $basePath = $request->is('hub/*') ? '/hub' : '';
 
-        $query = Delivery::with(['order.buyer', 'order.items.product', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'pickupClaim'])
-            ->where('delivery_type', 'hub_self_pickup')
-            ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
-            ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
-            ->where('current_hub_id', $activeHub?->id ?? 0)
-            ->whereIn('status', [
-                OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-                OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
-            ]);
-
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('tracking_number', 'like', "%{$search}%")
-                    ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
-                    ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
-            });
-        }
-
-        $counterParcels = $query->latest()->get()->map(function ($d) use ($workstation, $activeHub, $user, $basePath) {
-            return [
-                'id' => $d->id,
-                'tracking_number' => $d->tracking_number,
-                'order_number' => $d->order?->order_number ?? 'N/A',
-                'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
-                'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
-                'status' => $d->status,
-                'destination_bin' => $d->destination_bin,
-                'total_amount' => (float) ($d->order?->total_amount ?? 0),
-                'payment_method' => $d->order?->payment_method ?? 'cod',
-                'item_count' => $d->order?->items?->count() ?? 1,
-                'items' => $d->order?->items?->map(fn ($item) => [
-                    'name' => $item->product?->name ?? 'Item',
-                    'quantity' => $item->quantity,
-                    'price' => (float) $item->price,
-                ]) ?? [],
-                'arrived_at' => $d->pickupClaim?->ready_at->timezone('Asia/Manila')->format('M d, H:i'),
-                'buyer_id' => $d->order->buyer_id,
-                'claim' => $d->pickupClaim?->only(['reference', 'status', 'expires_at', 'locked_until']),
-                'guidance' => $workstation->guidance($d, $activeHub, $user, collect(), $basePath),
-            ];
-        });
+        $counterParcels = $workstation->counterQueue($activeHub, $search)->latest('id')->paginate(15)
+            ->appends(['search' => $search, 'hub_id' => $activeHub?->id])
+            ->through(fn (Delivery $parcel) => $workstation->counterParcel($parcel, $activeHub, $user, $basePath));
+        $pageParcels = $counterParcels->getCollection();
 
         $recentlyCollected = Delivery::with(['order.buyer'])
             ->where('delivery_type', 'hub_self_pickup')
@@ -720,9 +682,9 @@ class LogisticsHubWorkstationController extends Controller
             'basePath' => $basePath,
             'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
             'counterCounts' => [
-                'shown' => $counterParcels->count(),
-                'ready' => $counterParcels->where('guidance.ready_for_collection', true)->count(),
-                'blocked' => $counterParcels->where('guidance.ready_for_collection', false)->count(),
+                'shown' => $pageParcels->count(),
+                'ready' => $pageParcels->where('guidance.ready_for_collection', true)->count(),
+                'blocked' => $pageParcels->where('guidance.ready_for_collection', false)->count(),
             ],
         ]);
     }

@@ -294,7 +294,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $delivery->update(['delivery_type' => 'hub_self_pickup', 'status' => 'ready_for_hub_pickup']);
         $this->actingAs($this->account('logistics'))->get(route('hub.deliveries'))->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('deliveries.data', 0)->has('eligibleRiders', 0)->where('counts.ready_pickup', 0));
-        $this->get(route('hub.counter'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('counterParcels', 0)->has('recentlyCollected', 0));
+        $this->get(route('hub.counter'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('counterParcels.data', 0)->has('recentlyCollected', 0));
     }
 
     public function test_foreign_parcels_and_fleet_cannot_leak_through_a_matching_hub_id(): void
@@ -306,7 +306,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $this->vehicle->update(['logistics_company_id' => $foreign->id]);
         $this->actingAs($this->handler)->get(route('hub.deliveries'))->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('deliveries.data', 0)->where('counts.ready_pickup', 0));
-        $this->get(route('hub.counter'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('counterParcels', 0));
+        $this->get(route('hub.counter'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('counterParcels.data', 0));
         $this->get(route('hub.fleet'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('fleet', 0)->where('stats.total', 0));
     }
 

@@ -299,7 +299,7 @@ class PickupClaimService
             return 'This parcel needs its original staging and claim at an enabled destination counter.';
         }
         try {
-            $this->assertReady($parcel, $claim);
+            $this->assertReady($parcel, $claim, readOnly: true);
         } catch (DomainException $error) {
             return $error->getMessage();
         }
@@ -326,18 +326,19 @@ class PickupClaimService
         return $claim;
     }
 
-    private function assertReady(Delivery $parcel, PickupClaim $claim): void
+    private function assertReady(Delivery $parcel, PickupClaim $claim, bool $readOnly = false): void
     {
         if ($claim->status !== 'ready' || now()->greaterThanOrEqualTo($claim->expires_at) || $claim->consumed_at) {
             throw new DomainException('This pickup claim is expired or already used.');
         }
-        $this->assertReadyCustody($parcel, $claim);
+        $this->assertReadyCustody($parcel, $claim, $readOnly);
     }
 
-    private function assertReadyCustody(Delivery $parcel, PickupClaim $claim): void
+    private function assertReadyCustody(Delivery $parcel, PickupClaim $claim, bool $readOnly = false): void
     {
-        $checkpoint = $parcel->checkpoints()->whereNull('source_checkpoint_id')->latest('id')->first();
-        $custody = DeliveryCheckpoint::lastCustody($parcel);
+        // Workstation reads may batch this evidence; mutations always query it afresh.
+        $checkpoint = $readOnly ? $parcel->latestOriginalCheckpoint : $parcel->checkpoints()->whereNull('source_checkpoint_id')->latest('id')->first();
+        $custody = $readOnly ? ($parcel->latestCustodyCheckpoint?->custody_after ?? ['kind' => 'unknown']) : DeliveryCheckpoint::lastCustody($parcel);
         if ($parcel->status !== 'ready_for_hub_pickup' || $parcel->order->status !== 'sorted' || $parcel->current_hub_id !== $claim->hub_id
             || $checkpoint?->id !== $claim->ready_checkpoint_id || $checkpoint->checkpoint_type !== 'ready_for_hub_pickup' || ! $checkpoint->barcode_scanned
             || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $claim->hub_id) {

@@ -37,6 +37,48 @@ class HubParcelWorkstationService
         private readonly PickupClaimService $pickup,
     ) {}
 
+    public function counterQueue(?LogisticsHub $hub, string $search = ''): Builder
+    {
+        $query = Delivery::query()->with(['order.buyer', 'order.items.product', 'currentHub', 'courier', 'assignedRider',
+            'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim'])
+            ->where('delivery_type', 'hub_self_pickup')
+            ->where('destination_bayan_hub_id', $hub?->id ?? 0)
+            ->where('logistics_company_id', $hub?->logistics_company_id ?? 0)
+            ->where('current_hub_id', $hub?->id ?? 0)
+            ->whereIn('status', ['arrived_at_destination_hub', 'ready_for_hub_pickup', 'sorted_to_barangay_bin']);
+
+        if ($search !== '') {
+            $query->where(fn ($match) => $match->where('tracking_number', 'like', "%{$search}%")
+                ->orWhereHas('order', fn ($order) => $order->where('order_number', 'like', "%{$search}%"))
+                ->orWhereHas('order.buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$search}%")));
+        }
+
+        return $query;
+    }
+
+    public function counterParcel(Delivery $parcel, LogisticsHub $hub, User $actor, string $base): array
+    {
+        return [
+            'id' => $parcel->id,
+            'tracking_number' => $parcel->tracking_number,
+            'order_number' => $parcel->order?->order_number ?? 'N/A',
+            'buyer_name' => $parcel->order?->buyer?->name ?? 'Customer',
+            'buyer_phone' => $parcel->order?->buyer?->phone ?? 'N/A',
+            'status' => $parcel->status,
+            'destination_bin' => $parcel->destination_bin,
+            'total_amount' => (float) ($parcel->order?->total_amount ?? 0),
+            'payment_method' => $parcel->order?->payment_method ?? 'cod',
+            'item_count' => $parcel->order?->items?->count() ?? 0,
+            'items' => $parcel->order?->items?->map(fn ($item) => [
+                'name' => $item->product?->name ?? 'Item', 'quantity' => $item->quantity, 'price' => (float) $item->price,
+            ]) ?? [],
+            'arrived_at' => $parcel->pickupClaim?->ready_at->timezone('Asia/Manila')->format('M d, H:i'),
+            'buyer_id' => $parcel->order->buyer_id,
+            'claim' => $parcel->pickupClaim?->only(['reference', 'status', 'expires_at', 'locked_until']),
+            'guidance' => $this->guidance($parcel, $hub, $actor, collect(), $base),
+        ];
+    }
+
     public function registry(?LogisticsHub $hub): Builder
     {
         if (! $hub) {

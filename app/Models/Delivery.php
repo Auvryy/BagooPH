@@ -230,6 +230,13 @@ class Delivery extends Model
         });
     }
 
+    public function latestOriginalCheckpoint(): HasOne
+    {
+        return $this->hasOne(DeliveryCheckpoint::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->whereNull('source_checkpoint_id');
+        });
+    }
+
     public function pickupClaim(): HasOne
     {
         return $this->hasOne(PickupClaim::class);

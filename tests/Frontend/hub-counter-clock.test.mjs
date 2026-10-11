@@ -34,14 +34,14 @@ function scheduledDelay({ mountedAt, now, expiresAt, lockedUntil = null }) {
     globalThis.counterClock = { mountedAt, effect: null };
     globalThis.window = { setTimeout: (_, delay) => { delays.push(delay); return 1; }, clearTimeout: () => {} };
     try {
-        Counter({ activeHub: null, counterParcels: [{ id: 1, tracking_number: 'BGO-CLOCK', order_number: 'BGO-CLOCK', buyer_name: 'Mara Santos',
+        Counter({ activeHub: null, counterParcels: { data: [{ id: 1, tracking_number: 'BGO-CLOCK', order_number: 'BGO-CLOCK', buyer_name: 'Mara Santos',
             buyer_id: 2, buyer_phone: '', status: 'ready_for_hub_pickup', destination_bin: 'COUNTER', total_amount: 100,
             payment_method: 'cod', item_count: 1, items: [], arrived_at: null,
             claim: { reference: 'PUC-CLOCK', status: 'ready', expires_at: new Date(expiresAt).toISOString(),
                 locked_until: lockedUntil === null ? null : new Date(lockedUntil).toISOString() },
             guidance: { stage: 'Staged', order_status: 'Sorted', custodian: 'Destination Bayan Hub', custody_recorded_at: null,
                 next_step: 'Verify buyer', responsible: 'Handler', blocker: null, action: 'counter', can_act: true,
-                href: null, eligible_rider_ids: [], ready_for_collection: true } }],
+                href: null, eligible_rider_ids: [], ready_for_collection: true } }], current_page: 1, last_page: 1, total: 1 },
             recentlyCollected: [], search: '', requestToken: 'CLOCK', canConfigureHours: false, basePath: '/hub', canScan: false,
             counterCounts: { shown: 1, ready: 1, blocked: 0 } });
         const cleanup = globalThis.counterClock.effect();
