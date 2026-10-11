@@ -165,11 +165,11 @@ class HubParcelWorkstationTest extends TestCase
             ->where('counts.ready_pickup', 1)->where('deliveries.total', 1)
             ->where('deliveries.data.0.guidance.action', 'scan')->where('deliveries.data.0.guidance.ready_for_collection', false));
         $this->get($base.'/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 0)->where('counterCounts.blocked', 1)->where('counterParcels.0.arrived_at', null));
+            ->where('counterCounts.ready', 0)->where('counterCounts.blocked', 1)->where('counterParcels.data.0.arrived_at', null));
         $hub->update(['operating_hours' => null]);
         $this->get($base.'/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterParcels.0.guidance.can_act', false)
-            ->where('counterParcels.0.guidance.blocker', 'The company administrator must record actual pickup hours before staging.'));
+            ->where('counterParcels.data.0.guidance.can_act', false)
+            ->where('counterParcels.data.0.guidance.blocker', 'The company administrator must record actual pickup hours before staging.'));
     }
 
     public function test_staged_collection_is_ready_only_for_handler_verification_and_requires_retained_custody(): void
@@ -178,9 +178,9 @@ class HubParcelWorkstationTest extends TestCase
         $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
         $manager = $hub->company->user;
         $this->actingAs($manager)->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 1)->where('counterParcels.0.guidance.can_act', false)->where('canScan', false));
+            ->where('counterCounts.ready', 1)->where('counterParcels.data.0.guidance.can_act', false)->where('canScan', false));
         $this->actingAs($this->flowHandler($hub))->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 1)->where('counterParcels.0.guidance.action', 'counter')->where('counterParcels.0.guidance.can_act', true));
+            ->where('counterCounts.ready', 1)->where('counterParcels.data.0.guidance.action', 'counter')->where('counterParcels.data.0.guidance.can_act', true));
         $parcel->update(['current_hub_id' => null]);
         $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page->where('counterCounts.shown', 0));
     }
@@ -197,6 +197,9 @@ class HubParcelWorkstationTest extends TestCase
         $this->get('/hub/deliveries?hub_id='.$origin->id.'&status=ready_pickup')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('deliveries.total', 0)->where('counts.ready_pickup', 0));
         $this->get('/hub/counter?hub_id='.$origin->id)->assertOk()->assertInertia(fn (Assert $page) => $page->where('counterCounts.shown', 0));
+        $destination = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($destination))->get('/hub/scan?hub_id='.$destination->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterPickups', 0)->where('counterTotal', 0)->where('stats.ready_pickup', 0));
         $this->assertSame($before, $this->snapshot($parcel));
     }
 
@@ -214,16 +217,21 @@ class HubParcelWorkstationTest extends TestCase
         }
         $before = $this->snapshot($parcel);
         $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 0)->where('counterParcels.0.guidance.can_act', false)
-            ->where('counterParcels.0.guidance.blocker', fn ($value) => str_contains($value, 'verification is locked')));
+            ->where('counterCounts.ready', 0)->where('counterParcels.data.0.guidance.can_act', false)
+            ->where('counterParcels.data.0.guidance.blocker', fn ($value) => str_contains($value, 'verification is locked')));
+        $this->get('/hub/scan')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('stats.ready_pickup', 1)->where('counterPickups.0.guidance.ready_for_collection', false)
+            ->where('counterPickups.0.guidance.blocker', fn ($value) => str_contains($value, 'verification is locked')));
         $this->assertSame($before, $this->snapshot($parcel));
         $this->travelTo($claim->expires_at);
         $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 0)->where('counterParcels.0.guidance.can_act', false));
+            ->where('counterCounts.ready', 0)->where('counterParcels.data.0.guidance.can_act', false));
+        $this->get('/hub/scan')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('stats.ready_pickup', 1)->where('counterTotal', 1)->where('counterPickups.0.guidance.ready_for_collection', false));
         $this->assertSame('ready', $claim->fresh()->status, 'A page read cannot expire a claim.');
         app(PickupClaimService::class)->processDue();
         $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterParcels.0.guidance.action', 'scan')->where('counterParcels.0.guidance.can_act', true));
+            ->where('counterParcels.data.0.guidance.action', 'scan')->where('counterParcels.data.0.guidance.can_act', true));
     }
 
     public function test_malformed_filters_are_validation_errors_and_not_server_errors(): void
@@ -260,12 +268,12 @@ class HubParcelWorkstationTest extends TestCase
         $handler = $this->flowHandler($hub);
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterCounts.ready', 0)->where('counterParcels.0.guidance.action', 'manifest')
-            ->where('counterParcels.0.guidance.href', '/hub/manifests/'.$manifest->id.'?hub_id='.$hub->id));
+            ->where('counterCounts.ready', 0)->where('counterParcels.data.0.guidance.action', 'manifest')
+            ->where('counterParcels.data.0.guidance.href', '/hub/manifests/'.$manifest->id.'?hub_id='.$hub->id));
         $this->actingAs($hub->company->user)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($handler)->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counterParcels.0.guidance.action', 'scan')->where('counterParcels.0.guidance.can_act', true)
-            ->where('counterParcels.0.guidance.ready_for_collection', false));
+            ->where('counterParcels.data.0.guidance.action', 'scan')->where('counterParcels.data.0.guidance.can_act', true)
+            ->where('counterParcels.data.0.guidance.ready_for_collection', false));
     }
 
     public function test_recent_counter_results_require_real_collection_evidence_and_survive_buyer_confirmation(): void
@@ -311,6 +319,164 @@ class HubParcelWorkstationTest extends TestCase
         $this->assertTrue($older->fresh()->pickupClaim->consumed_at->greaterThan($newer->fresh()->pickupClaim->consumed_at));
         $this->actingAs($handler)->get($base.'/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->has('recentlyCollected', 2)->where('recentlyCollected.0.id', $older->id)->where('recentlyCollected.1.id', $newer->id));
+    }
+
+    #[DataProvider('portals')]
+    public function test_counter_pages_keep_matching_totals_and_page_readiness_in_both_portals(string $base): void
+    {
+        $oldest = $this->selfPickup(false);
+        $staged = collect(range(1, 15))->map(fn () => $this->selfPickup(true));
+        $hub = LogisticsHub::findOrFail($oldest->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $before = $this->snapshot($oldest);
+        $path = $base.'/counter?hub_id='.$hub->id.'&search=Mara';
+
+        $this->actingAs($handler)->get($path)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 15)->where('counterParcels.total', 16)->where('counterParcels.last_page', 2)
+            ->where('counterParcels.from', 1)->where('counterParcels.to', 15)
+            ->where('counterParcels.data.0.id', $staged->last()->id)
+            ->where('counterCounts.shown', 15)->where('counterCounts.ready', 15)->where('counterCounts.blocked', 0)
+            ->where('counterParcels.next_page_url', fn ($url) => str_contains($url, 'hub_id='.$hub->id)
+                && str_contains($url, 'search=Mara') && str_contains($url, 'page=2')
+                && parse_url($url, PHP_URL_PATH) === ($base === '/hub' ? '/hub/counter' : '/counter')));
+        $this->get($path.'&page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 1)->where('counterParcels.total', 16)->where('counterParcels.current_page', 2)
+            ->where('counterParcels.from', 16)->where('counterParcels.to', 16)->where('counterParcels.data.0.id', $oldest->id)
+            ->where('counterCounts.shown', 1)->where('counterCounts.ready', 0)->where('counterCounts.blocked', 1));
+        $this->get($base.'/counter?hub_id='.$hub->id.'&search='.$oldest->tracking_number)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 1)->where('counterParcels.total', 1)->where('counterParcels.data.0.id', $oldest->id));
+        $this->get($path.'&page=8')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 0)->where('counterParcels.total', 16)->where('counterParcels.current_page', 8)
+            ->where('counterCounts.shown', 0)->where('counterCounts.ready', 0)->where('counterCounts.blocked', 0));
+        $this->get($base.'/counter?hub_id='.$hub->id.'&search=NO-MATCH')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 0)->where('counterParcels.total', 0));
+        $this->assertSame($before, $this->snapshot($oldest));
+    }
+
+    public function test_counter_queries_and_payload_stay_bounded_when_the_queue_grows(): void
+    {
+        $parcel = $this->selfPickup(true);
+        foreach (range(1, 15) as $_) {
+            $this->selfPickup(true);
+        }
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $this->actingAs($this->flowHandler($hub));
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 15)->where('counterParcels.total', 16)->where('counterCounts.ready', 15));
+        $initialQueries = DB::getQueryLog();
+        DB::disableQueryLog();
+        foreach (range(1, 6) as $_) {
+            $this->selfPickup(true);
+        }
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterParcels.data', 15)->where('counterParcels.total', 22)->where('counterCounts.ready', 15));
+        $grownQueries = DB::getQueryLog();
+        DB::disableQueryLog();
+        $this->assertCount(count($initialQueries), $grownQueries, 'More off-page parcels must not add per-parcel readiness queries.');
+        $checkpointReads = collect($grownQueries)->filter(fn ($query) => str_contains($query['query'], 'select') && str_contains($query['query'], 'from "delivery_checkpoints"'));
+        $this->assertCount(2, $checkpointReads, 'Original staging and custody evidence must be read in two eager-loaded batches.');
+        $this->get('/hub/scan?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('counterPickups', 20)->where('counterTotal', 22)->where('stats.ready_pickup', 22)
+            ->where('counterPickups.0.guidance.custodian', $hub->name));
+    }
+
+    #[DataProvider('portals')]
+    public function test_scanner_reuses_actual_arrival_staging_and_counter_guidance(string $base): void
+    {
+        $parcel = $this->selfPickup(false);
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $handler = $this->flowHandler($hub);
+        $path = $base === '/hub' ? '/hub' : '';
+        $before = $this->snapshot($parcel);
+        $this->actingAs($handler)->get($base.'/scan?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('basePath', $path)->where('counterTotal', 1)->where('stats.ready_pickup', 0)
+            ->where('counterPickups.0.destination_bin', null)->where('counterPickups.0.guidance.action', 'scan')
+            ->where('counterPickups.0.guidance.order_status', 'At Sorting Center')->where('counterPickups.0.guidance.custodian', $hub->name));
+        $this->postJson($base.'/scan', ['hub_id' => $hub->id, 'barcode' => $parcel->tracking_number, 'mode' => 'inspect'])->assertOk()
+            ->assertJsonPath('delivery.destination_bin', null)->assertJsonPath('delivery.guidance.action', 'scan')
+            ->assertJsonPath('delivery.guidance.ready_for_collection', false)->assertJsonPath('prompt.requires_confirmation', true);
+        $this->assertSame($before, $this->snapshot($parcel));
+        $this->postJson($base.'/scan', ['hub_id' => $hub->id, 'barcode' => $parcel->tracking_number, 'mode' => 'confirm',
+            'action' => 'STAGE_FOR_PICKUP', 'expected_status' => $parcel->status])->assertOk()
+            ->assertJsonPath('delivery.destination_bin', null)->assertJsonPath('delivery.guidance.action', 'counter')
+            ->assertJsonPath('delivery.guidance.ready_for_collection', true)->assertJsonPath('prompt.requires_confirmation', false)
+            ->assertJsonPath('delivery.guidance.href', $path.'/counter?hub_id='.$hub->id.'&search='.$parcel->tracking_number);
+        $this->get($base.'/scan?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterPickups.0.destination_bin', null)->where('counterPickups.0.guidance.stage', 'Staged for secure counter collection')
+            ->where('stats.ready_pickup', 1)->where('counterPickups.0.guidance.ready_for_collection', true));
+        $parcel->update(['destination_bin' => 'COUNTER-B2']);
+        $hub->update(['allows_self_pickup' => false]);
+        $before = $this->snapshot($parcel);
+        $this->get($base.'/scan?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterPickups.0.destination_bin', 'COUNTER-B2')->where('counterTotal', 1)
+            ->where('counterPickups.0.guidance.can_act', false)->where('counterPickups.0.guidance.ready_for_collection', false));
+        $this->postJson($base.'/scan', ['hub_id' => $hub->id, 'barcode' => $parcel->tracking_number, 'mode' => 'inspect'])->assertOk()
+            ->assertJsonPath('delivery.destination_bin', 'COUNTER-B2')->assertJsonPath('delivery.guidance.can_act', false)
+            ->assertJsonPath('prompt.requires_confirmation', false);
+        $this->assertSame($before, $this->snapshot($parcel));
+        $this->actingAs($hub->company->user)->get($base.'/scan?hub_id='.$hub->id)->assertForbidden();
+    }
+
+    public function test_batched_readiness_keeps_the_latest_original_checkpoint_guard(): void
+    {
+        $parcel = $this->selfPickup(true);
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $source = $parcel->latestCustodyCheckpoint;
+        $code = $this->actingAs($parcel->order->buyer)->postJson('/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertOk()->json('code');
+        DeliveryCheckpoint::record($parcel, 'review_note', evidence: ['source_checkpoint_id' => $source->id]);
+        $this->actingAs($this->flowHandler($hub))->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page->where('counterCounts.ready', 1));
+        DeliveryCheckpoint::record($parcel, 'review_note');
+        $before = $this->snapshot($parcel);
+        $this->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterCounts.ready', 0)->where('counterParcels.data.0.guidance.can_act', false)
+            ->where('counterParcels.data.0.guidance.blocker', 'The original parcel must remain in its actual staged destination-hub custody.'));
+        $this->postJson('/hub/release', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id,
+            'claim_code' => $code, 'buyer_id' => $parcel->order->buyer_id, 'recipient_name' => $parcel->order->buyer->name,
+            'identity_confirmed' => true, 'request_token' => (string) Str::uuid(), 'cash_received' => (string) $parcel->order->total_amount,
+            'change_given' => '0', 'cash_confirmed' => true])->assertStatus(409);
+        $this->assertSame($before, $this->snapshot($parcel));
+    }
+
+    public function test_legacy_routing_shelf_placeholders_are_read_without_presenting_or_rewriting_a_location(): void
+    {
+        $parcel = $this->selfPickup(true);
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $parcel->update(['destination_bin' => 'STAGE: SELF-PICKUP-SHELF']);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($this->flowHandler($hub))->get('/hub/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterParcels.data.0.destination_bin', null)->where('counterCounts.ready', 1));
+        $this->get('/hub/scan')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterPickups.0.destination_bin', null)->where('recentScans.0.destination_bin', null)->where('stats.ready_pickup', 1));
+        $this->get('/hub/deliveries')->assertOk()->assertInertia(fn (Assert $page) => $page->where('deliveries.data.0.destination_bin', null));
+        $this->postJson('/hub/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk()
+            ->assertJsonPath('delivery.destination_bin', null)->assertJsonPath('delivery.guidance.ready_for_collection', true);
+        $this->assertSame($before, $this->snapshot($parcel));
+    }
+
+    #[DataProvider('portals')]
+    public function test_counter_phone_search_remains_within_the_actual_destination_facility(string $base): void
+    {
+        $parcel = $this->selfPickup(true);
+        $other = $this->selfPickup(true);
+        $phone = '09170000001';
+        $parcel->order->buyer->update(['phone' => $phone]);
+        $other->order->buyer->update(['phone' => $phone]);
+        // An explicit stale legacy location must not join the matching counter queue.
+        $other->update(['current_hub_id' => $other->origin_bayan_hub_id]);
+        $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
+        $before = $this->snapshot($parcel);
+        $this->actingAs($this->flowHandler($hub))->get($base.'/counter?hub_id='.$hub->id.'&search='.$phone)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('search', $phone)->where('counterParcels.total', 1)->has('counterParcels.data', 1)
+            ->where('counterParcels.data.0.id', $parcel->id)->where('counterParcels.data.0.buyer_phone', $phone)
+            ->where('counterCounts.ready', 1));
+        $this->get($base.'/counter?hub_id='.$hub->id.'&search=09170000009')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('counterParcels.total', 0)->has('counterParcels.data', 0));
+        $this->get($base.'/counter?hub_id='.$other->origin_bayan_hub_id.'&search='.$phone)->assertForbidden();
+        $this->assertSame($before, $this->snapshot($parcel));
     }
 
     private function selfPickup(bool $stage): Delivery

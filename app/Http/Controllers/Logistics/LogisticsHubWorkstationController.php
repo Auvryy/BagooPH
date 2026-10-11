@@ -600,7 +600,7 @@ class LogisticsHubWorkstationController extends Controller
                 'shipping_city' => $d->order?->shipping_city ?? 'N/A',
                 'status' => $d->status,
                 'delivery_type' => $d->delivery_type,
-                'destination_bin' => $d->destination_bin,
+                'destination_bin' => $workstation->recordedBin($d),
                 'current_hub' => $d->currentHub?->name ?? ($isAwaitingOriginIntake ? 'Awaiting origin hub intake' : 'In Transit'),
                 'awaiting_origin_intake' => (bool) $isAwaitingOriginIntake,
                 'items' => $d->order?->items?->map(fn ($item) => [
@@ -638,55 +638,17 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function counter(Request $request, HubParcelWorkstationService $workstation): Response
     {
-        $filters = $request->validate(['search' => 'nullable|string|max:120']);
+        $filters = $request->validate(['search' => 'nullable|string|max:120', 'page' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:1000000']]);
         $user = $request->user();
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
         $search = trim($filters['search'] ?? '');
         $basePath = $request->is('hub/*') ? '/hub' : '';
 
-        $query = Delivery::with(['order.buyer', 'order.items.product', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'pickupClaim'])
-            ->where('delivery_type', 'hub_self_pickup')
-            ->where('destination_bayan_hub_id', $activeHub?->id ?? 0)
-            ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0)
-            ->where('current_hub_id', $activeHub?->id ?? 0)
-            ->whereIn('status', [
-                OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-                OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
-            ]);
-
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('tracking_number', 'like', "%{$search}%")
-                    ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
-                    ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
-            });
-        }
-
-        $counterParcels = $query->latest()->get()->map(function ($d) use ($workstation, $activeHub, $user, $basePath) {
-            return [
-                'id' => $d->id,
-                'tracking_number' => $d->tracking_number,
-                'order_number' => $d->order?->order_number ?? 'N/A',
-                'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
-                'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
-                'status' => $d->status,
-                'destination_bin' => $d->destination_bin,
-                'total_amount' => (float) ($d->order?->total_amount ?? 0),
-                'payment_method' => $d->order?->payment_method ?? 'cod',
-                'item_count' => $d->order?->items?->count() ?? 1,
-                'items' => $d->order?->items?->map(fn ($item) => [
-                    'name' => $item->product?->name ?? 'Item',
-                    'quantity' => $item->quantity,
-                    'price' => (float) $item->price,
-                ]) ?? [],
-                'arrived_at' => $d->pickupClaim?->ready_at->timezone('Asia/Manila')->format('M d, H:i'),
-                'buyer_id' => $d->order->buyer_id,
-                'claim' => $d->pickupClaim?->only(['reference', 'status', 'expires_at', 'locked_until']),
-                'guidance' => $workstation->guidance($d, $activeHub, $user, collect(), $basePath),
-            ];
-        });
+        $counterParcels = $workstation->counterQueue($activeHub, $search)->latest('id')->paginate(15)
+            ->appends(['search' => $search, 'hub_id' => $activeHub?->id])
+            ->through(fn (Delivery $parcel) => $workstation->counterParcel($parcel, $activeHub, $user, $basePath));
+        $pageParcels = $counterParcels->getCollection();
 
         $recentlyCollected = Delivery::with(['order.buyer'])
             ->where('delivery_type', 'hub_self_pickup')
@@ -720,9 +682,9 @@ class LogisticsHubWorkstationController extends Controller
             'basePath' => $basePath,
             'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
             'counterCounts' => [
-                'shown' => $counterParcels->count(),
-                'ready' => $counterParcels->where('guidance.ready_for_collection', true)->count(),
-                'blocked' => $counterParcels->where('guidance.ready_for_collection', false)->count(),
+                'shown' => $pageParcels->count(),
+                'ready' => $pageParcels->where('guidance.ready_for_collection', true)->count(),
+                'blocked' => $pageParcels->where('guidance.ready_for_collection', false)->count(),
             ],
         ]);
     }
@@ -752,7 +714,7 @@ class LogisticsHubWorkstationController extends Controller
     /**
      * Mobile-first PWA Scan Station workstation.
      */
-    public function scanStation(Request $request): Response
+    public function scanStation(Request $request, HubParcelWorkstationService $workstation): Response
     {
         $user = $request->user();
         abort_unless($user?->isLogistics(), 403, 'Platform administrators may audit logistics but cannot operate a scan station.');
@@ -760,6 +722,7 @@ class LogisticsHubWorkstationController extends Controller
 
         abort_unless($activeHub, 403, 'No active facility is assigned to this account.');
         abort_unless($this->eligibility->canScan($user, $activeHub), 403, 'An active handler assignment is required for floor scans.');
+        $basePath = $request->is('hub/*') ? '/hub' : '';
 
         // Recent scans at this hub
         $recentScans = DeliveryCheckpoint::with(['delivery.order.buyer', 'delivery.destinationBayanHub', 'scannedBy'])
@@ -768,7 +731,7 @@ class LogisticsHubWorkstationController extends Controller
             ->latest()
             ->limit(15)
             ->get()
-            ->map(function ($cp) {
+            ->map(function ($cp) use ($workstation) {
                 return [
                     'id' => $cp->id,
                     'tracking_number' => $cp->delivery?->tracking_number ?? $cp->barcode_scanned,
@@ -779,7 +742,7 @@ class LogisticsHubWorkstationController extends Controller
                     'created_at' => $cp->created_at->toIso8601String(),
                     'status' => $cp->delivery?->status ?? 'in_transit',
                     'delivery_type' => $cp->delivery?->delivery_type ?? 'doorstep',
-                    'destination_bin' => $cp->delivery?->destination_bin ?? 'N/A',
+                    'destination_bin' => $workstation->recordedBin($cp->delivery),
                     'buyer_name' => $cp->delivery?->order?->buyer?->name ?? 'Customer',
                 ];
             });
@@ -807,38 +770,15 @@ class LogisticsHubWorkstationController extends Controller
             ->values();
 
         // Parcels staged or waiting at this hub for counter self-pickup
-        $counterPickups = [];
-        if ($activeHub && $activeHub->allows_self_pickup) {
-            $counterPickups = Delivery::with(['order.buyer', 'order.items.product'])
-                ->where('delivery_type', 'hub_self_pickup')
-                ->where('destination_bayan_hub_id', $activeHub->id)
-                ->where('logistics_company_id', $activeHub->logistics_company_id)
-                ->whereIn('status', [
-                    OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-                    OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-                    OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
-                ])
-                ->latest()
-                ->limit(20)
-                ->get()
-                ->map(fn ($d) => [
-                    'id' => $d->id,
-                    'tracking_number' => $d->tracking_number,
-                    'order_number' => $d->order?->order_number,
-                    'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
-                    'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
-                    'status' => $d->status,
-                    'destination_bin' => $d->destination_bin ?? 'STAGE: SELF-PICKUP-SHELF',
-                    'total_amount' => (float) ($d->order?->total_amount ?? 0),
-                    'payment_method' => $d->order?->payment_method ?? 'cod',
-                    'item_count' => $d->order?->items?->count() ?? 1,
-                ]);
-        }
+        $counterQueue = $workstation->counterQueue($activeHub);
+        $counterTotal = (clone $counterQueue)->count();
+        $counterPickups = $counterQueue->latest('id')->limit(20)->get()
+            ->map(fn (Delivery $parcel) => $workstation->counterParcel($parcel, $activeHub, $user, $basePath));
 
         // Quick stats for active hub
         $stats = [
             'parcels_in_hub' => $activeHub ? Delivery::query()->where('logistics_company_id', $activeHub->logistics_company_id)->where('current_hub_id', $activeHub->id)->whereNotIn('status', ['delivered', 'customer_collected', 'cancelled'])->count() : 0,
-            'ready_pickup' => $activeHub ? Delivery::where('destination_bayan_hub_id', $activeHub->id)->where('logistics_company_id', $activeHub->logistics_company_id)->where('delivery_type', 'hub_self_pickup')->where('status', OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP)->count() : 0,
+            'ready_pickup' => $workstation->stagedCounterCount($activeHub),
             'dispatched_today' => $activeHub ? DeliveryCheckpoint::where('hub_id', $activeHub->id)
                 ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $activeHub->logistics_company_id))
                 ->whereIn('checkpoint_type', [
@@ -856,6 +796,8 @@ class LogisticsHubWorkstationController extends Controller
             'recentScans' => $recentScans,
             'pendingOriginIntake' => $pendingOriginIntake,
             'counterPickups' => $counterPickups,
+            'counterTotal' => $counterTotal,
+            'basePath' => $basePath,
             'stats' => $stats,
         ]);
     }
@@ -1030,26 +972,35 @@ class LogisticsHubWorkstationController extends Controller
         bool $requiresConfirmation,
         bool $confirmed = false
     ): array {
-        $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub']);
+        $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
+        $base = request()->is('hub/*') ? '/hub' : '';
+        $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
+            ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
+        $guidance = app(HubParcelWorkstationService::class)->guidance($delivery, $hub, request()->user(), $riders, $base);
+        if ($guidance['action'] === 'counter' && $guidance['href']) {
+            $guidance['href'] .= '&search='.rawurlencode($delivery->tracking_number);
+        }
         $custodyHub = $delivery->currentHub;
         $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB', 'DISPATCH_RETURN_MANIFEST', 'RECEIVE_RETURN_MANIFEST'], true);
+        $canConfirm = $requiresConfirmation && ! $requiresManifest && $guidance['can_act'] && $guidance['action'] === 'scan';
 
         return [
             'success' => true,
-            'message' => $message,
+            'message' => ! $confirmed && ! $canConfirm ? 'Waybill verified. '.$guidance['next_step'].'.' : $message,
             'confirmed' => $confirmed,
             'prompt' => [
                 ...$prompt,
                 'expected_status' => $delivery->status,
-                'requires_confirmation' => $requiresConfirmation && ! $requiresManifest,
-                'manifest_url' => $requiresManifest ? (request()->is('hub/*') ? '/hub/manifests' : '/manifests') : null,
+                'requires_confirmation' => $canConfirm,
+                'manifest_url' => $requiresManifest ? $base.'/manifests?hub_id='.$hub->id : null,
             ],
             'delivery' => [
                 'id' => $delivery->id,
                 'tracking_number' => $delivery->tracking_number,
                 'status' => $delivery->status,
                 'delivery_type' => $delivery->delivery_type,
-                'destination_bin' => $delivery->destination_bin,
+                'destination_bin' => app(HubParcelWorkstationService::class)->recordedBin($delivery),
+                'guidance' => $guidance,
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,
