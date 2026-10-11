@@ -3,13 +3,15 @@ import { type ReactNode } from 'react';
 import CourierJobMap from '@/Components/CourierJobMap';
 import { CourierBadge, CourierPanel, CourierStopActions } from '@/Components/CourierUI';
 import { type CourierMapJob, type CourierPlace } from '@/utils/courier';
+import { OrderTracking } from '@/types';
+import { trackingDate } from '@/Components/OrderTrackingPanel';
 
 interface JobStop {
     place: CourierPlace;
     label: string;
 }
 
-export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel, phone, messageDeliveryId, messagePhase, children }: {
+export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel, phone, messageDeliveryId, messagePhase, tracking, children }: {
     job: CourierMapJob;
     stops: [JobStop, JobStop];
     currentStop: 0 | 1;
@@ -17,6 +19,7 @@ export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel
     phone?: string | null;
     messageDeliveryId?: number;
     messagePhase: 'pickup' | 'final_mile';
+    tracking?: OrderTracking | null;
     children?: ReactNode;
 }) {
     return <CourierPanel className="min-w-0 p-4 sm:p-5">
@@ -24,6 +27,7 @@ export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel
             <div className="flex flex-wrap items-center gap-3"><h2 id="rider-current-job" tabIndex={-1} className="text-lg font-semibold focus:outline-none">{job.preview ? 'Pickup preview' : messagePhase === 'pickup' ? 'Active pickup' : 'Active delivery'}</h2><CourierBadge tone={currentStop === 1 && messagePhase === 'pickup' ? 'waiting' : 'brand'}>{job.stage}</CourierBadge></div>
             <p className="break-all text-sm font-medium text-slate-600">{job.trackingNumber}</p>
         </header>
+        {tracking && <div className="mb-5 space-y-2 rounded-[8px] bg-[#FFFAFB] p-3 text-sm text-slate-700"><p><span className="font-semibold">Order:</span> {tracking.status_label}</p><p><span className="font-semibold">Recorded holder:</span> {tracking.custodian}</p><p className="text-xs text-slate-500">Checked {trackingDate(tracking.observed_at)} · Philippine time</p>{tracking.notice && <p role="status" className="text-amber-900">{tracking.notice}</p>}</div>}
         <div className="grid items-start gap-5 min-[860px]:grid-cols-2">
             <div className="min-w-0">
                 <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF6F8] text-[#C20836]"><Package className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h3 className="break-words text-base font-medium">{messagePhase === 'pickup' ? stops[0].place.name || 'Seller pickup' : stops[1].place.name || 'Assigned recipient'}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{parcelLabel}</p></div></div>

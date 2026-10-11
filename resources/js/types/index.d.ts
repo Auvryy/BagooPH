@@ -220,6 +220,21 @@ export interface Delivery {
     order?: Order;
 }
 
+export interface OrderTracking {
+    commercial_status: string;
+    status_label: string;
+    stage_label: string;
+    tone: 'attention' | 'success' | 'progress';
+    custodian: string;
+    custody_recorded_at: string | null;
+    next_step: string;
+    responsible: string;
+    notice: string | null;
+    observed_at: string;
+    history: Array<{ id: number; label: string; location: string; created_at: string | null }>;
+    failure: { attempt_number: number; reason: string; attempted_at: string | null; retry_at: string | null } | null;
+}
+
 export interface Order {
     id: number;
     order_number: string;
@@ -256,6 +271,7 @@ export interface Order {
     can_mark_ready?: boolean;
     can_cancel?: boolean;
     can_print_waybill?: boolean;
+    tracking?: OrderTracking;
 }
 
 export interface Review {

@@ -7,6 +7,7 @@ import { buyerOrderStages } from '@/utils/orderWorkspace';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
+import { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
     User as UserIcon, 
@@ -412,43 +413,6 @@ export default function BuyerProfile({
 
     const filteredOrders = orders.data;
 
-    const getStatusPill = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</span>;
-            case 'delivered':
-                return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Delivered</span>;
-            case 'out_for_delivery':
-            case 'shipped':
-            case 'in_transit':
-                return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-indigo-500" /> In Transit</span>;
-            case 'assigned_to_rider':
-            case 'sorted':
-            case 'at_sorting_center':
-            case 'picked_up':
-                return <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Truck className="w-3 h-3 text-purple-500" /> In Logistics</span>;
-            case 'failed':
-            case 'delivery_failed':
-                return <span className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700">Delivery issue</span>;
-            case 'returned':
-                return <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">Returned</span>;
-            case 'canceled':
-            case 'cancelled':
-                return <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">Cancelled</span>;
-            case 'ready_for_pickup':
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Ready for Pickup</span>;
-            case 'preparing':
-            case 'processing':
-            case 'packaging':
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-slate-500" /> Packaging</span>;
-            case 'pending':
-            case 'placed':
-                return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold font-sans flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Order Placed</span>;
-            default:
-                return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold font-sans uppercase">{status.replace('_', ' ')}</span>;
-        }
-    };
-
     const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
         { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: ordersCount },
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
@@ -610,6 +574,7 @@ export default function BuyerProfile({
                         {/* TAB 1: MY PURCHASES & ORDERS (DEFAULT ACTIVE TAB) */}
                         {activeTab === 'orders' && (
                             <div className="space-y-4">
+                                <div className="flex justify-end"><button type="button" disabled={orderBusy || receiptPending !== null} onClick={() => loadOrderPage(orders.current_page > 1 ? `${route('buyer.profile')}?page=${orders.current_page}` : route('buyer.profile'), { tab: 'orders', order_status: currentOrderStatus })} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{orderBusy ? 'Refreshing…' : 'Refresh tracking'}</button></div>
                                 
                                 {/* Status Filter Strip */}
                                 <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none font-sans text-xs">
@@ -669,7 +634,7 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    {getStatusPill(order.status)}
+                                                    {<OrderTrackingStatus tracking={order.tracking} />}
                                                 </div>
                                             </div>
 
@@ -705,12 +670,10 @@ export default function BuyerProfile({
                                                         <span>
                                                             Tracking: <strong className="text-slate-900">#{order.delivery.tracking_number}</strong>
                                                         </span>
-                                                        {order.delivery.courier && (
-                                                            <span className="text-slate-400">• Rider: {order.delivery.courier.name}</span>
-                                                        )}
+                                                        {order.tracking && <span className="text-slate-500"> · Holder: {order.tracking.custodian}</span>}
                                                     </div>
                                                     <span className="text-slate-600 font-bold uppercase text-[10px] bg-slate-200/60 px-2 py-0.5 rounded-md">
-                                                        {order.delivery.status.replace('_', ' ')}
+                                                        {order.tracking?.stage_label ?? 'Parcel stage not loaded'}
                                                     </span>
                                                 </div>
                                             )}
