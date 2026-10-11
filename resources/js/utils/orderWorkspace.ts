@@ -9,6 +9,12 @@ export const buyerOrderStages = [
     { id: 'cancelled', label: 'Cancelled' },
 ];
 
+export const buyerOrderIssueStages = buyerOrderStages.filter(stage =>
+    ['delivery_failed', 'returned', 'cancelled'].includes(stage.id),
+);
+
+export const isBuyerOrderIssue = (status: string) => buyerOrderIssueStages.some(stage => stage.id === status);
+
 export const sellerOrderStages = [
     { id: 'all', label: 'All orders' },
     { id: 'to_pack', label: 'To pack' },

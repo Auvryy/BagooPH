@@ -14,17 +14,21 @@ after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = await build({
     stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
         export { default as Filters } from '@/Components/BuyerOrderFilters';
+        export { default as PurchaseNavigation } from '@/Components/BuyerPurchaseNavigation';
         export { setupBuyerProfileWorkspace } from '@/utils/buyerProfileWorkspace';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
-    plugins: [{ name: 'capture-buyer-filters', setup(builder) {
-        builder.onResolve({ filter: /BuyerOrderFilters$/ }, args => args.importer.endsWith('/Pages/Buyer/Profile.tsx')
-            ? { path: 'capture-filters', namespace: 'capture-filters' } : undefined);
-        builder.onLoad({ filter: /.*/, namespace: 'capture-filters' }, () => ({ contents: `
+    plugins: [{ name: 'capture-buyer-controls', setup(builder) {
+        builder.onResolve({ filter: /BuyerOrderFilters$|BuyerPurchaseNavigation$/ }, args => args.importer.endsWith('/Pages/Buyer/Profile.tsx')
+            ? { path: args.path.split('/').pop(), namespace: 'capture-controls' } : undefined);
+        builder.onLoad({ filter: /.*/, namespace: 'capture-controls' }, args => ({ contents: `
             import { createElement } from 'react';
-            import Filters from '@/Components/BuyerOrderFilters';
-            export default function Capture(props) { globalThis.buyerProfileFilters = props; return createElement(Filters, props); }
+            import Control from '@/Components/${args.path}';
+            export default function Capture(props) {
+                globalThis.${args.path === 'BuyerOrderFilters' ? 'buyerProfileFilters' : 'buyerProfileNavigation'} = props;
+                return createElement(Control, props);
+            }
         `, resolveDir: resolve(import.meta.dirname, '../..') }));
     } }],
 });
@@ -32,7 +36,7 @@ const path = join(temporary, 'buyer-profile.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
 const ui = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
-after(() => { delete globalThis.route; delete globalThis.buyerProfileFilters; });
+after(() => { delete globalThis.route; delete globalThis.buyerProfileFilters; delete globalThis.buyerProfileNavigation; });
 const counts = { all: 45, to_ship: 13, in_transit: 9, delivered: 8, completed: 6, delivery_failed: 4, returned: 3, cancelled: 2 };
 const user = { id: 7, name: 'Ana Santos', email: 'buyer@bagoo.test', email_verified_at: '2026-10-11T07:00:00Z', role: 'buyer', status: 'active', kyc_status: 'approved', phone: '+639171234567', birthday: null };
 async function render(props = {}) {
@@ -55,43 +59,80 @@ function nodes(node, predicate) {
     return found.concat([node.props?.children].flat(Infinity).flatMap(child => nodes(child, predicate)));
 }
 
-test('purchase progress stays in five visible buttons while exceptions have a separate labelled selector', async () => {
+test('purchase progress stays in five buttons and Order issues sits directly below purchases in the sidebar', async () => {
     const html = await render();
     const nav = html.match(/<nav aria-label="Purchase status"[\s\S]*?<\/nav>/)[0];
     assert.equal((nav.match(/<button\b/g) || []).length, 5);
     for (const label of ['All', 'To ship', 'In transit', 'Delivered', 'Completed']) assert.ok(nav.includes(label));
     assert.doesNotMatch(nav, /Delivery issue|Returned|Cancelled|overflow-x-auto/);
-    assert.match(html, /<label[^>]*for="buyer-more-statuses"[^>]*>More statuses<\/label>/);
-    for (const [status, count] of [['delivery_failed', 4], ['returned', 3], ['cancelled', 2]]) {
-        assert.match(html, new RegExp(`<option value="${status}"[^>]*>[^<]+ \\(${count}\\)<`));
-    }
-    assert.ok(html.indexOf('buyer-more-statuses') < html.indexOf('aria-label="Purchase status"'));
+    const sidebar = html.match(/<nav aria-label="Buyer profile"[\s\S]*?<\/nav>/)[0];
+    assert.ok(sidebar.indexOf('My Purchases &amp; Orders') < sidebar.indexOf('Order issues'));
+    assert.ok(sidebar.indexOf('Order issues') < sidebar.indexOf('My Account &amp; Security'));
+    assert.doesNotMatch(html, /More statuses|buyer-more-statuses/);
+    assert.equal(globalThis.buyerProfileNavigation.active, 'progress');
+    assert.equal(globalThis.buyerProfileNavigation.issueCount, 9);
+    assert.equal(globalThis.buyerProfileNavigation.ordersCount, 45);
 });
 
-test('direct exception links select the matching option and never mark a progress button active', async () => {
+test('direct exception links activate Order issues and the matching exception button', async () => {
     for (const currentOrderStatus of ['delivery_failed', 'returned', 'cancelled']) {
         const html = await render({ currentOrderStatus });
-        assert.match(html, new RegExp(`<option value="${currentOrderStatus}" selected="">`));
-        const nav = html.match(/<nav aria-label="Purchase status"[\s\S]*?<\/nav>/)[0];
-        assert.doesNotMatch(nav, /aria-pressed="true"/);
+        const nav = html.match(/<nav aria-label="Order issue status"[\s\S]*?<\/nav>/)[0];
+        assert.equal((nav.match(/<button\b/g) || []).length, 3);
+        assert.equal((nav.match(/aria-pressed="true"/g) || []).length, 1);
+        for (const label of ['Delivery issue', 'Returned', 'Cancelled']) assert.ok(nav.includes(label));
+        const selections = [];
+        const tree = ui.Filters({ ...globalThis.buyerProfileFilters, onChange: status => selections.push(status) });
+        nodes(tree, node => node.type === 'button' && node.props['aria-pressed'])[0].props.onClick();
+        assert.deepEqual(selections, [currentOrderStatus]);
+        assert.equal(globalThis.buyerProfileNavigation.active, 'issues');
+        assert.doesNotMatch(html, /aria-label="Purchase status"|buyer-more-statuses/);
     }
 });
 
-test('the selector and progress buttons invoke existing status loads; controls disable together during an update', () => {
+test('exception and progress buttons invoke existing status loads and controls disable together', () => {
     const selections = []; let refreshed = false;
     const tree = ui.Filters({ selected: 'returned', counts, disabled: false, refreshing: false,
         onChange: value => selections.push(value), onRefresh: () => { refreshed = true; } });
-    const select = nodes(tree, node => node.type === 'select')[0];
-    select.props.onChange({ target: { value: 'cancelled' } });
-    select.props.onChange({ target: { value: '' } });
     const buttons = nodes(tree, node => node.type === 'button');
-    buttons[1].props.onClick();
+    buttons[3].props.onClick();
+    const progress = ui.Filters({ selected: 'all', counts, disabled: false, refreshing: false,
+        onChange: value => selections.push(value), onRefresh() {} });
+    nodes(progress, node => node.type === 'button')[1].props.onClick();
     buttons[0].props.onClick();
     assert.deepEqual(selections, ['cancelled', 'all']);
     assert.equal(refreshed, true);
     const loading = ui.Filters({ selected: 'all', counts, disabled: true, refreshing: true, onChange() {}, onRefresh() {} });
-    assert.ok(nodes(loading, node => node.type === 'button' || node.type === 'select').every(node => node.props.disabled));
+    assert.ok(nodes(loading, node => node.type === 'button').every(node => node.props.disabled));
     assert.match(renderToStaticMarkup(loading), /Refreshing…/);
+});
+
+test('sidebar group buttons retain their selected states and disable together during order updates', () => {
+    const selections = [];
+    const props = { active: 'issues', ordersCount: 45, issueCount: 9, disabled: false, onSelect: group => selections.push(group) };
+    const buttons = nodes(ui.PurchaseNavigation(props), node => node.type === 'button');
+    assert.equal(buttons[0].props['aria-current'], undefined);
+    assert.equal(buttons[1].props['aria-current'], 'page');
+    buttons.forEach(button => button.props.onClick());
+    assert.deepEqual(selections, ['progress', 'issues']);
+    assert.ok(nodes(ui.PurchaseNavigation({ ...props, disabled: true }), node => node.type === 'button').every(node => node.props.disabled));
+    assert.ok(nodes(ui.PurchaseNavigation({ ...props, active: null }), node => node.type === 'button').every(node => node.props['aria-current'] === undefined));
+});
+
+test('switching purchase groups from another profile tab loads the existing status route and resets pagination', async () => {
+    const original = router.get; const visits = [];
+    router.get = (...args) => visits.push(args);
+    try {
+        await render({ initialTab: 'wallet', currentOrderStatus: 'all', orders: { data: [], current_page: 2, last_page: 2, per_page: 12, total: 13 } });
+        globalThis.buyerProfileNavigation.onSelect('issues');
+        await render({ initialTab: 'account', currentOrderStatus: 'cancelled' });
+        globalThis.buyerProfileNavigation.onSelect('progress');
+        assert.equal(visits[0][0], '/buyer/profile');
+        assert.deepEqual(visits[0][1], { tab: 'orders', order_status: 'delivery_failed' });
+        assert.equal(visits[1][0], '/buyer/profile');
+        assert.deepEqual(visits[1][1], { tab: 'orders', order_status: 'all' });
+        assert.ok(visits.every(visit => visit[2].only.includes('initialTab') && visit[2].preserveScroll));
+    } finally { router.get = original; }
 });
 
 test('profile filters reset the page and refresh retains the selected exception and current page', async () => {

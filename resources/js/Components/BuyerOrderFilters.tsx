@@ -1,6 +1,4 @@
-import { buyerOrderStages } from '@/utils/orderWorkspace';
-
-const additionalStatuses = new Set(['delivery_failed', 'returned', 'cancelled']);
+import { buyerOrderStages, isBuyerOrderIssue } from '@/utils/orderWorkspace';
 
 interface Props {
     selected: string;
@@ -12,30 +10,12 @@ interface Props {
 }
 
 export default function BuyerOrderFilters({ selected, counts, disabled, onChange, onRefresh, refreshing }: Props) {
+    const showIssues = isBuyerOrderIssue(selected);
+    const stages = buyerOrderStages.filter(stage => isBuyerOrderIssue(stage.id) === showIssues);
+
     return (
         <div className="shrink-0 space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="min-w-0">
-                    <label htmlFor="buyer-more-statuses" className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        More statuses
-                    </label>
-                    <select
-                        id="buyer-more-statuses"
-                        value={additionalStatuses.has(selected) ? selected : ''}
-                        disabled={disabled}
-                        onChange={event => {
-                            if (event.target.value) onChange(event.target.value);
-                        }}
-                        className={`max-w-full rounded-xl border bg-white py-2 pl-3 pr-9 text-xs font-semibold focus:border-[#E00D42] focus:ring-[#E00D42] disabled:opacity-50 ${
-                            additionalStatuses.has(selected) ? 'border-[#E00D42] text-[#C20836]' : 'border-slate-300 text-slate-700'
-                        }`}
-                    >
-                        <option value="" disabled>Choose a status</option>
-                        {buyerOrderStages.filter(stage => additionalStatuses.has(stage.id)).map(stage => (
-                            <option key={stage.id} value={stage.id}>{stage.label} ({counts[stage.id] ?? 0})</option>
-                        ))}
-                    </select>
-                </div>
+            <div className="flex justify-end">
                 <button
                     type="button"
                     disabled={disabled}
@@ -45,8 +25,8 @@ export default function BuyerOrderFilters({ selected, counts, disabled, onChange
                     {refreshing ? 'Refreshing…' : 'Refresh tracking'}
                 </button>
             </div>
-            <nav aria-label="Purchase status" className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-300 bg-white p-1.5 shadow-xs sm:grid-cols-5">
-                {buyerOrderStages.filter(stage => !additionalStatuses.has(stage.id)).map(stage => (
+            <nav aria-label={showIssues ? 'Order issue status' : 'Purchase status'} className={`grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-300 bg-white p-1.5 shadow-xs ${showIssues ? 'sm:grid-cols-3' : 'sm:grid-cols-5'}`}>
+                {stages.map(stage => (
                     <button
                         key={stage.id}
                         type="button"

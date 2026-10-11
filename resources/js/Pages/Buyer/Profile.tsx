@@ -3,12 +3,14 @@ import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
+import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { setupBuyerProfileWorkspace } from '@/utils/buyerProfileWorkspace';
+import { buyerOrderIssueStages, isBuyerOrderIssue } from '@/utils/orderWorkspace';
 import '../../../css/buyer-profile.css';
 import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
@@ -119,6 +121,7 @@ export default function BuyerProfile({
     });
 
     const selectedOrderStatus = currentOrderStatus;
+    const showingOrderIssues = isBuyerOrderIssue(selectedOrderStatus);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const orderScrollRef = useRef<HTMLDivElement>(null);
     const accountScrollRef = useRef<HTMLDivElement>(null);
@@ -186,6 +189,15 @@ export default function BuyerProfile({
                 window.history.pushState(null, '', targetUrl);
             }
         }
+    };
+
+    const openPurchaseGroup = (group: 'progress' | 'issues') => {
+        if (orderBusy || receiptGuard.current) return;
+        if (showingOrderIssues === (group === 'issues')) {
+            handleTabChange('orders');
+            return;
+        }
+        loadOrderPage(route('buyer.profile'), { tab: 'orders', order_status: group === 'issues' ? 'delivery_failed' : 'all' });
     };
 
     // Synchronize tab state with URL on browser Back / Forward (popstate)
@@ -426,9 +438,9 @@ export default function BuyerProfile({
     };
 
     const filteredOrders = orders.data;
+    const orderIssueCount = buyerOrderIssueStages.reduce((total, stage) => total + (orderCounts[stage.id] ?? 0), 0);
 
     const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
-        { id: 'orders', label: 'My Purchases & Orders', icon: Package, badge: ordersCount },
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
         { id: 'wallet', label: 'Bagoo Wallet', icon: Wallet, badge: wallet.available ? undefined : 'Unavailable' },
@@ -437,7 +449,7 @@ export default function BuyerProfile({
 
     return (
         <BuyerLayout>
-            <Head title={`${activeTab === 'orders' ? 'My Purchases & Order Tracking' : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
+            <Head title={`${activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
 
             <div className="w-full space-y-6 font-sans">
                 
@@ -445,10 +457,10 @@ export default function BuyerProfile({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                            {activeTab === 'orders' ? 'My Purchases & Order Tracking' : 'Account Settings & Credentials'}
+                            {activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : 'Account Settings & Credentials'}
                         </h1>
                         <p className="text-xs text-slate-500 font-sans">
-                            {activeTab === 'orders' ? 'View recorded delivery updates and order receipts' : 'Manage your account information and delivery addresses'}
+                            {activeTab === 'orders' ? (showingOrderIssues ? 'View delivery issues, returned orders and cancellations' : 'View recorded delivery updates and order receipts') : 'Manage your account information and delivery addresses'}
                         </p>
                     </div>
 
@@ -525,7 +537,14 @@ export default function BuyerProfile({
                         </div>
 
                         {/* Navigation Links */}
-                        <nav className="space-y-1.5 font-sans text-xs">
+                        <nav aria-label="Buyer profile" className="space-y-1.5 font-sans text-xs">
+                            <BuyerPurchaseNavigation
+                                active={activeTab === 'orders' ? (showingOrderIssues ? 'issues' : 'progress') : null}
+                                ordersCount={ordersCount}
+                                issueCount={orderIssueCount}
+                                disabled={orderBusy || receiptPending !== null}
+                                onSelect={openPurchaseGroup}
+                            />
                             {navItems.map((item) => {
                                 const isActive = activeTab === item.id;
                                 return (
