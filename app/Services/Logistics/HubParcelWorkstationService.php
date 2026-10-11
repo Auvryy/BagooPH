@@ -65,7 +65,7 @@ class HubParcelWorkstationService
             'buyer_name' => $parcel->order?->buyer?->name ?? 'Customer',
             'buyer_phone' => $parcel->order?->buyer?->phone ?? 'N/A',
             'status' => $parcel->status,
-            'destination_bin' => $parcel->destination_bin,
+            'destination_bin' => $this->recordedBin($parcel),
             'total_amount' => (float) ($parcel->order?->total_amount ?? 0),
             'payment_method' => $parcel->order?->payment_method ?? 'cod',
             'item_count' => $parcel->order?->items?->count() ?? 0,
@@ -77,6 +77,26 @@ class HubParcelWorkstationService
             'claim' => $parcel->pickupClaim?->only(['reference', 'status', 'expires_at', 'locked_until']),
             'guidance' => $this->guidance($parcel, $hub, $actor, collect(), $base),
         ];
+    }
+
+    public function stagedCounterCount(LogisticsHub $hub): int
+    {
+        return $this->counterQueue($hub)->where('status', 'ready_for_hub_pickup')
+            ->whereHas('latestCustodyCheckpoint', fn ($checkpoint) => $checkpoint->where('checkpoint_type', 'ready_for_hub_pickup')
+                ->where('hub_id', $hub->id)->whereNotNull('scanned_by_id')
+                ->whereColumn('delivery_checkpoints.barcode_scanned', 'deliveries.tracking_number')
+                ->where('custody_after->kind', 'hub')->where('custody_after->hub_id', $hub->id))->count();
+    }
+
+    public function recordedBin(?Delivery $parcel): ?string
+    {
+        $bin = $parcel?->destination_bin;
+        // Older routes wrote this placeholder before any physical staging.
+        if (! trim((string) $bin) || ($parcel->delivery_type === 'hub_self_pickup' && $bin === 'STAGE: SELF-PICKUP-SHELF')) {
+            return null;
+        }
+
+        return $bin;
     }
 
     public function registry(?LogisticsHub $hub): Builder

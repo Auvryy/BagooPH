@@ -2,6 +2,8 @@ import { refreshPage } from '@/utils/accountRequests';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
+import { HubParcelNextStep, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import {
     ScanLine,
     Camera,
@@ -13,7 +15,6 @@ import {
     Volume2,
     VolumeX,
     ArrowRight,
-    Search,
     RefreshCw,
     Clock,
     Layers,
@@ -48,21 +49,8 @@ interface RecentScan {
     created_at: string;
     status: string;
     delivery_type: string;
-    destination_bin: string;
+    destination_bin: string | null;
     buyer_name: string;
-}
-
-interface CounterPickupParcel {
-    id: number;
-    tracking_number: string;
-    order_number?: string;
-    buyer_name: string;
-    buyer_phone: string;
-    status: string;
-    destination_bin: string;
-    total_amount: number;
-    payment_method: string;
-    item_count: number;
 }
 
 interface PendingOriginIntake {
@@ -80,7 +68,9 @@ interface ScanStationProps {
     hubs: LogisticsHub[];
     recentScans: RecentScan[];
     pendingOriginIntake: PendingOriginIntake[];
-    counterPickups: CounterPickupParcel[];
+    counterPickups: CounterPreviewParcel[];
+    counterTotal: number;
+    basePath: string;
     stats: {
         parcels_in_hub: number;
         ready_pickup: number;
@@ -102,11 +92,12 @@ interface DynamicPrompt {
 }
 
 interface ScannedDeliveryResult {
+    guidance: ParcelGuidance;
     id: number;
     tracking_number: string;
     status: string;
     delivery_type: string;
-    destination_bin: string;
+    destination_bin: string | null;
     current_hub: {
         id: number;
         name: string;
@@ -138,6 +129,8 @@ export default function ScanStation({
     recentScans,
     pendingOriginIntake,
     counterPickups,
+    counterTotal,
+    basePath,
     stats,
 }: ScanStationProps) {
     const [activeTab, setActiveTab] = useState<'scan' | 'counter' | 'logs'>('scan');
@@ -153,13 +146,6 @@ export default function ScanStation({
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
-
-    // Counter pickup claim form state
-    const [pickupSearch, setPickupSearch] = useState('');
-    const [claimRecipientName, setClaimRecipientName] = useState('');
-    const [claimNotes, setClaimNotes] = useState('');
-    const [releasingId, setReleasingId] = useState<number | null>(null);
-    const [releaseSuccess, setReleaseSuccess] = useState<string | null>(null);
 
     // Camera & Web Barcode detection state
     const [cameraActive, setCameraActive] = useState(false);
@@ -342,7 +328,7 @@ export default function ScanStation({
     };
 
     const confirmScanAction = async () => {
-        if (!lastResult || !lastResult.prompt.requires_confirmation || isSubmitting) return;
+        if (!lastResult || !lastResult.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan' || isSubmitting) return;
 
         setIsSubmitting(true);
         setScanError(null);
@@ -409,64 +395,6 @@ export default function ScanStation({
             { preserveState: false }
         );
     };
-
-    // Bayan Hub Counter Release handover
-    const handleCounterRelease = async (trackingNumber: string) => {
-        if (!trackingNumber) return;
-        setIsSubmitting(true);
-        setReleaseSuccess(null);
-        setScanError(null);
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            const response = await fetch(route('hub.release'), {
-                method: 'POST',
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-                body: JSON.stringify({
-                    barcode: trackingNumber,
-                    recipient_name: claimRecipientName || undefined,
-                    notes: claimNotes || undefined,
-                    hub_id: activeHub?.id,
-                }),
-            });
-
-            const data = await response.json();
-            if (response.ok && data.success) {
-                playSound('success');
-                setReleaseSuccess(data.message || 'Parcel successfully claimed!');
-                setClaimRecipientName('');
-                setClaimNotes('');
-                setReleasingId(null);
-                await refreshPage();
-            } else {
-                playSound('error');
-                setScanError(data.error || 'Release failed.');
-            }
-        } catch (err: any) {
-            playSound('error');
-            setScanError(err.message || 'Network error during parcel release.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const filteredCounterPickups = counterPickups.filter((item) => {
-        if (!pickupSearch.trim()) return true;
-        const q = pickupSearch.toLowerCase();
-        return (
-            item.tracking_number.toLowerCase().includes(q) ||
-            item.buyer_name.toLowerCase().includes(q) ||
-            (item.order_number && item.order_number.toLowerCase().includes(q)) ||
-            item.buyer_phone.toLowerCase().includes(q)
-        );
-    });
 
     return (
         <DashboardLayout
@@ -577,7 +505,7 @@ export default function ScanStation({
                     <span>Intake & Sort Station</span>
                 </button>
 
-                {activeHub?.allows_self_pickup && (
+                {activeHub && (activeHub.allows_self_pickup || counterTotal > 0) && (
                     <button
                         type="button"
                         onClick={() => setActiveTab('counter')}
@@ -589,9 +517,9 @@ export default function ScanStation({
                     >
                         <Boxes className="w-4 h-4" />
                         <span>Counter Release Desk</span>
-                        {counterPickups.length > 0 && (
+                        {counterTotal > 0 && (
                             <span className="px-1.5 py-0.2 bg-slate-100 text-slate-800 text-[10px] rounded-xs border border-slate-300 font-sans font-bold">
-                                {counterPickups.length}
+                                {counterTotal}
                             </span>
                         )}
                     </button>
@@ -783,9 +711,11 @@ export default function ScanStation({
                                         </div>
                                     </div>
 
+                                    <div className="space-y-3"><HubParcelState guidance={lastResult.delivery.guidance} /><HubParcelNextStep guidance={lastResult.delivery.guidance} hideLink={lastResult.delivery.guidance.action !== 'counter'} /></div>
+
                                     {lastResult.prompt.manifest_url && <div className="rounded-xs border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
 
-                                    {lastResult.prompt.requires_confirmation && (
+                                    {lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act && lastResult.delivery.guidance.action === 'scan' && (
                                         <div className="rounded-xs border border-amber-300 bg-amber-50 p-3.5">
                                             <p className="text-xs text-amber-900 font-sans mb-3">
                                                 Verify the parcel and physical handoff before recording this custody action.
@@ -805,16 +735,13 @@ export default function ScanStation({
                                         </div>
                                     )}
 
-                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'AWAIT_BARANGAY_SORT' && (
+                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'AWAIT_BARANGAY_SORT' && lastResult.delivery.guidance.can_act && (
                                         <div className="rounded-xs border border-emerald-300 bg-emerald-50 p-3.5">
                                             <p className="text-xs text-emerald-900 font-sans mb-3">
                                                 Destination intake is complete. Continue in the parcel registry to sort this parcel into its barangay bin.
                                             </p>
                                             <Link
-                                                href={route('hub.deliveries', {
-                                                    search: lastResult.delivery.tracking_number,
-                                                    status: 'arrived_at_destination_hub',
-                                                })}
+                                                href={`${basePath}/deliveries?hub_id=${activeHub?.id}&search=${encodeURIComponent(lastResult.delivery.tracking_number)}&status=arrived_at_destination_hub`}
                                                 className="flex w-full items-center justify-center rounded-xs bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
                                             >
                                                 Open parcel sorting
@@ -849,7 +776,7 @@ export default function ScanStation({
                                             <div>
                                                 <div className="text-[10px] uppercase text-slate-500 font-sans font-bold">Destination Bin</div>
                                                 <div className="text-sm font-bold text-slate-900 font-sans">
-                                                    {lastResult.delivery.destination_bin || 'BIN: GENERAL'}
+                                                    {lastResult.delivery.destination_bin?.trim() ? lastResult.delivery.destination_bin : lastResult.delivery.delivery_type === 'hub_self_pickup' ? 'Shelf not recorded' : 'Bin not recorded'}
                                                 </div>
                                             </div>
                                         </div>
@@ -895,8 +822,10 @@ export default function ScanStation({
                                         <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
                                         <span>
                                             {lastResult.confirmed
-                                                ? 'Audit checkpoint recorded in database'
-                                                : 'Waybill verified; confirm the action to update custody'}
+                                                ? 'Recorded custody action retained'
+                                                : lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act
+                                                    ? 'Waybill verified; confirm the action to update custody'
+                                                    : 'Waybill verified; follow the guidance above'}
                                         </span>
                                     </div>
                                 </div>
@@ -914,143 +843,8 @@ export default function ScanStation({
                 </div>
             )}
 
-            {/* TAB 2: Bayan Counter Release */}
-            {activeTab === 'counter' && (
-                <div className="space-y-4">
-                    {releaseSuccess && (
-                        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-                            <div className="text-xs font-sans font-bold">{releaseSuccess}</div>
-                        </div>
-                    )}
-
-                    {scanError && (
-                        <div className="bg-red-50 border border-red-300 text-red-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
-                            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                            <div className="text-xs font-sans">{scanError}</div>
-                        </div>
-                    )}
-
-                    {/* Counter Release Header and Search */}
-                    <div className="bg-white rounded-xs border border-slate-300 p-4 sm:p-5 shadow-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                            <div>
-                                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 font-sans">
-                                    <Boxes className="w-4 h-4 text-slate-700" />
-                                    Customer Self-Pickup Counter Desk
-                                </h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Hand over staged ₱0.00 self-pickup packages to buyers at {activeHub?.name}.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                value={pickupSearch}
-                                onChange={(e) => setPickupSearch(e.target.value)}
-                                placeholder="Search by customer name, phone, order #, or tracking code..."
-                                className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xs pl-9 pr-3 py-2 text-xs font-sans focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] shadow-xs outline-hidden"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Staged Packages List */}
-                    <div className="space-y-3">
-                        {filteredCounterPickups.length === 0 ? (
-                            <div className="bg-white rounded-xs border border-slate-300 p-8 text-center shadow-xs">
-                                <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                                <p className="text-sm font-bold font-sans text-slate-800">No staged self-pickup packages found.</p>
-                                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                                    Packages routed for customer pickup at this Bayan Hub will appear here once intake scan is confirmed.
-                                </p>
-                            </div>
-                        ) : (
-                            filteredCounterPickups.map((parcel) => (
-                                <div
-                                    key={parcel.id}
-                                    className="bg-white rounded-xs border border-slate-300 p-4 hover:border-slate-400 transition shadow-xs"
-                                >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div>
-                                            <div className="flex items-center gap-2 flex-wrap font-sans">
-                                                <span className="font-bold text-sm text-slate-900">
-                                                    {parcel.tracking_number}
-                                                </span>
-                                                <span className="text-[10px] px-2 py-0.5 rounded-xs bg-slate-100 text-slate-800 border border-slate-300 font-bold">
-                                                    {parcel.destination_bin}
-                                                </span>
-                                                <span className="text-[10px] uppercase px-2 py-0.5 rounded-xs bg-slate-100 text-slate-600 font-bold">
-                                                    {parcel.status.replace(/_/g, ' ')}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600">
-                                                <span className="text-slate-900 font-bold">{parcel.buyer_name}</span>
-                                                <span>•</span>
-                                                <span>{parcel.buyer_phone}</span>
-                                                <span>•</span>
-                                                <span className="font-sans font-bold text-slate-900">₱{parcel.total_amount.toFixed(2)} ({parcel.payment_method.toUpperCase()})</span>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => setReleasingId(releasingId === parcel.id ? null : parcel.id)}
-                                            className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold text-xs rounded-xs shadow-xs transition font-sans uppercase tracking-wider cursor-pointer"
-                                        >
-                                            {releasingId === parcel.id ? 'Cancel' : 'Release to Buyer'}
-                                        </button>
-                                    </div>
-
-                                    {/* Inline Claim Verification Box */}
-                                    {releasingId === parcel.id && (
-                                        <div className="mt-3 pt-3 border-t border-slate-200 bg-slate-50 rounded-xs p-3.5 space-y-2.5">
-                                            <div className="text-xs font-bold text-slate-900 font-sans uppercase tracking-wider">
-                                                Confirm Customer Claim Handover
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={claimRecipientName}
-                                                    onChange={(e) => setClaimRecipientName(e.target.value)}
-                                                    placeholder={`Claimant name (defaults to ${parcel.buyer_name})`}
-                                                    className="bg-white border border-slate-300 text-slate-900 rounded-xs px-2.5 py-1.5 text-xs font-sans shadow-2xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={claimNotes}
-                                                    onChange={(e) => setClaimNotes(e.target.value)}
-                                                    placeholder="Verification notes e.g. Valid ID Presented"
-                                                    className="bg-white border border-slate-300 text-slate-900 rounded-xs px-2.5 py-1.5 text-xs font-sans shadow-2xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
-                                                />
-                                            </div>
-                                            <div className="flex justify-end gap-2 pt-1 font-sans">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setReleasingId(null)}
-                                                    className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs rounded-xs font-medium cursor-pointer"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={isSubmitting}
-                                                    onClick={() => handleCounterRelease(parcel.tracking_number)}
-                                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xs transition cursor-pointer shadow-xs"
-                                                >
-                                                    {isSubmitting ? 'Recording Handover...' : 'Confirm Handover'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* TAB 2: Secure counter preview */}
+            {activeTab === 'counter' && activeHub && <HubCounterPreview parcels={counterPickups} total={counterTotal} hubId={activeHub.id} basePath={basePath} />}
 
             {/* TAB 3: Station Audit Log */}
             {activeTab === 'logs' && (
@@ -1085,7 +879,7 @@ export default function ScanStation({
                                                 {scan.checkpoint_type}
                                             </span>
                                             <span className="text-[10px] text-slate-700 font-bold bg-slate-50 px-1.5 py-0.5 rounded-xs border border-slate-200">
-                                                {scan.destination_bin}
+                                                {scan.destination_bin?.trim() ? scan.destination_bin : scan.delivery_type === 'hub_self_pickup' ? 'Shelf not recorded' : 'Bin not recorded'}
                                             </span>
                                         </div>
                                         <div className="text-slate-600 text-[11px] mt-1">{scan.notes}</div>

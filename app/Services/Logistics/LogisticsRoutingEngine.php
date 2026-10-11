@@ -172,7 +172,7 @@ class LogisticsRoutingEngine
                 'destination_mother_hub_id' => $destinationMother->id, 'destination_bayan_hub_id' => $destination->id,
                 'current_hub_id' => null,
                 'destination_bin' => $order->delivery_type === 'hub_self_pickup'
-                    ? 'STAGE: SELF-PICKUP-SHELF' : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay)),
+                    ? null : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay)),
             ])->save();
             $delivery->setRawAttributes($parcel->getAttributes(), true)->unsetRelations();
 

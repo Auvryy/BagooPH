@@ -126,7 +126,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             ->assertJsonPath('prompt.action', 'DISPATCH_TO_FEEDER')
             ->assertJsonPath('prompt.expected_status', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
             ->assertJsonPath('prompt.requires_confirmation', false)
-            ->assertJsonPath('prompt.manifest_url', '/hub/manifests');
+            ->assertJsonPath('prompt.manifest_url', '/hub/manifests?hub_id='.$originHub->id);
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
 
         $this->actingAs($originHandler)->postJson(route('hub.scan'), [

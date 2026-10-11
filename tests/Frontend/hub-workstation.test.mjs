@@ -11,12 +11,12 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-workstation-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
-    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup'; export { default as Preview } from '@/Components/HubCounterPreview';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
 });
 const path = join(temporary, 'workstation.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
-const { Registry, Counter } = await import(pathToFileURL(path).href);
+const { Registry, Counter, Preview } = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
 
@@ -154,4 +154,32 @@ test('empty and out-of-range counter pages have accurate totals and a route back
     const empty = await render(Counter, 'Hub/CounterPickup', counter());
     assert.match(empty, /No matching parcels at this counter/);
     assert.match(empty, /Showing 0 to 0 of 0 matching parcels/);
+});
+
+
+test('scanner counter preview shows actual guidance and uses the full secure counter for handover', async () => {
+    for (const basePath of ['/hub', '']) {
+        const ready = { ...parcel, status: 'ready_for_hub_pickup', destination_bin: null, guidance: { ...guidance,
+            stage: 'Staged for secure counter collection', action: 'counter', ready_for_collection: true,
+            next_step: 'Verify buyer identity, claim code and exact COD before release' } };
+        const html = await render(Preview, 'Hub/ScanStation', { parcels: [ready, { ...ready, id: 6, destination_bin: 'COUNTER-B2',
+            guidance: { ...ready.guidance, can_act: false, ready_for_collection: false, blocker: 'This pickup claim is expired or already used.' } }],
+            total: 25, hubId: 2, basePath });
+        assert.match(html, /Showing the latest 2 of 25 counter parcels/);
+        assert.match(html, /Shelf not recorded/);
+        assert.match(html, /COUNTER-B2/);
+        assert.match(html, /Recorded custodian:<\/span> Destination Bayan Hub/);
+        assert.match(html, /This pickup claim is expired or already used/);
+        assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=BGO-WORKSTATION"`));
+        assert.match(html, /Open full counter queue/);
+        assert.doesNotMatch(html, /Release to Buyer|Confirm Handover|SELF-PICKUP-SHELF|BIN: GENERAL|name="claim_code"/);
+    }
+});
+
+test('empty scanner previews distinguish an empty facility queue from a bounded preview without matches', async () => {
+    const empty = await render(Preview, 'Hub/ScanStation', { parcels: [], total: 0, hubId: 2, basePath: '/hub' });
+    assert.match(empty, /No parcels waiting at this counter/);
+    const noMatch = await render(Preview, 'Hub/ScanStation', { parcels: [], total: 25, hubId: 2, basePath: '/hub' });
+    assert.match(noMatch, /Search the full counter queue/);
+    assert.doesNotMatch(noMatch, /No parcels waiting at this counter/);
 });
