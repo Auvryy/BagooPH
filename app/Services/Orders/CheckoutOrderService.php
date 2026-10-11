@@ -12,7 +12,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
-use App\Models\Voucher;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
@@ -21,6 +20,7 @@ use App\Services\Finance\CodMoney;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherFundingService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +76,7 @@ class CheckoutOrderService
                 throw new CheckoutException('This Shopping Bag is unavailable to your account.');
             }
             // The original result remains available after selected Bag lines, stock and routing change.
-            if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash)) {
+            if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash, $data)) {
                 return $original;
             }
             if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
@@ -123,8 +123,8 @@ class CheckoutOrderService
 
             $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys();
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
-            $voucher = $this->lockVoucher($data['voucher_code'] ?? null);
-            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $voucher);
+            $revisions = app(VoucherSelectionService::class)->resolve($data, $items, lock: true);
+            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer);
             if ($quote['voucher_error']) {
                 throw new CheckoutException($quote['voucher_error']);
             }
@@ -140,7 +140,8 @@ class CheckoutOrderService
                 $order = Order::create([
                     'order_number' => 'BGO-'.strtoupper(Str::random(8)),
                     'buyer_id' => $buyer->id,
-                    'voucher_id' => $discount > 0 ? $voucher?->id : null,
+                    'voucher_id' => $discount > 0 && $revisions->count() === 1 ? $revisions->first()->voucher_id : null,
+                    'voucher_accounting_version' => 1,
                     'subtotal' => $amounts['subtotal'],
                     'voucher_discount' => $discount,
                     'shipping_fee' => $amounts['shipping'],
@@ -207,10 +208,6 @@ class CheckoutOrderService
                 $orders->push($order->load('delivery', 'items'));
             }
 
-            if ($voucher && $discounts->sum() > 0) {
-                $voucher->increment('used_count');
-            }
-
             if ($data['save_address']) {
                 app(BuyerAddressService::class)->create($buyer, [
                     'phone' => $data['recipient_phone'], 'province' => $data['shipping_province'],
@@ -226,25 +223,13 @@ class CheckoutOrderService
             $submission = CheckoutSubmission::create([
                 'buyer_id' => $buyer->id, 'cart_id' => $cart->id, 'token_hash' => $tokenHash,
                 'request_hash' => $requestHash, 'order_count' => $orders->count(), 'created_at' => now(),
+                'fingerprint_version' => 2,
             ]);
             $submission->orders()->attach($orders->pluck('id')->all());
+            app(VoucherFundingService::class)->commit($buyer, $submission, $orders, $revisions, $quote['redemptions']);
 
             return $orders;
         });
-    }
-
-    private function lockVoucher(?string $code): ?Voucher
-    {
-        $normalized = strtoupper(trim((string) $code));
-
-        $voucher = $normalized === ''
-            ? null
-            : Voucher::where('code', $normalized)->lockForUpdate()->first();
-        if ($normalized !== '' && ! $voucher) {
-            throw new CheckoutException('This voucher is unavailable. Remove it or choose another voucher.');
-        }
-
-        return $voucher;
     }
 
     private function deliveryAddress(array $data): string

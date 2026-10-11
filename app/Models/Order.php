@@ -27,6 +27,7 @@ class Order extends Model
         'order_number',
         'buyer_id',
         'voucher_id',
+        'voucher_accounting_version',
         'subtotal',
         'voucher_discount',
         'shipping_fee',
@@ -57,6 +58,7 @@ class Order extends Model
         'destination_latitude' => 'float',
         'destination_longitude' => 'float',
         'completed_at' => 'datetime',
+        'voucher_accounting_version' => 'integer',
     ];
 
     public function newEloquentBuilder($query): OrderBuilder

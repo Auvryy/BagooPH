@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class Voucher extends Model
 {
@@ -23,6 +24,9 @@ class Voucher extends Model
         'used_count',
         'is_active',
         'expires_at',
+        'issuer_type',
+        'current_revision_id',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -31,11 +35,36 @@ class Voucher extends Model
         'max_discount' => 'decimal:2',
         'is_active' => 'boolean',
         'expires_at' => 'datetime',
+        'archived_at' => 'datetime',
+        'shop_id' => 'integer',
+        'current_revision_id' => 'integer',
     ];
 
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $voucher) {
+            if ($voucher->isDirty(['issuer_type', 'shop_id'])) {
+                throw new LogicException('A voucher issuer and shop scope cannot change. Reissue reviewed terms instead.');
+            }
+            if ($voucher->getOriginal('current_revision_id') && $voucher->isDirty(['code', 'discount_type', 'discount_value', 'min_spend', 'max_discount', 'usage_limit', 'expires_at'])) {
+                throw new LogicException('Funded voucher terms require a new immutable revision.');
+            }
+        });
+        static::deleting(function (self $voucher) {
+            if ($voucher->current_revision_id || $voucher->used_count > 0 || $voucher->archived_at) {
+                throw new LogicException('Published and historical vouchers must be archived.');
+            }
+        });
+    }
+
+    public function currentRevision(): BelongsTo
+    {
+        return $this->belongsTo(VoucherRevision::class, 'current_revision_id');
     }
 
     public function isValidForAmount(float $amount, ?int $shopId = null): bool
@@ -74,6 +103,7 @@ class Voucher extends Model
             if ($this->max_discount && $discount > (float) $this->max_discount) {
                 return (float) $this->max_discount;
             }
+
             return round($discount, 2);
         }
 

@@ -96,8 +96,8 @@ class FinancialOversightService
         }
         if (! $actor->isLogistics()) {
             $definitions += [
-                'pending' => ['Seller proceeds awaiting payment', 'Unpaid product share, including eligible and authorized releases; excludes cancelled and returned orders.'],
-                'eligible' => ['Eligible seller proceeds', 'Buyer-confirmed and reconciled product share awaiting release approval.'],
+                'pending' => ['Seller proceeds awaiting payment', 'Unpaid seller share after evidenced shop promotion costs; excludes cancelled and returned orders.'],
+                'eligible' => ['Eligible seller proceeds', 'Buyer-confirmed and reconciled net seller share awaiting release approval.'],
                 'authorized' => ['Authorized seller proceeds', 'Approved release with no recorded payment yet.'],
                 'settled' => ['Seller proceeds paid', 'Actual recorded seller payment with private receipt evidence.'],
                 'commission' => ['Recorded platform commission', 'The 10% product share associated with evidenced seller payments; excludes shipping.'],
@@ -208,7 +208,7 @@ class FinancialOversightService
         $proceeds = $actor->isLogistics() ? null : $this->settlements->present($order, history: $details);
         $legacyCash = ! $account && ($order->payment_status === 'paid' || in_array($order->status, ['delivered', 'completed'], true));
         $legacyProceeds = ! $record && $order->commissionLedger && $order->commissionLedger->status !== 'pending';
-        $unknownProceeds = $proceeds && ($legacyProceeds || $proceeds['seller_id'] === null || $proceeds['product_cents'] <= 0
+        $unknownProceeds = $proceeds && ($legacyProceeds || $proceeds['promotion_accounting'] === 'review_required' || $proceeds['seller_id'] === null || $proceeds['product_cents'] <= 0
             || (! $account && $order->items->sum(fn ($item) => CodMoney::cents($item->subtotal)) !== $proceeds['product_cents']));
         if ($proceeds && ! $record && in_array($order->status, ['cancelled', 'returned'], true)) {
             $proceeds['status'] = 'void';
@@ -217,14 +217,14 @@ class FinancialOversightService
         }
         $metrics = $cash['amounts'] ?? array_fill_keys(self::CASH_METRICS, $legacyCash ? null : '0');
         if ($proceeds) {
-            $share = (string) $proceeds['seller_cents'];
+            $share = $proceeds['net_seller_cents'] === null ? null : (string) $proceeds['net_seller_cents'];
             $metrics += ['pending' => in_array($proceeds['status'], ['pending', 'eligible', 'authorized'], true) ? $share : '0',
                 'eligible' => $proceeds['status'] === 'eligible' ? $share : '0',
                 'authorized' => $proceeds['status'] === 'authorized' ? $share : '0',
                 'settled' => $proceeds['status'] === 'settled' ? $share : '0',
                 'commission' => $proceeds['status'] === 'settled' ? (string) $proceeds['commission_cents'] : '0',
                 'discounts' => (string) $proceeds['discount_cents']];
-            if ($unknownProceeds) {
+            if ($unknownProceeds || $share === null) {
                 $metrics = array_replace($metrics, array_fill_keys(self::PROCEEDS_METRICS, null));
             }
         }

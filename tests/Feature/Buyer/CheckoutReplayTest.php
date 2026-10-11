@@ -534,7 +534,7 @@ class CheckoutReplayTest extends TestCase
 
     private function voucher(): Voucher
     {
-        return Voucher::create(['code' => 'SAVE_10', 'name' => 'Bagoo Savings', 'discount_type' => 'percent',
+        return Voucher::factory()->funded()->create(['code' => 'SAVE_10', 'name' => 'Bagoo Savings', 'discount_type' => 'percent',
             'discount_value' => 10, 'min_spend' => 0, 'usage_limit' => 1, 'used_count' => 0, 'is_active' => true]);
     }
 

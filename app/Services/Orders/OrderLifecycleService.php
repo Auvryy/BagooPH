@@ -15,6 +15,7 @@ use App\Services\Commerce\InventoryService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherFundingService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -232,6 +233,8 @@ class OrderLifecycleService
                 'notes' => [Rule::requiredIf(($input['reason'] ?? null) === 'Other reason'), 'nullable', 'string', new ApplicationText('notes', 1, 1000)],
             ])->validate();
             $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
+
+            app(VoucherFundingService::class)->releaseCancellation($lockedOrder, $seller, $reason);
 
             foreach ($lockedOrder->items as $item) {
                 $product = Product::whereKey($item->product_id)->lockForUpdate()->first();

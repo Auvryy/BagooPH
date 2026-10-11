@@ -35,6 +35,15 @@ docker compose exec -T app php artisan config:cache
 
 Reload the login page before retrying. Check successful login, wrong-password feedback, logout, and the next unauthenticated page across the applicable portal hosts. A local build or protocol test does not establish a deployed browser result.
 
+## Voucher funding migration
+
+Deploy the voucher funding migration with the ordinary migration step; do not
+reset the database. It retains order totals, original voucher links, usage counts
+and recorded seller payments. Earlier campaigns are archived because their payer
+and spending budget were not recorded. New seller offers remain drafts until
+reviewed campaign publication is available. Do not reactivate an older offer by
+changing database flags or inventing funding/redemption history.
+
 ## Build memory on small servers
 
 A `Reached heap limit` failure during `tsc && vite build` can leave deployment unfinished before migrations run. The helper now passes `NODE_OPTIONS=--max-old-space-size=1024` into the build container, giving Node a 1 GiB heap cap. The October 8 server build succeeded with this setting and existing swap; the cap is not a reservation or a guarantee that every server has enough memory.
@@ -93,6 +102,13 @@ docker compose exec -T app php artisan tinker --execute='dump(["total_products" 
 ```
 
 A shop needs an active approved seller, one of the 14 active master categories, and its current matching Platform Admin approval record. An `active` shop flag alone is insufficient. Legacy demo shops with missing category/review records can have products in the database while contributing no public catalogue entries.
+
+Department browsing includes active child categories. The reserved demo products
+live in an accessory child category, so an exact-category-only filter previously
+hid them when browsing the parent department, even with valid approval. Publish
+and deploy the department-filter fix before considering any data repair. It
+requires no product deletion, reseeding or database reset. Inactive categories,
+restricted shops and products remain excluded by the existing eligibility rules.
 
 Each seller now has one shop created at registration. The initial seller application review covers that shop; the seller opens it automatically after approval. Ordinary legacy shops still need the actual owner evidence and Platform Admin review.
 

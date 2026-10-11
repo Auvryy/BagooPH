@@ -8,11 +8,14 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Models\VoucherRedemption;
+use App\Models\VoucherRevision;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Finance\CodMoney;
-use DomainException;
+use App\Services\Finance\SellerSettlementService;
+use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -41,147 +44,186 @@ class CheckoutQuoteService
         return $items;
     }
 
-    /** Current prices are supplied by selectedItems or the locked final checkout. */
-    public function quote(Collection $items, string $deliveryType = 'doorstep', ?Voucher $voucher = null): array
+    /** Current prices come from selectedItems or the locked final checkout. */
+    public function quote(Collection $items, string $deliveryType = 'doorstep', Voucher|Collection|null $selection = null, ?User $buyer = null): array
     {
+        $revisions = $selection instanceof Voucher ? collect([$selection->currentRevision]) : ($selection ?? collect());
         $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType) {
             $subtotal = $group->sum(fn (CartItem $item) => CodMoney::cents($item->product->price) * $item->quantity);
+            $doorstep = $subtotal > 150000 ? 0 : 5000;
 
-            $doorstepShipping = $subtotal > 150000 ? 0 : 5000;
-
-            return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name,
-                'subtotal' => $subtotal, 'doorstep_shipping' => $doorstepShipping,
-                'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstepShipping];
+            return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name, 'subtotal' => $subtotal,
+                'doorstep_shipping' => $doorstep, 'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstep];
         });
-        $discounts = $shops->map(fn () => 0);
-        $reason = $voucher ? $this->unavailableReason($voucher, $shops) : null;
-        if ($voucher && $reason === null) {
-            $shipping = $voucher->discount_type === 'free_shipping';
-            $scope = $voucher->shop_id ? $shops->only([$voucher->shop_id]) : $shops;
-            $weights = $scope->map(fn ($shop) => $shop[$shipping ? 'shipping' : 'subtotal']);
-            $basis = $weights->sum();
-            $value = CodMoney::cents($voucher->discount_value);
-            $amount = match ($voucher->discount_type) {
-                'percent' => intdiv($basis * $value + 5000, 10000),
-                'free_shipping' => $value > 0 ? $value : $basis,
-                default => $value,
-            };
-            $amount = min($basis, $amount, $voucher->max_discount !== null ? CodMoney::cents($voucher->max_discount) : $basis);
-            if ($amount === 0) {
-                $reason = 'This voucher does not reduce the selected item total.';
-            }
-            $left = $amount;
-            foreach ($weights as $shopId => $weight) {
-                $part = $this->proportion($amount, $weight, $basis);
-                $discounts->put($shopId, $part);
-                $left -= $part;
-            }
-            foreach ($weights as $shopId => $weight) {
-                if ($left > 0 && $discounts[$shopId] < $weight) {
-                    $discounts->put($shopId, $discounts[$shopId] + 1);
-                    $left--;
-                }
-            }
+        $productDiscounts = $shops->map(fn () => 0);
+        $shippingDiscounts = $shops->map(fn () => 0);
+        $redemptions = [];
+        $reason = $revisions->contains(null) ? 'This older voucher needs its funding reviewed before use.' : null;
+        if (! $reason && ($revisions->where('issuer_type', 'platform')->count() > 1
+            || $revisions->where('issuer_type', 'shop')->pluck('shop_id')->duplicates()->isNotEmpty())) {
+            $reason = 'Choose one offer per shop and one Bagoo offer for this checkout.';
         }
-        $shopQuotes = $shops->map(function ($shop, $shopId) use ($discounts) {
-            $discount = $discounts[$shopId];
+        // Shop reductions come first, independent of request/map order.
+        foreach ($revisions->filter()->sortBy(fn ($r) => ($r->issuer_type === 'shop' ? '0' : '1').str_pad((string) $r->id, 20, '0', STR_PAD_LEFT)) as $revision) {
+            if ($reason) {
+                break;
+            }
+            $reason = $this->unavailableReason($revision, $shops, $buyer);
+            if ($reason) {
+                break;
+            }
+            $shipping = $revision->discount_type === 'free_shipping';
+            $scope = $revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops;
+            $weights = $scope->map(fn ($shop, $id) => $shipping ? $shop['shipping'] - $shippingDiscounts[$id] : $shop['subtotal'] - $productDiscounts[$id]);
+            $basis = $weights->sum();
+            $amount = $revision->discount_type === 'percent'
+                ? intdiv($basis * $revision->percentage_bps + 5000, 10000)
+                : ($shipping && $revision->value_cents === 0 ? $basis : $revision->value_cents);
+            $amount = min($basis, $amount, $revision->maximum_cents);
+            if ($revision->issuer_type === 'shop') {
+                $gross = SellerSettlementService::split($scope->sum('subtotal'))['seller_cents'];
+                $amount = min($amount, $gross);
+            }
+            if ($amount <= 0) {
+                $reason = $shipping ? 'There is no shipping fee for this voucher to reduce.' : 'This voucher does not reduce the selected item total.';
+                break;
+            }
+            $balance = $revision->balance;
+            if ($amount > $revision->budget_cents - $balance->committed_cents - $balance->spent_cents) {
+                $reason = 'This voucher has reached its available funding limit.';
+                break;
+            }
+            $parts = $this->allocate($amount, $weights);
+            $allocations = [];
+            foreach ($parts as $shopId => $part) {
+                if ($part === 0) {
+                    continue;
+                }
+                if ($shipping) {
+                    $shippingDiscounts->put($shopId, $shippingDiscounts[$shopId] + $part);
+                } else {
+                    $productDiscounts->put($shopId, $productDiscounts[$shopId] + $part);
+                }
+                $allocations[] = ['shop_id' => $shopId, 'product_discount_cents' => $shipping ? 0 : $part,
+                    'shipping_discount_cents' => $shipping ? $part : 0,
+                    'seller_expense_cents' => $revision->funding_party === 'shop' ? $part : 0,
+                    'platform_expense_cents' => $revision->funding_party === 'platform' ? $part : 0];
+            }
+            $redemptions[] = ['revision_id' => $revision->id, 'discount_cents' => $amount, 'allocations' => $allocations];
+        }
+        if ($reason) {
+            $productDiscounts = $shops->map(fn () => 0);
+            $shippingDiscounts = $shops->map(fn () => 0);
+            $redemptions = [];
+        }
+        $shopQuotes = $shops->map(function ($shop, $id) use ($productDiscounts, $shippingDiscounts) {
+            $discount = $productDiscounts[$id] + $shippingDiscounts[$id];
 
             return [...$shop, 'subtotal' => $shop['subtotal'] / 100, 'shipping' => $shop['shipping'] / 100,
-                'doorstep_shipping' => $shop['doorstep_shipping'] / 100,
-                'discount' => $discount / 100, 'total' => ($shop['subtotal'] + $shop['shipping'] - $discount) / 100];
+                'doorstep_shipping' => $shop['doorstep_shipping'] / 100, 'discount' => $discount / 100,
+                'product_discount' => $productDiscounts[$id] / 100, 'shipping_discount' => $shippingDiscounts[$id] / 100,
+                'total' => ($shop['subtotal'] + $shop['shipping'] - $discount) / 100];
         })->values()->all();
-        $subtotal = $shops->sum('subtotal');
-        $fees = $shops->sum('shipping');
-        $discount = $discounts->sum();
+        $discount = $productDiscounts->sum() + $shippingDiscounts->sum();
+        $presented = $reason ? [] : $revisions->map(fn ($r) => $this->present($r))->values()->all();
 
-        return ['subtotal' => $subtotal / 100, 'shipping_fee' => $fees / 100,
+        return ['subtotal' => $shops->sum('subtotal') / 100, 'shipping_fee' => $shops->sum('shipping') / 100,
             'doorstep_shipping_fee' => $shops->sum('doorstep_shipping') / 100, 'discount' => $discount / 100,
-            'shipping_discount' => $voucher?->discount_type === 'free_shipping' && $reason === null ? $discount / 100 : 0,
-            'total' => ($subtotal + $fees - $discount) / 100, 'shops' => $shopQuotes,
-            'items' => $items->map(fn (CartItem $item) => ['id' => $item->id,
-                'quantity' => $item->quantity, 'unit_price' => CodMoney::cents($item->product->price) / 100,
+            'shipping_discount' => $shippingDiscounts->sum() / 100,
+            'total' => ($shops->sum('subtotal') + $shops->sum('shipping') - $discount) / 100, 'shops' => $shopQuotes,
+            'items' => $items->map(fn (CartItem $item) => ['id' => $item->id, 'quantity' => $item->quantity,
+                'unit_price' => CodMoney::cents($item->product->price) / 100,
                 'subtotal' => CodMoney::cents($item->product->price) * $item->quantity / 100])->values()->all(),
-            'voucher' => $voucher && $reason === null ? $this->present($voucher) : null, 'voucher_error' => $reason];
+            'voucher' => count($presented) === 1 ? $presented[0] : null, 'vouchers' => $presented,
+            'voucher_error' => $reason, 'redemptions' => $redemptions];
     }
 
-    public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24): array
+    public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24, ?User $buyer = null, ?Collection $selected = null): array
     {
-        $query = $this->publicQuery();
+        $query = VoucherRevision::with(['voucher', 'shop:id,name', 'balance'])
+            ->whereHas('voucher', fn (Builder $q) => $q->where('is_active', true)->whereNull('archived_at')->whereColumn('current_revision_id', 'voucher_revisions.id'))
+            ->where('starts_at', '<=', now())->where('ends_at', '>', now())
+            ->whereHas('balance', fn (Builder $q) => $q->whereColumn('redemption_count', '<', 'voucher_revisions.global_limit')
+                ->whereRaw('committed_cents + spent_cents < voucher_revisions.budget_cents'))
+            ->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereHas('shop', fn (Builder $shop) => $shop->eligible()));
         if ($items !== null) {
-            $shopIds = $items->pluck('product.shop_id')->unique()->all();
-            $query->where(fn (Builder $scope) => $scope->whereNull('shop_id')->orWhereIn('shop_id', $shopIds));
+            $query->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereIn('shop_id', $items->pluck('product.shop_id')->unique()));
+        }
+        if ($buyer) {
+            $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ?) < voucher_revisions.per_buyer_limit', [$buyer->id]);
         }
         $count = (clone $query)->count();
-        $offers = $query->orderByDesc('created_at')->orderByDesc('id')->limit($limit)->get()->map(function (Voucher $voucher) use ($items, $deliveryType) {
-            $quote = $items !== null ? $this->quote($items, $deliveryType, $voucher) : null;
+        $offers = $query->orderByDesc('id')->limit($limit)->get()->map(function (VoucherRevision $revision) use ($items, $deliveryType, $buyer, $selected) {
+            $candidate = ($selected ?? collect())->reject(fn ($current) => $current->issuer_type === $revision->issuer_type && $current->shop_id === $revision->shop_id)->push($revision);
+            $quote = $items !== null ? $this->quote($items, $deliveryType, $candidate, $buyer) : null;
+            $saving = $quote ? collect($quote['redemptions'])->firstWhere('revision_id', $revision->id)['discount_cents'] ?? 0 : null;
 
-            return [...$this->present($voucher), 'eligible' => $quote ? $quote['voucher_error'] === null : null,
-                'unavailable_reason' => $quote['voucher_error'] ?? null, 'saving' => $quote['discount'] ?? null];
+            return [...$this->present($revision), 'eligible' => $quote ? $quote['voucher_error'] === null : null,
+                'unavailable_reason' => $quote['voucher_error'] ?? null, 'saving' => $saving === null ? null : $saving / 100];
         })->all();
 
         return ['offers' => $offers, 'count' => $count];
     }
 
-    private function publicQuery(): Builder
+    private function present(VoucherRevision $revision): array
     {
-        return Voucher::query()->with('shop:id,name')->where('is_active', true)
-            ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->where(fn (Builder $q) => $q->whereNull('usage_limit')->orWhereColumn('used_count', '<', 'usage_limit'))
-            ->whereIn('discount_type', ['fixed', 'percent', 'free_shipping'])
-            ->where('min_spend', '>=', 0)->where('discount_value', '>=', 0)
-            ->where(fn (Builder $q) => $q->where('discount_type', 'free_shipping')->orWhere('discount_value', '>', 0))
-            ->where(fn (Builder $q) => $q->where('discount_type', '!=', 'percent')->orWhere('discount_value', '<=', 100))
-            ->where(fn (Builder $q) => $q->whereNull('max_discount')->orWhere('max_discount', '>', 0))
-            ->where(fn (Builder $q) => $q->whereNull('shop_id')->orWhereHas('shop', fn (Builder $shop) => $shop->eligible()));
+        return ['id' => $revision->voucher_id, 'revision_id' => $revision->id, 'code' => $revision->code,
+            'name' => $revision->name, 'description' => $revision->description, 'discount_type' => $revision->discount_type,
+            'discount_value' => $revision->discount_type === 'percent' ? $revision->percentage_bps / 100 : $revision->value_cents / 100,
+            'min_spend' => $revision->minimum_cents / 100, 'max_discount' => $revision->maximum_cents / 100,
+            'shop_id' => $revision->shop_id, 'shop_name' => $revision->shop?->name,
+            'issuer' => $revision->issuer_type, 'expires_at' => $revision->ends_at->toIso8601String()];
     }
 
-    private function present(Voucher $voucher): array
+    private function unavailableReason(VoucherRevision $revision, Collection $shops, ?User $buyer): ?string
     {
-        return $voucher->only(['id', 'code', 'name', 'description', 'discount_type', 'discount_value', 'min_spend', 'max_discount'])
-            + ['shop_id' => $voucher->shop_id, 'shop_name' => $voucher->shop?->name,
-                'issuer' => $voucher->shop_id ? 'shop' : 'platform', 'expires_at' => $voucher->expires_at?->toIso8601String()];
-    }
-
-    private function unavailableReason(Voucher $voucher, Collection $shops): ?string
-    {
+        $voucher = $revision->voucher;
+        if (! $voucher || $voucher->current_revision_id !== $revision->id || $voucher->archived_at
+            || $voucher->issuer_type !== $revision->issuer_type || $voucher->shop_id !== $revision->shop_id) {
+            return 'This voucher is unavailable. Remove it or choose another voucher.';
+        }
         if (! $voucher->is_active) {
             return 'This voucher is paused.';
         }
-        if ($voucher->expires_at && $voucher->expires_at->lessThanOrEqualTo(now())) {
+        if ($revision->starts_at->isFuture()) {
+            return 'This voucher is not available yet.';
+        }
+        if ($revision->ends_at->lessThanOrEqualTo(now())) {
             return 'This voucher has expired.';
         }
-        if ($voucher->usage_limit !== null && $voucher->used_count >= $voucher->usage_limit) {
+        $balance = $revision->balance;
+        if (! $balance || $balance->redemption_count >= $revision->global_limit) {
             return 'This voucher has reached its usage limit.';
         }
-        if ($voucher->shop_id && ! $shops->has($voucher->shop_id)) {
+        if ($buyer && VoucherRedemption::where('voucher_revision_id', $revision->id)->where('buyer_id', $buyer->id)->count() >= $revision->per_buyer_limit) {
+            return 'You have reached your usage limit for this voucher.';
+        }
+        if ($revision->issuer_type === 'shop' && (! $shops->has($revision->shop_id) || ! $revision->shop
+            || ! app(ShopEligibilityService::class)->isEligible($revision->shop))) {
             return 'This voucher is not for the selected shop items.';
         }
-        try {
-            $minimum = CodMoney::cents($voucher->min_spend);
-            $value = CodMoney::cents($voucher->discount_value);
-            if (! in_array($voucher->discount_type, ['fixed', 'percent', 'free_shipping'], true)
-                || ($voucher->discount_type === 'percent' && $value > 10000)
-                || ($voucher->max_discount !== null && CodMoney::cents($voucher->max_discount) === 0)) {
-                return 'This voucher needs its offer details corrected.';
-            }
-        } catch (DomainException) {
-            return 'This voucher needs its offer details corrected.';
-        }
-        $scope = $voucher->shop_id ? $shops->only([$voucher->shop_id]) : $shops;
-        $subtotal = $scope->sum('subtotal');
-        if ($subtotal < $minimum) {
-            $remaining = number_format(($minimum - $subtotal) / 100, 2);
+        $subtotal = ($revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops)->sum('subtotal');
+        if ($subtotal < $revision->minimum_cents) {
+            $remaining = number_format(($revision->minimum_cents - $subtotal) / 100, 2);
 
-            return $voucher->shop_id ? "Add ₱{$remaining} from this shop to use this voucher." : "Add ₱{$remaining} in selected products to use this voucher.";
-        }
-        if ($voucher->discount_type === 'free_shipping' && $scope->sum('shipping') === 0) {
-            return 'There is no shipping fee for this voucher to reduce.';
-        }
-        if ($subtotal === 0 || ($voucher->discount_type !== 'free_shipping' && $value === 0)) {
-            return 'This voucher does not reduce the selected item total.';
+            return $revision->issuer_type === 'shop' ? "Add ₱{$remaining} from this shop to use this voucher." : "Add ₱{$remaining} in selected products to use this voucher.";
         }
 
         return null;
+    }
+
+    private function allocate(int $amount, Collection $weights): Collection
+    {
+        $parts = $weights->map(fn ($weight) => $this->proportion($amount, $weight, $weights->sum()));
+        $left = $amount - $parts->sum();
+        foreach ($weights as $id => $weight) {
+            if ($left > 0 && $parts[$id] < $weight) {
+                $parts->put($id, $parts[$id] + 1);
+                $left--;
+            }
+        }
+
+        return $parts;
     }
 
     /** Exact floor(amount * weight / total), without a large integer product. */

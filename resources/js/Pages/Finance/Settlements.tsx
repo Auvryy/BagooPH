@@ -18,7 +18,7 @@ export default function Settlements({ records, filters, can_release }: {
         <div className="space-y-5">
             <section className={`${cashSurface} p-5`}>
                 <h2 className="font-semibold">Product proceeds and payment evidence</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">The seller receives 90% of product sales and the platform keeps 10%. Shipping and discounts appear separately. Release approval awaits payment evidence before an amount is shown as settled.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">The gross product split is 90% for the seller and 10% for Bagoo. Shop-funded offers reduce the seller’s net payout; Bagoo-funded offers are a separate platform cost. Payment still requires buyer confirmation, reconciled COD and a real receipt.</p>
                 {can_release && <p className="mt-2 text-sm text-slate-600">Recording payment confirms an existing transfer and its receipt. Bagoo does not transfer money from this page.</p>}
             </section>
             <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[1fr_240px_auto]">
@@ -29,7 +29,7 @@ export default function Settlements({ records, filters, can_release }: {
             <div className="grid gap-4 lg:grid-cols-2">{records.data.map(record => <article key={record.order_id} className={`${cashSurface} p-5`}>
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{record.order_number}</h2><span className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 text-sm capitalize">{record.status}</span></div>
                 <p className="mt-2 text-sm text-slate-600">{record.shop_name ?? 'Original shop requires review'}</p>
-                <p className="mt-4 text-xs text-slate-600">Seller product share</p><p className="mt-1 text-2xl font-bold">{cashMoney(record.seller_cents)}</p>
+                <p className="mt-4 text-xs text-slate-600">Net seller payout</p><p className="mt-1 text-2xl font-bold">{record.net_seller_cents === null ? 'Funding review required' : cashMoney(record.net_seller_cents ?? record.seller_cents)}</p>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-slate-600">Buyer confirmation</dt><dd className="mt-1 font-semibold">{record.buyer_completed ? 'Recorded' : 'Awaiting buyer'}</dd></div><div><dt className="text-slate-600">Platform COD</dt><dd className="mt-1 font-semibold">{record.cash_reconciled ? 'Reconciled' : 'Awaiting reconciliation'}</dd></div></dl>
                 <Link href={`/seller-settlements/${record.order_id}`} className={`${cashButton} mt-5`}>Review proceeds</Link>
             </article>)}</div>

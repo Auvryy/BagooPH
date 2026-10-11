@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Buyer;
 use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\LogisticsHub;
-use App\Models\Voucher;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutQuoteService;
+use App\Services\Orders\VoucherSelectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +31,7 @@ class VoucherController extends Controller
             'shipping_city' => ['nullable', 'string', 'max:100'],
             'pickup_hub_id' => ['nullable', 'integer', 'min:1'],
         ])->validate();
+        $selection = app(VoucherSelectionService::class)->normalize($input);
         try {
             if (! empty($data['shipping_province']) && ! empty($data['shipping_city'])
                 && ! app(LogisticsRoutingEngine::class)->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
@@ -42,15 +43,16 @@ class VoucherController extends Controller
             }
             $quotes = app(CheckoutQuoteService::class);
             $items = $quotes->selectedItems($buyer, $data['item_ids']);
-            $code = $data['code'] ?? '';
-            $voucher = $code !== '' ? Voucher::where('code', $code)->first() : null;
-            $quote = $quotes->quote($items, $data['delivery_type'] ?? 'doorstep', $voucher);
-            if ($code !== '' && ! $voucher) {
-                $quote['voucher_error'] = 'This voucher is unavailable. Remove it or choose another voucher.';
+            try {
+                $revisions = app(VoucherSelectionService::class)->resolve($selection, $items);
+                $quote = $quotes->quote($items, $data['delivery_type'] ?? 'doorstep', $revisions, $buyer);
+            } catch (CheckoutException $exception) {
+                $quote = $quotes->quote($items, $data['delivery_type'] ?? 'doorstep');
+                $quote['voucher_error'] = $exception->getMessage();
             }
-            $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep');
-            $message = $quote['voucher_error'] ?? ($quote['voucher']
-                ? 'Voucher applied: -₱'.number_format($quote['discount'], 2).'.'
+            $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $quote['voucher_error'] ? null : $revisions);
+            $message = $quote['voucher_error'] ?? ($quote['vouchers']
+                ? 'Vouchers applied: -₱'.number_format($quote['discount'], 2).'.'
                 : 'Your checkout total is up to date.');
             if ($request->expectsJson()) {
                 return response()->json(['success' => $quote['voucher_error'] === null, 'quote' => $quote,

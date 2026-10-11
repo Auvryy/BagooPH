@@ -5,6 +5,7 @@ namespace App\Services\Commerce;
 use App\Rules\ApplicationText;
 use App\Rules\PhilippineContact;
 use App\Services\ApplicationValidationService;
+use App\Services\Orders\VoucherSelectionService;
 use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,8 @@ class CommerceInputService
 {
     public function checkout(array $input, array $itemIds): array
     {
+        $vouchers = app(VoucherSelectionService::class)->normalize($input);
+        $input = array_replace($input, $vouchers);
         $input = $this->normalize($input, [
             'recipient_name' => 'name', 'recipient_phone' => 'phone', 'shipping_address' => 'address',
             'shipping_city' => 'city', 'shipping_province' => 'province',
@@ -56,7 +59,7 @@ class CommerceInputService
         $data['item_ids'] = array_map('intval', $data['item_ids']);
         sort($data['item_ids'], SORT_NUMERIC);
 
-        return $data;
+        return array_replace($data, $vouchers);
     }
 
     public function address(array $input): array

@@ -87,6 +87,44 @@ class SellerDemoSeederTest extends TestCase
         $this->assertTrue(Hash::check('ChangedPassword1234', $seller->fresh()->password));
     }
 
+    public function test_seeded_child_category_products_are_visible_in_the_parent_department_on_both_buyer_pages(): void
+    {
+        $this->seed(SellerDemoSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $count = $shop->products()->count();
+        $root = $shop->rootCategory;
+        foreach (['/', '/products'] as $url) {
+            $key = $url === '/' ? 'feedProducts' : 'products';
+            $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page
+                ->where($key.'.total', $count)
+                ->where('categories', fn ($categories) => collect($categories)->firstWhere('id', $root->id)['products_count'] === $count));
+        }
+    }
+
+    public function test_department_browsing_includes_deeper_active_categories_and_preserves_restrictions(): void
+    {
+        $this->seed(SellerDemoSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $root = $shop->rootCategory;
+        $child = $shop->products()->first()->category;
+        $grandchild = Category::factory()->create(['parent_id' => $child->id]);
+        $deep = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $grandchild->id]);
+        $direct = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $root->id]);
+        $before = $shop->products()->count();
+        foreach (['/', '/products'] as $url) {
+            $key = $url === '/' ? 'feedProducts' : 'products';
+            $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page->where($key.'.total', $before));
+        }
+        $child->update(['is_active' => false]);
+        foreach (['/', '/products'] as $url) {
+            $key = $url === '/' ? 'feedProducts' : 'products';
+            $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page
+                ->where($key.'.total', 1)->where($key.'.data.0.id', $direct->id));
+        }
+        $this->assertSame($grandchild->id, $deep->fresh()->category_id);
+        $this->assertFalse(app(ShopEligibilityService::class)->productIsEligible($deep->fresh()));
+    }
+
     public function test_legacy_fixture_repair_keeps_product_and_order_ids_and_does_not_move_the_shared_legacy_category(): void
     {
         $seller = User::factory()->seller()->create(['email' => 'seller@bagoo.test']);

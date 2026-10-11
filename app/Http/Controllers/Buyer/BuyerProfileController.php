@@ -51,7 +51,7 @@ class BuyerProfileController extends Controller
         }
 
         $initialTab = $request->query('tab', 'orders');
-        $available = app(CheckoutQuoteService::class)->offers();
+        $available = app(CheckoutQuoteService::class)->offers(buyer: $user);
 
         return Inertia::render('Buyer/Profile', [
             ...app(AccountSettingsService::class)->presentation($user),

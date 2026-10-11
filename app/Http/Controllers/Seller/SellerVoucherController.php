@@ -46,7 +46,7 @@ class SellerVoucherController extends Controller
             'code' => 'required|string|max:30|unique:vouchers,code',
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'discount_type' => 'required|in:fixed,percent,free_shipping',
+            'discount_type' => 'required|in:fixed,percent',
             'discount_value' => 'required|numeric|min:1',
             'min_spend' => 'required|numeric|min:0',
             'max_discount' => 'nullable|numeric|min:1',
@@ -58,11 +58,12 @@ class SellerVoucherController extends Controller
             ...$validated,
             'code' => strtoupper(trim($validated['code'])),
             'shop_id' => $shop->id,
-            'is_active' => true,
+            'issuer_type' => 'shop',
+            'is_active' => false,
             'used_count' => 0,
         ]);
 
-        return back()->with('success', "Store voucher '{$validated['code']}' created successfully!");
+        return back()->with('success', "Voucher draft '{$validated['code']}' saved. Funding and usage limits need review before publication.");
     }
 
     public function toggle(Request $request, Voucher $voucher): RedirectResponse
@@ -76,6 +77,10 @@ class SellerVoucherController extends Controller
 
         if ($voucher->shop_id !== $shop->id && ! $request->user()->isAdmin()) {
             abort(403);
+        }
+
+        if ($voucher->archived_at || ! $voucher->current_revision_id) {
+            return back()->with('error', 'This voucher needs reviewed funding and limits before it can be activated.');
         }
 
         $voucher->update([
@@ -100,6 +105,11 @@ class SellerVoucherController extends Controller
             abort(403);
         }
 
+        if ($voucher->current_revision_id || $voucher->used_count > 0 || $voucher->archived_at) {
+            $voucher->update(['is_active' => false, 'archived_at' => $voucher->archived_at ?? now()]);
+
+            return back()->with('success', "Voucher '{$voucher->code}' archived; its history is retained.");
+        }
         $voucher->delete();
 
         return back()->with('success', "Voucher '{$voucher->code}' removed.");

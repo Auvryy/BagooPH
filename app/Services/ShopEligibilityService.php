@@ -109,6 +109,12 @@ class ShopEligibilityService
         return $this->categoryScopes()[(int) $shop->root_category_id] ?? [];
     }
 
+    public function categoryTreeIds(Category $category, ?Collection $categories = null): array
+    {
+        return $category->is_active ? $this->descendants($category->id,
+            $categories ?? Category::where('is_active', true)->get(['id', 'parent_id'])) : [];
+    }
+
     private function categoryScopes(): array
     {
         $categories = Category::where('is_active', true)->get(['id', 'parent_id']);
