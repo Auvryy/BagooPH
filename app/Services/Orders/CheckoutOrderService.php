@@ -17,6 +17,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Finance\CodMoney;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -120,21 +121,15 @@ class CheckoutOrderService
                 throw new CheckoutException($exception->getMessage(), previous: $exception);
             }
 
-            $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id);
+            $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys();
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
-            $shopAmounts = $shopGroups->map(function (Collection $group) use ($deliveryType) {
-                $subtotal = round($group->sum(
-                    fn (CartItem $item) => (float) $item->product->price * $item->quantity
-                ), 2);
-
-                return [
-                    'subtotal' => $subtotal,
-                    'shipping' => $deliveryType === 'hub_self_pickup' ? 0.0 : ($subtotal > 1500 ? 0.0 : 50.0),
-                ];
-            });
-
             $voucher = $this->lockVoucher($data['voucher_code'] ?? null);
-            $discounts = $this->allocateVoucher($voucher, $shopAmounts);
+            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $voucher);
+            if ($quote['voucher_error']) {
+                throw new CheckoutException($quote['voucher_error']);
+            }
+            $shopAmounts = collect($quote['shops'])->keyBy('shop_id');
+            $discounts = $shopAmounts->pluck('discount', 'shop_id');
             $orders = collect();
 
             foreach ($shopGroups as $shopId => $group) {
@@ -149,7 +144,7 @@ class CheckoutOrderService
                     'subtotal' => $amounts['subtotal'],
                     'voucher_discount' => $discount,
                     'shipping_fee' => $amounts['shipping'],
-                    'total_amount' => max(0, round($amounts['subtotal'] + $amounts['shipping'] - $discount, 2)),
+                    'total_amount' => $amounts['total'],
                     'payment_method' => 'cod',
                     'payment_status' => 'pending',
                     'status' => 'placed',
@@ -175,7 +170,7 @@ class CheckoutOrderService
                         'shop_id' => $product->shop_id,
                         'quantity' => $item->quantity,
                         'unit_price' => $product->price,
-                        'subtotal' => round((float) $product->price * $item->quantity, 2),
+                        'subtotal' => CodMoney::cents($product->price) * $item->quantity / 100,
                         'color' => $item->color,
                         'size' => $item->size,
                         'sku_snapshot' => $item->sku_snapshot,
@@ -250,47 +245,6 @@ class CheckoutOrderService
         }
 
         return $voucher;
-    }
-
-    private function allocateVoucher(?Voucher $voucher, Collection $shopAmounts): Collection
-    {
-        $discounts = $shopAmounts->mapWithKeys(fn ($value, $shopId) => [$shopId => 0.0]);
-        if (! $voucher) {
-            return $discounts;
-        }
-
-        if ($voucher->shop_id) {
-            $amounts = $shopAmounts->get($voucher->shop_id);
-            if (! $amounts || ! $voucher->isValidForAmount($amounts['subtotal'], $voucher->shop_id)) {
-                throw new CheckoutException('This shop voucher is not valid for the selected items.');
-            }
-
-            return $discounts->put(
-                $voucher->shop_id,
-                $voucher->calculateDiscount($amounts['subtotal'], $amounts['shipping'])
-            );
-        }
-
-        $totalSubtotal = round($shopAmounts->sum('subtotal'), 2);
-        $totalShipping = round($shopAmounts->sum('shipping'), 2);
-        if (! $voucher->isValidForAmount($totalSubtotal)) {
-            throw new CheckoutException('This platform voucher is no longer valid.');
-        }
-
-        $totalDiscountCents = (int) round($voucher->calculateDiscount($totalSubtotal, $totalShipping) * 100);
-        $remaining = $totalDiscountCents;
-        $shopIds = $shopAmounts->keys()->values();
-
-        foreach ($shopIds as $index => $shopId) {
-            $cents = $index === $shopIds->count() - 1
-                ? $remaining
-                : (int) floor($totalDiscountCents * ($shopAmounts[$shopId]['subtotal'] / $totalSubtotal));
-            $cents = min($cents, (int) round(($shopAmounts[$shopId]['subtotal'] + $shopAmounts[$shopId]['shipping']) * 100));
-            $discounts->put($shopId, $cents / 100);
-            $remaining -= $cents;
-        }
-
-        return $discounts;
     }
 
     private function deliveryAddress(array $data): string

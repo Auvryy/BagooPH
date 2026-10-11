@@ -39,8 +39,9 @@ the entire Bag to calculate minimum spend.
 
 Replace the hardcoded profile cards and badge with genuine publicly available
 offers, clearly called available offers until saved records exist. Center the
-honest empty state when there are none. Keep the current checkout selector;
-its selection uses the server quote rather than a second JavaScript formula.
+honest empty state when there are none. Keep the current checkout code field
+and provide basic selection from genuine offers where a selector is absent.
+The selection uses the server quote rather than a second JavaScript formula.
 Retain optional code entry and removal.
 
 ## Acceptance and stopping point

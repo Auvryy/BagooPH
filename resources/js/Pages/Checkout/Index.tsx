@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
+import VoucherOfferList from '@/Components/VoucherOfferList';
+import usePurchaseQuote, { PurchaseQuote, VoucherOffer } from '@/hooks/usePurchaseQuote';
 import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
@@ -27,17 +29,6 @@ import {
     Building2
 } from 'lucide-react';
 
-interface VoucherItem {
-    id: number;
-    code: string;
-    name: string;
-    description: string;
-    discount_type: 'fixed' | 'percent' | 'free_shipping';
-    discount_value: number;
-    min_spend: number;
-    max_discount?: number;
-}
-
 export interface PickupHubItem {
     id: number;
     name: string;
@@ -54,7 +45,8 @@ interface Props {
     shippingFee: number;
     total: number;
     user: User;
-    availableVouchers?: VoucherItem[];
+    availableVouchers?: VoucherOffer[];
+    quote: PurchaseQuote;
     kycStatus?: 'none' | 'pending_approval' | 'approved' | 'rejected';
     kycFeedback?: string | null;
     addresses?: Address[];
@@ -66,8 +58,7 @@ interface Props {
 export default function CheckoutIndex({ 
     cart, 
     items, 
-    subtotal, 
-    shippingFee, 
+    quote: initialQuote,
     user, 
     availableVouchers = [],
     kycStatus = 'none',
@@ -80,8 +71,6 @@ export default function CheckoutIndex({
     const { flash } = usePage<PageProps>().props;
 
     const [voucherCodeInput, setVoucherCodeInput] = useState('');
-    const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(null);
-    const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
     const [voucherError, setVoucherError] = useState<string>('');
 
     const [isLocating, setIsLocating] = useState(false);
@@ -229,51 +218,48 @@ export default function CheckoutIndex({
         };
     }, [showConfirmModal]);
 
+    const quoteInput = {
+        item_ids: data.item_ids,
+        delivery_type: data.delivery_type,
+        code: data.voucher_code,
+        shipping_province: data.shipping_province,
+        shipping_city: data.shipping_city,
+        pickup_hub_id: data.delivery_type === 'hub_self_pickup' ? data.pickup_hub_id : '',
+        revision: JSON.stringify([items.map(item => [item.id, item.quantity, item.product?.price]),
+            data.shipping_address, data.destination_barangay, data.shipping_postal_code,
+            data.shipping_latitude, data.shipping_longitude, checkoutToken, flash?.error]),
+    };
+    const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
+    const quote = pricing.quote;
+    const quotedItems = new Map(quote.items.map(item => [item.id, item]));
+    const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
-    const baseShippingFee = isHubPickup ? 0 : (subtotal > 1500 ? 0 : 50);
-    
-    // Calculate final shipping fee accounting for free shipping vouchers or hub pickup
-    const finalShippingFee = (appliedVoucher?.discount_type === 'free_shipping' || isHubPickup) ? 0 : baseShippingFee;
-    const finalDiscount = appliedVoucher?.discount_type === 'free_shipping' ? baseShippingFee : voucherDiscount;
-    const grandTotal = Math.max(0, (Number(subtotal) + finalShippingFee) - (appliedVoucher?.discount_type === 'free_shipping' ? 0 : voucherDiscount));
+    const appliedVoucher = pricing.current ? quote.voucher : null;
+    const finalShippingFee = quote.shipping_fee - quote.shipping_discount;
+    const grandTotal = quote.total;
+
+    useEffect(() => {
+        setShowConfirmModal(false);
+        setHasConfirmedAgreement(false);
+    }, [JSON.stringify(quoteInput)]);
+
+    useEffect(() => {
+        if (pricing.current && quote.voucher_error && data.voucher_code) {
+            setVoucherError(quote.voucher_error + ' The voucher has been removed.');
+            setData('voucher_code', '');
+        }
+    }, [pricing.current, quote.voucher_error, data.voucher_code]);
 
     const applyVoucher = (codeToApply?: string) => {
         const code = (codeToApply || voucherCodeInput).trim().toUpperCase();
         if (!code) return;
-
         setVoucherError('');
-        const matched = availableVouchers.find(v => v.code === code);
-
-        if (!matched) {
-            setVoucherError('Invalid voucher code.');
-            return;
-        }
-
-        if (Number(subtotal) < Number(matched.min_spend)) {
-            setVoucherError(`Requires minimum spend of ₱${Number(matched.min_spend).toFixed(2)}`);
-            return;
-        }
-
-        let disc = 0;
-        if (matched.discount_type === 'free_shipping') {
-            disc = baseShippingFee;
-        } else if (matched.discount_type === 'percent') {
-            disc = (Number(subtotal) * Number(matched.discount_value)) / 100;
-            if (matched.max_discount && disc > Number(matched.max_discount)) {
-                disc = Number(matched.max_discount);
-            }
-        } else {
-            disc = Math.min(Number(subtotal), Number(matched.discount_value));
-        }
-
-        setAppliedVoucher(matched);
-        setVoucherDiscount(disc);
-        setData('voucher_code', matched.code);
+        setVoucherCodeInput(code);
+        setData('voucher_code', code);
     };
 
     const removeVoucher = () => {
-        setAppliedVoucher(null);
-        setVoucherDiscount(0);
+        setVoucherError('');
         setVoucherCodeInput('');
         setData('voucher_code', '');
     };
@@ -281,6 +267,11 @@ export default function CheckoutIndex({
     const handlePromptConfirmation = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationError('');
+
+        if (!pricing.ready) {
+            setValidationError(pricing.failure || 'Please wait for your total to update.');
+            return;
+        }
 
         if (kycStatus !== 'approved') {
             if (kycStatus === 'pending_approval') {
@@ -308,7 +299,7 @@ export default function CheckoutIndex({
     };
 
     const submitFinalOrder = () => {
-        if (kycStatus !== 'approved') {
+        if (!pricing.ready || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
@@ -325,6 +316,8 @@ export default function CheckoutIndex({
             minimumFractionDigits: 2,
         }).format(numeric);
     };
+
+    const quotePrice = (amount: number) => pricing.pending ? 'Updating…' : pricing.failure ? 'Unavailable' : formatPrice(amount);
 
     return (
         <BuyerLayout>
@@ -412,11 +405,11 @@ export default function CheckoutIndex({
                                             </div>
                                         </div>
                                         <span className="text-xs font-bold font-sans text-slate-900">
-                                            {subtotal > 1500 ? 'FREE' : '₱50.00'}
+                                            {quotePrice(quote.doorstep_shipping_fee)}
                                         </span>
                                     </div>
                                     <p className="text-[10px] text-slate-400 mt-2 font-sans">
-                                        {subtotal > 1500 ? '✓ Free shipping threshold reached' : 'Standard contiguous road freight'}
+                                        Shipping is calculated separately for each shop.
                                     </p>
                                 </div>
 
@@ -803,10 +796,10 @@ export default function CheckoutIndex({
 
                                         <div className="text-right shrink-0">
                                             <p className="text-slate-500 text-[11px]">
-                                                {item.quantity} × {formatPrice(item.unit_price)}
+                                                {quotedItems.get(item.id)?.quantity ?? item.quantity} × {quotePrice(quotedItems.get(item.id)?.unit_price ?? Number(item.product?.price))}
                                             </p>
                                             <p className="font-bold text-slate-900 text-sm">
-                                                {formatPrice(Number(item.unit_price) * item.quantity)}
+                                                {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
                                             </p>
                                         </div>
                                     </div>
@@ -856,7 +849,7 @@ export default function CheckoutIndex({
                                 <div className="text-right shrink-0">
                                     <span className="text-[10px] text-slate-400 block font-sans">SHIPPING RATE</span>
                                     <span className={`text-sm font-black ${finalShippingFee === 0 ? 'text-[#E00D42]' : 'text-slate-900'}`}>
-                                        {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
+                                        {quotePrice(finalShippingFee)}
                                     </span>
                                 </div>
                             </div>
@@ -918,12 +911,13 @@ export default function CheckoutIndex({
                                     <div className="space-y-0.5">
                                         <span className="font-bold text-[#E00D42] block text-xs">{appliedVoucher.code}</span>
                                         <span className="text-[11px] text-[#C20836]">
-                                            {appliedVoucher.discount_type === 'free_shipping' ? 'Free Shipping Applied' : `₱${appliedVoucher.discount_value} Discount Applied`}
+                                            {formatPrice(quote.discount)} {appliedVoucher.discount_type === 'free_shipping' ? 'shipping discount applied' : 'discount applied'}
                                         </span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={removeVoucher}
+                                        aria-label="Remove voucher"
                                         className="text-[#E00D42] hover:text-[#C20836] p-1"
                                     >
                                         <X className="w-4 h-4" />
@@ -936,20 +930,26 @@ export default function CheckoutIndex({
                                             type="text"
                                             value={voucherCodeInput}
                                             onChange={(e) => setVoucherCodeInput(e.target.value)}
-                                            placeholder="Enter Promo Code (e.g. PAYDAY70)"
+                                            placeholder="Enter voucher code"
+                                            aria-label="Voucher code"
                                             className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => applyVoucher()}
-                                            className="px-4 py-2.5 bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold rounded-xl transition text-xs cursor-pointer shadow-xs"
+                                            disabled={pricing.pending || !voucherCodeInput.trim()}
+                                            className="px-4 py-2.5 bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold rounded-xl transition text-xs cursor-pointer shadow-xs disabled:opacity-50"
                                         >
                                             Apply
                                         </button>
                                     </div>
-                                    {voucherError && <p className="text-rose-500 text-[11px]">{voucherError}</p>}
                                 </div>
                             )}
+                            {voucherError && <p role="alert" className="text-rose-700 text-[11px]">{voucherError}</p>}
+                            <div className="max-h-80 overflow-y-auto border-t border-slate-200 pt-3">
+                                <p className="mb-3 font-semibold text-slate-600">Available offers for these items</p>
+                                <VoucherOfferList offers={pricing.offers} busy={pricing.pending || !!pricing.failure} onSelect={applyVoucher} />
+                            </div>
                         </div>
 
                         {/* ORDER TOTAL SUMMARY */}
@@ -961,20 +961,20 @@ export default function CheckoutIndex({
                             <div className="space-y-3 text-slate-600 text-xs">
                                 <div className="flex justify-between">
                                     <span>Merchandise Subtotal:</span>
-                                    <span className="font-semibold text-slate-900">{formatPrice(subtotal)}</span>
+                                    <span className="font-semibold text-slate-900">{quotePrice(subtotal)}</span>
                                 </div>
 
                                 <div className="flex justify-between">
                                     <span>{isHubPickup ? 'Bayan Hub Collection Fee:' : 'Courier Shipping Fee:'}</span>
-                                    <span className={finalShippingFee === 0 ? 'text-[#E00D42] font-bold' : 'font-semibold text-slate-900'}>
-                                        {finalShippingFee === 0 ? 'FREE' : formatPrice(finalShippingFee)}
+                                    <span className={quote.shipping_fee === 0 ? 'text-[#E00D42] font-bold' : 'font-semibold text-slate-900'}>
+                                        {quotePrice(quote.shipping_fee)}
                                     </span>
                                 </div>
 
-                                {appliedVoucher && (
+                                {quote.discount > 0 && (
                                     <div className="flex justify-between text-[#E00D42] font-bold">
-                                        <span>Voucher Discount:</span>
-                                        <span>-{formatPrice(finalDiscount)}</span>
+                                        <span>{quote.shipping_discount > 0 ? 'Shipping Discount:' : 'Voucher Discount:'}</span>
+                                        <span>-{quotePrice(quote.discount)}</span>
                                     </div>
                                 )}
 
@@ -987,9 +987,18 @@ export default function CheckoutIndex({
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
                                 <span className="font-bold text-slate-900">Total Payment:</span>
                                 <span className="text-2xl font-black text-[#E00D42]">
-                                    {formatPrice(grandTotal)}
+                                    {quotePrice(grandTotal)}
                                 </span>
                             </div>
+
+                            <p role="status" aria-live="polite" className="text-xs text-slate-600">
+                                {pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…' : pricing.failure || 'Current prices and delivery fees checked.'}
+                            </p>
+                            {quote.shops.length > 1 && <div className="space-y-2 border-t border-slate-200 pt-3">
+                                {quote.shops.map(shop => <div key={shop.shop_id} className="flex justify-between gap-3 text-xs text-slate-600">
+                                    <span>{shop.shop_name}</span><span className="font-semibold">{quotePrice(shop.total)}</span>
+                                </div>)}
+                            </div>}
 
                             {validationError && (
                                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
@@ -1065,7 +1074,7 @@ export default function CheckoutIndex({
 
                             <button
                                 type="submit"
-                                disabled={processing || kycStatus !== 'approved'}
+                                disabled={processing || !pricing.ready || kycStatus !== 'approved'}
                                 className={`w-full py-3.5 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs ${
                                     kycStatus !== 'approved'
                                         ? 'bg-slate-400 cursor-not-allowed opacity-80'
@@ -1163,7 +1172,7 @@ export default function CheckoutIndex({
                                 {/* Total Amount */}
                                 <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
                                     <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
-                                    <span className="text-xl font-black text-[#E00D42]">{formatPrice(grandTotal)}</span>
+                                    <span className="text-xl font-black text-[#E00D42]">{quotePrice(grandTotal)}</span>
                                 </div>
                             </div>
 
@@ -1189,7 +1198,7 @@ export default function CheckoutIndex({
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={!hasConfirmedAgreement || processing}
+                                    disabled={!hasConfirmedAgreement || processing || !pricing.ready}
                                     onClick={submitFinalOrder}
                                     className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
                                 >

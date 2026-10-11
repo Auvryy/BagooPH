@@ -5,6 +5,8 @@ import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import VoucherOfferList from '@/Components/VoucherOfferList';
+import { VoucherOffer } from '@/hooks/usePurchaseQuote';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
@@ -69,6 +71,8 @@ interface Props {
     currentOrderStatus: string;
     ordersCount: number;
     initialTab?: TabType;
+    availableVouchers?: VoucherOffer[];
+    availableVoucherCount?: number;
 }
 
 type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
@@ -88,7 +92,9 @@ export default function BuyerProfile({
     orderCounts,
     currentOrderStatus = 'all',
     ordersCount = 0,
-    initialTab = 'orders' 
+    initialTab = 'orders',
+    availableVouchers = [],
+    availableVoucherCount = 0,
 }: Props) {
     const page = usePage<PageProps>();
     const url = page.url;
@@ -444,12 +450,12 @@ export default function BuyerProfile({
         { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
         { id: 'wallet', label: 'Bagoo Wallet', icon: Wallet, badge: wallet.available ? undefined : 'Unavailable' },
-        { id: 'vouchers', label: 'My Vouchers & Promos', icon: Tag, badge: '3 Available' },
+        { id: 'vouchers', label: 'Vouchers & Promos', icon: Tag, badge: `${availableVoucherCount} Available` },
     ];
 
     return (
         <BuyerLayout>
-            <Head title={`${activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'My Vouchers & Promos'} — BagooPH`} />
+            <Head title={`${activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'Vouchers & Promos'} — BagooPH`} />
 
             <div className="w-full space-y-6 font-sans">
                 
@@ -1336,41 +1342,15 @@ export default function BuyerProfile({
 
                         {/* TAB 5: VOUCHERS & PROMOS */}
                         {activeTab === 'vouchers' && (
-                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Vouchers and promos" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                            <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Vouchers and promos" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex flex-col gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
                                 <div className="border-b border-slate-100 pb-4">
-                                    <h3 className="text-base font-black text-slate-900">Claimed Vouchers & Promos</h3>
-                                    <p className="text-xs text-slate-500 font-sans">Redeem discount vouchers automatically during checkout</p>
+                                    <h3 className="text-base font-black text-slate-900">Available Offers</h3>
+                                    <p className="mt-1 text-xs text-slate-500">Choose an offer at checkout. Eligibility depends on your selected items and delivery method.</p>
+                                    {availableVoucherCount > availableVouchers.length && <p className="mt-2 text-xs text-slate-500">
+                                        Showing {availableVouchers.length} of {availableVoucherCount} available offers. You can also enter a code at checkout.
+                                    </p>}
                                 </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans text-xs">
-                                    
-                                    <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50 border border-rose-200/80 space-y-2 relative overflow-hidden">
-                                        <div className="flex items-center justify-between">
-                                            <span className="px-2 py-0.5 rounded bg-[#E00D42] text-white text-[9px] font-bold">PLATFORM VOUCHER</span>
-                                            <span className="text-[10px] text-slate-500">Exp: Dec 31, 2026</span>
-                                        </div>
-                                        <h4 className="text-lg font-black text-slate-900">₱100 OFF FIRST ORDER</h4>
-                                        <p className="text-[11px] text-slate-600 font-sans">Min. spend ₱500 across all verified Bagoo Mall stores</p>
-                                        <div className="pt-2 flex items-center justify-between border-t border-rose-200/60">
-                                            <code className="text-[#E00D42] font-black">WELCOME100</code>
-                                            <span className="text-emerald-600 font-bold text-[10px]">READY AT CHECKOUT</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[9px] font-bold">FREE SHIPPING</span>
-                                            <span className="text-[10px] text-slate-500">Exp: Dec 31, 2026</span>
-                                        </div>
-                                        <h4 className="text-lg font-black text-slate-900">100% OFF SHIPPING FEE</h4>
-                                        <p className="text-[11px] text-slate-600 font-sans">Capped at ₱60 for Luzon & Metro Manila express deliveries</p>
-                                        <div className="pt-2 flex items-center justify-between border-t border-slate-200">
-                                            <code className="text-slate-900 font-black">FREESHIP60</code>
-                                            <span className="text-emerald-600 font-bold text-[10px]">ACTIVE IN BAG</span>
-                                        </div>
-                                    </div>
-
-                                </div>
+                                <VoucherOfferList offers={availableVouchers} />
                             </div>
                         )}
 

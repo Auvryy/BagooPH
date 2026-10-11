@@ -3159,13 +3159,13 @@ and Platform Admin campaigns, and V04 buyer saving/selection, followed by a
 combined acceptance gate. Official public references and their regional
 limits are recorded in [the source notes](voucher-plan/REFERENCES.md).
 
-Current static findings:
+Static findings at the start of the voucher plan:
 
 - [Buyer profile](../resources/js/Pages/Buyer/Profile.tsx) displays two
   hardcoded offers with a fixed “3 Available” badge. These do not establish
   actual buyer ownership, expiry, redemption eligibility or quota.
-- [Checkout](../resources/js/Pages/Checkout/Index.tsx) already offers selection,
-  but computes discounts locally and posts one voucher_code. Its shipping
+- [Checkout](../resources/js/Pages/Checkout/Index.tsx) provides code entry,
+  computes discounts locally and posts one voucher_code. Its shipping
   offer preview zeroes the fee without applying the voucher's actual cap.
   The [checkout controller](../app/Http/Controllers/Buyer/CheckoutController.php)
   supplies active/unexpired offers without the final service's complete
@@ -3224,3 +3224,74 @@ sources inspected; documentation links and whitespace checked. The existing
 expansion for active purchases and hiding in other sections. No application
 code or schema changed; no new voucher runtime checks, production build,
 browser/device check or deployment is claimed.
+
+### October 11, 2026: V01 honest offers and accurate purchase quotes
+
+Implemented [V01](voucher-plan/01-quotes-and-honest-offers.md) on
+`fix/voucher-quote-consistency`. The first batch preserves one optional voucher
+per checkout and uses the existing checkout, Bag and buyer-profile routes.
+
+Before this change, two PHP 800 purchases from different shops could preview
+free shipping on their combined subtotal even though final checkout charged
+PHP 50 per shop. A capped shipping offer could also appear to waive the whole
+fee. The shared [CheckoutQuoteService](../app/Services/Orders/CheckoutQuoteService.php)
+now supplies current selected-item prices, fees per shop, eligibility feedback
+and exact cent allocations to the Bag, preview and locked final checkout.
+That example consistently totals PHP 1,700. A PHP 30 shipping discount against
+PHP 100 in fees leaves PHP 70 payable; naturally free parcels receive none of
+that discount. Shop minimum spend and discounts use only that shop's selected
+items. Platform product discounts use merchandise weights; shipping discounts
+use actual eligible fees, with deterministic remainder handling and caps.
+
+The [buyer offer list](../resources/js/Components/VoucherOfferList.tsx) shows
+real terms, issuer, minimum spend, cap and expiry. Public discovery excludes
+paused, expired, exhausted and malformed offers, returns at most 24 cards,
+and provides the actual count independently. The profile replaces its fixed
+promotion cards and badge with available offers and a centered empty state.
+Source inspection corrected one planning assumption: checkout had code entry
+but no rendered selector. V01 adds basic selection from real offers while
+keeping optional code entry and removal.
+
+[Quote refresh handling](../resources/js/hooks/usePurchaseQuote.ts) invalidates
+confirmation when items, quantities or delivery context change, cancels older
+requests and prevents late responses from restoring stale totals. Invalid
+vouchers are removed with the actual reason; failures leave totals unavailable.
+Item rows use the quoted current prices. The buyer shell, active purchase
+submenu and portal styling remain intact.
+
+Verified on the final implementation:
+
+- **370 isolated SQLite checks passed, 7,064 assertions**: the new
+  [BuyerVoucherQuoteTest](../tests/Feature/Buyer/BuyerVoucherQuoteTest.php),
+  CheckoutReplayTest, BuyerCheckoutTest, BuyerCartQuantityTest,
+  BuyerCartSelectionTest, CommerceInputValidationTest, InventoryCheckoutTest,
+  BuyerAccessAlignmentTest, BuyerCheckoutKycGateTest, SellerSettlementTest and
+  Tier3 CrossFeatureCombinationsTest. Coverage includes foreign selections,
+  current prices, shop minimums, invalid offers, shipping caps and zero-fee
+  shops, self-pickup, exact allocation, persisted per-shop totals, signed replay,
+  stock rollback and one usage increment per successful checkout. Settlement
+  checks preserve original-product 10%/90% gross accounting.
+- **43 frontend checks passed** across buyer-vouchers.test.mjs,
+  buyer-profile.test.mjs and commerce.test.mjs. These include real/empty offers,
+  item prices, capped totals, confirmation guards, controlled request races,
+  unavailable responses and purchase-navigation regression checks.
+- TypeScript/Vite production build, focused PHP style checks and whitespace
+  checks passed. Docker handled existing host file-permission restrictions.
+  No development database reset, browser/device check or deployment occurred.
+
+Scoped engineering assessment: **V01 offer truthfulness and quote consistency
+4/10 before -> 8/10 after**. Buyers can understand the amount due and the real
+saving before placing an order. This does not establish the full voucher plan's
+8.5/10 target or improve seller campaign management. Preview remains
+informational; final checkout rechecks under its existing locks. SQLite tests
+do not establish PostgreSQL concurrency behavior.
+
+V02-V04 remain separate deliveries: saved offers, per-buyer redemptions,
+immutable issuer/history, reviewed funding and budget records, stacking,
+seller/Platform Admin campaign controls and the richer buyer picker. The legacy
+nullable shop link and uncertain funding history remain V02 concerns; no
+historical orders or settlements were rewritten.
+
+Implementation commits: `e535acc docs: require readable commit descriptions`,
+`8e8f834 fix(checkout): share accurate voucher quotes across purchases`, and
+`1617c20 fix(buyer): show real offers and refreshed purchase totals`.
