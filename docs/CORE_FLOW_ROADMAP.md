@@ -67,6 +67,8 @@ Scoped logistics parcel recovery review: October 10, 2026. Company-authorized ac
 
 Scoped logistics workstation review: October 11, 2026. Registry/counter guidance separates commercial state, physical custody and authorized next steps. Review corrected delayed claim-window updates and collection history ordered by parcel creation. The final 57-case affected-flow selection, 91 frontend checks and production build pass. Guidance usability is assessed at 5/10 -> 8/10; scanner cleanup, queue capacity and deployed acceptance remain separate. Known dependency advisory limits are unchanged.
 
+Scoped scanner/counter queue completion: October 11, 2026. The scanner now uses recorded custody and shared next-step/blocker guidance, preserves real bin labels and opens the secure counter for buyer verification. Counter pages load 15 parcels, show the full matching total and label readiness for the visible page. The 396-case logistics regression and two added phone-search cases pass; all 100 frontend checks and the production build pass. Scanner/counter queue handling is assessed at 6/10 -> 8.5/10 within this batch. Cross-role tracking, deployed acceptance and overall role/security ratings remain separate.
+
 - **Implemented:** active code and focused tests cover the required baseline behavior.
 - **Partial:** a usable foundation exists, but at least one required invariant or persistence record is missing.
 - **Missing:** the required baseline behavior is not represented by enforceable application logic or persistence.
@@ -2880,3 +2882,71 @@ the current clock`; `0bc7bfc fix(logistics): order recent collections by recorde
 handover time`. This review evidence is retained in a separate documentation
 commit, with its generated hash reported in the handoff. Publication, merge and
 deployment remain user-owned steps.
+
+## October 11, 2026: scanner guidance and bounded counter queues
+
+The selected [scanner/counter batch](logistics-plan/03-scanner-and-counter-queue.md)
+is implemented on `feat/logistics-scanner-counter-queue`, based on the refreshed
+`main` containing the preceding workstation cleanup. It completes the scanner
+and queue-capacity selections above while keeping their operational services
+and the logistics portal's existing style.
+
+| Area | Before | Verified result |
+|---|---|---|
+| Shelf information | The scanner supplied `SELF-PICKUP-SHELF` as a fallback; routing also stored it before actual staging. | New self-pickup routes leave location metadata empty. The known legacy placeholder reads as missing metadata without rewriting the parcel. Real stored bin names survive; missing shelves say "Shelf not recorded". Actual staging and custody remain separate evidence. |
+| Scanner guidance | Scanner results and its counter list did not share the registry's custody, next actor or blockers. | Shared guidance shows physical stage, commercial state, actual custodian and supported next work. Unsupported confirmation is suppressed; enabled/disabled counters, locked/expired claims and wrong-facility records retain truthful handling. |
+| Counter handover | A duplicate scanner form asked only for name/notes and could not satisfy secure collection requirements. | Scanner results and counter previews open the existing secure counter with the selected hub and parcel search. Buyer identity, private claim code, actual waybill and exact COD remain mandatory server checks. |
+| Queue capacity | Every matching counter parcel was loaded and its staging/custody evidence queried individually. | The counter loads 15 parcels in deterministic ID order. Original staging and latest custody are eager-loaded in two batches; a 16-to-22-parcel growth check adds no request queries. The scanner preview remains bounded to 20 parcels and displays the full matching total. |
+| Count scope and navigation | Readiness represented the entire unbounded result list. | Full totals include all matches; readiness and attention are explicitly for the displayed page. Page links retain hub, search and portal path; empty/out-of-range pages stay truthful and offer navigation. Current expiry feedback and stale-form checks remain. |
+| Lookup and history | Phone lookup existed only inside the limited scanner preview. | Tracking, order, buyer-name and phone searches reach the full scoped queue on root/subdomain routes. Actual collection-time ordering and complete collection-evidence checks remain. |
+
+The scanner's **Self-Pickup Staged** count uses retained staging/custody at the
+selected destination facility. It is a physical queue count: a locked or
+naturally expired claim can remain physically staged while collection readiness
+is false. Reading either workstation does not expire a claim, start a return,
+consume a code, move custody or collect cash. Eager-loaded read evidence is
+never substituted for the existing freshly queried mutation checks.
+
+Verification evidence:
+
+- All **396 logistics feature cases passed with 28,130 assertions**, covering
+  custody, attempts, registry/counter, hub scope, sorting, manifests, parcel and
+  restricted-custody recovery, returns and secure pickup on isolated SQLite
+  `:memory:`. Two subsequently added root/subdomain phone-search cases passed
+  with 358 assertions, including wrong-facility exclusion and read-only checks.
+  These are **398 distinct cases and 28,488 assertions** across the two runs;
+  earlier overlapping focused runs are not added to this total.
+- All **100 frontend checks passed**. Actual scanner/preview components are
+  server-rendered with controlled state to verify missing/recorded shelves,
+  blockers, secure-counter links and retained phone lookup. Counter checks
+  cover page scope, navigation, empty states and current deadline behavior.
+- The final **TypeScript/Vite production build passed** (Vite: 11.88 seconds).
+  Changed PHP formatting and whitespace checks passed. Documentation references
+  and the local branch publication boundary are checked at handoff.
+
+**Scoped engineering rating: scanner/counter queue handling 6/10 before ->
+8.5/10 after.** Staff receive consistent guidance and secure handover navigation,
+and queue growth no longer expands the loaded parcel/readiness work beyond a
+page. This assessment applies to these views; overall role/security scores and
+full Phase 6 readiness are unchanged.
+
+Remaining limits: this batch verifies local source and isolated tests. Azure
+deployment, PostgreSQL execution/concurrency, rendered-browser/device behavior
+and production-size latency are unverified. Query-count bounding does not make
+database count/search latency constant. Remaining Phase 6 cross-role tracking
+consistency is the next separate selection; rates, disputes/refunds and native
+mobile work retain their existing boundaries. No schema or database reset is
+required by this branch.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `15a88ea` | `docs(logistics): define scanner and counter queue acceptance` |
+| `e2a4142` | `feat(logistics): paginate counter work with bounded readiness reads` |
+| `59787ce` | `fix(logistics): ground scanner guidance in actual parcel records` |
+| `a1ab734` | `fix(logistics): preserve buyer phone search across counter views` |
+
+This evidence is retained in a separate documentation commit; its generated
+hash is reported in the handoff. Publication, merge and deployment remain
+user-owned steps.

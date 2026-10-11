@@ -9,13 +9,16 @@ The [logistics custody contract](../SORTING_CENTER_LOGISTICS_FLOW.md) and
 1. Keep actual shelf/bin names and show "Shelf not recorded" when absent. Reuse
    recorded custody, commercial state, next actor and blockers in scanner results
    and its bounded counter preview. A destination route alone cannot place a
-   parcel in that facility's queue.
+   parcel in that facility's queue. Stop assigning a shelf placeholder during
+   route planning and read that known legacy placeholder as missing location
+   metadata without rewriting existing records.
 2. Replace the scanner's incomplete name/notes release form with navigation to
    the existing secure counter verification. Preserve selected facility and
    parcel search on root and hub-subdomain routes. Scanning and navigation do
    not collect COD, release a parcel or complete an order.
 3. Paginate the counter at 15 parcels per page, with deterministic ordering and
-   scoped search. Show the full matching total and explicitly label readiness
+   scoped tracking, order, buyer-name and phone search. Show the full matching
+   total and explicitly label readiness
    and blockers as counts for the displayed page. Do not infer readiness for
    unseen parcels or recalculate it from status alone.
 4. Bound query work to the displayed parcels and existing history/preview limits.
