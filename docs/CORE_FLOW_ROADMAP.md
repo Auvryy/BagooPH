@@ -3044,7 +3044,7 @@ the server-owned source of truth.
 
 | Area | Before | Implemented behavior |
 |---|---|---|
-| Purchase filters | Eight status buttons shared a horizontally scrolling strip, pushing later choices out of view. | All, To ship, In transit, Delivered and Completed remain visible in a responsive button grid. Delivery issue, Returned and Cancelled have a separate labelled More statuses selector, with their actual counts and the current selection. |
+| Purchase filters | Eight status buttons shared a horizontally scrolling strip, pushing later choices out of view. | All, To ship, In transit, Delivered and Completed remain visible in a responsive button grid. The follow-up below replaces the initial exception dropdown with Order issues directly below My Purchases & Orders in the sidebar, retaining actual counts and the current selection. |
 | Desktop purchases | Reading a long order list moved the profile navigation and filters with the page. | The two-column workspace uses the available viewport height. Its sidebar and purchase controls stay outside the independently scrolling order results, including empty states, errors and pagination. |
 | Account and Security | Long settings forms moved the sidebar out of view. | Contact, identity and password settings share a focusable content scroll region beside the stationary sidebar. Other existing profile sections also retain bounded content and their card padding. |
 | Footer and responsive access | Page scrolling was the only way to navigate a long workspace. | On desktop, wheel input over stationary controls or empty panels cannot spill into the outer page; overflowing panels use contained native scrolling. Scrolling outside the workspace still reaches the normal footer. Below 1024px, the profile retains ordinary stacked page scrolling. Short desktop windows allow the sidebar to scroll internally so lower links remain reachable. |
@@ -3083,3 +3083,42 @@ Local implementation commits:
 |---|---|
 | `6a55b3f` | `fix(buyer): separate exception filters from purchase progress` |
 | `ae33224` | `fix(buyer): keep profile navigation beside scrolling content` |
+
+### October 11, 2026: centered buyer empty panels and Order issues navigation
+
+The buyer profile's unavailable wallet notice now sits in the center of its
+panel. Empty purchase results use the remaining results area, and an empty
+address book shows a centered message below its title and Add New Address
+button. The existing buyer colors, typography, card styling and desktop scroll
+regions remain in use. Smaller screens retain stacked page scrolling and enough
+space for each message; short panels can still scroll to reach their content.
+
+Order issues is an indented sidebar button directly below My Purchases & Orders.
+It opens the existing delivery issue filter, with Returned and Cancelled beside
+it as visible buttons. Direct links to any of these three statuses select the
+matching button and sidebar entry. Returning to the main purchase group opens
+All; All still includes the buyer's complete order history. The issue badge sums
+the three recorded counts. Existing server filtering, pagination, refresh and
+receipt guards are retained, and switching groups resets pagination.
+
+Verification: **39 frontend checks passed**, comprising 11 profile checks and
+28 existing commerce/account settings checks. Coverage includes sidebar order,
+actual counts, direct exception selections, disabled controls, requests from
+other profile tabs, page reset and refresh parameters. The **TypeScript/Vite
+production build passed through Docker**, with Vite finishing in 14.66 seconds.
+Whitespace checks passed. This follow-up changes frontend presentation only;
+the earlier backend regression results above were not rerun or counted as new
+evidence. Browser/device layout and Azure deployment remain unverified.
+
+Scoped assessment: **buyer empty-panel clarity 6/10 before -> 8.5/10 after**;
+**purchase issue navigation 7/10 before -> 8.5/10 after**. The empty messages
+occupy their panels more clearly, and exception orders have a named sidebar
+destination. These ratings do not certify wallet functionality or raise overall
+buyer transaction readiness.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `e54a64b` | `fix(buyer): move order issues into profile navigation` |
+| `21a6f4e` | `fix(buyer): center empty profile panel messages` |
