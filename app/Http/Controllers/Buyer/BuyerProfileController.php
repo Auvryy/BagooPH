@@ -16,6 +16,7 @@ use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
 use App\Services\VerificationDocumentService;
+use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -52,6 +53,7 @@ class BuyerProfileController extends Controller
 
         $initialTab = $request->query('tab', 'orders');
         $available = app(CheckoutQuoteService::class)->offers(buyer: $user);
+        $vouchers = app(VoucherCollectionService::class)->collection($user, $request);
 
         return Inertia::render('Buyer/Profile', [
             ...app(AccountSettingsService::class)->presentation($user),
@@ -65,6 +67,7 @@ class BuyerProfileController extends Controller
             'initialTab' => $initialTab,
             'availableVouchers' => $available['offers'],
             'availableVoucherCount' => $available['count'],
+            'voucherCollection' => $vouchers,
         ]);
     }
 

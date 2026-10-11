@@ -58,6 +58,7 @@ class CheckoutQuoteService
         $productDiscounts = $shops->map(fn () => 0);
         $shippingDiscounts = $shops->map(fn () => 0);
         $redemptions = [];
+        $failedRevisionId = null;
         $reason = $revisions->contains(null) ? 'This older voucher needs its funding reviewed before use.' : null;
         if (! $reason && ($revisions->where('issuer_type', 'platform')->count() > 1
             || $revisions->where('issuer_type', 'shop')->pluck('shop_id')->duplicates()->isNotEmpty())) {
@@ -68,6 +69,7 @@ class CheckoutQuoteService
             if ($reason) {
                 break;
             }
+            $failedRevisionId = $revision->id;
             $reason = $this->unavailableReason($revision, $shops, $buyer);
             if ($reason) {
                 break;
@@ -89,7 +91,7 @@ class CheckoutQuoteService
                 break;
             }
             $balance = $revision->balance;
-            if ($amount > $revision->budget_cents - $balance->committed_cents - $balance->spent_cents) {
+            if ($amount > $revision->approvedBudget() - $balance->committed_cents - $balance->spent_cents) {
                 $reason = 'This voucher has reached its available funding limit.';
                 break;
             }
@@ -110,6 +112,7 @@ class CheckoutQuoteService
                     'platform_expense_cents' => $revision->funding_party === 'platform' ? $part : 0];
             }
             $redemptions[] = ['revision_id' => $revision->id, 'discount_cents' => $amount, 'allocations' => $allocations];
+            $failedRevisionId = null;
         }
         if ($reason) {
             $productDiscounts = $shops->map(fn () => 0);
@@ -135,23 +138,13 @@ class CheckoutQuoteService
                 'unit_price' => CodMoney::cents($item->product->price) / 100,
                 'subtotal' => CodMoney::cents($item->product->price) * $item->quantity / 100])->values()->all(),
             'voucher' => count($presented) === 1 ? $presented[0] : null, 'vouchers' => $presented,
-            'voucher_error' => $reason, 'redemptions' => $redemptions];
+            'voucher_error' => $reason, 'redemptions' => $redemptions,
+            ...($reason && $failedRevisionId ? ['failed_revision_id' => $failedRevisionId] : [])];
     }
 
     public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24, ?User $buyer = null, ?Collection $selected = null): array
     {
-        $query = VoucherRevision::with(['voucher', 'shop:id,name', 'balance'])
-            ->whereHas('voucher', fn (Builder $q) => $q->where('is_active', true)->whereNull('archived_at')->whereColumn('current_revision_id', 'voucher_revisions.id'))
-            ->where('starts_at', '<=', now())->where('ends_at', '>', now())
-            ->whereHas('balance', fn (Builder $q) => $q->whereColumn('redemption_count', '<', 'voucher_revisions.global_limit')
-                ->whereRaw('committed_cents + spent_cents < voucher_revisions.budget_cents'))
-            ->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereHas('shop', fn (Builder $shop) => $shop->eligible()));
-        if ($items !== null) {
-            $query->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereIn('shop_id', $items->pluck('product.shop_id')->unique()));
-        }
-        if ($buyer) {
-            $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ?) < voucher_revisions.per_buyer_limit', [$buyer->id]);
-        }
+        $query = $this->availableQuery($items, $buyer);
         $count = (clone $query)->count();
         $offers = $query->orderByDesc('id')->limit($limit)->get()->map(function (VoucherRevision $revision) use ($items, $deliveryType, $buyer, $selected) {
             $candidate = ($selected ?? collect())->reject(fn ($current) => $current->issuer_type === $revision->issuer_type && $current->shop_id === $revision->shop_id)->push($revision);
@@ -165,14 +158,35 @@ class CheckoutQuoteService
         return ['offers' => $offers, 'count' => $count];
     }
 
-    private function present(VoucherRevision $revision): array
+    public function availableQuery(?Collection $items = null, ?User $buyer = null): Builder
+    {
+        $query = VoucherRevision::with(['voucher', 'shop:id,name,slug', 'balance'])->withSum('budgetIncreases', 'budget_increase_cents')
+            ->whereHas('voucher', fn (Builder $q) => $q->where('is_active', true)->whereNull('archived_at')->whereColumn('current_revision_id', 'voucher_revisions.id'))
+            ->where('starts_at', '<=', now())->where('ends_at', '>', now())
+            ->whereHas('balance', fn (Builder $q) => $q->whereColumn('redemption_count', '<', 'voucher_revisions.global_limit')
+                ->whereRaw("committed_cents + spent_cents < voucher_revisions.budget_cents + coalesce((select sum(budget_increase_cents) from voucher_campaign_actions where voucher_revision_id = voucher_revisions.id and action = 'budget_increased'), 0)"))
+            ->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereHas('shop', fn (Builder $shop) => $shop->eligible()));
+        if ($items !== null) {
+            $query->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereIn('shop_id', $items->pluck('product.shop_id')->unique()));
+        }
+        if ($buyer) {
+            $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ?) < voucher_revisions.per_buyer_limit', [$buyer->id]);
+        }
+
+        return $query;
+    }
+
+    public function present(VoucherRevision $revision): array
     {
         return ['id' => $revision->voucher_id, 'revision_id' => $revision->id, 'code' => $revision->code,
             'name' => $revision->name, 'description' => $revision->description, 'discount_type' => $revision->discount_type,
             'discount_value' => $revision->discount_type === 'percent' ? $revision->percentage_bps / 100 : $revision->value_cents / 100,
             'min_spend' => $revision->minimum_cents / 100, 'max_discount' => $revision->maximum_cents / 100,
             'shop_id' => $revision->shop_id, 'shop_name' => $revision->shop?->name,
-            'issuer' => $revision->issuer_type, 'expires_at' => $revision->ends_at->toIso8601String()];
+            'issuer' => $revision->issuer_type, 'expires_at' => $revision->ends_at->toIso8601String(),
+            'starts_at' => $revision->starts_at->toIso8601String(),
+            'use_url' => $revision->issuer_type === 'shop' && $revision->shop?->slug
+                ? route('shop.show', $revision->shop->slug, absolute: false) : route('buyer.cart', absolute: false)];
     }
 
     private function unavailableReason(VoucherRevision $revision, Collection $shops, ?User $buyer): ?string
@@ -195,11 +209,14 @@ class CheckoutQuoteService
         if (! $balance || $balance->redemption_count >= $revision->global_limit) {
             return 'This voucher has reached its usage limit.';
         }
-        if ($buyer && VoucherRedemption::where('voucher_revision_id', $revision->id)->where('buyer_id', $buyer->id)->count() >= $revision->per_buyer_limit) {
+        $uses = $revision->getAttribute('quote_buyer_id') === $buyer?->id && $revision->getAttribute('buyer_uses_count') !== null
+            ? $revision->getAttribute('buyer_uses_count')
+            : ($buyer ? VoucherRedemption::where('voucher_revision_id', $revision->id)->where('buyer_id', $buyer->id)->count() : 0);
+        if ($buyer && $uses >= $revision->per_buyer_limit) {
             return 'You have reached your usage limit for this voucher.';
         }
         if ($revision->issuer_type === 'shop' && (! $shops->has($revision->shop_id) || ! $revision->shop
-            || ! app(ShopEligibilityService::class)->isEligible($revision->shop))) {
+            || ! ($revision->getAttribute('quote_shop_eligible') ?? app(ShopEligibilityService::class)->isEligible($revision->shop)))) {
             return 'This voucher is not for the selected shop items.';
         }
         $subtotal = ($revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops)->sum('subtotal');

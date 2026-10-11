@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Admin\ProductModerationController;
+use App\Http\Controllers\Admin\VoucherCampaignController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -195,6 +196,10 @@ $registerSellerRoutes = function () {
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
         Route::post('/vouchers', [SellerVoucherController::class, 'store']);
         Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle']);
+        Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show']);
+        Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update']);
+        Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action']);
+        Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
         Route::get('/messages', [ChatController::class, 'sellerInbox']);
         Route::post('/messages', [ChatController::class, 'sendMessage']);
         Route::post('/chat/send', [ChatController::class, 'sendMessage']);
@@ -334,6 +339,11 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve']);
         Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject']);
         Route::get('/products', [AdminDashboardController::class, 'products']);
+        Route::get('/vouchers', [VoucherCampaignController::class, 'index']);
+        Route::post('/vouchers', [VoucherCampaignController::class, 'store']);
+        Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show']);
+        Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update']);
+        Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action']);
         Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
         Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
@@ -437,6 +447,10 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
+            Route::post('/vouchers/choices', [VoucherController::class, 'choices'])->middleware('throttle:60,1')->name('vouchers.choices');
+            Route::post('/vouchers/best', [VoucherController::class, 'best'])->middleware('throttle:30,1')->name('vouchers.best');
+            Route::post('/saved-vouchers/{revision}', [VoucherController::class, 'store'])->whereNumber('revision')->name('vouchers.save');
+            Route::delete('/saved-vouchers/{saved}', [VoucherController::class, 'destroy'])->whereNumber('saved')->name('vouchers.remove');
             Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
                 ->middleware('throttle:20,1')
                 ->name('support.assistant');
@@ -540,6 +554,9 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
     Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
+    Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show'])->name('vouchers.show');
+    Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('vouchers.update');
+    Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action'])->name('vouchers.action');
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
@@ -600,6 +617,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{user}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{user}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
     Route::get('/products', [AdminDashboardController::class, 'products'])->name('products');
+    Route::get('/vouchers', [VoucherCampaignController::class, 'index'])->name('vouchers.index');
+    Route::post('/vouchers', [VoucherCampaignController::class, 'store'])->name('vouchers.store');
+    Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show'])->name('vouchers.show');
+    Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update'])->name('vouchers.update');
+    Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action'])->name('vouchers.action');
     Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');
     Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');

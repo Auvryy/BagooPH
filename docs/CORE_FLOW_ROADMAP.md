@@ -3404,3 +3404,116 @@ policy remain separate work.
 Implementation commits: `c427981 feat(vouchers): retain immutable campaign and funding records`,
 `cbaa289 feat(checkout): allocate funded shop and platform vouchers`, and
 `67fca1e feat(vouchers): show stacked savings and funded net proceeds`.
+
+### October 11, 2026 — V03 campaign management verification
+
+V03 now has seller-owned drafts and publication, scheduled starts, confirmed
+pause/resume, retained campaign endings, and new draft revisions for changed
+published terms. Platform Admin manages explicitly Bagoo-funded product or
+capped shipping offers. A reasoned shop-campaign suspension notifies its seller
+and cannot be bypassed with seller resume. Budget increases retain their actor,
+reason, old/new ceiling and current use counters without changing discount terms.
+
+The shared writer service rechecks account/shop approval and ownership, normalizes
+codes before uniqueness, enforces dated finite limits and affordable seller
+reductions, retains immutable audit records and rejects changed request retries.
+Lifecycle reporting excludes restricted shops from active offers. Campaign totals
+span the authorized query, with distinct bookmarks, successful uses, cancelled
+allocations, committed funding and settled expense. Seller and admin screens use
+the existing governance/seller layout with bounded forms and paginated history.
+
+Verification: 77 isolated SQLite campaign/quote/governance-notification checks and
+39 funding regression checks passed. The 35 seller checks were rerun after the
+final restriction-state adjustment. Seventeen frontend campaign/finance checks,
+PHP style checks, `git diff --check` and the TypeScript/Vite build passed. The
+additive campaign migration retained the local PostgreSQL application's 9 users,
+17 products, 3 orders and their original approval, stock and monetary values;
+there were no local voucher records. This operational migration does not prove
+PostgreSQL concurrency. No Azure deployment or browser/device check occurred.
+
+Scoped assessments: campaign writer integrity **3/10 -> 8/10** and campaign
+management interface **2/10 -> 8/10**. V04 owned collections, checkout pickers,
+best-combination selection and the combined acceptance handoff remain in progress
+on the same authorized branch. These scores do not rate the whole buyer/admin
+flows or deferred refund/targeting features.
+
+Backend commit: `9b9ab8f feat(vouchers): publish scoped campaigns with recorded budgets`.
+
+### October 12, 2026 — V03/V04 voucher acceptance and handoff
+
+The authorized combined batch now includes owned buyer bookmarks, paginated
+Available/Saved/Used/Expired collections with whole-query counts, shop discovery
+beside products and shop content, and offers for selected Bag shops. Saves reserve
+no quota or money. Saved or used old revisions remain explainable after expiry,
+pause, archival or publication of replacement terms; another buyer cannot remove
+their bookmarks or read their orders.
+
+Checkout groups its items by shop, with a Shop voucher picker in each group and
+one Bagoo voucher picker in the summary. Labelled radio cards, explicit Apply,
+No voucher and secondary code entry use a bounded desktop dialog/mobile sheet.
+Unavailable choices retain a reason. A failed preview removes only invalid slots;
+valid sibling choices and explicit No voucher remain. Final placement still
+reloads and rejects unavailable selections without partial orders or commitments.
+
+Use best vouchers enumerates every allowed combination using integer discount
+amounts from the shared quote. Equal savings prefer fewer vouchers and then sorted
+revision IDs. The limit is 40 available campaigns and 4,096 combinations; larger
+searches explicitly require manual choice, rather than claiming a truncated
+result is best. Stale responses after item, delivery or manual-choice changes
+cannot replace the buyer's current selection.
+
+Each shop has its own merchandise, discounts, shipping before/after and COD total;
+the summary is the authoritative exact sum. Receipts use immutable recorded terms
+and allocations rather than current campaign definitions. Partial shipping
+reductions retain a payable fee. Old unknown-funder discounts remain recorded
+without a guessed product/shipping allocation. Original commission, seller share,
+custody, cancellation and buyer-only completion rules remain intact.
+
+The focused demo seeder publishes one approved shop offer and Bagoo product and
+capped shipping offers through the real writer. It keeps dated finite budgets
+and limits, skips existing codes on repeat runs, and creates no fictional saves,
+redemptions or expenses. The existing verified demo accounts and raw-password
+cast convention remain. No application database was reset or reseeded here.
+
+Verification evidence:
+
+- The combined **220 isolated SQLite checks passed (6,039 assertions)** across
+  buyer selection/quotes, immutable funding, discovery, tracking, campaign
+  ownership/management, seeders and seller settlements. These include quota and
+  budget rejection, altered retry inputs, original-token replay after pause or
+  expiry, transactional rollback, partial cancellation, recorded funding release,
+  legacy monetary preservation and buyer-confirmed/reconciled COD settlement.
+  The 12 selection checks passed again (157 assertions) after adding replacement
+  publication to the recorded-receipt case.
+- Best selection matches exhaustive bounded fixtures, including caps, ties,
+  shipping differences, a budget that only fits after a shop reduction, a
+  one-cent shipping remainder and zero-fee parcels. Too many campaigns or
+  combinations reject without reservations. Receipt preservation also checks
+  replacement publication with changed discount terms.
+- **68 frontend checks passed** across buyer vouchers, profile/navigation,
+  tracking, campaign management and finance. Eighteen focused voucher checks
+  passed again after the final picker/pending changes. PHP style checks,
+  `git diff --check` and the final TypeScript/Vite build passed.
+- The V03 additive local migration retained all 9 users, 17 products, 3 orders
+  and original approval, stock and monetary values. V04 needs no new migration.
+  PostgreSQL concurrency and interactive browser/device behavior remain
+  separately unverified. No GitHub publication or Azure deployment occurred.
+
+Scoped assessments: **buyer voucher discovery/choice 3/10 -> 8/10** and
+**voucher summary/receipt clarity 5/10 -> 8/10**. V03's writer and management
+assessments remain 8/10; this does not raise whole buyer/seller/admin readiness.
+Targeting, loyalty points, wallet/cashback, shop-funded shipping and automatic
+refunds remain deferred. See [rollout and retained records](voucher-plan/ROLLOUT.md)
+for additive deployment and stopping new operations without deleting history.
+
+Implementation commits:
+
+- `9b9ab8f feat(vouchers): publish scoped campaigns with recorded budgets`
+- `edbc62e feat(vouchers): add seller and admin campaign controls`
+- `efa2a34 feat(vouchers): retain buyer saves and calculate exact choices`
+- `dc91a79 feat(vouchers): seed bounded demo offers through campaign publication`
+- `06b6d93 feat(vouchers): add buyer collections and checkout pickers`
+
+The final acceptance/documentation commit identifies its own scope in Git; its
+short hash is also included in the local branch handoff. The prepared PR title
+and description are a local draft, not a saved GitHub pull request.

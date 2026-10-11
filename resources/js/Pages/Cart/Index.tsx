@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import VoucherOfferList from '@/Components/VoucherOfferList';
 import usePurchaseQuote, { PurchaseQuote } from '@/hooks/usePurchaseQuote';
 import { Cart, CartItem, PageProps } from '@/types';
 import { 
@@ -524,6 +525,11 @@ export default function CartIndex({ cart, items, quote: initialQuote }: Props) {
                                     </div>
                                 )}
                             </div>
+                            {pricing.current && pricing.offers.some(offer => offer.issuer === 'shop') && <section aria-label="Selected shop offers" className="space-y-4 rounded-2xl border border-slate-300 bg-white p-5">
+                                <h2 className="font-bold text-slate-900">Offers from selected shops</h2>
+                                {pricing.quote.shops.map(shop => <div key={shop.shop_id} className="space-y-3 border-t border-slate-300 pt-4"><h3 className="text-sm font-semibold text-slate-800">{shop.shop_name}</h3>
+                                    <VoucherOfferList offers={pricing.offers.filter(offer => offer.shop_id === shop.shop_id)} allowSave /></div>)}
+                            </section>}
                         </div>
 
                         {/* Order Summary */}

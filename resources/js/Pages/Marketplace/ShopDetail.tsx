@@ -1,3 +1,4 @@
+import VoucherOfferList from '@/Components/VoucherOfferList';
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -32,6 +33,7 @@ import {
 } from 'lucide-react';
 
 interface Props {
+    shopOffers?: import('@/hooks/usePurchaseQuote').VoucherOffer[];
     shop: Shop & {
         response_rate?: string;
         response_time?: string;
@@ -44,7 +46,7 @@ interface Props {
     isPreview?: boolean;
 }
 
-export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false }: Props) {
+export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [] }: Props) {
     const isQueryPreview = typeof window !== 'undefined' && (
         new URLSearchParams(window.location.search).has('preview') ||
         window.location.pathname.includes('/preview')
@@ -399,6 +401,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     </div>
                 </div>
 
+                {shopOffers.length > 0 && <section aria-label="Shop offers" className="space-y-3"><h2 className="font-bold text-slate-900">Shop offers</h2><VoucherOfferList offers={shopOffers} allowSave /></section>}
                 {/* 3. STORE PRODUCTS CATALOG WITH IN-STORE SEARCH */}
                 <div className="space-y-4">
                     {/* Catalog Header & Search Filter */}

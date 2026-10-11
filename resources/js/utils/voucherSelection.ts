@@ -32,3 +32,10 @@ export function withoutVoucher(selection: VoucherSelection, shopId: number | nul
     else result.shop_voucher_revision_ids[shopId] = null;
     return result;
 }
+
+export function repairedVoucherSelection(selection: VoucherSelection, valid?: { voucher_code: string | null; platform_voucher_revision_id: number | null; shop_voucher_revision_ids: Record<number, number | null> }): VoucherSelection {
+    return valid ? { voucher_code: valid.voucher_code ?? '', platform_voucher_revision_id: valid.platform_voucher_revision_id,
+        shop_voucher_revision_ids: { ...valid.shop_voucher_revision_ids } } : selection;
+}
+
+export const isVoucherRequestCurrent = (requested: string, current: string, aborted: boolean) => requested === current && !aborted;

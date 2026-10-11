@@ -102,16 +102,18 @@ test('funded settlement distinguishes gross shares, issuer costs and the net pay
     assert.doesNotMatch(evidence, /Record an existing seller payment|<form/);
 });
 
-test('seller voucher page makes draft and archived status clear without an invented shipping campaign', async () => {
-    const base = { code: 'SHOP_DRAFT', name: 'Shop draft', discount_type: 'fixed', discount_value: 100,
-        min_spend: 0, used_count: 0, is_active: false, current_revision_id: null, archived_at: null };
-    const html = await render(SellerVouchers, 'Seller/Vouchers', { shop: { id: 1 }, vouchers: { data: [
-        { ...base, id: 1 }, { ...base, id: 2, code: 'OLDER_SHOP', used_count: 7, archived_at: '2026-10-11T00:00:00Z' },
-    ] } });
-    assert.match(html, /Save Draft/);
-    assert.match(html, /New vouchers are drafts/);
-    assert.match(html, /disabled=""[^>]*>Draft/);
-    assert.match(html, /disabled=""[^>]*>Archived/);
-    assert.match(html, /7 Claims/);
-    assert.doesNotMatch(html, /FREESHIP|Network standard active|Publish Promotion/);
+test('seller campaign page separates older recorded uses from verified redemptions', async () => {
+    const base = { name: 'Shop draft', issuer_type: 'shop', shop_name: 'Bagoo Crafts', version: 1,
+        current_revision_id: null, has_draft: false, draft_terms: null, published_terms: null,
+        approved_budget_cents: null, balance: null, suspended_at: null };
+    const html = await render(SellerVouchers, 'Seller/Vouchers', { shop: { id: 1, name: 'Bagoo Crafts' },
+        campaigns: { data: [{ ...base, id: 1, code: 'SHOP_DRAFT', state: 'draft', legacy_used_count: 0 },
+            { ...base, id: 2, code: 'OLDER_SHOP', state: 'archived', legacy_used_count: 7 }], current_page: 1, last_page: 1 },
+        stats: { campaigns: 2, active: 0, saves: 0, redemptions: 0, legacy_uses: 7, cancelled_allocations: 0,
+            budget_cents: 0, committed_cents: 0, spent_cents: 0, released_cents: 0, remaining_cents: 0 } });
+    assert.match(html, /New voucher/);
+    assert.match(html, /Save a draft, review its dates and limits, then publish/);
+    assert.match(html, /7 older recorded uses/);
+    assert.match(html, /Successful uses/);
+    assert.doesNotMatch(html, /Claims|FREESHIP|Network standard active/);
 });

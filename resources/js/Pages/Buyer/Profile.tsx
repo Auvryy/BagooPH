@@ -6,6 +6,7 @@ import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
+import BuyerVoucherCollection, { BuyerVoucherCollectionData } from '@/Components/Vouchers/BuyerVoucherCollection';
 import { VoucherOffer } from '@/hooks/usePurchaseQuote';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
@@ -73,6 +74,7 @@ interface Props {
     initialTab?: TabType;
     availableVouchers?: VoucherOffer[];
     availableVoucherCount?: number;
+    voucherCollection?: BuyerVoucherCollectionData;
 }
 
 type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
@@ -95,6 +97,7 @@ export default function BuyerProfile({
     initialTab = 'orders',
     availableVouchers = [],
     availableVoucherCount = 0,
+    voucherCollection,
 }: Props) {
     const page = usePage<PageProps>();
     const url = page.url;
@@ -1343,14 +1346,14 @@ export default function BuyerProfile({
                         {/* TAB 5: VOUCHERS & PROMOS */}
                         {activeTab === 'vouchers' && (
                             <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Vouchers and promos" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex flex-col gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
-                                <div className="border-b border-slate-100 pb-4">
+                                {voucherCollection ? <BuyerVoucherCollection collection={voucherCollection} /> : <><div className="border-b border-slate-100 pb-4">
                                     <h3 className="text-base font-black text-slate-900">Available Offers</h3>
                                     <p className="mt-1 text-xs text-slate-500">Choose an offer at checkout. Eligibility depends on your selected items and delivery method.</p>
                                     {availableVoucherCount > availableVouchers.length && <p className="mt-2 text-xs text-slate-500">
                                         Showing {availableVouchers.length} of {availableVoucherCount} available offers. You can also enter a code at checkout.
                                     </p>}
                                 </div>
-                                <VoucherOfferList offers={availableVouchers} />
+                                <VoucherOfferList offers={availableVouchers} /></>}
                             </div>
                         )}
 

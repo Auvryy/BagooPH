@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 class Voucher extends Model
@@ -27,6 +29,8 @@ class Voucher extends Model
         'issuer_type',
         'current_revision_id',
         'archived_at',
+        'campaign_version',
+        'suspended_at',
     ];
 
     protected $casts = [
@@ -38,6 +42,8 @@ class Voucher extends Model
         'archived_at' => 'datetime',
         'shop_id' => 'integer',
         'current_revision_id' => 'integer',
+        'campaign_version' => 'integer',
+        'suspended_at' => 'datetime',
     ];
 
     public function shop(): BelongsTo
@@ -65,6 +71,21 @@ class Voucher extends Model
     public function currentRevision(): BelongsTo
     {
         return $this->belongsTo(VoucherRevision::class, 'current_revision_id');
+    }
+
+    public function draft(): HasOne
+    {
+        return $this->hasOne(VoucherCampaignDraft::class);
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(VoucherRevision::class);
+    }
+
+    public function campaignActions(): HasMany
+    {
+        return $this->hasMany(VoucherCampaignAction::class);
     }
 
     public function isValidForAmount(float $amount, ?int $shopId = null): bool
