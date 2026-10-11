@@ -137,7 +137,7 @@ test('buyer purchases retain full-history counts and paginate with receipt actio
     assert.match(html, /Purchase pages/); assert.match(html, /Page 1 of 2/);
     assert.match(html, />42</); assert.equal((html.match(/Confirm Received/g) || []).length, 1);
     assert.match(html, /Disputes unavailable/); assert.doesNotMatch(html, /Report Defect/);
-    for (const label of ['Delivered', 'Completed', 'Delivery issue', 'Returned', 'Cancelled']) assert.ok(html.includes(label));
+    for (const label of ['Delivered', 'Completed', 'Order issues']) assert.ok(html.includes(label));
 });
 
 test('restricted buyer order history retains narrow access and filtered pagination', async () => {

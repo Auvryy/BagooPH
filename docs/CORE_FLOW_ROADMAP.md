@@ -3034,3 +3034,118 @@ Local implementation commits:
 The final evidence is retained in a separate documentation commit; its generated
 hash is reported in the handoff. Publication, merge and deployment remain
 user-owned steps.
+
+### October 11, 2026: buyer profile navigation and separate exception filters
+
+The buyer profile now keeps its existing marketplace styling while separating
+purchase navigation from the content being read. This delivery changes profile
+presentation and scrolling; the existing order and account authorities remain
+the server-owned source of truth.
+
+| Area | Before | Implemented behavior |
+|---|---|---|
+| Purchase filters | Eight status buttons shared a horizontally scrolling strip, pushing later choices out of view. | All, To ship, In transit, Delivered and Completed remain visible in a responsive button grid. The follow-up below replaces the initial exception dropdown with Order issues directly below My Purchases & Orders in the sidebar, retaining actual counts and the current selection. |
+| Desktop purchases | Reading a long order list moved the profile navigation and filters with the page. | The two-column workspace uses the available viewport height. Its sidebar and purchase controls stay outside the independently scrolling order results, including empty states, errors and pagination. |
+| Account and Security | Long settings forms moved the sidebar out of view. | Contact, identity and password settings share a focusable content scroll region beside the stationary sidebar. Other existing profile sections also retain bounded content and their card padding. |
+| Footer and responsive access | Page scrolling was the only way to navigate a long workspace. | On desktop, wheel input over stationary controls or empty panels cannot spill into the outer page; overflowing panels use contained native scrolling. Scrolling outside the workspace still reaches the normal footer. Below 1024px, the profile retains ordinary stacked page scrolling. Short desktop windows allow the sidebar to scroll internally so lower links remain reachable. |
+| Refresh and navigation | Existing filters, counts, receipt actions and partial reloads supplied the order workspace. | The same server-filtered requests, counts and action guards remain in use. Selecting a different status or page resets the results region to its top; a same-page refresh preserves the reading position through Inertia scroll-region handling. |
+
+Verification evidence:
+
+- **37 frontend checks passed**: nine new profile checks plus the existing
+  commerce and account settings suites. They exercise the actual rendered
+  profile/filter components, direct exception selections, disabled controls,
+  request handlers, paging/refresh parameters, scroll-region placement,
+  desktop-only CSS scope, native wheel boundaries, viewport/header resize
+  measurement and listener cleanup.
+- **36 backend regression cases passed, with 443 assertions**, for buyer order
+  workspaces, addresses, avatars and profile settings, using isolated SQLite
+  `:memory:` inside the local application container.
+- The **TypeScript/Vite production build passed through Docker**; Vite finished
+  in 14.82 seconds. The buyer profile manifest includes its dedicated stylesheet,
+  and the generated asset contains the bounded workspace and scroll-containment
+  rules. Whitespace and frontend syntax checks passed.
+- Host-only checks encountered a Vite cache permission error and a missing PHP
+  GD extension. The corresponding Docker build and complete selected PHP
+  regression rerun passed. These environment errors are not counted as passing
+  host checks.
+
+The scoped assessment is **buyer profile navigation 6.5/10 before -> 8.5/10
+after**. Purchase progress and exception choices are easier to find, and long
+orders/settings retain their navigation context. This does not raise overall
+buyer transaction, security or flow readiness ratings. Browser/device wheel,
+touch and keyboard behavior and Azure deployment remain unverified; the
+frontend evidence uses server rendering and controlled DOM/event checks.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `6a55b3f` | `fix(buyer): separate exception filters from purchase progress` |
+| `ae33224` | `fix(buyer): keep profile navigation beside scrolling content` |
+
+### October 11, 2026: centered buyer empty panels and Order issues navigation
+
+The buyer profile's unavailable wallet notice now sits in the center of its
+panel. Empty purchase results use the remaining results area, and an empty
+address book shows a centered message below its title and Add New Address
+button. The existing buyer colors, typography, card styling and desktop scroll
+regions remain in use. Smaller screens retain stacked page scrolling and enough
+space for each message; short panels can still scroll to reach their content.
+
+Order issues is an indented sidebar button directly below My Purchases & Orders.
+It opens the existing delivery issue filter, with Returned and Cancelled beside
+it as visible buttons. Direct links to any of these three statuses select the
+matching button and sidebar entry. Returning to the main purchase group opens
+All; All still includes the buyer's complete order history. The issue badge sums
+the three recorded counts. Existing server filtering, pagination, refresh and
+receipt guards are retained, and switching groups resets pagination.
+
+Verification: **39 frontend checks passed**, comprising 11 profile checks and
+28 existing commerce/account settings checks. Coverage includes sidebar order,
+actual counts, direct exception selections, disabled controls, requests from
+other profile tabs, page reset and refresh parameters. The **TypeScript/Vite
+production build passed through Docker**, with Vite finishing in 14.66 seconds.
+Whitespace checks passed. This follow-up changes frontend presentation only;
+the earlier backend regression results above were not rerun or counted as new
+evidence. Browser/device layout and Azure deployment remain unverified.
+
+Scoped assessment: **buyer empty-panel clarity 6/10 before -> 8.5/10 after**;
+**purchase issue navigation 7/10 before -> 8.5/10 after**. The empty messages
+occupy their panels more clearly, and exception orders have a named sidebar
+destination. These ratings do not certify wallet functionality or raise overall
+buyer transaction readiness.
+
+Local implementation commits:
+
+| Commit | Subject |
+|---|---|
+| `e54a64b` | `fix(buyer): move order issues into profile navigation` |
+| `21a6f4e` | `fix(buyer): center empty profile panel messages` |
+
+### October 11, 2026: active purchase submenu
+
+Order issues is visible whenever the purchases section is active, including
+the first/default visit and every progress or issue filter. This supersedes the
+initial click-to-toggle behavior: the submenu now follows the selected section
+without separate expansion state. A subtle chevron reflects visibility, and a
+light vertical line marks Order issues as a nested destination. Account,
+addresses, wallet and vouchers hide the submenu. Native buttons expose
+`aria-expanded`/`aria-controls`, and the hidden container keeps its child out of
+keyboard navigation. Existing header destinations remain explicit: My Orders
+opens purchases, while Profile & Settings opens Account & Security.
+
+Verification: **40 frontend checks passed**, including immediate expansion
+across all five progress filters and three issue filters, hiding in all four
+other profile sections, disabled navigation and existing commerce/account
+settings cases. The **TypeScript/Vite production build and whitespace checks
+passed**. Browser/device interaction remains unverified.
+Scoped assessment: **purchase navigation hierarchy 7.5/10 before -> 8.5/10
+after**; the relationship is clearer and follows the current purchase context.
+The follow-up activation assessment is **8/10 before -> 8.5/10 after**: a first
+visit to purchases no longer needs an extra click to reveal Order issues.
+This does not change transaction readiness or the empty-panel rating above.
+
+Initial disclosure implementation: `ac2f332 fix(buyer): collapse nested purchase navigation`.
+
+Active-section implementation: `2345e14 fix(buyer): expand submenu for active purchases`.
