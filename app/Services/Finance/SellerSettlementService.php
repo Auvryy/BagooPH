@@ -15,6 +15,7 @@ use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherFundingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +74,15 @@ class SellerSettlementService
         $basis = self::split($cash?->product_subtotal_cents ?? CodMoney::cents($order->subtotal));
         $basis += ['shipping_cents' => $cash?->shipping_cents ?? CodMoney::cents($order->shipping_fee),
             'discount_cents' => $cash?->discount_cents ?? CodMoney::cents($order->voucher_discount)];
+        $promotions = app(VoucherFundingService::class)->amounts($order);
+        $basis += array_diff_key($promotions, ['promotion_blockers' => true]);
+        $basis['net_seller_cents'] = $promotions['promotion_blockers'] ? null : $basis['seller_cents'] - $promotions['seller_promotion_cents'];
+        $basis['net_commission_cents'] = $promotions['promotion_blockers'] ? null : $basis['commission_cents'] - $promotions['platform_promotion_cents'];
         $blockers = [];
+        array_push($blockers, ...$promotions['promotion_blockers']);
+        if ($basis['net_seller_cents'] !== null && $basis['net_seller_cents'] < 0) {
+            $blockers[] = 'Promotional costs cannot produce a negative seller payout.';
+        }
         if ($order->status !== 'completed' || ! $checkpoint || $checkpoint->scanned_by_id !== $order->buyer_id
             || $checkpoint->actor_role !== 'buyer' || ($checkpoint->source_state['order_status'] ?? null) !== 'delivered'
             || ($checkpoint->target_state['order_status'] ?? null) !== 'completed'
@@ -121,7 +130,7 @@ class SellerSettlementService
     public function verifiedPayment(?SellerSettlement $record): ?SellerSettlementEvent
     {
         return $record?->events()->where('event_type', 'payment_recorded')->where('actor_role', 'admin')
-            ->where('amount_cents', $record->seller_cents)->whereNotNull('payment_reference')
+            ->where('amount_cents', $record->net_seller_cents ?? $record->seller_cents)->whereNotNull('payment_reference')
             ->whereNotNull('proof_path')->whereNotNull('proof_hash')->first();
     }
 
@@ -131,9 +140,11 @@ class SellerSettlementService
         $payment = $this->verifiedPayment($record);
         $eligibility = $payment ? ['blockers' => [], 'buyer_checkpoint_id' => $record->buyer_checkpoint_id]
             : $this->eligibility($order);
-        $basis = $record ? $record->only(['product_cents', 'commission_cents', 'seller_cents', 'shipping_cents', 'discount_cents']) : $eligibility;
+        $moneyFields = ['product_cents', 'commission_cents', 'seller_cents', 'shipping_cents', 'discount_cents',
+            'seller_promotion_cents', 'platform_promotion_cents', 'net_seller_cents', 'net_commission_cents', 'promotion_snapshot'];
+        $basis = $record ? $record->only($moneyFields) : $eligibility;
         $status = $payment ? 'settled' : ($record ? 'authorized' : ($eligibility['eligible'] ? 'eligible' : 'pending'));
-        $payload = array_intersect_key($basis, array_flip(['product_cents', 'commission_cents', 'seller_cents', 'shipping_cents', 'discount_cents']))
+        $payload = array_intersect_key($basis, array_flip($moneyFields))
             + ['order_id' => $order->id, 'order_number' => $record?->snapshot['order_number'] ?? $order->order_number,
                 'reference' => $record?->reference, 'seller_id' => $record?->seller_id ?? $eligibility['seller_id'],
                 'seller_name' => $record?->snapshot['seller_name'] ?? $order->items->first()?->shop?->user?->name,
@@ -150,6 +161,14 @@ class SellerSettlementService
                 'cash_reference' => $record?->snapshot['cash_reference'] ?? $order->codAccount?->reference,
                 'reconciliation_reference' => $record?->snapshot['reconciliation_reference']
                     ?? $order->codAccount?->events()->where('event_type', 'platform_reconciled')->value('reference')];
+        if ($record && $record->net_seller_cents === null) {
+            // Retain the amount actually authorized/paid before funding records existed.
+            $payload['net_seller_cents'] = $record->seller_cents;
+            $payload['net_commission_cents'] = $record->commission_cents;
+            $payload['promotion_snapshot'] = [];
+        }
+        $payload['promotion_accounting'] = $record && $record->net_seller_cents === null ? 'legacy_recorded'
+            : ($payload['net_seller_cents'] === null ? 'review_required' : 'verified');
         if ($history) {
             $payload['history'] = $record?->events()->orderBy('sequence')->get()->map(fn ($event) => $event->only([
                 'id', 'reference', 'sequence', 'event_type', 'amount_cents', 'actor_id', 'actor_role', 'payment_reference', 'reason', 'context', 'created_at'])
@@ -174,7 +193,8 @@ class SellerSettlementService
         foreach (['amount', 'seller_amount', 'seller_id', 'recipient_id', 'commission', 'commission_rate', 'rate', 'status',
             'paid_at', 'created_at', 'subtotal', 'shipping_fee', 'payment_status', 'order_id', 'snapshot', 'shop_id',
             'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents', 'total_amount',
-            'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id', 'actor_id', 'actor_role', 'reference'] as $field) {
+            'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id', 'actor_id', 'actor_role', 'reference',
+            'seller_promotion_cents', 'platform_promotion_cents', 'net_seller_cents', 'net_commission_cents', 'promotion_snapshot'] as $field) {
             $rules[$field] = 'prohibited';
         }
         $data = Validator::make(array_replace($input, ['proof' => $proof]), $rules)->validate();
@@ -229,8 +249,12 @@ class SellerSettlementService
                     if (! $eligibility['eligible']) {
                         throw new DomainException(implode(' ', $eligibility['blockers']));
                     }
-                    if ($record && collect(['seller_id', 'shop_id', 'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id',
-                        'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents'])
+                    $sourceFields = ['seller_id', 'shop_id', 'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id',
+                        'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents'];
+                    if ($record?->net_seller_cents !== null) {
+                        array_push($sourceFields, 'seller_promotion_cents', 'platform_promotion_cents', 'net_seller_cents', 'net_commission_cents', 'promotion_snapshot');
+                    }
+                    if ($record && collect($sourceFields)
                         ->contains(fn ($field) => $eligibility[$field] !== $record->$field)) {
                         throw new DomainException('The authorized source or recipient no longer matches this order.');
                     }
@@ -247,7 +271,8 @@ class SellerSettlementService
                     $cash = $order->codAccount;
                     $buyerCheckpoint = DeliveryCheckpoint::findOrFail($eligibility['buyer_checkpoint_id']);
                     $record = SellerSettlement::create(array_intersect_key($eligibility, array_flip(['seller_id', 'shop_id', 'buyer_checkpoint_id',
-                        'cod_account_id', 'reconciliation_event_id', 'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents']))
+                        'cod_account_id', 'reconciliation_event_id', 'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents',
+                        'seller_promotion_cents', 'platform_promotion_cents', 'net_seller_cents', 'net_commission_cents', 'promotion_snapshot']))
                         + ['reference' => 'SET-'.strtoupper((string) Str::uuid()), 'order_id' => $orderId,
                             'legacy_ledger_id' => $order->commissionLedger?->id,
                             'snapshot' => ['currency' => 'PHP', 'order_number' => $order->order_number,
@@ -270,13 +295,16 @@ class SellerSettlementService
                 };
                 $event = $record->events()->create(['reference' => 'PAY-'.strtoupper((string) Str::uuid()), 'sequence' => $version + 1,
                     'event_type' => $type, 'actor_id' => $actor->id, 'actor_role' => $actor->role,
-                    'amount_cents' => $action === 'adjust-reference' ? 0 : $record->seller_cents,
+                    'amount_cents' => $action === 'adjust-reference' ? 0 : ($record->net_seller_cents ?? $record->seller_cents),
                     'payment_reference' => $data['payment_reference'] ?? null, 'reason' => $data['reason'],
                     'proof_path' => $storedPath, 'proof_hash' => $proofHash, 'source_event_id' => $source?->id,
                     'context' => ['from' => $payment ? 'settled' : ($version ? 'authorized' : 'eligible'),
                         'to' => $type === 'release_authorized' ? 'authorized' : 'settled',
                         'previous_reference' => $source?->payment_reference, 'recipient_id' => $record->seller_id, 'actor_name' => $actor->name],
                     'request_token' => $data['request_token'], 'request_fingerprint' => $fingerprint]);
+                if ($action === 'record-payment') {
+                    app(VoucherFundingService::class)->recordExpense($order, $actor, $event);
+                }
                 if ($action === 'record-payment' && ! $order->commissionLedger) {
                     CommissionLedger::create(['order_id' => $orderId, 'seller_id' => $record->seller_id,
                         'gross_amount' => self::pesos($record->product_cents), 'seller_amount' => self::pesos($record->seller_cents),

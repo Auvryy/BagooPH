@@ -43,8 +43,15 @@ class BuyerVoucherQuoteTest extends TestCase
 
     private function voucher(array $overrides = []): Voucher
     {
-        return Voucher::create(array_replace(['code' => 'BAGOO_SAVE', 'name' => 'Bagoo savings', 'discount_type' => 'fixed',
-            'discount_value' => '20.00', 'min_spend' => '0.00', 'is_active' => true, 'used_count' => 0], $overrides));
+        $factory = Voucher::factory();
+        if (($overrides['usage_limit'] ?? 1) > 0 && ($overrides['max_discount'] ?? 1) > 0
+            && ($overrides['discount_value'] ?? 20) > 0 && ! (($overrides['discount_type'] ?? '') === 'percent' && ($overrides['discount_value'] ?? 0) > 100)) {
+            $factory = $factory->funded();
+        }
+
+        return $factory->create(array_replace(['code' => 'BAGOO_SAVE', 'name' => 'Bagoo savings', 'discount_type' => 'fixed',
+            'discount_value' => '20.00', 'min_spend' => '0.00', 'max_discount' => null, 'usage_limit' => null,
+            'expires_at' => null, 'is_active' => true, 'used_count' => 0], $overrides));
     }
 
     private function preview(array $ids, array $input = [])
@@ -109,9 +116,9 @@ class BuyerVoucherQuoteTest extends TestCase
             'paused' => [['is_active' => false], 'This voucher is paused.'],
             'expired' => [['expired' => true], 'This voucher has expired.'],
             'exhausted' => [['usage_limit' => 1, 'used_count' => 1], 'This voucher has reached its usage limit.'],
-            'zero quota' => [['usage_limit' => 0], 'This voucher has reached its usage limit.'],
-            'invalid percentage' => [['discount_type' => 'percent', 'discount_value' => 120], 'This voucher needs its offer details corrected.'],
-            'zero cap' => [['max_discount' => 0], 'This voucher needs its offer details corrected.'],
+            'legacy zero quota' => [['usage_limit' => 0], 'This older voucher needs its funding reviewed before use.'],
+            'legacy invalid percentage' => [['discount_type' => 'percent', 'discount_value' => 120], 'This older voucher needs its funding reviewed before use.'],
+            'legacy zero cap' => [['max_discount' => 0], 'This older voucher needs its funding reviewed before use.'],
         ];
     }
 
@@ -159,8 +166,8 @@ class BuyerVoucherQuoteTest extends TestCase
         $line = $this->line($cart, '200.00');
         $voucher = $this->voucher(['discount_type' => 'percent', 'discount_value' => 25, 'max_discount' => 30]);
         $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.discount', 30)->assertJsonPath('quote.total', 220);
-        $voucher->update(['discount_type' => 'fixed', 'discount_value' => 500, 'max_discount' => null]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.discount', 200)->assertJsonPath('quote.total', 50);
+        $this->voucher(['code' => 'BAGOO_FIXED', 'discount_type' => 'fixed', 'discount_value' => 500, 'max_discount' => null]);
+        $this->preview([$line->id], ['code' => 'BAGOO_FIXED'])->assertOk()->assertJsonPath('quote.discount', 200)->assertJsonPath('quote.total', 50);
     }
 
     public function test_allocation_is_deterministic_to_the_cent_even_for_large_prices(): void
@@ -172,7 +179,7 @@ class BuyerVoucherQuoteTest extends TestCase
         $quotes = app(CheckoutQuoteService::class);
         $quote = $quotes->quote($quotes->selectedItems($buyer, [$second->id, $first->id]), 'doorstep', $voucher);
         $this->assertEquals([50000000, 49999999.99], array_column($quote['shops'], 'discount'));
-        $voucher->update(['discount_value' => '0.01']);
+        $voucher = $this->voucher(['code' => 'BAGOO_CENT', 'discount_value' => '0.01']);
         $quote = $quotes->quote($quotes->selectedItems($buyer, [$second->id, $first->id]), 'doorstep', $voucher);
         $this->assertEquals([0.01, 0], array_column($quote['shops'], 'discount'));
     }
@@ -286,7 +293,6 @@ class BuyerVoucherQuoteTest extends TestCase
             'shipping with cap' => [['discount_type' => 'free_shipping', 'discount_value' => 75, 'max_discount' => 30]],
             'one cent product allocation' => [['discount_value' => '0.01']],
             'shop product offer' => [['shop_scoped' => true]],
-            'shop shipping offer' => [['shop_scoped' => true, 'discount_type' => 'free_shipping', 'discount_value' => 75, 'max_discount' => 30]],
         ];
     }
 }

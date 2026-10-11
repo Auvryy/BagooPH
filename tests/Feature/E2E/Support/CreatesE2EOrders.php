@@ -151,7 +151,7 @@ trait CreatesE2EOrders
 
     public function createE2EVoucher(Shop $shop, array $attributes = []): Voucher
     {
-        return Voucher::factory()->create(array_merge([
+        return Voucher::factory()->funded()->create(array_merge([
             'shop_id' => $shop->id,
             'code' => 'DISC'.strtoupper(Str::random(4)),
             'discount_type' => 'fixed',

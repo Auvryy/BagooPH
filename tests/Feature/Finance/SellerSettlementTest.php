@@ -8,6 +8,8 @@ use App\Models\LogisticsHub;
 use App\Models\SellerSettlement;
 use App\Models\SellerSettlementEvent;
 use App\Models\User;
+use App\Models\Voucher;
+use App\Models\VoucherFundingEntry;
 use App\Services\AccountClosureService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Notifications\NotificationDeliveryService;
@@ -15,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -86,12 +89,123 @@ class SellerSettlementTest extends TestCase
         return [$cash, $admin];
     }
 
+    private function fundedEligible(): array
+    {
+        $seller = $this->createApprovedUser('seller');
+        $shop = $this->createE2EShop($seller);
+        $buyer = $this->createApprovedUser('buyer');
+        $product = $this->createE2EProduct($shop, ['price' => 1000]);
+        $shopOffer = Voucher::factory()->funded()->create(['code' => 'SHOP_FUNDED', 'shop_id' => $shop->id, 'min_spend' => 0, 'discount_value' => 100]);
+        $platformOffer = Voucher::factory()->funded()->create(['code' => 'BAGOO_FUNDED', 'min_spend' => 0, 'discount_value' => 50]);
+        $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product, 'quantity' => 1]], 'ready_for_pickup',
+            ['shop_voucher_revision_ids' => [$shop->id => $shopOffer->current_revision_id], 'platform_voucher_revision_id' => $platformOffer->current_revision_id]);
+        $parcel = $this->flowDelivery($order, 'delivered');
+        $cash = CodAccount::where('delivery_id', $parcel->id)->sole();
+        $admin = $this->createApprovedUser('admin');
+        $this->actingAs($buyer)->post('/buyer/orders/'.$order->id.'/confirm')->assertSessionHas('success');
+        $this->reconcile($cash, $admin);
+
+        return [$cash, $admin, $shopOffer, $platformOffer];
+    }
+
+    public function test_funded_payment_records_net_payout_and_expenses_while_retaining_gross_commission_and_cod(): void
+    {
+        [$cash, $admin, $shopOffer, $platformOffer] = $this->fundedEligible();
+        $before = $cash->fresh()->getRawOriginal();
+        $this->actingAs($admin)->getJson('/seller-settlements/'.$cash->order_id)->assertOk()
+            ->assertJsonPath('record.seller_cents', 90000)->assertJsonPath('record.commission_cents', 10000)
+            ->assertJsonPath('record.net_seller_cents', 80000)->assertJsonPath('record.net_commission_cents', 5000);
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/authorize', $this->input())->assertOk();
+        $this->assertSame(10000, $shopOffer->currentRevision->balance->fresh()->committed_cents);
+        $payment = $this->input(1, true);
+        $reference = $this->postJson('/seller-settlements/'.$cash->order_id.'/record-payment', $payment)->assertOk()->json('reference');
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/record-payment', $payment)->assertOk()->assertJsonPath('reference', $reference);
+        $record = SellerSettlement::sole();
+        $this->assertSame(80000, $record->events()->where('event_type', 'payment_recorded')->sole()->amount_cents);
+        $this->assertSame('900.00', CommissionLedger::sole()->seller_amount);
+        $this->assertSame('100.00', CommissionLedger::sole()->platform_commission);
+        $this->assertSame(2, VoucherFundingEntry::where('event_type', 'expense')->count());
+        $this->assertSame(10000, $shopOffer->currentRevision->balance->fresh()->spent_cents);
+        $this->assertSame(5000, $platformOffer->currentRevision->balance->fresh()->spent_cents);
+        $this->assertSame(0, $shopOffer->currentRevision->balance->fresh()->committed_cents);
+        $this->assertSame($before, $cash->fresh()->getRawOriginal());
+        $this->getJson('/seller-settlements/'.$cash->order_id)->assertJsonPath('record.status', 'settled');
+    }
+
+    public function test_failed_expense_rolls_back_payment_evidence_and_retains_the_original_funding_commitments(): void
+    {
+        [$cash, $admin, $shopOffer] = $this->fundedEligible();
+        $this->actingAs($admin)->postJson('/seller-settlements/'.$cash->order_id.'/authorize', $this->input())->assertOk();
+        Event::listen('eloquent.created: '.VoucherFundingEntry::class, fn ($event) => $event->event_type === 'expense'
+            ? throw new RuntimeException('Simulated promotional expense failure') : null);
+        $payment = $this->input(1, true);
+        try {
+            $this->postJson('/seller-settlements/'.$cash->order_id.'/record-payment', $payment)->assertStatus(500);
+        } finally {
+            Event::forget('eloquent.created: '.VoucherFundingEntry::class);
+        }
+        $this->assertSame(0, VoucherFundingEntry::where('event_type', 'expense')->count());
+        $this->assertDatabaseCount('seller_settlement_events', 1);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+        $this->assertSame(10000, $shopOffer->currentRevision->balance->fresh()->committed_cents);
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/record-payment', $payment)->assertOk();
+    }
+
     private function input(int $version = 0, bool $payment = false): array
     {
         return ['expected_version' => $version, 'request_token' => (string) Str::uuid(),
             'reason' => 'The original order, named recipient and payment evidence were reviewed.']
             + ($payment ? ['payment_reference' => 'SELLER-RECEIPT-001', 'payment_confirmed' => true,
                 'proof' => UploadedFile::fake()->image('receipt.png')] : []);
+    }
+
+    private function legacyAuthorization(CodAccount $cash, User $admin): SellerSettlement
+    {
+        $basis = app(SellerSettlementService::class)->eligibility($cash->order->fresh());
+        $record = SellerSettlement::create(array_intersect_key($basis, array_flip(['seller_id', 'shop_id',
+            'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id', 'product_cents', 'seller_cents',
+            'commission_cents', 'shipping_cents', 'discount_cents'])) + ['order_id' => $cash->order_id,
+                'reference' => 'SET-OLDER-RECORD', 'snapshot' => ['currency' => 'PHP']]);
+        $record->events()->create(['reference' => 'PAY-OLDER-AUTHORIZATION', 'sequence' => 1,
+            'event_type' => 'release_authorized', 'actor_id' => $admin->id, 'actor_role' => 'admin',
+            'amount_cents' => $record->seller_cents, 'reason' => 'The original eligible release was approved.',
+            'request_token' => (string) Str::uuid(), 'request_fingerprint' => str_repeat('a', 64), 'context' => []]);
+
+        return $record;
+    }
+
+    public function test_older_zero_discount_authorization_can_still_record_its_original_payment(): void
+    {
+        [$cash, $admin] = $this->eligible();
+        $this->assertSame(0, $cash->discount_cents);
+        $record = $this->legacyAuthorization($cash, $admin);
+        $before = $record->fresh()->getRawOriginal();
+        $this->actingAs($admin)->postJson('/seller-settlements/'.$cash->order_id.'/record-payment', $this->input(1, true))->assertOk();
+        $this->assertSame($before, $record->fresh()->getRawOriginal());
+        $this->assertSame($record->seller_cents, $record->events()->where('event_type', 'payment_recorded')->sole()->amount_cents);
+        $this->assertDatabaseCount('voucher_funding_entries', 0);
+        $this->getJson('/seller-settlements/'.$cash->order_id)->assertJsonPath('record.status', 'settled')
+            ->assertJsonPath('record.promotion_accounting', 'legacy_recorded');
+    }
+
+    public function test_older_paid_settlement_retains_its_evidenced_amount_and_receipt(): void
+    {
+        [$cash, $admin] = $this->eligible();
+        $record = $this->legacyAuthorization($cash, $admin);
+        $proof = UploadedFile::fake()->image('older-receipt.png');
+        $event = $record->events()->create(['reference' => 'PAY-OLDER-PAYMENT', 'sequence' => 2,
+            'event_type' => 'payment_recorded', 'actor_id' => $admin->id, 'actor_role' => 'admin',
+            'amount_cents' => $record->seller_cents, 'payment_reference' => 'OLDER-RECEIPT-001',
+            'reason' => 'The original payment receipt was retained.', 'proof_path' => $proof->store('settlement-proofs', 'local'),
+            'proof_hash' => hash_file('sha256', $proof->getRealPath()), 'request_token' => (string) Str::uuid(),
+            'request_fingerprint' => str_repeat('b', 64), 'context' => []]);
+        $before = $record->fresh()->getRawOriginal();
+        $this->actingAs($admin)->getJson('/seller-settlements/'.$cash->order_id)->assertOk()
+            ->assertJsonPath('record.status', 'settled')->assertJsonPath('record.net_seller_cents', $record->seller_cents)
+            ->assertJsonPath('record.promotion_accounting', 'legacy_recorded')->assertJsonPath('record.promotion_snapshot', []);
+        $this->get('/seller-settlements/'.$cash->order_id.'/proof/'.$event->id)->assertOk();
+        $this->assertSame($before, $record->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('voucher_funding_entries', 0);
     }
 
     public function test_authorization_is_not_payment_and_payment_retains_exact_sources_and_shipping(): void

@@ -67,7 +67,7 @@ class CheckoutController extends Controller
         } catch (CheckoutException $exception) {
             return redirect()->route('buyer.cart')->with('error', $exception->getMessage());
         }
-        $available = $quotes->offers($checkoutItems);
+        $available = $quotes->offers($checkoutItems, buyer: $user);
 
         // Approved/verified is the reviewed authorization state. Do not infer
         // a pending review from a missing path in the shared user payload.

@@ -44,15 +44,18 @@ class CheckoutSubmissionService
         return $hash;
     }
 
-    public function fingerprint(array $data): string
+    public function fingerprint(array $data, int $version = 2): string
     {
+        if ($version === 1) {
+            unset($data['platform_voucher_revision_id'], $data['shop_voucher_revision_ids']);
+        }
         ksort($data);
 
         return hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
     }
 
     /** @return Collection<int, Order>|null */
-    public function replay(User $actor, Cart $cart, string $tokenHash, string $requestHash): ?Collection
+    public function replay(User $actor, Cart $cart, string $tokenHash, string $requestHash, array $input = []): ?Collection
     {
         $submission = CheckoutSubmission::where('token_hash', $tokenHash)->first();
         if (! $submission) {
@@ -60,6 +63,10 @@ class CheckoutSubmissionService
         }
         $buyer = app(BuyerAccessService::class)->requirePortal($actor, lock: true);
         abort_unless($submission->buyer_id === $buyer->id && $submission->cart_id === $cart->id, 403);
+        if ($submission->fingerprint_version === 1 && empty($input['platform_voucher_revision_id'])
+            && ! collect($input['shop_voucher_revision_ids'] ?? [])->filter()->count()) {
+            $requestHash = $this->fingerprint($input, 1);
+        }
         abort_unless(hash_equals($submission->request_hash, $requestHash), 409,
             'These checkout details differ from your submitted order. Open checkout again to place a different order.');
         $orders = $submission->orders()->where('buyer_id', $buyer->id)->with('delivery', 'items')->get();
