@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
+import BuyerVoucherReceipt from '@/Components/Vouchers/BuyerVoucherReceipt';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
 import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
 import { Order, PageProps } from '@/types';
@@ -309,23 +310,10 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                         ))}
                     </div>
 
-                    {/* Subtotal / Shipping / Total */}
-                    <div className="border-t border-slate-100 pt-4 font-sans text-xs space-y-2.5">
-                        <div className="flex justify-between text-slate-600">
-                            <span>Subtotal</span>
-                            <span className="font-semibold text-slate-900">{formatPrice(order.subtotal)}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-600">
-                            <span>Shipping Fee</span>
-                            <span className="font-semibold text-slate-900">{formatPrice(order.shipping_fee)}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-900 font-bold text-sm pt-2.5 border-t border-slate-100">
-                            <span>Total Amount</span>
-                            <span className="text-[#E00D42] font-black text-lg">{formatPrice(order.total_amount)}</span>
-                        </div>
+                    <div className="border-t border-slate-300 pt-4">
+                        {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} /> : <div className="flex justify-between text-sm font-bold"><span>Total Amount</span><span>{formatPrice(order.total_amount)}</span></div>}
                     </div>
                 </div>
-
                 {reviewSaved && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">Your purchase review has been saved.</p>}
 
                 {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}

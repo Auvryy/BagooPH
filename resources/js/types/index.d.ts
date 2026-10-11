@@ -236,6 +236,7 @@ export interface OrderTracking {
 }
 
 export interface Order {
+    voucher_receipt?: import('@/Components/Vouchers/BuyerVoucherReceipt').VoucherReceipt;
     id: number;
     order_number: string;
     buyer_id: number;

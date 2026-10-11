@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import VoucherOfferList from '@/Components/VoucherOfferList';
 import SavedProductButton from '@/Components/SavedProductButton';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
@@ -64,6 +65,7 @@ interface ShopStats {
 }
 
 interface Props {
+    shopOffers?: import('@/hooks/usePurchaseQuote').VoucherOffer[];
     product: Product & {
         reviews?: Review[];
     };
@@ -83,6 +85,7 @@ export default function BuyerProductDetail({
     relatedProducts,
     shopStats,
     cartQuantities = [],
+    shopOffers = [],
 }: Props) {
     const colorsList = variations?.colors || [];
     const sizesList = variations?.sizes || [];
@@ -789,6 +792,7 @@ export default function BuyerProductDetail({
                         </div>
                     </div>
 
+                    {shopOffers.length > 0 && <section aria-label="Shop offers" className="space-y-3"><h3 className="font-bold text-slate-900">Shop offers</h3><VoucherOfferList offers={shopOffers} allowSave /></section>}
                     <div>
                         <h3 className="font-black text-slate-900 text-lg mb-2 uppercase tracking-wider font-sans">
                             Product Description

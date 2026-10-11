@@ -21,7 +21,10 @@ const pages = await build({
     stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index';
         export { default as Bag } from '@/Pages/Cart/Index';
         export { default as Offers } from '@/Components/VoucherOfferList';
-        export { chooseVoucher, withoutVoucher } from '@/utils/voucherSelection';`, resolveDir: root, loader: 'tsx' },
+        export { default as Collection } from '@/Components/Vouchers/BuyerVoucherCollection';
+        export { VoucherChoiceCards as Choices } from '@/Components/Vouchers/BuyerVoucherPicker';
+        export { default as Receipt } from '@/Components/Vouchers/BuyerVoucherReceipt';
+        export { chooseVoucher, withoutVoucher, repairedVoucherSelection, isVoucherRequestCurrent } from '@/utils/voucherSelection';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
     plugins: [{ name: 'quote-state-for-page-checks', setup(builder) {
@@ -40,13 +43,13 @@ const ui = await import(pathToFileURL(pagesPath).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 
 const buyer = { id: 7, name: 'Maria Santos', email: 'buyer@bagoo.test', role: 'buyer', status: 'active', kyc_status: 'approved' };
-const offer = { id: 3, code: 'BAGOO_SHIP', name: 'Bagoo shipping offer', description: null,
+const offer = { id: 3, revision_id: 3, code: 'BAGOO_SHIP', name: 'Bagoo shipping offer', description: null,
     discount_type: 'free_shipping', discount_value: '75.00', min_spend: '100.00', max_discount: '30.00',
     shop_id: null, shop_name: null, issuer: 'platform', expires_at: null, eligible: true, saving: 30 };
 const quote = { subtotal: 2000, shipping_fee: 100, doorstep_shipping_fee: 100, shipping_discount: 30,
-    discount: 30, total: 2070, voucher: offer, voucher_error: null, items: [{ id: 10, quantity: 1, unit_price: 1000, subtotal: 1000 }],
-    shops: [{ shop_id: 1, shop_name: 'Bagoo shop one', subtotal: 1000, shipping: 50, doorstep_shipping: 50, discount: 15, total: 1035 },
-        { shop_id: 2, shop_name: 'Bagoo shop two', subtotal: 1000, shipping: 50, doorstep_shipping: 50, discount: 15, total: 1035 }] };
+    discount: 30, total: 2070, voucher: offer, voucher_error: null, redemptions: [{ revision_id: 3, discount_cents: 3000, allocations: [{ shop_id: 1, product_discount_cents: 0, shipping_discount_cents: 1500 }, { shop_id: 2, product_discount_cents: 0, shipping_discount_cents: 1500 }] }], items: [{ id: 10, quantity: 1, unit_price: 1000, subtotal: 1000 }],
+    shops: [{ shop_id: 1, shop_name: 'Bagoo shop one', subtotal: 1000, shipping: 50, doorstep_shipping: 50, discount: 15, shipping_discount: 15, total: 1035 },
+        { shop_id: 2, shop_name: 'Bagoo shop two', subtotal: 1000, shipping: 50, doorstep_shipping: 50, discount: 15, shipping_discount: 15, total: 1035 }] };
 const items = [{ id: 10, quantity: 1, unit_price: 1000, available_for_purchase: true, updated_at: '2026-10-11T01:00:00Z',
     product: { id: 1, name: 'Everyday bag', price: 1000, stock: 10, images: [], shop: { id: 1, name: 'Bagoo shop one' } } }];
 async function render(Component, name, props = {}) {
@@ -129,12 +132,13 @@ test('checkout uses quoted gross shipping, one discount and actual savings witho
     const html = await render(ui.Checkout, 'Checkout/Index', { ...checkoutProps, items: [{ ...items[0], unit_price: 1,
         product: { ...items[0].product, price: 900 } }] });
     const summary = html.slice(html.indexOf('Order Total Breakdown'));
-    assert.match(summary, /Courier Shipping Fee:[\s\S]*?₱100\.00/);
-    assert.match(summary, /Shipping Discount:[\s\S]*?-₱30\.00/);
+    assert.match(summary, /Shipping before discounts[\s\S]*?₱100\.00/);
+    assert.match(summary, /Bagoo shipping discount[\s\S]*?−₱30\.00/);
     assert.match(summary, /Total Payment:[\s\S]*?₱2,070\.00/);
-    assert.match(html, /₱30\.00<!-- --> shipping discount applied|₱30\.00 shipping discount applied/);
+    assert.match(summary, /Shipping payable[\s\S]*?₱70\.00/);
     assert.doesNotMatch(html, /Free Shipping Applied|₱75 Discount Applied/);
-    assert.match(html, /Shipping discount up to ₱30\.00/);
+    assert.match(html, /Bagoo voucher/);
+    assert.match(html, /Use best vouchers/);
     assert.match(html, /Bagoo shop one[\s\S]*?₱1,035\.00/);
     const selectedItems = html.slice(html.indexOf('Items In Your Shopping Bag'), html.indexOf('Logistics &amp; Delivery Carrier'));
     assert.match(selectedItems, /1 × ₱1,000\.00/);
@@ -256,15 +260,15 @@ test('stacked checkout shows each real saving and deducts the combined amount on
         shop_name: 'Bagoo shop one', issuer: 'shop', discount_type: 'fixed', discount_value: 100 };
     const platform = { ...offer, revision_id: 13, code: 'BAGOO_50', discount_type: 'fixed', discount_value: 50 };
     const stacked = { ...quote, subtotal: 1000, shipping_fee: 50, shipping_discount: 0, discount: 150, total: 900,
-        voucher: null, vouchers: [shop, platform], redemptions: [{ revision_id: 12, discount_cents: 10000 },
-            { revision_id: 13, discount_cents: 5000 }], shops: [{ ...quote.shops[0], discount: 150, total: 900 }] };
+        voucher: null, vouchers: [shop, platform], redemptions: [{ revision_id: 12, discount_cents: 10000, allocations: [{ shop_id: 1, product_discount_cents: 10000, shipping_discount_cents: 0 }] },
+            { revision_id: 13, discount_cents: 5000, allocations: [{ shop_id: 1, product_discount_cents: 5000, shipping_discount_cents: 0 }] }], shops: [{ ...quote.shops[0], discount: 150, shipping_discount: 0, total: 900 }] };
     globalThis.voucherQuoteState = { quote: stacked, offers: [shop, platform], current: true, pending: false, ready: true, failure: '' };
     try {
         const html = await render(ui.Checkout, 'Checkout/Index', { ...checkoutProps, quote: stacked });
         assert.match(html, /SHOP_100/);
         assert.match(html, /BAGOO_50/);
-        assert.match(html, /₱100\.00[\s\S]*?discount applied/);
-        assert.match(html, /₱50\.00[\s\S]*?discount applied/);
+        assert.match(html, /Shop discount[\s\S]*?−₱100\.00/);
+        assert.match(html, /Bagoo product discount[\s\S]*?−₱50\.00/);
         assert.match(html, /Total Payment:[\s\S]*?₱900\.00/);
         assert.match(html, /No voucher/);
         assert.match(html, /Cancelled orders keep their voucher use/);
@@ -309,4 +313,58 @@ test('quote refresh carries all revision selections and rejects stale totals aft
         assert.deepEqual(h.requests[1].args[1].shop_voucher_revision_ids, { 1: null, 2: 11 });
         assert.equal(h.requests[0].args[2].signal.aborted, true);
     } finally { h.close(); }
+});
+
+
+test('collection tabs use whole-query counts and retain an ended saved offer', async () => {
+    const ended = { ...offer, saved_id: 91, eligible: false, unavailable_reason: 'This campaign has ended. Your saved terms remain available.' };
+    const html = await render(ui.Collection, 'Vouchers', { collection: { tab: 'saved', counts: { available: 18, saved: 1, used: 3, expired: 0 },
+        offers: { data: [ended], current_page: 1, last_page: 1, per_page: 12, total: 1 } } });
+    for (const label of ['Available (18)', 'Saved (1)', 'Used (3)', 'Expired (0)']) assert.ok(html.includes(label));
+    assert.match(html, /Your saved terms remain available/);
+    assert.match(html, /Remove saved/);
+    assert.doesNotMatch(html, />Use voucher</);
+});
+
+test('empty saved collection stays centered with a useful next step', async () => {
+    const html = await render(ui.Collection, 'Vouchers', { collection: { tab: 'saved', counts: { available: 0, saved: 0, used: 0, expired: 0 },
+        offers: { data: [], current_page: 1, last_page: 1, per_page: 12, total: 0 } } });
+    assert.match(html, /items-center justify-center/);
+    assert.match(html, /No saved vouchers/);
+    assert.match(html, /Save a shop or Bagoo offer/);
+});
+
+test('picker choices are labelled radios with explicit No voucher and disabled explanations', async () => {
+    const unavailable = { ...offer, id: 4, revision_id: 4, eligible: false, unavailable_reason: 'This voucher is not available yet.' };
+    const html = await render(ui.Choices, 'VoucherChoices', { offers: [offer, unavailable], chosen: null, onChoose: () => {} });
+    assert.match(html, /type="radio"[^>]*checked=""/);
+    assert.match(html, /No voucher/);
+    assert.match(html, /disabled=""/);
+    assert.match(html, /This voucher is not available yet/);
+    assert.match(html, /Save ₱30\.00 on this checkout/);
+});
+
+test('preview repair preserves valid siblings and explicit None without inventing another voucher', () => {
+    const selection = { voucher_code: '', platform_voucher_revision_id: 9, shop_voucher_revision_ids: { 1: 3, 2: 4, 5: null } };
+    const result = ui.repairedVoucherSelection(selection, { voucher_code: null, platform_voucher_revision_id: 9, shop_voucher_revision_ids: { 1: null, 2: 4, 5: null } });
+    assert.deepEqual(result, { ...selection, shop_voucher_revision_ids: { 1: null, 2: 4, 5: null } });
+    assert.deepEqual(ui.repairedVoucherSelection(selection), selection);
+});
+
+test('best-voucher responses cannot replace choices after a Bag, address or manual-choice change', () => {
+    const requested = JSON.stringify({ items: [1], city: 'Pasig', shop: 2 });
+    assert.equal(ui.isVoucherRequestCurrent(requested, requested, false), true);
+    for (const current of [JSON.stringify({ items: [2], city: 'Pasig', shop: 2 }), JSON.stringify({ items: [1], city: 'Manila', shop: 2 }), JSON.stringify({ items: [1], city: 'Pasig', shop: null })]) {
+        assert.equal(ui.isVoucherRequestCurrent(requested, current, false), false);
+    }
+    assert.equal(ui.isVoucherRequestCurrent(requested, requested, true), false);
+});
+
+test('receipt displays recorded product and partial shipping amounts with one final COD', async () => {
+    const html = renderToStaticMarkup(createElement(ui.Receipt, { receipt: { merchandise: 1000, shipping_before: 50, shipping_after: 20, total_savings: 130, total: 920, legacy_discount: false,
+        discounts: [{ issuer: 'shop', code: 'ORIGINAL_SHOP', name: 'Recorded', product_discount: 100, shipping_discount: 0 }, { issuer: 'platform', code: 'ORIGINAL_SHIP', name: 'Recorded', product_discount: 0, shipping_discount: 30 }] } }));
+    assert.match(html, /ORIGINAL_SHOP[\s\S]*?−₱100\.00/);
+    assert.match(html, /Shipping payable[\s\S]*?₱20\.00/);
+    assert.match(html, /Total COD[\s\S]*?₱920\.00/);
+    assert.doesNotMatch(html, /Free shipping/);
 });

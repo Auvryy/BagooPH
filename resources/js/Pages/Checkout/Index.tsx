@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
-import VoucherOfferList from '@/Components/VoucherOfferList';
+import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
+import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
+import axios from 'axios';
 import usePurchaseQuote, { PurchaseQuote, VoucherOffer } from '@/hooks/usePurchaseQuote';
-import { chooseVoucher, withoutVoucher } from '@/utils/voucherSelection';
+import { chooseVoucher, withoutVoucher, repairedVoucherSelection, isVoucherRequestCurrent } from '@/utils/voucherSelection';
 import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
@@ -236,6 +238,13 @@ export default function CheckoutIndex({
     };
     const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
     const quote = pricing.quote;
+    const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
+    const [bestBusy, setBestBusy] = useState(false);
+    const bestPending = useRef(false);
+    const currentQuoteKey = useRef('');
+    currentQuoteKey.current = JSON.stringify(quoteInput);
+    const bestController = useRef<AbortController | null>(null);
+    useEffect(() => () => bestController.current?.abort(), []);
     const quotedItems = new Map(quote.items.map(item => [item.id, item]));
     const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
@@ -249,11 +258,31 @@ export default function CheckoutIndex({
     }, [JSON.stringify(quoteInput)]);
 
     useEffect(() => {
-        if (pricing.current && quote.voucher_error && (data.voucher_code || data.platform_voucher_revision_id || Object.values(data.shop_voucher_revision_ids).some(Boolean))) {
-            setVoucherError(quote.voucher_error + ' Choose your vouchers again.');
-            setData(prev => ({ ...prev, voucher_code: '', platform_voucher_revision_id: null, shop_voucher_revision_ids: {} }));
+        if (!pricing.current || !pricing.validSelection) return;
+        const corrected = repairedVoucherSelection(data, pricing.validSelection);
+        const current = { voucher_code: data.voucher_code, platform_voucher_revision_id: data.platform_voucher_revision_id, shop_voucher_revision_ids: data.shop_voucher_revision_ids };
+        if (JSON.stringify(current) !== JSON.stringify(corrected)) {
+            if (quote.voucher_error) setVoucherError(quote.voucher_error + ' Your other choices are retained. Choose another offer if you wish.');
+            setData(prev => ({ ...prev, ...corrected }));
         }
-    }, [pricing.current, quote.voucher_error, data.voucher_code, data.platform_voucher_revision_id, data.shop_voucher_revision_ids]);
+    }, [pricing.current, pricing.validSelection, quote.voucher_error]);
+
+    const useBestVouchers = async () => {
+        if (bestPending.current || !pricing.ready) return;
+        bestPending.current = true; setBestBusy(true); setVoucherError('');
+        const requested = currentQuoteKey.current;
+        const controller = new AbortController(); bestController.current = controller;
+        try {
+            const { revision, ...body } = quoteInput;
+            const response = await axios.post(route('buyer.vouchers.best'), body, { signal: controller.signal });
+            if (isVoucherRequestCurrent(requested, currentQuoteKey.current, controller.signal.aborted)) {
+                setData(prev => ({ ...prev, ...repairedVoucherSelection(prev, response.data.selection) }));
+            } else if (!controller.signal.aborted) setVoucherError('Your checkout changed. Compare vouchers again for the updated items and delivery.');
+        } catch (failure) {
+            if (!controller.signal.aborted && requested === currentQuoteKey.current) setVoucherError(axios.isAxiosError(failure) && failure.response?.status === 422
+                ? failure.response.data.message : 'Could not compare vouchers. Try again.');
+        } finally { bestPending.current = false; if (!controller.signal.aborted) setBestBusy(false); }
+    };
 
     const selectOffer = (offer: VoucherOffer) => {
         if (!offer.revision_id) return;
@@ -284,7 +313,7 @@ export default function CheckoutIndex({
         e.preventDefault();
         setValidationError('');
 
-        if (!pricing.ready) {
+        if (!pricing.ready || bestBusy) {
             setValidationError(pricing.failure || 'Please wait for your total to update.');
             return;
         }
@@ -315,7 +344,7 @@ export default function CheckoutIndex({
     };
 
     const submitFinalOrder = () => {
-        if (!pricing.ready || !hasConfirmedAgreement || kycStatus !== 'approved') {
+        if (!pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
@@ -789,7 +818,9 @@ export default function CheckoutIndex({
                             </div>
 
                             <div className="divide-y divide-slate-100 font-sans text-xs">
-                                {items.map((item) => (
+                                {quote.shops.map(shop => <section key={shop.shop_id} className="space-y-3 py-4" aria-label={shop.shop_name}>
+                                    <h3 className="font-bold text-sm text-slate-900">{shop.shop_name}</h3>
+                                    {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
                                     <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3.5 min-w-0">
                                             <img
@@ -820,6 +851,12 @@ export default function CheckoutIndex({
                                         </div>
                                     </div>
                                 ))}
+                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-300 p-3">
+                                        <span className="text-xs text-slate-600">Shop voucher · {appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher'}</span>
+                                        <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(shop.shop_id)} className="min-h-11 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50">Choose voucher</button>
+                                    </div>
+                                    <CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} />
+                                </section>)}
                             </div>
                         </div>
 
@@ -915,43 +952,15 @@ export default function CheckoutIndex({
                     {/* Right Column: Order Total Breakdown */}
                     <div className="lg:col-span-4 space-y-6 font-sans text-xs">
                         
-                        {/* VOUCHER INPUT CARD */}
-                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
-                            <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                <Tag className="w-4 h-4 text-[#E00D42]" />
-                                <span>Platform & Shop Vouchers</span>
+                        <div className="space-y-3 rounded-2xl border border-slate-300 bg-white p-5 shadow-2xs">
+                            <div className="flex items-center justify-between gap-3">
+                                <div><h3 className="font-bold text-slate-900">Bagoo voucher</h3><p className="mt-1 text-xs text-slate-600">{appliedVouchers.find(offer => offer.issuer === 'platform')?.code ?? 'No voucher'}</p></div>
+                                <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="min-h-11 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50">Choose voucher</button>
                             </div>
-
-                            <p className="text-[11px] leading-relaxed text-slate-600">Choose one product offer per shop and one Bagoo product or shipping offer.</p>
-                            {appliedVouchers.map(offer => {
-                                const saving = quote.redemptions?.find(use => use.revision_id === offer.revision_id)?.discount_cents;
-                                return <div key={offer.id} className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-3.5">
-                                    <div className="space-y-0.5">
-                                        <span className="block text-xs font-bold text-[#E00D42]">{offer.code}</span>
-                                        <span className="text-[11px] text-[#C20836]">{formatPrice(saving === undefined ? quote.discount : saving / 100)} {offer.discount_type === 'free_shipping' ? 'shipping discount applied' : 'discount applied'}</span>
-                                    </div>
-                                    <button type="button" disabled={pricing.pending} onClick={() => removeVoucher(offer.shop_id)} aria-label={`Remove ${offer.code}`} className="p-1 text-[#E00D42] hover:text-[#C20836]"><X className="h-4 w-4" /></button>
-                                </div>;
-                            })}
-                            <div className="space-y-2 rounded-xl border border-slate-300 p-3">
-                                {[{ shop_id: null, shop_name: 'Bagoo offer' }, ...quote.shops].map(slot => {
-                                    const offer = appliedVouchers.find(offer => offer.shop_id === slot.shop_id);
-                                    return <div key={slot.shop_id ?? 'platform'} className="flex items-center justify-between gap-3">
-                                        <p className="min-w-0 text-[11px] text-slate-600">{slot.shop_name}: <span className="font-semibold">{offer?.code ?? 'No voucher'}</span></p>
-                                        <button type="button" disabled={pricing.pending} onClick={() => removeVoucher(slot.shop_id)} className="shrink-0 rounded-lg border border-slate-300 px-2 py-1.5 text-[11px] font-semibold hover:bg-slate-50 disabled:opacity-50">No voucher</button>
-                                    </div>;
-                                })}
-                            </div>
-                            <div className="flex gap-2">
-                                <input type="text" value={voucherCodeInput} onChange={event => setVoucherCodeInput(event.target.value)} placeholder="Optional voucher code" aria-label="Voucher code" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15" />
-                                <button type="button" onClick={() => applyVoucher()} disabled={pricing.pending || !voucherCodeInput.trim()} className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-black disabled:opacity-50">Apply</button>
-                            </div>
-                            <p className="text-[11px] leading-relaxed text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
-                            {voucherError && <p role="alert" className="text-rose-700 text-[11px]">{voucherError}</p>}
-                            <div className="max-h-80 overflow-y-auto border-t border-slate-200 pt-3">
-                                <p className="mb-3 font-semibold text-slate-600">Available offers for these items</p>
-                                <VoucherOfferList offers={pricing.offers} busy={pricing.pending || !!pricing.failure} onSelect={(_code, offer) => selectOffer(offer)} />
-                            </div>
+                            <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
+                            <p className="text-xs leading-5 text-slate-600">One offer per shop and one Bagoo product or shipping offer. Manual choices and No voucher stay selected until you change them or they become unavailable.</p>
+                            <p className="text-xs leading-5 text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
+                            {voucherError && <p role="alert" className="text-xs text-rose-700">{voucherError}</p>}
                         </div>
 
                         {/* ORDER TOTAL SUMMARY */}
@@ -960,31 +969,8 @@ export default function CheckoutIndex({
                                 Order Total Breakdown
                             </h3>
 
-                            <div className="space-y-3 text-slate-600 text-xs">
-                                <div className="flex justify-between">
-                                    <span>Merchandise Subtotal:</span>
-                                    <span className="font-semibold text-slate-900">{quotePrice(subtotal)}</span>
-                                </div>
-
-                                <div className="flex justify-between">
-                                    <span>{isHubPickup ? 'Bayan Hub Collection Fee:' : 'Courier Shipping Fee:'}</span>
-                                    <span className={quote.shipping_fee === 0 ? 'text-[#E00D42] font-bold' : 'font-semibold text-slate-900'}>
-                                        {quotePrice(quote.shipping_fee)}
-                                    </span>
-                                </div>
-
-                                {quote.discount > 0 && (
-                                    <div className="flex justify-between text-[#E00D42] font-bold">
-                                        <span>{quote.shipping_discount > 0 ? 'Shipping Discount:' : 'Voucher Discount:'}</span>
-                                        <span>-{quotePrice(quote.discount)}</span>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between">
-                                    <span>Payment Mode:</span>
-                                    <span className="font-bold text-slate-700 font-sans">CASH ON DELIVERY (COD)</span>
-                                </div>
-                            </div>
+                            <CheckoutVoucherBreakdown quote={quote} price={quotePrice} />
+                            <p className="text-xs text-slate-600">Payment mode: Cash on Delivery (COD)</p>
 
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
                                 <span className="font-bold text-slate-900">Total Payment:</span>
@@ -1076,7 +1062,7 @@ export default function CheckoutIndex({
 
                             <button
                                 type="submit"
-                                disabled={processing || !pricing.ready || kycStatus !== 'approved'}
+                                disabled={processing || bestBusy || !pricing.ready || kycStatus !== 'approved'}
                                 className={`w-full py-3.5 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs ${
                                     kycStatus !== 'approved'
                                         ? 'bg-slate-400 cursor-not-allowed opacity-80'
@@ -1200,7 +1186,7 @@ export default function CheckoutIndex({
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={!hasConfirmedAgreement || processing || !pricing.ready}
+                                    disabled={!hasConfirmedAgreement || processing || bestBusy || !pricing.ready}
                                     onClick={submitFinalOrder}
                                     className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
@@ -1212,6 +1198,12 @@ export default function CheckoutIndex({
                     </div>
                 )}
 
+                {pickerSlot !== undefined && <BuyerVoucherPicker
+                    title={pickerSlot === null ? 'Bagoo voucher' : `Shop voucher · ${quote.shops.find(shop => shop.shop_id === pickerSlot)?.shop_name ?? 'Shop'}`}
+                    shopId={pickerSlot} currentId={pickerSlot === null ? data.platform_voucher_revision_id : data.shop_voucher_revision_ids[pickerSlot] ?? null}
+                    context={quoteInput} onClose={() => setPickerSlot(undefined)}
+                    onApply={offer => { if (offer) selectOffer(offer); else removeVoucher(pickerSlot); setPickerSlot(undefined); }}
+                    onCode={code => { applyVoucher(code); setPickerSlot(undefined); }} />}
             </div>
         </BuyerLayout>
     );

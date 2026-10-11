@@ -18,6 +18,10 @@ export interface VoucherOffer {
     eligible?: boolean | null;
     unavailable_reason?: string | null;
     saving?: number | null;
+    saved_id?: number | null;
+    use_url?: string;
+    starts_at?: string;
+    uses?: { id: number; used_at: string; saving: number; code: string; name: string }[];
 }
 
 export interface PurchaseQuote {
@@ -27,12 +31,12 @@ export interface PurchaseQuote {
     discount: number;
     shipping_discount: number;
     total: number;
-    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; total: number }[];
+    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; product_discount?: number; shipping_discount?: number; total: number }[];
     items: { id: number; quantity: number; unit_price: number; subtotal: number }[];
     voucher: VoucherOffer | null;
     voucher_error: string | null;
     vouchers?: VoucherOffer[];
-    redemptions?: { revision_id: number; discount_cents: number }[];
+    redemptions?: { revision_id: number; discount_cents: number; allocations?: { shop_id: number; product_discount_cents: number; shipping_discount_cents: number }[] }[];
 }
 
 interface QuoteInput {
@@ -55,7 +59,7 @@ export const emptyPurchaseQuote: PurchaseQuote = {
 
 export default function usePurchaseQuote(input: QuoteInput, initialQuote = emptyPurchaseQuote, initialOffers: VoucherOffer[] = []) {
     const key = JSON.stringify(input);
-    const [snapshot, setSnapshot] = useState<{ key: string | null; quote: PurchaseQuote; offers: VoucherOffer[] }>({
+    const [snapshot, setSnapshot] = useState<{ key: string | null; quote: PurchaseQuote; offers: VoucherOffer[]; validSelection?: { voucher_code: string | null; platform_voucher_revision_id: number | null; shop_voucher_revision_ids: Record<number, number | null> }; selectionErrors?: Record<string, string> }>({
         key: null, quote: initialQuote, offers: initialOffers,
     });
     const [fetching, setFetching] = useState(false);
@@ -72,7 +76,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
         const controller = new AbortController();
         setFetching(true);
         setFailure('');
-        const accept = (data: { quote?: PurchaseQuote; availableVouchers?: VoucherOffer[] }) => {
+        const accept = (data: { quote?: PurchaseQuote; availableVouchers?: VoucherOffer[]; validSelection?: typeof snapshot.validSelection; selectionErrors?: Record<string, string> }) => {
             if (!controller.signal.aborted) {
                 const quote = data?.quote;
                 if (!quote || !Array.isArray(quote.shops) || !Array.isArray(quote.items) || !['subtotal', 'shipping_fee', 'doorstep_shipping_fee', 'discount', 'shipping_discount', 'total']
@@ -83,7 +87,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
                     setFailure('Could not update your total. Reload to try again.');
                     return;
                 }
-                setSnapshot(current => ({ key, quote, offers: data.availableVouchers ?? current.offers }));
+                setSnapshot(current => ({ key, quote, offers: data.availableVouchers ?? current.offers, validSelection: data.validSelection, selectionErrors: data.selectionErrors }));
             }
         };
         const timer = window.setTimeout(() => {
@@ -118,6 +122,8 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
     return {
         quote: empty ? emptyPurchaseQuote : snapshot.quote,
         offers: snapshot.offers, pending, failure, current,
+        validSelection: current ? snapshot.validSelection : undefined,
+        selectionErrors: current ? snapshot.selectionErrors : undefined,
         ready: !empty && current && !pending && !failure && !snapshot.quote.voucher_error,
     };
 }
