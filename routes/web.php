@@ -447,6 +447,10 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
+            Route::post('/vouchers/choices', [VoucherController::class, 'choices'])->middleware('throttle:60,1')->name('vouchers.choices');
+            Route::post('/vouchers/best', [VoucherController::class, 'best'])->middleware('throttle:30,1')->name('vouchers.best');
+            Route::post('/saved-vouchers/{revision}', [VoucherController::class, 'store'])->whereNumber('revision')->name('vouchers.save');
+            Route::delete('/saved-vouchers/{saved}', [VoucherController::class, 'destroy'])->whereNumber('saved')->name('vouchers.remove');
             Route::post('/support/assistant', [CustomerServiceAssistantController::class, 'respond'])
                 ->middleware('throttle:20,1')
                 ->name('support.assistant');

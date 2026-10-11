@@ -69,7 +69,8 @@ class CartController extends Controller
                 return response()->json(['message' => $exception->getMessage()], 422);
             }
 
-            return response()->json(['quote' => app(CheckoutQuoteService::class)->quote($selected)]);
+            return response()->json(['quote' => app(CheckoutQuoteService::class)->quote($selected),
+                'availableVouchers' => app(CheckoutQuoteService::class)->offers($selected, buyer: $request->user())['offers']]);
         }
 
         // Default sort: Most recent product added/updated is the first row

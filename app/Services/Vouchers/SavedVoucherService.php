@@ -17,6 +17,7 @@ class SavedVoucherService
         abort_unless($revision->voucher?->is_active && ! $revision->voucher->archived_at
             && $revision->voucher->current_revision_id === $revision->id
             && $revision->voucher->issuer_type === $revision->issuer_type
+            && $revision->voucher->shop_id === $revision->shop_id
             && ($revision->issuer_type === 'platform' || ($revision->shop && app(ShopEligibilityService::class)->isEligible($revision->shop)))
             && $revision->starts_at->lessThanOrEqualTo(now()) && $revision->ends_at->isFuture(), 422, 'This offer is unavailable to save.');
 
@@ -27,7 +28,10 @@ class SavedVoucherService
     public function remove(User $actor, SavedVoucher $saved): void
     {
         $buyer = app(BuyerAccessService::class)->requirePortal($actor);
-        $saved = SavedVoucher::findOrFail($saved->id);
+        $saved = SavedVoucher::find($saved->id);
+        if (! $saved) {
+            return;
+        }
         abort_unless($saved->buyer_id === $buyer->id, 403);
         SavedVoucher::whereKey($saved->id)->where('buyer_id', $buyer->id)->delete();
     }

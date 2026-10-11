@@ -9,6 +9,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\Commerce\ReviewService;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -220,6 +221,7 @@ class MarketplaceController extends Controller
             'shopStats' => app(ReviewService::class)->shopSummary($shop),
             'products' => $products,
             'isOwner' => (bool) $isOwner,
+            'shopOffers' => app(VoucherCollectionService::class)->shopOffers($shop->id, $request->user()),
             'isPreview' => (bool) $isPreview,
         ]);
     }

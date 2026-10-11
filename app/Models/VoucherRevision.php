@@ -53,6 +53,16 @@ class VoucherRevision extends VoucherEvidence
         return $this->belongsTo(Voucher::class);
     }
 
+    public function savedVouchers(): HasMany
+    {
+        return $this->hasMany(SavedVoucher::class, 'voucher_revision_id');
+    }
+
+    public function redemptions(): HasMany
+    {
+        return $this->hasMany(VoucherRedemption::class, 'voucher_revision_id');
+    }
+
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);

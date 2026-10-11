@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Buyer;
 use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\LogisticsHub;
+use App\Models\SavedVoucher;
+use App\Models\VoucherRevision;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Orders\CheckoutQuoteService;
+use App\Services\Orders\VoucherPreviewService;
 use App\Services\Orders\VoucherSelectionService;
+use App\Services\Vouchers\SavedVoucherService;
+use App\Services\Vouchers\VoucherChoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,21 +48,17 @@ class VoucherController extends Controller
             }
             $quotes = app(CheckoutQuoteService::class);
             $items = $quotes->selectedItems($buyer, $data['item_ids']);
-            try {
-                $revisions = app(VoucherSelectionService::class)->resolve($selection, $items);
-                $quote = $quotes->quote($items, $data['delivery_type'] ?? 'doorstep', $revisions, $buyer);
-            } catch (CheckoutException $exception) {
-                $quote = $quotes->quote($items, $data['delivery_type'] ?? 'doorstep');
-                $quote['voucher_error'] = $exception->getMessage();
-            }
-            $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $quote['voucher_error'] ? null : $revisions);
+            $preview = app(VoucherPreviewService::class)->preview($buyer, $items, $data['delivery_type'] ?? 'doorstep', $selection);
+            $quote = $preview['quote'];
+            $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $preview['revisions']);
             $message = $quote['voucher_error'] ?? ($quote['vouchers']
                 ? 'Vouchers applied: -₱'.number_format($quote['discount'], 2).'.'
                 : 'Your checkout total is up to date.');
             if ($request->expectsJson()) {
                 return response()->json(['success' => $quote['voucher_error'] === null, 'quote' => $quote,
                     'voucher' => $quote['voucher'], 'discount' => $quote['discount'],
-                    'availableVouchers' => $available['offers'], 'message' => $message], $quote['voucher_error'] ? 422 : 200);
+                    'availableVouchers' => $available['offers'], 'validSelection' => $preview['validSelection'],
+                    'selectionErrors' => $preview['selectionErrors'], 'message' => $message], $quote['voucher_error'] ? 422 : 200);
             }
 
             return back()->with($quote['voucher_error'] ? 'error' : 'success', $message);
@@ -67,6 +68,61 @@ class VoucherController extends Controller
             }
 
             return back()->with('error', $exception->getMessage());
+        }
+    }
+
+    public function store(Request $request, VoucherRevision $revision): JsonResponse
+    {
+        $saved = app(SavedVoucherService::class)->save($request->user(), $revision);
+
+        return response()->json(['saved_id' => $saved->id]);
+    }
+
+    public function destroy(Request $request, int $saved): JsonResponse
+    {
+        $bookmark = new SavedVoucher;
+        $bookmark->id = $saved;
+        app(SavedVoucherService::class)->remove($request->user(), $bookmark);
+
+        return response()->json(['saved_id' => null]);
+    }
+
+    public function choices(Request $request): JsonResponse
+    {
+        return $this->choose($request, false);
+    }
+
+    public function best(Request $request): JsonResponse
+    {
+        return $this->choose($request, true);
+    }
+
+    private function choose(Request $request, bool $best): JsonResponse
+    {
+        $buyer = app(BuyerAccessService::class)->requirePortal($request->user());
+        $data = $request->validate([
+            'item_ids' => 'required|array|list|min:1', 'delivery_type' => ['nullable', Rule::in(['doorstep', 'hub_self_pickup'])],
+            'shop_id' => 'nullable|integer|min:1|max:2147483647', 'voucher_page' => 'nullable|integer|min:1|max:100000',
+            'shipping_province' => 'nullable|string|max:100', 'shipping_city' => 'nullable|string|max:100',
+            'pickup_hub_id' => 'nullable|integer|min:1',
+        ]);
+        try {
+            if (! empty($data['shipping_province']) && ! empty($data['shipping_city'])
+                && ! app(LogisticsRoutingEngine::class)->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
+                throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
+            }
+            if (! empty($data['pickup_hub_id']) && ($data['delivery_type'] ?? 'doorstep') === 'hub_self_pickup'
+                && ! LogisticsHub::eligible()->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
+                throw new CheckoutException('Choose an available Bayan Hub that supports self-pickup.');
+            }
+            $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $data['item_ids']);
+            $choices = app(VoucherChoiceService::class);
+            $result = $best ? $choices->best($buyer, $items, $data['delivery_type'] ?? 'doorstep')
+                : $choices->options($buyer, $items, $data['delivery_type'] ?? 'doorstep', $request->all(), isset($data['shop_id']) ? (int) $data['shop_id'] : null);
+
+            return response()->json($result);
+        } catch (CheckoutException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
         }
     }
 }

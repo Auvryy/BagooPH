@@ -7,6 +7,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Vouchers\VoucherReceiptService;
 
 class OrderTrackingService
 {
@@ -141,6 +142,7 @@ class OrderTrackingService
     public function attach(Order $order, bool $history = true): void
     {
         $order->setAttribute('tracking', $this->present($order, $history));
+        $order->setAttribute('voucher_receipt', app(VoucherReceiptService::class)->present($order));
         foreach (['checkpoints', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'latestAttempt', 'pickupClaim', 'destinationBayanHub'] as $relation) {
             $order->delivery?->unsetRelation($relation);
         }
