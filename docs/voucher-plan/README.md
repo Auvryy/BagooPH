@@ -27,6 +27,9 @@ V04 may share a later goal after the foundation passes, but retain their separat
 acceptance gates. [The final acceptance gate](ACCEPTANCE.md) is a combined
 verification and handoff, not another large feature branch.
 
+See [rollout and retained records](ROLLOUT.md) for additive deployment, bounded
+demo offers and stopping new operations without deleting monetary history.
+
 Schedule selected work only, with actual availability and verification time
 within the November 20, 2026 delivery target. A plan is not a past time log.
 Do not begin all four batches or reorganize unrelated work automatically.
