@@ -3898,3 +3898,50 @@ control of an address. No live availability lookup or mailbox-checking service w
 implemented in this follow-up.
 
 Regression commit: `06c73be test: verify accented and hyphenated signup names`.
+
+## October 13, 2026: early signup email availability feedback
+
+Scope: `feat/registration-email-feedback`, carrying the preceding accented-name
+regression evidence. Buyer, seller, courier and logistics web signup now show
+email availability after a 500 ms typing pause or when leaving the field.
+Checking, available, duplicate and recovery messages use the existing email
+control and portal layout. Existing field errors take priority. Google signup
+keeps its fixed provider identity; the separate Flutter project was untouched.
+
+The new read-only web endpoint validates the same normalized email format and
+global ownership rules as signup, including verified additional addresses.
+It returns only the submitted normalized address and availability. Guest/CSRF
+protection and an independent 30-per-minute limiter remain in place; successful
+responses disable caching. Checks do not reserve addresses, create accounts,
+send mail or alter/consume OTPs. Final signup/preflight validation and database
+uniqueness still reject an address taken after the earlier availability result.
+The lookup exposes the existing duplicate-signup outcome without owner details;
+it does not establish that a mailbox exists or is verified.
+
+Blank/incomplete/invalid input does not start a lookup. Editing or leaving the
+active step cancels pending work, and responses for old requests are ignored
+even if cancellation is delayed. A ten-second timeout supplies retry feedback.
+Network/session failures, malformed responses and server field errors never
+claim availability; retry cooldown also applies after editing the address.
+
+Verification: **235 isolated SQLite `:memory:` tests / 3,887 assertions passed**
+across signup/preflight, field consistency, policy/Google signup, guest feedback,
+OTP recovery, web sessions and account-email ownership/migrations. They include
+all role hosts, malformed email types/controls, no-write/mail/OTP behavior,
+CSRF rejection, independent rate limiting and stale availability at final signup.
+**All 204 frontend checks passed**, including delayed/out-of-order responses,
+blur deduplication, cancellation, cleanup/resume, timeout, retry, cooldown,
+error precedence and each role's accessible feedback markup. The TypeScript/Vite
+production build, five changed PHP files' Pint checks and `git diff --check` passed.
+No browser UI, Azure deployment or real delivered-email verification was run.
+
+**Scoped assessment: signup email feedback 7/10 -> 9/10 locally.** Applicants
+learn about duplicate ownership while entering the address instead of waiting
+for step submission. Existing signup/OTP/approval authority is preserved; this
+does not raise overall platform readiness or certify deployed signup and mail.
+Live role-host signup/session and delivered-OTP acceptance remain pending.
+
+Implementation commits: `2701966 feat: add read-only signup email availability checks`;
+`6b6bd89 feat: show email availability during signup`. The documentation commit
+and combined branch pull request draft are reported in the handoff. Publication
+and deployment remain user actions.
