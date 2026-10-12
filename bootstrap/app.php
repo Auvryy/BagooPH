@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\EnsureApprovedCourier;
 use App\Http\Middleware\EnsureBuyerAccess;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
 use App\Services\Courier\RiderApiResponse;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'guest' => RedirectIfAuthenticated::class,
             'buyer.approved' => EnsureBuyerAccess::class,
             'account.approved' => EnsureApprovedAccount::class,
             'courier.approved' => EnsureApprovedCourier::class,

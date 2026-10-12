@@ -2,12 +2,12 @@ import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import PersonalNameFields from '@/Components/PersonalNameFields';
 import { 
     ArrowRight, 
     ArrowLeft, 
     Lock, 
     Mail, 
-    User, 
     Check, 
     Upload, 
     FileText, 
@@ -27,6 +27,7 @@ import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
+import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function CourierRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -49,8 +50,10 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
     const [orCrFileName, setOrCrFileName] = useState<string | null>(null);
     const [orCrFileSize, setOrCrFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, transform } = useForm<{
-        name: string;
+    const { data, setData, post, processing, errors, clearErrors, reset, transform } = useForm<{
+        first_name: string;
+        middle_initial: string;
+        last_name: string;
         birthday: string;
         email: string;
         phone: string;
@@ -70,7 +73,9 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         or_cr_document: File | null;
         otp_token: string;
     }>({
-        name: '',
+        first_name: '',
+        middle_initial: '',
+        last_name: '',
         birthday: '',
         email: '',
         phone: '',
@@ -94,7 +99,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
-    });
+    }, birthDateLimits);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -307,31 +312,11 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                 {/* STEP 1: RIDER INFO */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                Full Legal Name *
-                            </label>
-                            <div className="relative">
-                                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                <input
-                                    id="name"
-                                    type="text"
-                                    name="name"
-                                    value={data.name}
-                                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="e.g. Juan Dela Cruz"
-                                    autoFocus
-                                    onChange={(e) => {
-                                        setData('name', e.target.value);
-                                        if (stepErrors.name) setStepErrors(prev => ({ ...prev, name: '' }));
-                                    }}
-                                    required
-                                />
-                            </div>
-                            {(stepErrors.name || errors.name) && (
-                                <InputError message={stepErrors.name || errors.name} className="mt-1" />
-                            )}
-                        </div>
+                        <PersonalNameFields values={data} errors={{ ...errors, ...stepErrors }} accent="emerald" autoFocus onChange={(field, value) => {
+                            setData(field, value);
+                            clearErrors(field, 'name' as keyof typeof data);
+                            setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
+                        }} />
 
                         <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
@@ -345,13 +330,17 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                     <input
                                         id="email"
                                         type="email"
+                                        maxLength={255}
+                                        autoCapitalize="none"
+                                        spellCheck={false}
                                         name="email"
                                         value={data.email}
                                         className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="rider@domain.com"
                                         autoComplete="username"
                                         onChange={(e) => {
-                                            setData('email', e.target.value);
+                                            setData('email', normalizeRegistrationEmail(e.target.value));
+                                            clearErrors('email');
                                             if (stepErrors.email) setStepErrors(prev => ({ ...prev, email: '' }));
                                         }}
                                         required
@@ -369,6 +358,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                 value={data.phone}
                                 onChange={(val) => {
                                     setData('phone', val);
+                                    clearErrors('phone');
                                     if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
                                 }}
                                 required

@@ -16,7 +16,7 @@ and registration service as the web application. It adds no parcel operations.
 | POST `/rider/registration/email/verify` | `email`, six ASCII digits in `code` | Single-use registration verification `token` |
 | POST `/rider/applications` | Multipart application and documents | Created pending courier, verified email and own-account session |
 
-The application requires `name`, `birthday`, `email`, Philippine `phone`,
+The application requires a personal name, `birthday`, `email`, Philippine `phone`,
 `address`, `city`, `vehicle_type`, `plate_number`, password/confirmation,
 `otp_token`, `device_name` and private `id_document`, `driver_license`,
 `or_cr_document` uploads. The shared validator governs optional province,
@@ -33,6 +33,28 @@ An approved account flag is account eligibility, not placement, duty or authorit
 to perform a parcel action.
 
 ## Registration validation handoff
+
+Existing `name`-only applications remain supported. A client may instead supply
+`first_name`, `last_name` and optional `middle_name`. If any of those fields is
+present, first and last names are required and the server constructs `name`
+from the normalized parts, ignoring a conflicting supplied display name.
+First and last names allow 2–50 characters each. A supplied middle name allows
+1–50 characters; it may be omitted. Clients may use `middle_initial` instead:
+one Latin letter and an optional period, at most 2 characters. When present,
+that alias takes precedence over `middle_name`, is validated at preflight and
+submission, and is stored in the existing middle-name column. It requires first
+and last names even if no other name component was supplied. Existing full
+middle names are preserved.
+The combined name allows 2–100 characters including spaces. Latin letters with
+accents, spaces, apostrophes, hyphens and periods are accepted; digits, unsupported symbols,
+controls and visually empty names are rejected with field errors. A failed
+name check does not consume the verified registration token or store uploads.
+
+New registration emails trim outer spaces and store the entire address in
+lowercase. Existing sign-in addresses remain unchanged and ownership/sign-in
+comparisons stay case-insensitive. Internal whitespace, controls and more than
+255 characters are rejected. Courier mobile numbers must normalize to
+`+639XXXXXXXXX`; short, overlong, non-ASCII or non-mobile numbers are rejected.
 
 The options response includes `data.password_policy.min_length = 12` and
 `max_length = 128`. New applications and password resets require 12–128

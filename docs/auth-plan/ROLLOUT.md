@@ -60,6 +60,42 @@ The preflight endpoint does not create an account, store evidence or send mail.
 Complete email syntax and verification govern acceptance, with custom domains
 and `@bagoo.test` demos retained. No popular-provider allowlist is introduced.
 
+Each web form collects required first and last names and an optional middle
+initial. Invalid characters produce immediate inline feedback without deleting
+what the applicant entered. Names permit Latin letters with accents, spaces,
+straight or curly apostrophes, hyphens and periods; digits and hidden characters
+are rejected. The server derives the display name from the normalized parts,
+validates those parts on every role's first step and validates again at signup.
+First and last names require 2–50 characters each. The optional middle initial
+accepts one letter with an optional period (M or M.), at most 2 characters.
+New first/last edits stop at 50 characters and initial edits at 2; overlong paste
+is rejected rather than shortened. The initial control is narrower on shared
+rows. Its `middle_initial` request alias is validated on the server and stores
+the initial in the existing optional middle-name field. Legacy full middle-name
+input remains 1–50 characters; existing records and name-only clients remain
+supported. The combined limit stays 2–100 characters including separating spaces.
+
+New signup emails trim outer spaces, become lowercase and stop at 255
+characters. Duplicate ownership remains case-insensitive, and existing sign-in
+addresses are preserved. Internal whitespace and hidden characters remain
+invalid. Mobile fields show a fixed `+63`, allow exactly ten national ASCII
+digits starting with 9, block extra digits/letters and report incomplete input.
+Supported complete-number prefixes work on paste; malformed or overlong pasted
+numbers are rejected without changing them into a different number. Business
+contacts retain the server's mobile-or-landline validation.
+
+Obvious missing or malformed identity/contact details are checked locally before
+preflight. Passing this feedback still requires the server's confirmation; file,
+ownership, category and other domain checks remain authoritative on the server.
+Deploy the PHP changes and freshly built frontend together. No schema change or
+database reset is needed for separated names.
+
+An existing signed-in session can conflict with a guest-only background request.
+Those JSON/API requests now return a clear sign-out message, preserving the
+session and normal page-navigation redirects. Check registration with both a
+guest session and an already signed-in session; the latter must not send an OTP
+or return an HTML redirect as if validation succeeded.
+
 The native options expose the password limits. Coordinate the separate Flutter
 client using the [rider account API](../RIDER_ACCOUNT_API.md); no mobile source
 changes are included here. Readable terms/privacy acknowledgement, recorded

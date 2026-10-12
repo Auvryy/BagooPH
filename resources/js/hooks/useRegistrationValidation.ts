@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { AuthRequestError, authRequest, registrationErrors, registrationErrorStep, registrationFormData } from '@/utils/authRequests';
+import { AuthRequestError, registrationErrors, registrationErrorStep } from '@/utils/authRequests';
+import type { BirthDateLimits } from '@/Components/BirthDateInput';
+import { checkRegistration } from '@/utils/registrationValidation';
 
-export function useRegistrationValidation(data: Record<string, unknown>, onErrors: (errors: Record<string, string>, step: number) => void) {
+export function useRegistrationValidation(data: Record<string, unknown>, onErrors: (errors: Record<string, string>, step: number) => void, limits: BirthDateLimits) {
     const [validating, setValidating] = useState(false);
     const busy = useRef(false);
     const feedbackRef = useRef<HTMLDivElement>(null);
@@ -23,9 +25,8 @@ export function useRegistrationValidation(data: Record<string, unknown>, onError
         setValidating(true);
         const snapshot = data;
         try {
-            const reply = await authRequest('/register/validate', registrationFormData(snapshot, step));
+            await checkRegistration(snapshot, limits, step);
             if (latestData.current !== snapshot) return false;
-            if (reply.valid !== true) throw new AuthRequestError('We could not confirm your details. Please try again.');
             onErrors({}, step ?? registrationErrorStep(String(data.role), {}));
             return true;
         } catch (error) {

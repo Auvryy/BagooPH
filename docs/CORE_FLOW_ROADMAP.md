@@ -3635,3 +3635,102 @@ legacy native-token reauthentication and the native password-policy handoff are
 documented in [authentication rollout](auth-plan/ROLLOUT.md) and the
 [rider account API](RIDER_ACCOUNT_API.md). The branch PR title/body remain a local
 draft until the user publishes it.
+
+### October 12, 2026: Separated registration names and immediate feedback
+
+`fix/registration-name-feedback` starts from merged `main` at `8646337`.
+Buyer, seller, courier and logistics registration now collect required first
+and last names with an optional middle initial. All three fields immediately show
+an inline error for digits, unsupported symbols, hidden characters or invalid
+length. First/last name edits stop at 50 characters, initial edits at 2, and overlong paste is rejected
+without shortening it. Invalid characters stay visible for correction.
+Latin letters with accents, spaces, straight/curly apostrophes, hyphens and
+periods remain accepted. Labels, autocomplete, field error associations and
+polite announcements accompany the controls; each existing portal shell and
+accent is retained. On shared rows, the optional middle-initial field is narrower
+than both required fields; small screens keep stacked, full-width controls.
+
+The server checks every supplied name component on the first step for every
+role and at final submission. It requires first and last names when components
+are supplied, normalizes them and constructs the stored display name from the
+parts. A conflicting client display name cannot create inconsistent identity.
+Existing name-only web/native requests remain supported. First and last names
+require 2–50 characters each. The web form's optional middle initial accepts
+one Latin letter and an optional period (M or M.), at most 2 characters.
+The new request alias takes precedence over a conflicting supplied middle name,
+is checked at preflight and submission, and stores the validated initial in the
+existing column. Existing full middle names and native component requests remain
+supported with a 1–50-character middle-name limit. The combined name retains its 2–100-character limit, including
+separators. These shared component rules also govern application correction and
+approval. Shop and company display-name rules are separate.
+
+New signup email entries are trimmed at the edges, lowercased and limited to
+255 characters. The server repeats normalization and case-insensitive ownership
+checks; existing sign-in addresses are not rewritten. Internal whitespace and
+hidden characters still fail validation. Shared mobile controls allow ten
+national ASCII digits after `+63`, require a leading 9 and show incomplete-number
+feedback. Supported prefixes/separators work on paste, while letters, unsupported
+prefixes and extra digits are rejected without creating a different number.
+Existing invalid stored input remains visible for correction, and business
+contacts continue to support valid area-coded landlines.
+
+Before sending preflight, the forms now catch malformed or missing personal
+names, incomplete email addresses, impossible/future dates, worker age below
+18, required contact/address details and invalid buyer/courier mobile numbers
+for the relevant step. A passing local check still requires server confirmation;
+preflight and final submission retain file, ownership and domain validation.
+Combined-name errors appear with the name group, while component errors return
+to the identity step. Correcting one name retains unrelated field errors.
+
+The unreadable-response failure has a reproduced session cause. Role-host
+registration pages can render with an existing signed-in account, while the
+guest-only preflight and OTP routes redirected background requests to HTML.
+Five checks first failed with 302 responses. JSON/API guest requests now return
+409 with an explicit sign-out message instead of redirecting; the existing
+session stays intact and ordinary page-navigation redirects are preserved.
+Guest form requests still return 422 JSON field errors on all four local role
+hosts. The illustrated invalid identity is also rejected locally before any
+request. Real unreadable, expired-session or unavailable responses still fail
+safely and cannot advance registration or claim verification success. The
+original browser's session and response were not captured.
+
+Verification: **695 isolated SQLite `:memory:` tests / 6,200 assertions passed**
+across the complete authentication suite, including application validation,
+preflight, web signup, KYC, worker birth-date eligibility, role/session guards,
+account settings and the native account API. Coverage includes every role's
+component errors, optional initial shape and length, legacy full middle names,
+punctuation/accents, normalized stored
+identity, conflicting display names, exact length limits, malformed component
+types, multipart JSON errors, normalized emails, case-equivalent duplicate
+rejection without rewriting existing identity, and legacy name-only compatibility. Native name
+rejection leaves the verified token and uploads usable for a valid retry.
+**82 frontend checks passed** across authentication, account settings, buyer
+profile and courier UI checks, including immediate invalid-name rendering,
+accessible field feedback, rejecting overlong edits without truncating pasted
+names/numbers, email edge/case normalization, numeric mobile edit boundaries,
+preserving invalid stored input, no request for malformed
+identity, server confirmation for valid input, calendar/phone boundaries and
+three name inputs on every registration page and signed-in-session feedback.
+The TypeScript/Vite production build, focused PHP style checks and
+`git diff --check` passed. The host build
+hit an existing dependency-folder permission error; the supported app-container
+build passed. No interactive browser, device, SMTP or Azure check was performed.
+
+Scoped registration input and feedback assessment: **5/10 -> 8/10**. The earlier worker
+forms had one name box and feedback after submission; all registration roles
+now identify the incorrect component while typing and preserve valid names.
+Email and mobile controls also follow the stored contract and prevent excess input.
+This does not raise whole-role readiness or complete AF03/AF04. Deployment uses
+the normal code and asset build with no new migration or database reset.
+The separate Flutter repository and development/production records were not
+changed. Publication and deployment remain pending user action.
+
+Local implementation commits:
+
+- `c2bc4f8 fix: validate registration names initials and email`
+- `6ad8cb2 fix: return JSON feedback for signed-in signup requests`
+- `e976e07 fix: show immediate signup errors and bound name and mobile input`
+
+The documentation commit's generated hash is reported in the handoff. The
+combined pull request title and description are a local ignored draft, not a
+saved GitHub pull request.
