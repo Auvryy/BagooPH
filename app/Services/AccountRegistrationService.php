@@ -13,14 +13,29 @@ use Illuminate\Validation\ValidationException;
 
 class AccountRegistrationService
 {
-    public function submit(Request $request, ?string $fixedRole = null, bool $requireVerifiedEmail = false): array
-    {
-        $role = $fixedRole ?? $request->input('role', 'buyer');
-        if (! is_string($role)) {
-            throw ValidationException::withMessages(['role' => 'Choose a supported account role.']);
-        }
-        $birthDates = app(BirthDateEligibility::class);
+    private const MANAGED_FIELDS = ['user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'];
 
+    public function preflight(Request $request): void
+    {
+        $selection = $request->validate([
+            'role' => ['required', 'string', 'in:buyer,seller,courier,logistics'],
+            'step' => ['nullable', 'integer', 'between:1,3'],
+        ]);
+        $role = $selection['role'];
+        $this->prepare($request, $role);
+        $rules = $this->rules($role);
+        if ($step = $selection['step'] ?? null) {
+            $fields = $this->stepFields($role)[$step - 1] ?? null;
+            if ($fields === null) {
+                throw ValidationException::withMessages(['step' => 'Choose an available registration step.']);
+            }
+            $rules = array_filter($rules, fn ($field) => in_array(explode('.', $field)[0], [...$fields, ...self::MANAGED_FIELDS], true), ARRAY_FILTER_USE_KEY);
+        }
+        $request->validate($rules);
+    }
+
+    private function prepare(Request $request, string $role): void
+    {
         // Merge composite name if first_name or last_name is provided without a full name
         if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
             foreach (['first_name', 'middle_name', 'last_name'] as $field) {
@@ -38,13 +53,17 @@ class AccountRegistrationService
 
         $applications = app(ApplicationValidationService::class);
         $request->merge($applications->registrationValues($request->all(), $role));
-        $rules = $applications->rules($role) + [
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    }
+
+    private function rules(string $role): array
+    {
+        $rules = app(ApplicationValidationService::class)->rules($role) + [
+            'password' => ['bail', 'required', 'string', 'confirmed', Rules\Password::defaults()],
             'otp_token' => ['nullable', 'string', 'max:128'],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
         ];
-        foreach (['user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'] as $field) {
+        foreach (self::MANAGED_FIELDS as $field) {
             $rules[$field] = ['prohibited'];
         }
         $files = match ($role) {
@@ -59,7 +78,47 @@ class AccountRegistrationService
         if ($role === 'logistics') {
             $rules['franchise_document'] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
         }
-        $validated = $request->validate($rules);
+
+        return $rules;
+    }
+
+    private function stepFields(string $role): array
+    {
+        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
+        $password = ['password', 'password_confirmation'];
+
+        return match ($role) {
+            'buyer' => [
+                ['name', 'first_name', 'middle_name', 'last_name', 'email', ...$password],
+                ['sex', 'birthday', 'phone', ...$location, 'id_document'],
+            ],
+            'seller' => [
+                ['name', 'birthday', 'shop_name', 'root_category_id', 'email'],
+                ['phone', ...$location, 'shop_phone', 'shop_address', 'shop_city'],
+                [...$password, 'id_document', 'business_permit'],
+            ],
+            'courier' => [
+                ['name', 'birthday', 'email', 'phone', ...$location],
+                ['vehicle_type', 'plate_number', 'license_number'],
+                [...$password, 'id_document', 'driver_license', 'or_cr_document'],
+            ],
+            'logistics' => [
+                ['name', 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
+                ['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'],
+                [...$location, 'company_address', 'business_permit', 'franchise_document'],
+            ],
+        };
+    }
+
+    public function submit(Request $request, ?string $fixedRole = null, bool $requireVerifiedEmail = false): array
+    {
+        $role = $fixedRole ?? $request->input('role', 'buyer');
+        if (! is_string($role)) {
+            throw ValidationException::withMessages(['role' => 'Choose a supported account role.']);
+        }
+        $birthDates = app(BirthDateEligibility::class);
+        $this->prepare($request, $role);
+        $validated = $request->validate($this->rules($role));
 
         if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration')) {
             throw ValidationException::withMessages(['otp_token' => 'Verify your email before submitting your rider application.']);

@@ -34,6 +34,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 ## Planning and Current Gaps
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
+- [Authentication and registration improvements](auth-plan/README.md) separates access/verification recovery, shared field validation, terms acknowledgement, and combined acceptance into bounded deliveries while preserving existing account policies.
 - [Logistics parcel recovery](logistics-plan/01-parcel-recovery.md) defines the selected unexpected/wrong-hub recovery branch, actual scan and manifest requirements, interface scope and acceptance boundary.
 - [Logistics workstation guidance](logistics-plan/02-workstation-guidance.md) defines the bounded registry/counter cleanup: recorded custody, permitted actions, blockers, grouped filters and truthful handover counts.
 - [Scanner guidance and counter queue](logistics-plan/03-scanner-and-counter-queue.md) defines truthful shelf labels, shared scanner guidance, secure counter navigation and bounded pagination with explicit page readiness counts.
@@ -47,6 +48,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 
 ## Supporting References
 
+- [Essential form validation and verification](FORM_VALIDATION_REVIEW.md) defines the crucial field, boundary, permission, persistence, and recovery review method for changed forms; it does not replace the normative contracts.
 - `ARCHITECTURE.md`, `PROJECT_PLAN.md`, and `MASTER_LOGISTICS_SPECIFICATION.md` explain architecture and context but cannot override normative flow contracts.
 - `VERIFICATION_DOCUMENT_SECURITY.md` explains private document deployment, migration, and secret-mail configuration.
 - `WEB_AUTH_DEPLOYMENT.md` explains production web session settings, HTTPS authentication redirects, notification scheduling, catalogue visibility checks, and the targeted demo repair after deployment.

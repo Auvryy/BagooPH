@@ -66,7 +66,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'buyer',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         // Form post: redirected back with session errors
@@ -100,7 +100,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://seller.bagooph.shop/login', [
@@ -122,7 +122,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://seller.bagooph.shop/login', [
@@ -144,7 +144,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://courier.bagooph.shop/login', [
@@ -166,7 +166,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://admin.bagooph.shop/login', [
@@ -187,7 +187,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'buyer',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://hub.bagooph.shop/login', [
@@ -209,7 +209,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->postJson('http://bagooph.shop/login', [
@@ -230,7 +230,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('http://hub.bagooph.shop/login', [
@@ -249,7 +249,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('correct-password'),
+            'password' => 'correct-password',
         ]);
 
         $response = $this->postJson('http://seller.bagooph.shop/login', [
@@ -277,7 +277,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('http://seller.bagooph.shop/login', [
@@ -296,7 +296,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('http://courier.bagooph.shop/login', [
@@ -315,7 +315,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('http://hub.bagooph.shop/login', [
@@ -333,7 +333,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('http://admin.bagooph.shop/login', [
@@ -563,7 +563,7 @@ class SubdomainIsolationTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
             'kyc_status' => 'approved',
-            'password' => bcrypt('password123'),
+            'password' => 'password123',
         ]);
 
         $response = $this->post('/login', [
@@ -763,7 +763,7 @@ class SubdomainIsolationTest extends TestCase
             'birthday' => '2000-01-01',
             'status' => 'pending_approval',
             'kyc_status' => 'pending_approval',
-            'password' => bcrypt('Password123!'),
+            'password' => 'Password123!',
         ]);
 
         $response = $this->post('http://hub.localhost/login', [

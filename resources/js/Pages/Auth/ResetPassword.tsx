@@ -73,6 +73,7 @@ export default function ResetPassword({ token, email }: Props) {
                             required
                         />
                     </div>
+                    <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
                     <InputError message={errors.password} className="mt-1" />
                 </div>
 

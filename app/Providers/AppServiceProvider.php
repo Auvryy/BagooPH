@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Password::defaults(fn () => Password::min(12)->max(128));
+
+        RateLimiter::for('web-otp-send', fn (Request $request) => Limit::perMinute(10)->by(hash('sha256', 'otp-send|'.$request->ip())));
+        RateLimiter::for('web-otp-verify', fn (Request $request) => Limit::perMinute(30)->by(hash('sha256', 'otp-verify|'.$request->ip())));
+
         foreach ([KycDecision::class, ShopReviewDecision::class, RestrictionDecision::class,
             IdentityCorrectionDecision::class, ProductModerationDecision::class,
             LogisticsPlacementRecord::class, ExceptionDecision::class,

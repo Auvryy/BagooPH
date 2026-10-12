@@ -11,6 +11,7 @@ use App\Services\BuyerAccessService;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
 use App\Services\VerificationDocumentService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,13 @@ class RegisteredUserController extends Controller
     public function createLogistics(): Response
     {
         return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
+    }
+
+    public function validateRegistration(Request $request, AccountRegistrationService $registration): JsonResponse
+    {
+        $registration->preflight($request);
+
+        return response()->json(['valid' => true]);
     }
 
     /**

@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useRef, useState } from 'react';
+import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
@@ -20,9 +20,10 @@ import {
     Sparkles
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function Register({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -76,6 +77,16 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         otp_token: '',
     });
 
+    const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
+        setStepErrors(fieldErrors);
+        if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
+    });
+
+    useEffect(() => {
+        if (data.otp_token) setData('otp_token', '');
+        transform(values => values);
+    }, [data.email]);
+
     const calculateAge = (birthDateString: string) => {
         if (!birthDateString) return '';
         const [year, month, day] = birthDateString.split('-').map(Number);
@@ -120,34 +131,18 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const validateStep1 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.first_name.trim()) newErrors.first_name = 'First name is required';
-        if (!data.last_name.trim()) newErrors.last_name = 'Last name / surname is required';
-        if (!data.email.trim()) {
-            newErrors.email = 'Email address is required';
-        } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-            newErrors.email = 'Valid email address is required';
-        }
-        if (!data.password) {
-            newErrors.password = 'Password is required';
-        } else if (data.password.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters';
-        }
-        if (!data.password_confirmation) {
-            newErrors.password_confirmation = 'Confirm password is required';
-        } else if (data.password !== data.password_confirmation) {
-            newErrors.password_confirmation = 'Passwords do not match';
-        }
-
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+    const validateForm = async (step?: number) => {
+        const required = step === 1 ? ['first_name', 'last_name'] : step === 2 ? ['sex', 'city', 'address'] : ['first_name', 'last_name', 'sex', 'city', 'address'];
+        const missing = Object.fromEntries(required.filter(key => !String(data[key as keyof typeof data] ?? '').trim()).map(key => [key, 'This field is required.']));
+        if (Object.keys(missing).length) { applyErrors(missing); return false; }
+        return validate(step);
     };
 
-    const handleNext = () => {
-        if (validateStep1()) {
+    const handleNext = async () => {
+        if (processing || validating) return;
+        if (await validateForm(currentStep)) {
             setStepErrors({});
-            setCurrentStep(2);
+            setCurrentStep(step => step + 1);
         }
     };
 
@@ -156,63 +151,37 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         setCurrentStep(1);
     };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const handleRegistrationErrors = (fieldErrors: Record<string, string>) => {
+        applyErrors(fieldErrors);
+        if (fieldErrors.otp_token) setData('otp_token', '');
+    };
 
-        const newErrors: Record<string, string> = {};
-        if (!data.sex) newErrors.sex = 'Sex is required';
-        if (!data.city.trim()) newErrors.city = 'City / municipality is required';
-        if (!data.address.trim()) newErrors.address = 'Delivery address is required';
+    const createAccount = (token: string) => {
+        transform(values => ({ ...values, otp_token: token }));
+        if (typeof window !== 'undefined') sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
+        post(route('register'), {
+            forceFormData: true,
+            onError: handleRegistrationErrors,
+            onSuccess: () => reset('password', 'password_confirmation'),
+            onFinish: () => transform(values => values),
+        });
+    };
 
-        if (data.phone.trim()) {
-            const phoneDigits = extractNationalDigits(data.phone);
-            if (phoneDigits.length < 10) {
-                newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
-            }
-        }
-
-        if (Object.keys(newErrors).length > 0) {
-            setStepErrors(newErrors);
-            return;
-        }
-
-        // Prompt user with 6-digit email OTP modal before account creation
+    const submit: FormEventHandler = async (event) => {
+        event.preventDefault();
+        if (currentStep < 2) { await handleNext(); return; }
+        if (processing || validating || !await validateForm()) return;
         if (!data.otp_token) {
             setShowOtpModal(true);
             return;
         }
-
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
-        }
-
-        post(route('register'), {
-            forceFormData: true,
-            onError: handleRegistrationErrors,
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(data.otp_token);
     };
 
     const handleOtpSuccess = (token: string) => {
         setShowOtpModal(false);
         setData('otp_token', token);
-        transform((prevData) => ({
-            ...prevData,
-            otp_token: token,
-        }));
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');
-        }
-        post(route('register'), {
-            forceFormData: true,
-            onError: handleRegistrationErrors,
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
-    };
-
-    const handleRegistrationErrors = (validationErrors: Record<string, string>) => {
-        const identityFields = ['name', 'first_name', 'middle_name', 'last_name', 'email', 'password', 'password_confirmation'];
-        setCurrentStep(Object.keys(validationErrors).some(key => identityFields.includes(key)) ? 1 : 2);
+        createAccount(token);
     };
 
     return (
@@ -307,7 +276,13 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-3.5 font-sans">
+            <form onSubmit={submit} className="space-y-3.5 font-sans" noValidate aria-busy={processing || validating}>
+                {Object.keys(stepErrors).length > 0 && (
+                    <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
+                        <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
+                    </div>
+                )}
+                <fieldset disabled={processing || validating || showOtpModal} className="contents">
                 {/* CHECKPOINT 1: CREDENTIALS & NAME */}
                 {currentStep === 1 && (
                     <div className="space-y-3.5">
@@ -347,7 +322,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                     placeholder="Santos"
                                     onChange={(e) => setData('middle_name', e.target.value)}
                                 />
-                                <InputError message={errors.middle_name} className="mt-1" />
+                                <InputError message={stepErrors.middle_name || errors.middle_name} className="mt-1" />
                             </div>
 
                             <div className="sm:col-span-4">
@@ -418,6 +393,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
+                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
                                 <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
@@ -576,9 +552,9 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                             streetLabel="Delivery Street Address / House No."
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
-                                province: errors.province,
-                                municipality: errors.municipality,
-                                barangay: errors.barangay,
+                                province: stepErrors.province || errors.province,
+                                municipality: stepErrors.municipality || errors.municipality,
+                                barangay: stepErrors.barangay || errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}
@@ -620,7 +596,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                     </button>
                                 </div>
                             )}
-                            <InputError message={errors.id_document} className="mt-1" />
+                            <InputError message={stepErrors.id_document || errors.id_document} className="mt-1" />
                         </div>
 
                         {/* Back & Submit Buttons */}
@@ -635,7 +611,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                             </button>
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || validating}
                                 className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{processing ? 'Creating Account...' : 'Complete Registration'}</span>
@@ -644,6 +620,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                         </div>
                     </div>
                 )}
+            </fieldset>
             </form>
 
             <div className="mt-6 pt-5 border-t border-slate-200 text-center">

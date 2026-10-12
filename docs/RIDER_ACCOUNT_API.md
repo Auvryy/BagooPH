@@ -11,7 +11,7 @@ and registration service as the web application. It adds no parcel operations.
 | POST `/auth/tokens` | `email`, `password`, `device_name` | `data.token`, `token_type`, `expires_at`, `user` |
 | GET `/rider/me` | Bearer token | `data` containing own account |
 | DELETE `/auth/tokens/current` | Bearer token | Revokes this device token; `message` |
-| GET `/rider/registration/options` | None | Vehicle types, Manila adult birthday limit, document limits |
+| GET `/rider/registration/options` | None | Vehicle types, Manila adult birthday limit, document limits, password policy |
 | POST `/rider/registration/email/send` | `email` | Delivered-code result, cooldown, expiry; never the code |
 | POST `/rider/registration/email/verify` | `email`, six ASCII digits in `code` | Single-use registration verification `token` |
 | POST `/rider/applications` | Multipart application and documents | Created pending courier, verified email and own-account session |
@@ -31,6 +31,30 @@ Wrong-role, closed, suspended, inactive, unknown or underage-ineligible accounts
 receive 403. Pending/rejected applications may see only their own holding data.
 An approved account flag is account eligibility, not placement, duty or authority
 to perform a parcel action.
+
+## Registration validation handoff
+
+The options response includes `data.password_policy.min_length = 12` and
+`max_length = 128`. New applications and password resets require 12–128
+characters, including Unicode characters, and permit passphrases without a
+required character-type combination. Existing shorter sign-in passwords remain
+usable. The web backend defaults to Argon2id so the end of a long password is
+verified; existing bcrypt credentials and OTP challenges still verify.
+
+Email submission requires a complete address with a qualified domain. Custom
+domains and the existing `@bagoo.test` demo addresses remain supported; there is
+no provider allowlist or DNS check. Format acceptance does not prove inbox
+ownership. The registration code still has to be delivered and verified. OTP
+requests reject an address already owned as an original identity or additional
+contact address, including case-equivalent and legacy identity records.
+
+The native client should use the advertised limits, retain raw invalid phone
+input for correction, show the API's field errors and preserve safe progress
+after a rejected request. These backend changes do not edit the Flutter project
+or certify its screens. First web login can rehash a legacy bcrypt credential;
+an older native token bound to the previous password fingerprint may then need
+a fresh sign-in. Deployment details are in the
+[authentication rollout](auth-plan/ROLLOUT.md).
 
 ## Account and session boundaries
 

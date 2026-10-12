@@ -61,7 +61,7 @@ class AccountEmailService
 
     private function address(Request $request): string
     {
-        $values = $this->credentials($request, ['email' => ['required', 'string', 'max:255', 'email', 'not_regex:/[\p{C}\s]/u']]);
+        $values = $this->credentials($request, ['email' => ApplicationValidationService::emailRules()]);
 
         return strtolower($values['email']);
     }

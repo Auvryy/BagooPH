@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Mail, Clock, ShieldCheck, AlertCircle, RefreshCw, X, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Clock, ShieldCheck, AlertCircle, RefreshCw, X, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { AuthRequestError, AuthRequestScope, requestOtp } from '@/utils/authRequests';
 
 interface OtpModalProps {
     isOpen: boolean;
@@ -24,198 +25,137 @@ export default function OtpModal({
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
     const [isSending, setIsSending] = useState(false);
-    const [cooldown, setCooldown] = useState(60);
-    const [canResend, setCanResend] = useState(false);
-
+    const [cooldown, setCooldown] = useState(0);
+    const [codeSent, setCodeSent] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const scope = useRef(new AuthRequestScope());
+    const context = JSON.stringify([isOpen, email, purpose]);
+    const latestContext = useRef(context);
+    latestContext.current = context;
+    const canResend = cooldown === 0;
+    const current = (request: AbortController) => latestContext.current === context && scope.current.current(request);
 
-    // Countdown interval
     useEffect(() => {
-        let timer: NodeJS.Timeout;
-        if (isOpen && cooldown > 0) {
-            timer = setInterval(() => {
-                setCooldown((prev) => {
-                    if (prev <= 1) {
-                        setCanResend(true);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
+        if (!isOpen || cooldown === 0) return;
+        const timer = setInterval(() => setCooldown(value => Math.max(0, value - 1)), 1000);
+        return () => clearInterval(timer);
+    }, [isOpen, cooldown > 0]);
+
+    useEffect(() => {
+        scope.current.cancel();
+        setDigits(['', '', '', '', '', '']);
+        setError(null);
+        setSuccessMsg(null);
+        setIsSending(false);
+        setIsVerifying(false);
+        setCooldown(0);
+        setCodeSent(false);
+        if (!isOpen) return;
+        if (autoSendOnOpen && email) void sendOtpCode();
+        const timer = setTimeout(() => inputRefs.current[0]?.focus(), 150);
         return () => {
-            if (timer) clearInterval(timer);
+            clearTimeout(timer);
+            scope.current.cancel();
         };
-    }, [isOpen, cooldown]);
+    }, [isOpen, email, purpose, autoSendOnOpen]);
 
-    // Send initial OTP when modal opens if autoSendOnOpen is true
-    useEffect(() => {
-        if (isOpen) {
-            setDigits(['', '', '', '', '', '']);
-            setError(null);
-            setSuccessMsg(null);
-            setCooldown(60);
-            setCanResend(false);
-
-            if (autoSendOnOpen && email) {
-                sendOtpCode();
-            }
-
-            // Focus first input box
-            setTimeout(() => {
-                inputRefs.current[0]?.focus();
-            }, 150);
-        }
-    }, [isOpen, email]);
-
-    const sendOtpCode = async () => {
-        if (!email) return;
-
+    async function sendOtpCode() {
+        if (!isOpen || !email) return;
+        const request = scope.current.begin();
+        if (!request) return;
         setIsSending(true);
         setError(null);
-
+        setSuccessMsg(null);
+        setCodeSent(false);
         try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            const response = await fetch('/api/otp/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-                body: JSON.stringify({ email, purpose }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.message || 'Failed to dispatch verification code.');
-                if (data.cooldown) {
-                    setCooldown(data.cooldown);
-                    setCanResend(false);
-                }
-            } else {
-                setSuccessMsg('A new verification code has been dispatched to your email.');
-                setCooldown(data.cooldown || 60);
-                setCanResend(false);
-                setTimeout(() => setSuccessMsg(null), 4000);
-            }
-        } catch (err) {
-            setError('Network error while connecting to the email service.');
+            const reply = await requestOtp('send', { email, purpose }, request.signal);
+            if (!current(request)) return;
+            setCodeSent(true);
+            setSuccessMsg('A verification code was sent to your email.');
+            setCooldown(typeof reply.cooldown === 'number' && Number.isFinite(reply.cooldown) ? Math.max(0, Math.ceil(reply.cooldown)) : 60);
+        } catch (failure) {
+            if (!current(request)) return;
+            setError(failure instanceof Error ? failure.message : 'We could not send a code. Please try again.');
+            setCooldown(failure instanceof AuthRequestError ? failure.cooldown : 0);
         } finally {
-            setIsSending(false);
+            if (current(request)) setIsSending(false);
+            scope.current.finish(request);
         }
-    };
+    }
 
-    const handleDigitChange = (index: number, val: string) => {
-        // Only accept numbers
-        const cleanVal = val.replace(/\D/g, '');
-        if (!cleanVal && val !== '') return;
-
-        const newDigits = [...digits];
-        newDigits[index] = cleanVal.slice(-1); // keep last typed digit
-        setDigits(newDigits);
-        setError(null);
-
-        // Auto-advance to next box if digit was typed
-        if (cleanVal && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-        }
-
-        // Auto-submit if all 6 filled
-        if (cleanVal && index === 5 && newDigits.every((d) => d !== '')) {
-            submitVerification(newDigits.join(''));
-        }
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Backspace') {
-            if (!digits[index] && index > 0) {
-                // Current box is already empty, move to previous box and clear it
-                const newDigits = [...digits];
-                newDigits[index - 1] = '';
-                setDigits(newDigits);
-                inputRefs.current[index - 1]?.focus();
-            } else {
-                const newDigits = [...digits];
-                newDigits[index] = '';
-                setDigits(newDigits);
-            }
-        } else if (e.key === 'ArrowLeft' && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-        } else if (e.key === 'ArrowRight' && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handlePaste = (e: React.ClipboardEvent) => {
-        e.preventDefault();
-        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-        if (!pasted) return;
-
-        const newDigits = [...digits];
-        for (let i = 0; i < 6; i++) {
-            newDigits[i] = pasted[i] || '';
-        }
-        setDigits(newDigits);
-
-        const lastFilledIndex = Math.min(pasted.length, 5);
-        inputRefs.current[lastFilledIndex]?.focus();
-
-        if (pasted.length === 6) {
-            submitVerification(pasted);
-        }
-    };
-
-    const submitVerification = async (codeOverride?: string) => {
-        const fullCode = codeOverride || digits.join('');
-        if (fullCode.length !== 6) {
-            setError('Please enter all 6 digits of your verification code.');
+    const handleDigitChange = (index: number, value: string) => {
+        if (value !== '' && !/^[0-9]$/.test(value)) {
+            setError('Use only the six digits from your verification email.');
             return;
         }
+        const next = [...digits];
+        next[index] = value;
+        setDigits(next);
+        setError(null);
+        if (value && index < 5) inputRefs.current[index + 1]?.focus();
+        if (value && index === 5 && next.every(Boolean)) void submitVerification(next.join(''));
+    };
 
+    const handleKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Backspace') {
+            const next = [...digits];
+            const target = !digits[index] && index > 0 ? index - 1 : index;
+            next[target] = '';
+            setDigits(next);
+            inputRefs.current[target]?.focus();
+        } else if (event.key === 'ArrowLeft' && index > 0) inputRefs.current[index - 1]?.focus();
+        else if (event.key === 'ArrowRight' && index < 5) inputRefs.current[index + 1]?.focus();
+    };
+
+    const handlePaste = (event: React.ClipboardEvent) => {
+        event.preventDefault();
+        const value = event.clipboardData.getData('text');
+        if (!/^[0-9]{1,6}$/.test(value)) {
+            setError('Paste only the six digits from your verification email.');
+            return;
+        }
+        setDigits(Array.from({ length: 6 }, (_, index) => value[index] ?? ''));
+        setError(null);
+        inputRefs.current[Math.min(value.length, 5)]?.focus();
+        if (value.length === 6) void submitVerification(value);
+    };
+
+    async function submitVerification(codeOverride?: string) {
+        const fullCode = codeOverride ?? digits.join('');
+        if (!/^[0-9]{6}$/.test(fullCode)) {
+            setError('Please enter all six digits of your verification code.');
+            return;
+        }
+        if (!isOpen) return;
+        const request = scope.current.begin();
+        if (!request) return;
         setIsVerifying(true);
         setError(null);
-
         try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            const response = await fetch('/api/otp/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-                body: JSON.stringify({
-                    email,
-                    code: fullCode,
-                    purpose,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.message || 'Invalid or expired verification code.');
-            } else {
-                onSuccess(data.token, fullCode);
-            }
-        } catch (err) {
-            setError('Network error while verifying the code. Please try again.');
+            const reply = await requestOtp('verify', { email, code: fullCode, purpose }, request.signal);
+            if (current(request)) onSuccess(reply.token as string, fullCode);
+        } catch (failure) {
+            if (current(request)) setError(failure instanceof Error ? failure.message : 'We could not verify the code. Please try again.');
         } finally {
-            setIsVerifying(false);
+            if (current(request)) setIsVerifying(false);
+            scope.current.finish(request);
         }
+    }
+
+    const handleClose = () => {
+        scope.current.cancel();
+        onClose();
     };
 
     if (!isOpen || typeof document === 'undefined') return null;
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans max-h-[92vh] overflow-y-auto">
+            <div role="dialog" aria-modal="true" aria-labelledby="otp-title" onKeyDown={event => { if (event.key === 'Escape') handleClose(); }} className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans max-h-[92vh] overflow-y-auto">
                 {/* Close Button */}
                 <button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="absolute right-5 top-5 p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                     title="Close"
                 >
@@ -230,25 +170,25 @@ export default function OtpModal({
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-sans font-bold uppercase tracking-wider block mx-auto">
                         Bagoo Identity Verification
                     </div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                    <h2 id="otp-title" className="text-xl font-black text-slate-900 tracking-tight">
                         Enter 6-Digit Code
                     </h2>
                     <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                        We sent a single-use verification code to{' '}
+                        {codeSent ? 'A single-use verification code was sent to' : isSending ? 'Sending a verification code to' : 'Verify your email address'}{' '}
                         <strong className="font-sans text-slate-900 font-semibold">{email}</strong>
                     </p>
                 </div>
 
                 {/* Status / Error Alerts */}
                 {error && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-sans text-rose-800 flex items-start gap-2.5 animate-shake">
+                    <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-sans text-rose-800 flex items-start gap-2.5 animate-shake">
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                         <span className="leading-snug">{error}</span>
                     </div>
                 )}
 
                 {successMsg && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-sans text-emerald-800 flex items-start gap-2.5">
+                    <div role="status" className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-sans text-emerald-800 flex items-start gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <span className="leading-snug">{successMsg}</span>
                     </div>
@@ -260,6 +200,9 @@ export default function OtpModal({
                         {digits.map((digit, idx) => (
                             <input
                                 key={idx}
+                                aria-label={"Verification digit " + (idx + 1)}
+                                aria-invalid={Boolean(error)}
+                                autoComplete={idx === 0 ? 'one-time-code' : 'off'}
                                 ref={(el) => (inputRefs.current[idx] = el)}
                                 type="text"
                                 inputMode="numeric"
@@ -268,7 +211,7 @@ export default function OtpModal({
                                 value={digit}
                                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                                disabled={isVerifying}
+                                disabled={isVerifying || isSending}
                                 className={`w-11 sm:w-13 h-14 sm:h-16 text-center text-xl sm:text-2xl font-black font-sans rounded-2xl border transition focus:outline-none focus:ring-2 ${
                                     digit
                                         ? 'bg-slate-50 border-[#E00D42] text-slate-900 focus:ring-[#E00D42]/20'
@@ -288,7 +231,7 @@ export default function OtpModal({
                     <button
                         type="button"
                         onClick={() => submitVerification()}
-                        disabled={isVerifying || digits.some((d) => d === '')}
+                        disabled={isVerifying || isSending || digits.some((d) => d === '')}
                         className="w-full py-3.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-2xl font-sans text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         {isVerifying ? (
@@ -310,10 +253,10 @@ export default function OtpModal({
                             <button
                                 type="button"
                                 onClick={sendOtpCode}
-                                disabled={isSending}
+                                disabled={isSending || isVerifying}
                                 className="text-xs font-sans font-bold text-slate-700 hover:text-[#E00D42] underline underline-offset-4 transition cursor-pointer"
                             >
-                                {isSending ? 'Sending new code...' : 'Resend Verification Code'}
+                                {isSending ? 'Sending code...' : codeSent ? 'Resend code' : 'Send code'}
                             </button>
                         ) : (
                             <p className="text-xs font-sans text-slate-400 flex items-center justify-center gap-1.5">

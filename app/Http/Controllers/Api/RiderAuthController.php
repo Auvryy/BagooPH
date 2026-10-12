@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\UniqueAccountEmail;
 use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
@@ -53,13 +54,15 @@ class RiderAuthController extends Controller
     {
         return response()->json(['data' => ['birth_date_limits' => app(BirthDateEligibility::class)->limits(),
             'vehicle_types' => ApplicationValidationService::VEHICLES, 'document_max_bytes' => 5 * 1024 * 1024,
-            'document_types' => ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 'email_verification_required' => true]]);
+            'document_types' => ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 'email_verification_required' => true,
+            'password_policy' => ['min_length' => 12, 'max_length' => 128]]]);
     }
 
     public function sendCode(Request $request, OtpService $otp): JsonResponse
     {
-        $data = $request->validate(['email' => 'required|string|email|max:255']);
-        if (User::whereRaw('LOWER(email) = LOWER(?)', [$data['email']])->exists()) {
+        $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
+        $data = $request->validate(['email' => ApplicationValidationService::emailRules()]);
+        if (UniqueAccountEmail::taken($data['email'])) {
             return response()->json(['message' => 'An account with this email already exists. Please sign in instead.'], 422);
         }
         $result = $otp->sendOtp($data['email'], 'registration');
@@ -71,7 +74,8 @@ class RiderAuthController extends Controller
 
     public function verifyCode(Request $request, OtpService $otp): JsonResponse
     {
-        $data = $request->validate(['email' => 'required|string|email|max:255', 'code' => 'required|string|regex:/\A[0-9]{6}\z/']);
+        $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
+        $data = $request->validate(['email' => ApplicationValidationService::emailRules(), 'code' => 'required|string|regex:/\A[0-9]{6}\z/']);
         $result = $otp->verifyOtp($data['email'], $data['code'], 'registration');
 
         return response()->json($result, $result['success'] ? 200 : 422);

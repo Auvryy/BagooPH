@@ -22,8 +22,8 @@ class RegistrationTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
         ]);
 
         $this->assertGuest();
@@ -38,8 +38,8 @@ class RegistrationTest extends TestCase
             'middle_name' => 'Santos',
             'last_name' => 'Dela Cruz',
             'email' => 'maria.delacruz@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'sex' => 'Female',
             'birthday' => '2000-05-15',
             'phone' => '+63 917 123 4567',
@@ -78,8 +78,8 @@ class RegistrationTest extends TestCase
             $response = $this->post('/register', [
                 'name' => 'Buyer Applicant',
                 'email' => $email,
-                'password' => 'password123',
-                'password_confirmation' => 'password123',
+                'password' => 'Password1234',
+                'password_confirmation' => 'Password1234',
                 'phone' => $phone,
                 'birthday' => '1998-01-01',
                 'sex' => 'Male',

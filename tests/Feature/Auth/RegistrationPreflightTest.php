@@ -1,0 +1,179 @@
+<?php
+
+namespace Tests\Feature\Auth;
+
+use App\Mail\OtpVerificationMail;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\InteractsWithKycReviews;
+use Tests\TestCase;
+
+class RegistrationPreflightTest extends TestCase
+{
+    use InteractsWithKycReviews, RefreshDatabase;
+
+    private function application(string $role): array
+    {
+        return [
+            'role' => $role, 'name' => 'José Dela Cruz', 'first_name' => 'José', 'last_name' => 'Dela Cruz',
+            'birthday' => '2000-01-01', 'email' => 'applicant@bagoo.test', 'phone' => '09171234567',
+            'address' => '12 Bagoo Street', 'city' => 'Makati', 'province' => 'Metro Manila', 'sex' => 'Male',
+            'password' => 'A valid passphrase', 'password_confirmation' => 'A valid passphrase',
+            'shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id,
+            'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'LICENSE-123',
+            'company_name' => 'Bagoo Delivery', 'company_code' => 'BAGOO-TEST', 'fleet_size' => 2,
+            'vehicle_types' => ['motorcycle'], 'franchise_number' => null,
+            'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
+            'business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'application/pdf'),
+            'driver_license' => UploadedFile::fake()->create('license.pdf', 10, 'application/pdf'),
+            'or_cr_document' => UploadedFile::fake()->create('registration.pdf', 10, 'application/pdf'),
+        ];
+    }
+
+    public static function roles(): array
+    {
+        return [['buyer'], ['seller'], ['courier'], ['logistics']];
+    }
+
+    #[DataProvider('roles')]
+    public function test_valid_preflight_is_repeatable_without_accounts_files_or_verification_mail(string $role): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        $data = $this->application($role);
+        $this->postJson('/register/validate', $data)->assertExactJson(['valid' => true]);
+        $this->postJson('/register/validate', $data)->assertExactJson(['valid' => true]);
+        foreach (['users', 'shops', 'courier_profiles', 'logistics_companies', 'email_otps'] as $table) {
+            $this->assertDatabaseCount($table, 0);
+        }
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        Mail::assertNothingSent();
+    }
+
+    #[DataProvider('roles')]
+    public function test_name_and_email_errors_are_available_at_the_first_step(string $role): void
+    {
+        $data = array_replace($this->application($role), ['step' => 1, 'name' => 'Applicant123', 'email' => 'person @bagoo.test']);
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors(['name', 'email']);
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('email_otps', 0);
+    }
+
+    public function test_future_steps_do_not_block_a_valid_seller_identity_step(): void
+    {
+        $data = array_replace($this->application('seller'), ['step' => 1, 'phone' => '', 'password' => '', 'id_document' => null, 'business_permit' => null]);
+        $this->postJson('/register/validate', $data)->assertExactJson(['valid' => true]);
+        $data['step'] = 2;
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors(['phone']);
+        unset($data['step']);
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors(['password', 'id_document', 'business_permit']);
+    }
+
+    #[DataProvider('roles')]
+    public function test_preflight_is_available_on_the_role_host_and_local_path_alias(string $role): void
+    {
+        $prefix = match ($role) {
+            'seller' => 'seller.', 'courier' => 'courier.', 'logistics' => 'hub.', default => ''
+        };
+        $data = array_replace($this->application($role), ['step' => 1]);
+        $this->postJson('http://'.$prefix.'localhost/register/validate', $data)->assertExactJson(['valid' => true]);
+        $this->postJson('http://localhost/register/validate', $data)->assertExactJson(['valid' => true]);
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_early_duplicate_email_check_includes_verified_contact_addresses_and_case_equivalent_identity(): void
+    {
+        $owner = User::factory()->create(['email' => 'Owner@bagoo.test']);
+        $owner->accountEmails()->create(['email' => 'contact@bagoo.test', 'verified_at' => now()]);
+        foreach (['OWNER@BAGOO.TEST', 'CONTACT@BAGOO.TEST'] as $email) {
+            $this->postJson('/register/validate', array_replace($this->application('buyer'), ['step' => 1, 'email' => $email]))
+                ->assertJsonValidationErrors('email');
+        }
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_complete_form_rechecks_hidden_fields_and_rejects_a_changed_category_vehicle_or_fleet(): void
+    {
+        $this->postJson('/register/validate', array_replace($this->application('seller'), ['root_category_id' => 999999]))
+            ->assertJsonValidationErrors('root_category_id');
+        $this->postJson('/register/validate', array_replace($this->application('courier'), ['vehicle_type' => 'Aircraft']))
+            ->assertJsonValidationErrors('vehicle_type');
+        $this->postJson('/register/validate', array_replace($this->application('logistics'), ['vehicle_types' => ['unknown'], 'fleet_size' => 10001]))
+            ->assertJsonValidationErrors(['vehicle_types.0', 'fleet_size']);
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_evidence_content_and_size_are_checked_before_verification_without_storing_files(): void
+    {
+        Storage::fake('local');
+        $this->postJson('/register/validate', array_replace($this->application('seller'), ['business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'text/plain')]))
+            ->assertJsonValidationErrors('business_permit');
+        $this->postJson('/register/validate', array_replace($this->application('seller'), ['id_document' => UploadedFile::fake()->create('id.pdf', 5121, 'application/pdf')]))
+            ->assertJsonValidationErrors('id_document');
+        $this->postJson('/register/validate', array_replace($this->application('seller'), ['id_document' => UploadedFile::fake()->create('id.pdf', 5120, 'application/pdf')]))
+            ->assertExactJson(['valid' => true]);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->assertDatabaseCount('email_otps', 0);
+    }
+
+    public function test_registration_step_cannot_claim_a_managed_resource_or_an_admin_role(): void
+    {
+        $this->postJson('/register/validate', array_replace($this->application('seller'), ['step' => 1, 'shop_id' => 1]))
+            ->assertJsonValidationErrors('shop_id');
+        $this->postJson('/register/validate', ['role' => 'admin'])->assertJsonValidationErrors('role');
+        $this->postJson('/register/validate', ['role' => ['buyer']])->assertJsonValidationErrors('role');
+        $this->postJson('/register/validate', ['role' => 'buyer', 'step' => 3])->assertJsonValidationErrors('step');
+    }
+
+    public function test_business_landlines_are_valid_but_personal_mobile_fields_reject_them(): void
+    {
+        foreach (['seller', 'logistics'] as $role) {
+            $this->postJson('/register/validate', array_replace($this->application($role), ['phone' => '(02) 8123-4567']))
+                ->assertExactJson(['valid' => true]);
+        }
+        foreach (['buyer', 'courier'] as $role) {
+            $this->postJson('/register/validate', array_replace($this->application($role), ['phone' => '(02) 8123-4567']))
+                ->assertJsonValidationErrors('phone');
+        }
+    }
+
+    public static function malformedEmails(): array
+    {
+        return [['@example.com'], ['name@example'], ['name@bagoo'], ['name @bagoo.test'], ['name@bagoo..test'],
+            ['name@@bagoo.test'], ['name@-bagoo.test'], ['name@bagoo.test extra'], ['name(comment)@bagoo.test'], [['name@bagoo.test']]];
+    }
+
+    #[DataProvider('malformedEmails')]
+    public function test_malformed_addresses_are_rejected_at_preflight_otp_and_account_creation(mixed $email): void
+    {
+        Mail::fake();
+        $data = array_replace($this->application('buyer'), ['email' => $email]);
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors('email');
+        $this->postJson('/api/otp/send', ['email' => $email])->assertJsonValidationErrors('email');
+        $this->postJson('/api/v1/rider/registration/email/send', ['email' => $email])->assertJsonValidationErrors('email');
+        $this->post('/register', $data)->assertSessionHasErrors('email');
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('email_otps', 0);
+        Mail::assertNothingSent();
+    }
+
+    public static function legitimateEmails(): array
+    {
+        return [['buyer@bagoo.test'], ['buyer+orders@Bagoo.test'], ['buyer@department.bagoo.test'], ['buyer@delivery-team.test']];
+    }
+
+    #[DataProvider('legitimateEmails')]
+    public function test_qualified_custom_and_demo_addresses_remain_eligible_for_verification(string $email): void
+    {
+        Mail::fake();
+        $this->postJson('/register/validate', array_replace($this->application('buyer'), ['email' => $email]))
+            ->assertExactJson(['valid' => true]);
+        $this->postJson('/api/otp/send', ['email' => $email])->assertOk()->assertJsonPath('success', true);
+        Mail::assertSent(OtpVerificationMail::class, fn ($mail) => $mail->hasTo(strtolower($email)));
+        $this->assertDatabaseCount('users', 0);
+    }
+}

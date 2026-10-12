@@ -20,6 +20,11 @@ class ApplicationValidationService
 
     public const FLEET_TYPES = ['motorcycle', 'l300_van', 'wing_truck'];
 
+    public static function emailRules(): array
+    {
+        return ['bail', 'required', 'string', 'max:255', 'email:rfc,strict', 'not_regex:/[\p{C}\s]/u'];
+    }
+
     public function normalize(array $data, string $role): array
     {
         foreach ($data as $field => $value) {
@@ -52,7 +57,7 @@ class ApplicationValidationService
             'first_name' => $text('name', 1, 100), 'last_name' => $text('name', 1, 100), 'middle_name' => $text('name', 1, 100),
             'sex' => ['nullable', Rule::in(['Female', 'Male', 'Other'])],
             'birthday' => [$worker ? 'required' : 'nullable', new BirthDate($worker)],
-            'email' => ['bail', 'required', 'string', 'max:255', 'email', 'not_regex:/[\p{C}\s]/u', new UniqueAccountEmail($user?->id)],
+            'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id)],
             'phone' => ['bail', $worker ? 'required' : 'nullable', 'string', new PhilippineContact(in_array($role, ['seller', 'logistics'], true))],
             'address' => $text('address', 5, 500, $worker),
             'city' => $text('location', 2, 255, $worker),
@@ -66,7 +71,7 @@ class ApplicationValidationService
             $rules += ['vehicle_type' => ['required', Rule::in(self::VEHICLES)], 'plate_number' => $text('code', 2, 50, true), 'license_number' => $text('code', 2, 50)];
         } elseif ($role === 'logistics') {
             $rules += ['company_name' => $text('text', 2, 255, true), 'company_code' => [...$text('code', 2, 20, $user?->logisticsCompany !== null), Rule::unique('logistics_companies', 'code')->ignore($user?->logisticsCompany?->id)],
-                'company_email' => ['bail', 'required', 'string', 'max:255', 'email', 'not_regex:/[\p{C}\s]/u'],
+                'company_email' => self::emailRules(),
                 'company_phone' => ['bail', 'required', 'string', new PhilippineContact(true)], 'company_address' => $text('address', 5, 500, true),
                 'operating_province' => $text('location', 2, 255),
                 'franchise_number' => [...$text('code', 2, 100), Rule::notIn(['PENDING-LTFRB'])], 'fleet_size' => ['nullable', 'integer', 'min:1', 'max:10000'],

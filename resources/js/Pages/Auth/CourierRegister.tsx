@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useRef, useState } from 'react';
+import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
@@ -23,9 +23,10 @@ import {
     Building2
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import PhoneInput, { extractNationalDigits } from '@/Components/PhoneInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function CourierRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -90,6 +91,16 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         otp_token: '',
     });
 
+    const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
+        setStepErrors(fieldErrors);
+        if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
+    });
+
+    useEffect(() => {
+        if (data.otp_token) setData('otp_token', '');
+        transform(values => values);
+    }, [data.email]);
+
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -153,41 +164,19 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         if (orCrInputRef.current) orCrInputRef.current.value = '';
     };
 
-    const validateStep1 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.name.trim()) newErrors.name = 'Full legal name is required';
-        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
-        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
-        if (!data.email.trim()) {
-            newErrors.email = 'Email address is required';
-        } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-            newErrors.email = 'Valid email is required';
+    const validateForm = async (step?: number) => {
+        if ((step === 2 || step === undefined) && !data.license_number.trim()) {
+            applyErrors({ license_number: 'Driver licence number is required.' });
+            return false;
         }
-        const phoneDigits = extractNationalDigits(data.phone);
-        if (!data.phone.trim()) {
-            newErrors.phone = 'Contact number is required';
-        } else if (phoneDigits.length < 10) {
-            newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 917 123 4567)';
-        }
-        if (!data.city.trim()) newErrors.city = 'Operating city is required';
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return validate(step);
     };
 
-    const validateStep2 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.vehicle_type.trim()) newErrors.vehicle_type = 'Vehicle type is required';
-        if (!data.plate_number.trim()) newErrors.plate_number = 'Plate / MV file number is required';
-        if (!data.license_number.trim()) newErrors.license_number = 'Driver license number is required';
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleNext = () => {
-        if (currentStep === 1) {
-            if (validateStep1()) setCurrentStep(2);
-        } else if (currentStep === 2) {
-            if (validateStep2()) setCurrentStep(3);
+    const handleNext = async () => {
+        if (processing || validating) return;
+        if (await validateForm(currentStep)) {
+            setStepErrors({});
+            setCurrentStep(step => step + 1);
         }
     };
 
@@ -196,34 +185,36 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         setCurrentStep(prev => Math.max(1, prev - 1));
     };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const handleRegistrationErrors = (fieldErrors: Record<string, string>) => {
+        applyErrors(fieldErrors);
+        if (fieldErrors.otp_token) setData('otp_token', '');
+    };
 
-        // Prompt courier with 6-digit email OTP modal before account creation
+    const createAccount = (token: string) => {
+        transform(values => ({ ...values, otp_token: token }));
+        post(route('register'), {
+            forceFormData: true,
+            onError: handleRegistrationErrors,
+            onSuccess: () => reset('password', 'password_confirmation'),
+            onFinish: () => transform(values => values),
+        });
+    };
+
+    const submit: FormEventHandler = async (event) => {
+        event.preventDefault();
+        if (currentStep < 3) { await handleNext(); return; }
+        if (processing || validating || !await validateForm()) return;
         if (!data.otp_token) {
             setShowOtpModal(true);
             return;
         }
-
-        post(route('register'), {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(1); else if (["vehicle_type", "plate_number", "license_number"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(data.otp_token);
     };
 
     const handleOtpSuccess = (token: string) => {
         setShowOtpModal(false);
         setData('otp_token', token);
-        transform((prevData) => ({
-            ...prevData,
-            otp_token: token,
-        }));
-        post(route('register'), {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(1); else if (["vehicle_type", "plate_number", "license_number"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(token);
     };
 
     return (
@@ -306,7 +297,13 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+                {Object.keys(stepErrors).length > 0 && (
+                    <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
+                        <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
+                    </div>
+                )}
+                <fieldset disabled={processing || validating || showOtpModal} className="contents">
                 {/* STEP 1: RIDER INFO */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
@@ -405,11 +402,11 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                             streetLabel="Garage / Terminal Street Address"
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
-                                province: errors.province,
-                                municipality: errors.municipality,
-                                barangay: errors.barangay,
+                                province: stepErrors.province || errors.province,
+                                municipality: stepErrors.municipality || errors.municipality,
+                                barangay: stepErrors.barangay || errors.barangay,
                                 city: stepErrors.city || errors.city,
-                                address: errors.address,
+                                address: stepErrors.address || errors.address,
                             }}
                         />
 
@@ -450,6 +447,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                     </button>
                                 ))}
                             </div>
+                            <InputError message={stepErrors.vehicle_type || errors.vehicle_type} className="mt-1" />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
@@ -683,7 +681,8 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <InputError message={errors.password} className="mt-1" />
+                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
                             <div>
@@ -712,7 +711,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <InputError message={errors.password_confirmation} className="mt-1" />
+                                <InputError message={stepErrors.password_confirmation || errors.password_confirmation} className="mt-1" />
                             </div>
                         </div>
 
@@ -727,7 +726,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                             </button>
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || validating}
                                 className="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{processing ? 'Submitting...' : 'Complete Application'}</span>
@@ -749,6 +748,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                         </Link>
                     </p>
                 </div>
+            </fieldset>
             </form>
 
             <OtpModal

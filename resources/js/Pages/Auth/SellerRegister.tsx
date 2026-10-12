@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useRef, useState } from 'react';
+import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
@@ -24,6 +24,7 @@ import { getDomainUrl } from '@/utils/domain';
 import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 
@@ -80,6 +81,16 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         otp_token: '',
     });
 
+    const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
+        setStepErrors(fieldErrors);
+        if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
+    });
+
+    useEffect(() => {
+        if (data.otp_token) setData('otp_token', '');
+        transform(values => values);
+    }, [data.email]);
+
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -122,38 +133,15 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         if (permitInputRef.current) permitInputRef.current.value = '';
     };
 
-    const validateStep1 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.shop_name.trim()) newErrors.shop_name = 'Store name is required';
-        if (!masterCategories.some(category => String(category.id) === data.root_category_id)) newErrors.root_category_id = 'Choose an available main category for your shop';
-        if (!data.name.trim()) newErrors.name = 'Merchant contact name is required';
-        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
-        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
-        if (!data.email.trim()) {
-            newErrors.email = 'Email address is required';
-        } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-            newErrors.email = 'Valid email address is required';
-        }
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+    const validateForm = async (step?: number) => {
+        return validate(step);
     };
 
-    const validateStep2 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.phone.trim()) {
-            newErrors.phone = 'A shop contact number is required';
-        }
-        if (!data.city.trim()) newErrors.city = 'City or municipality is required';
-        if (!data.address.trim()) newErrors.address = 'Warehouse or pickup address is required';
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleNext = () => {
-        if (currentStep === 1) {
-            if (validateStep1()) setCurrentStep(2);
-        } else if (currentStep === 2) {
-            if (validateStep2()) setCurrentStep(3);
+    const handleNext = async () => {
+        if (processing || validating) return;
+        if (await validateForm(currentStep)) {
+            setStepErrors({});
+            setCurrentStep(step => step + 1);
         }
     };
 
@@ -162,34 +150,36 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         setCurrentStep(prev => Math.max(1, prev - 1));
     };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const handleRegistrationErrors = (fieldErrors: Record<string, string>) => {
+        applyErrors(fieldErrors);
+        if (fieldErrors.otp_token) setData('otp_token', '');
+    };
 
-        // Prompt seller with 6-digit email OTP modal before account creation
+    const createAccount = (token: string) => {
+        transform(values => ({ ...values, otp_token: token }));
+        post(route('register'), {
+            forceFormData: true,
+            onError: handleRegistrationErrors,
+            onSuccess: () => reset('password', 'password_confirmation'),
+            onFinish: () => transform(values => values),
+        });
+    };
+
+    const submit: FormEventHandler = async (event) => {
+        event.preventDefault();
+        if (currentStep < 3) { await handleNext(); return; }
+        if (processing || validating || !await validateForm()) return;
         if (!data.otp_token) {
             setShowOtpModal(true);
             return;
         }
-
-        post(route('register'), {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "shop_name", "email", "birthday", "root_category_id"].some(key => keys.includes(key))) setCurrentStep(1); else if (["phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(data.otp_token);
     };
 
     const handleOtpSuccess = (token: string) => {
         setShowOtpModal(false);
         setData('otp_token', token);
-        transform((prevData) => ({
-            ...prevData,
-            otp_token: token,
-        }));
-        post(route('register'), {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "shop_name", "email", "birthday", "root_category_id"].some(key => keys.includes(key))) setCurrentStep(1); else if (["phone", "address", "city", "province", "municipality", "barangay", "postal_code"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(token);
     };
 
     return (
@@ -272,7 +262,13 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+                {Object.keys(stepErrors).length > 0 && (
+                    <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
+                        <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
+                    </div>
+                )}
+                <fieldset disabled={processing || validating || showOtpModal} className="contents">
                 {/* STEP 1: STORE BASICS */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
@@ -411,9 +407,9 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                             streetLabel="Warehouse / Store Street Address"
                             streetPlaceholder="Unit No., Building, Street Name"
                             errors={{
-                                province: errors.province,
-                                municipality: errors.municipality,
-                                barangay: errors.barangay,
+                                province: stepErrors.province || errors.province,
+                                municipality: stepErrors.municipality || errors.municipality,
+                                barangay: stepErrors.barangay || errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}
@@ -556,7 +552,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <InputError message={errors.password} className="mt-1" />
+                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
                             <div>
@@ -585,7 +582,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <InputError message={errors.password_confirmation} className="mt-1" />
+                                <InputError message={stepErrors.password_confirmation || errors.password_confirmation} className="mt-1" />
                             </div>
                         </div>
 
@@ -600,7 +597,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                             </button>
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || validating}
                                 className="w-2/3 py-3 bg-[#E00D42] hover:bg-[#C20836] active:bg-[#A8002A] text-white font-bold text-sm rounded-lg shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{processing ? 'Registering...' : 'Complete Registration'}</span>
@@ -622,6 +619,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                         </Link>
                     </p>
                 </div>
+            </fieldset>
             </form>
 
             <OtpModal
