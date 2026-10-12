@@ -3866,3 +3866,35 @@ No migration, database reset, policy-version change or Flutter source change is
 needed for this presentation follow-up.
 
 Implementation commit: `d4946a3 fix: group registration details with names and addresses`.
+
+## October 13, 2026: accented-name acceptance and email ownership review
+
+Scope: `test/registration-name-acceptance`. Existing frontend and backend name
+rules already allow Latin letters including ñ, accents, ordinary hyphens and
+supported apostrophes. The signup persistence regression now explicitly combines
+these characters in first/last names across buyer, seller, courier and logistics;
+frontend checks also cover decomposed ñ and preserve the displayed surname.
+Required-name length, numeric/hidden-character rejection and combined-name limits
+remain enforced. No application validation rule needed changing.
+
+Existing email ownership was reviewed and exercised without changing email code.
+A registration email is reserved globally across roles, including case/outer-space
+variants and existing verified additional contact addresses. The database's unique
+indexes and normalized ownership ledger also reject competing ownership; additional
+verified contact addresses retain the existing owner/password/OTP rules. This does
+not create multi-role accounts or replace original sign-in identities.
+
+Verification: **75 isolated SQLite `:memory:` tests / 1,016 assertions passed**
+for signup/preflight and account-email ownership. **36 authentication frontend
+checks, the changed PHP test's style check and `git diff --check` passed.**
+Only tests and documentation changed, so no new production build was required.
+No interactive browser, real email delivery or Azure verification was performed.
+Name acceptance assessment stays **9/10 to 9/10 locally**; this adds explicit
+regression evidence rather than changing the accepted-character policy.
+
+A duplicate-email lookup after typing pauses or on blur remains a proposed UI
+feature. Format feedback already exists; successful mailbox verification establishes
+control of an address. No live availability lookup or mailbox-checking service was
+implemented in this follow-up.
+
+Regression commit: `06c73be test: verify accented and hyphenated signup names`.
