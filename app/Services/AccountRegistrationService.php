@@ -116,15 +116,15 @@ class AccountRegistrationService
 
     private function stepFields(string $role): array
     {
-        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code', 'sex'];
+        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
         $password = ['password', 'password_confirmation'];
-        $name = ['name', 'first_name', 'middle_name', 'middle_initial', 'last_name'];
+        $name = ['name', 'first_name', 'middle_name', 'middle_initial', 'last_name', 'sex'];
         $policies = ['policy_accepted', 'terms_version', 'privacy_version'];
 
         return match ($role) {
             'buyer' => [
                 [...$name, 'email', ...$password],
-                ['sex', 'birthday', 'phone', ...$location, 'id_document', ...$policies],
+                ['birthday', 'phone', ...$location, 'id_document', ...$policies],
             ],
             'seller' => [
                 [...$name, 'birthday', 'shop_name', 'root_category_id', 'email'],

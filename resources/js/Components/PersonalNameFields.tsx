@@ -31,7 +31,7 @@ export default function PersonalNameFields({ values, onChange, errors = {}, acce
                     </label>
                     <input id={field} name={field} type="text" value={values[field]} autoComplete={autoComplete} required={required} minLength={required ? 2 : 1} maxLength={maximum}
                         autoFocus={autoFocus && field === 'first_name'} aria-invalid={Boolean(error || combinedError)}
-                        aria-describedby={'personal-name-help' + (error ? ' ' + field + '-error' : '') + (combinedError ? ' personal-name-error' : '')}
+                        aria-describedby={[error && field + '-error', combinedError && 'personal-name-error'].filter(Boolean).join(' ') || undefined}
                         onChange={event => {
                             setTouched(previous => ({ ...previous, [field]: true }));
                             if (event.target.value.length > maximum) {
@@ -60,6 +60,5 @@ export default function PersonalNameFields({ values, onChange, errors = {}, acce
             })}
         </div>
         <InputError id="personal-name-error" role="status" aria-live="polite" message={combinedError} className="text-xs" />
-        <p id="personal-name-help" className="text-xs text-slate-500">First and last names: 2–50 characters each. Middle initial: optional, one letter with an optional period (M or M.). Accents, apostrophes, hyphens and periods are allowed in names; numbers are not. Total limit: 100 characters, including spaces.</p>
     </div>;
 }

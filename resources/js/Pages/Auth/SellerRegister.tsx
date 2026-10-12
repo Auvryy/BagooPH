@@ -1,4 +1,4 @@
-import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
 import { documentError, rejectOverlongRegistrationPaste } from '@/utils/registrationFields';
@@ -352,6 +352,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                             clearErrors(field, 'name' as keyof typeof data);
                             setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
                         }} />
+                        <RegistrationSexField value={data.sex} onChange={value => setData('sex', value)} error={stepErrors.sex || errors.sex} />
 
                         <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
@@ -415,6 +416,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                         </div>
 
                         <PhilippineAddressSelector
+                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
                                 province: data.province,
                                 city: data.city,
@@ -446,9 +448,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 address: stepErrors.address || errors.address,
                             }}
                         />
-                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
-                            onChange={(field, value) => setData(field, value)}
-                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} />
+
 
                         <p className="text-xs text-slate-500 mt-1">
                             Bagoo Express dispatch riders will collect packaged parcels directly from this pickup location.
