@@ -3517,3 +3517,50 @@ Implementation commits:
 The final acceptance/documentation commit identifies its own scope in Git; its
 short hash is also included in the local branch handoff. The prepared PR title
 and description are a local draft, not a saved GitHub pull request.
+
+### October 12, 2026: essential form review and authentication planning
+
+[Essential form validation and verification](FORM_VALIDATION_REVIEW.md) now
+defines the crucial review method for field purpose, presence, format, limits,
+normalization, uniqueness, ownership, saved values and recovery. Repository
+instructions and the documentation map route affected form work to this guide.
+The separate [authentication plan](auth-plan/README.md) proposes bounded access
+and verification recovery, shared field validation, terms acknowledgement and
+combined acceptance deliveries. Its dated windows are planning assumptions.
+
+The source review identifies concrete follow-up work:
+
+- Registration and password reset use Laravel's default password rule, which
+  currently accepts eight characters. Registration helpers also describe that
+  minimum. The normative contract specifies 12–128 characters and permits
+  passphrases; accepting the shorter value is a contract mismatch. The contract
+  does not require arbitrary character-type combinations.
+- [PhoneInput](../resources/js/Components/PhoneInput.tsx) removes non-digits and
+  limits the extracted value to ten national digits before validation. An invalid
+  or overlong paste can lose its original meaning. Raw-input rejection and
+  consistent role-specific contact feedback need follow-up.
+- Registration steps check some names for presence and use a partial email
+  pattern, while the server applies meaningful text, syntax, current ownership
+  and case-insensitive email checks. Bring early feedback into agreement with
+  those server checks before avoidable OTP requests.
+- Public registration currently has no explicit terms/privacy acknowledgement.
+  Adding it needs readable content, server enforcement, recorded policy version,
+  retry semantics and an existing-account compatibility policy, including
+  first-time OAuth account creation. No historical acceptance may be invented.
+
+Policy disagreements are not automatic defects. Full names and name components
+have different current limits; shared contacts and business display names are
+not globally unique sign-in identities. Buyer review and courier application/
+company placement retain their existing documented authorities. New legal
+identifier formats or onboarding rules need their own reviewed scope.
+
+Fresh isolated SQLite `:memory:` verification passed **347 tests / 3,201
+assertions** across application validation, authentication, registration, shared
+portal/privileged access, OTP, worker birth dates and web session transitions.
+The existing protected-hub cross-role guards are covered. A reachable public
+registration screen does not establish a protected-data leak; an alleged live
+access failure still needs its exact endpoint and account state checked.
+Real mail delivery, Azure behavior and interactive browser/device behavior were
+not verified. No application behavior, approval policy or development/production
+database was changed; the proposed fixes remain unimplemented and readiness
+ratings are unchanged.

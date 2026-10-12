@@ -70,6 +70,7 @@ Read only the documentation relevant to the task:
 - Documentation authority and routing overview: `docs/README.md`
 - System lifecycle or cross-role logic: `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`
 - Input validation, authorization, idempotency, concurrency, failure recovery, and adversarial tests: `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`
+- Forms, authentication, registration, and saved-value checks: `docs/FORM_VALIDATION_REVIEW.md`. Treat its valid, invalid, boundary, permission, and recovery checks as crucial acceptance work for affected forms.
 - Current implementation gaps, phase order, and deferred scope: `docs/CORE_FLOW_ROADMAP.md`
 - Buyer/shopping: `docs/BUYER_FLOWCHART.md`
 - Seller/shop: `docs/SELLER_FLOW.md`
