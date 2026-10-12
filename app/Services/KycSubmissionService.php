@@ -19,7 +19,7 @@ class KycSubmissionService
     public function submit(User $subject, array $validated, bool $buyerUpload = false): void
     {
         $applications = app(ApplicationValidationService::class);
-        $validated = $applications->normalize($validated, $subject->role);
+        $validated = $applications->correctionValues($validated, $subject);
         $paths = [];
         try {
             DB::transaction(function () use ($subject, $validated, $buyerUpload, &$paths) {
@@ -30,6 +30,7 @@ class KycSubmissionService
                 $birthdayProvided = array_key_exists('birthday', $validated);
                 $categoryProvided = array_key_exists('root_category_id', $validated);
                 $applications = app(ApplicationValidationService::class);
+                $validated = $applications->correctionValues($validated, $user);
                 $provided = array_intersect_key($validated, array_flip($applications->fields($user->role)));
                 if (isset($provided['email'])) {
                     if (strcasecmp($provided['email'], $user->email) !== 0) {
@@ -82,6 +83,13 @@ class KycSubmissionService
                     throw ValidationException::withMessages(['documents' => 'The courier application is missing. Contact support before resubmitting.']);
                 }
                 Validator::make($applications->normalize(array_replace($current, $provided), $user->role), $applications->rules($user->role, $user))->validate();
+                $merged = array_replace($current, $provided);
+                $newRules = $applications->submissionFieldRules($user->role, $merged['vehicle_type'] ?? null, $user);
+                $changedFields = $changes;
+                if (array_key_exists('vehicle_type', $changes)) {
+                    $changedFields['plate_number'] = $merged['plate_number'];
+                }
+                Validator::make($merged, array_intersect_key($newRules, $changedFields), $applications->submissionMessages())->validate();
                 $paths = $this->documents->storeUploads($uploads);
                 if ($categoryChanged) {
                     $user->shop->update(['root_category_id' => (int) $validated['root_category_id']]);

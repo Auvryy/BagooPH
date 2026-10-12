@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Mail\OtpVerificationMail;
+use App\Models\AccountPolicyAcceptance;
 use App\Models\EmailOtp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,11 +14,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class RiderApiAuthTest extends TestCase
 {
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     private function rider(array $values = []): User
     {
@@ -168,9 +171,9 @@ class RiderApiAuthTest extends TestCase
 
     private function application(string $email, string $token): array
     {
-        return ['name' => 'Test Rider', 'birthday' => '2000-01-01', 'email' => $email, 'phone' => '09173334444', 'address' => 'Sample Street', 'city' => 'Pasig', 'barangay' => 'San Antonio',
+        return $this->registrationPolicies() + ['name' => 'Test Rider', 'birthday' => '2000-01-01', 'email' => $email, 'phone' => '09173334444', 'address' => 'Sample Street', 'city' => 'Pasig', 'barangay' => 'San Antonio',
             'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-22-123456',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234', 'device_name' => 'Test rider', 'otp_token' => $token,
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!', 'device_name' => 'Test rider', 'otp_token' => $token,
             'id_document' => UploadedFile::fake()->create('identity.pdf', 10, 'application/pdf'),
             'driver_license' => UploadedFile::fake()->create('license.pdf', 10, 'application/pdf'),
             'or_cr_document' => UploadedFile::fake()->create('vehicle.pdf', 10, 'application/pdf')];
@@ -187,7 +190,7 @@ class RiderApiAuthTest extends TestCase
         $user = User::where('email', $email)->firstOrFail();
         $this->assertNotNull($user->courierProfile);
         $this->assertSame('+639173334444', $user->phone);
-        $this->assertTrue(Hash::check('Password1234', $user->password));
+        $this->assertTrue(Hash::check('Password1234!', $user->password));
         Storage::disk('local')->assertExists($user->getRawOriginal('id_document_path'));
         $this->assertCount(0, Storage::disk('public')->allFiles());
         $this->withToken($response->json('data.token'))->getJson('/api/v1/rider/me')->assertOk()->assertJsonPath('data.access_state', 'holding');
@@ -286,5 +289,35 @@ class RiderApiAuthTest extends TestCase
         $this->assertCount(0, Storage::disk('local')->allFiles());
         $this->postJson('/api/v1/rider/applications', $this->application($email, $token))->assertCreated();
         $this->assertNull(EmailOtp::where('email', $email)->sole()->token);
+    }
+
+    public function test_native_registration_requires_current_policies_without_consuming_verification_on_rejection(): void
+    {
+        Storage::fake('local');
+        $email = 'policy.rider@bagoo.test';
+        $token = $this->verification($email);
+        $data = $this->application($email, $token);
+        foreach (['policy_accepted', 'terms_version', 'privacy_version'] as $field) {
+            $invalid = $data;
+            unset($invalid[$field]);
+            $this->postJson('/api/v1/rider/applications', $invalid)->assertJsonValidationErrors($field);
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('account_policy_acceptances', 0);
+        $this->assertNotNull(EmailOtp::where('email', $email)->sole()->token);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->postJson('/api/v1/rider/applications', $data + ['sex' => 'Female', 'postal_code' => '0123'])->assertCreated();
+        $user = User::where('email', $email)->sole();
+        $this->assertSame('Female', $user->sex);
+        $this->assertSame('0123', $user->postal_code);
+        $acceptance = AccountPolicyAcceptance::sole();
+        $this->assertSame($user->id, $acceptance->user_id);
+        $this->assertSame('native', $acceptance->source);
+        $this->assertNull(EmailOtp::where('email', $email)->sole()->token);
+        $this->getJson('/api/v1/rider/registration/options')->assertOk()
+            ->assertJsonPath('data.registration_policies.required', true)
+            ->assertJsonPath('data.password_policy.uppercase', true)
+            ->assertJsonPath('data.sex_required', false)
+            ->assertJsonPath('data.postal_code_length', 4);
     }
 }

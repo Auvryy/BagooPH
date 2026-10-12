@@ -4,11 +4,13 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     public function test_registration_screen_can_be_rendered(): void
     {
@@ -19,11 +21,11 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
         ]);
 
         $this->assertGuest();
@@ -33,13 +35,13 @@ class RegistrationTest extends TestCase
 
     public function test_buyer_registration_with_demographic_fields(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'first_name' => 'Maria',
             'middle_name' => 'Santos',
             'last_name' => 'Dela Cruz',
             'email' => 'maria.delacruz@example.com',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'sex' => 'Female',
             'birthday' => '2000-05-15',
             'phone' => '+63 917 123 4567',
@@ -75,11 +77,11 @@ class RegistrationTest extends TestCase
 
         foreach ($phoneFormats as $idx => $phone) {
             $email = "buyer.phone.{$idx}@example.com";
-            $response = $this->post('/register', [
+            $response = $this->post('/register', [...$this->registrationPolicies(),
                 'name' => 'Buyer Applicant',
                 'email' => $email,
-                'password' => 'Password1234',
-                'password_confirmation' => 'Password1234',
+                'password' => 'Password1234!',
+                'password_confirmation' => 'Password1234!',
                 'phone' => $phone,
                 'birthday' => '1998-01-01',
                 'sex' => 'Male',

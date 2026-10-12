@@ -111,6 +111,7 @@ class BuyerAccessAlignmentTest extends TestCase
     {
         $buyer = User::factory()->create(['status' => $status, 'kyc_status' => $kyc, 'google_id' => 'buyer-access-test']);
         $remote = Mockery::mock(SocialiteUser::class);
+        $remote->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $remote->shouldReceive('getId')->andReturn($buyer->google_id);
         $remote->shouldReceive('getEmail')->andReturn($buyer->email);
         $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');

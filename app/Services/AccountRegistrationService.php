@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Rules\MiddleInitial;
+use App\Rules\RegistrationDocument;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -24,8 +25,8 @@ class AccountRegistrationService
             'step' => ['nullable', 'integer', 'between:1,3'],
         ]);
         $role = $selection['role'];
-        $separatedName = $this->prepare($request, $role);
-        $rules = $this->rules($role, $separatedName);
+        $separatedName = $this->prepare($request, $role, $selection['step'] ?? null);
+        $rules = $this->rules($role, $separatedName, $request->input('vehicle_type'));
         if ($step = $selection['step'] ?? null) {
             $fields = $this->stepFields($role)[$step - 1] ?? null;
             if ($fields === null) {
@@ -33,11 +34,16 @@ class AccountRegistrationService
             }
             $rules = array_filter($rules, fn ($field) => in_array(explode('.', $field)[0], [...$fields, ...self::MANAGED_FIELDS], true), ARRAY_FILTER_USE_KEY);
         }
-        $request->validate($rules);
+        $request->validate($rules, $this->messages());
     }
 
-    private function prepare(Request $request, string $role): bool
+    private function prepare(Request $request, string $role, ?int $step = null): bool
     {
+        $phones = ['phone', 'shop_phone', 'company_phone'];
+        if ($step !== null) {
+            $phones = array_intersect($phones, $this->stepFields($role)[(int) $step - 1] ?? []);
+        }
+        $request->validate(array_fill_keys($phones, ['bail', 'nullable', 'string', 'max:24']));
         $hasInitial = $request->exists('middle_initial');
         $separatedName = $request->exists('first_name') || $request->exists('middle_name') || $request->exists('last_name') || $hasInitial;
         if ($separatedName) {
@@ -70,13 +76,13 @@ class AccountRegistrationService
         return $separatedName;
     }
 
-    private function rules(string $role, bool $separatedName = false): array
+    private function rules(string $role, bool $separatedName = false, mixed $vehicleType = null): array
     {
-        $rules = app(ApplicationValidationService::class)->rules($role) + [
+        $rules = app(ApplicationValidationService::class)->rules($role) + app(RegistrationPolicyService::class)->rules() + [
             'password' => ['bail', 'required', 'string', 'confirmed', Rules\Password::defaults()],
             'otp_token' => ['nullable', 'string', 'max:128'],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
-            'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+            'id_document' => ['bail', 'nullable', 'file', new RegistrationDocument],
             'middle_initial' => ['bail', 'nullable', 'string', new MiddleInitial],
         ];
         if ($separatedName) {
@@ -94,40 +100,46 @@ class AccountRegistrationService
             default => [],
         };
         foreach ($files as $field) {
-            $rules[$field] = 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+            $rules[$field] = ['bail', 'required', 'file', new RegistrationDocument];
         }
         if ($role === 'logistics') {
-            $rules['franchise_document'] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+            $rules['franchise_document'] = ['bail', 'nullable', 'file', new RegistrationDocument];
         }
 
-        return $rules;
+        return array_replace($rules, app(ApplicationValidationService::class)->submissionFieldRules($role, $vehicleType));
+    }
+
+    private function messages(): array
+    {
+        return app(RegistrationPolicyService::class)->messages() + app(ApplicationValidationService::class)->submissionMessages();
     }
 
     private function stepFields(string $role): array
     {
-        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
+        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code', 'sex'];
         $password = ['password', 'password_confirmation'];
         $name = ['name', 'first_name', 'middle_name', 'middle_initial', 'last_name'];
+        $policies = ['policy_accepted', 'terms_version', 'privacy_version'];
 
         return match ($role) {
             'buyer' => [
                 [...$name, 'email', ...$password],
-                ['sex', 'birthday', 'phone', ...$location, 'id_document'],
+                ['sex', 'birthday', 'phone', ...$location, 'id_document', ...$policies],
             ],
             'seller' => [
                 [...$name, 'birthday', 'shop_name', 'root_category_id', 'email'],
                 ['phone', ...$location, 'shop_phone', 'shop_address', 'shop_city'],
-                [...$password, 'id_document', 'business_permit'],
+                [...$password, 'id_document', 'business_permit', ...$policies],
             ],
             'courier' => [
                 [...$name, 'birthday', 'email', 'phone', ...$location],
                 ['vehicle_type', 'plate_number', 'license_number'],
-                [...$password, 'id_document', 'driver_license', 'or_cr_document'],
+                [...$password, 'id_document', 'driver_license', 'or_cr_document', ...$policies],
             ],
             'logistics' => [
                 [...$name, 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
                 ['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'],
-                [...$location, 'company_address', 'business_permit', 'franchise_document'],
+                [...$location, 'company_address', 'business_permit', 'franchise_document', ...$policies],
             ],
         };
     }
@@ -140,7 +152,7 @@ class AccountRegistrationService
         }
         $birthDates = app(BirthDateEligibility::class);
         $separatedName = $this->prepare($request, $role);
-        $validated = $request->validate($this->rules($role, $separatedName));
+        $validated = $request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages());
 
         if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration')) {
             throw ValidationException::withMessages(['otp_token' => 'Verify your email before submitting your rider application.']);
@@ -198,7 +210,10 @@ class AccountRegistrationService
                 }
                 $account['email_verified_at'] = $verified ? now() : null;
 
-                return app(ApplicationRegistrationService::class)->register($account + ['_franchise_path' => $franchisePath], $validated);
+                $user = app(ApplicationRegistrationService::class)->register($account + ['_franchise_path' => $franchisePath], $validated);
+                app(RegistrationPolicyService::class)->record($user, $requireVerifiedEmail ? 'native' : 'web');
+
+                return $user;
             });
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete(array_values($paths));

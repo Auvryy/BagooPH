@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class PrivateVerificationDocumentsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     protected function setUp(): void
     {
@@ -194,9 +195,9 @@ class PrivateVerificationDocumentsTest extends TestCase
 
     public function test_registration_does_not_store_unvalidated_role_documents(): void
     {
-        $this->post('/register', [
+        $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Bagoo Buyer', 'email' => 'documents.buyer@bagoo.test', 'role' => 'buyer',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'driver_license' => UploadedFile::fake()->create('ignored.exe', 20, 'application/x-msdownload'),
         ])->assertRedirect();
         $owner = User::where('email', 'documents.buyer@bagoo.test')->firstOrFail();

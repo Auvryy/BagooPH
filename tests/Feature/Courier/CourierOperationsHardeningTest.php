@@ -86,10 +86,10 @@ class CourierOperationsHardeningTest extends TestCase
         $this->assertArrayHasKey('courier.profile.password.update', $compiled['attributes']);
 
         $this->put($prefix.'/profile/password', [
-            'current_password' => 'password', 'password' => 'UpdatedRiderPassword!',
-            'password_confirmation' => 'UpdatedRiderPassword!',
+            'current_password' => 'password', 'password' => 'UpdatedRiderPassword2026!',
+            'password_confirmation' => 'UpdatedRiderPassword2026!',
         ])->assertRedirect($prefix.'/profile')->assertSessionHasNoErrors();
-        $this->assertTrue(Hash::check('UpdatedRiderPassword!', $this->rider->fresh()->password));
+        $this->assertTrue(Hash::check('UpdatedRiderPassword2026!', $this->rider->fresh()->password));
     }
 
     #[DataProvider('courierPortals')]
@@ -110,8 +110,8 @@ class CourierOperationsHardeningTest extends TestCase
     {
         $this->rider->update(['email_verified_at' => null]);
         $this->actingAs($this->rider)->from($prefix.'/profile')->put($prefix.'/profile/password', [
-            'current_password' => 'password', 'password' => 'UpdatedRiderPassword!',
-            'password_confirmation' => 'UpdatedRiderPassword!',
+            'current_password' => 'password', 'password' => 'UpdatedRiderPassword2026!',
+            'password_confirmation' => 'UpdatedRiderPassword2026!',
         ])->assertSessionHasErrors('email');
         $this->assertTrue(Hash::check('password', $this->rider->fresh()->password));
     }

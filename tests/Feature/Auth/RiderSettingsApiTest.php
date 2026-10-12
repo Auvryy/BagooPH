@@ -256,6 +256,11 @@ class RiderSettingsApiTest extends TestCase
         return [['wrong', 'NewPassword2026!', 'NewPassword2026!', 'current_password'],
             ['Password1234', 'Short1!', 'Short1!', 'password'],
             ['Password1234', str_repeat('a', 129), str_repeat('a', 129), 'password'],
+            ['Password1234', 'lowercase2026!', 'lowercase2026!', 'password'],
+            ['Password1234', 'UPPERCASE2026!', 'UPPERCASE2026!', 'password'],
+            ['Password1234', 'BagooPassword!', 'BagooPassword!', 'password'],
+            ['Password1234', 'BagooPassword1 ', 'BagooPassword1 ', 'password'],
+            ['Password1234', "BagooPassword1!\n", "BagooPassword1!\n", 'password'],
             ['Password1234', 'NewPassword2026!', 'Different2026!', 'password']];
     }
 
@@ -508,7 +513,7 @@ class RiderSettingsApiTest extends TestCase
     public function test_password_boundary_lengths_follow_the_website_contract(int $length): void
     {
         $rider = $this->rider();
-        $password = str_repeat('a', $length);
+        $password = 'Aa1!'.str_repeat('a', $length - 4);
         $this->withToken($this->token($rider))->putJson(self::BASE.'/password', ['current_password' => 'Password1234', 'password' => $password, 'password_confirmation' => $password])->assertOk();
         $this->assertTrue(Hash::check($password, $rider->fresh()->password));
     }

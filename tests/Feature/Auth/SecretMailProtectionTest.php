@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class SecretMailProtectionTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     public static function unsafeMailers(): array
     {
@@ -64,9 +65,9 @@ class SecretMailProtectionTest extends TestCase
     {
         config(['mail.default' => 'log']);
         Notification::fake();
-        $this->post('/register', [
+        $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Bagoo Mail Applicant', 'email' => 'mail.applicant@bagoo.test', 'role' => 'buyer',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
         ])->assertRedirect(route('login'))->assertSessionHasErrors('email')->assertSessionMissing('status');
         $user = User::where('email', 'mail.applicant@bagoo.test')->firstOrFail();
         $this->assertNull($user->email_verified_at);
@@ -96,7 +97,7 @@ class SecretMailProtectionTest extends TestCase
 
     public function test_authentication_secrets_are_not_flashed_after_invalid_input(): void
     {
-        $this->post('/register', [
+        $this->post('/register', [...$this->registrationPolicies(),
             'email' => 'invalid', 'password' => 'private password', 'password_confirmation' => 'private password',
             'otp_token' => 'private otp token', 'token' => 'private reset token', 'code' => '123456', 'claim_code' => 'private claim',
         ])->assertSessionHasErrors();

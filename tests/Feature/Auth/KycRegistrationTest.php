@@ -8,22 +8,24 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class KycRegistrationTest extends TestCase
 {
     use InteractsWithKycReviews;
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     public function test_seller_registration_with_documents_creates_pending_user_and_shop(): void
     {
         Storage::fake('public');
         Storage::fake('local');
 
-        $idFile = UploadedFile::fake()->create('seller_id.jpg', 500, 'image/jpeg');
+        $idFile = UploadedFile::fake()->image('seller_id.jpg');
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Sarah Store Owner',
             'shop_name' => 'Sarah Prime Boutique',
             'root_category_id' => $this->validMasterCategory()->id,
@@ -33,8 +35,8 @@ class KycRegistrationTest extends TestCase
             'city' => 'Makati City',
             'role' => 'seller',
             'birthday' => '2000-01-01',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'id_document' => $idFile,
             'business_permit' => $permitFile,
         ]);
@@ -61,23 +63,23 @@ class KycRegistrationTest extends TestCase
         Storage::fake('public');
         Storage::fake('local');
 
-        $idFile = UploadedFile::fake()->create('courier_id.jpg', 500, 'image/jpeg');
-        $licenseFile = UploadedFile::fake()->create('driver_license.jpg', 500, 'image/jpeg');
+        $idFile = UploadedFile::fake()->image('courier_id.jpg');
+        $licenseFile = UploadedFile::fake()->image('driver_license.jpg');
         $orCrFile = UploadedFile::fake()->create('vehicle_orcr.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Juan Rider',
             'email' => 'juan.rider@example.com',
             'phone' => '+63 917 333 4444',
             'address' => 'Block 5 Lot 22 Barangay San Antonio',
             'city' => 'Pasig City',
             'vehicle_type' => 'Motorcycle',
-            'plate_number' => 'ABC-9876',
+            'plate_number' => 'AB-98765',
             'license_number' => 'N02-22-123456',
             'role' => 'courier',
             'birthday' => '2000-01-01',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'id_document' => $idFile,
             'driver_license' => $licenseFile,
             'or_cr_document' => $orCrFile,
@@ -96,22 +98,22 @@ class KycRegistrationTest extends TestCase
 
         $this->assertNotNull($user->courierProfile);
         $this->assertEquals('Motorcycle', $user->courierProfile->vehicle_type);
-        $this->assertEquals('ABC-9876', $user->courierProfile->plate_number);
+        $this->assertEquals('AB-98765', $user->courierProfile->plate_number);
         $this->assertEquals('N02-22-123456', $user->courierProfile->license_number);
         $this->assertFalse($user->courierProfile->is_available);
     }
 
     public function test_buyer_registration_without_id_defaults_to_none_and_redirects_to_login(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Alex Buyer',
             'email' => 'alex.buyer@example.com',
             'phone' => '+63 917 555 6666',
             'address' => '789 Sunrise Ave',
             'city' => 'Quezon City',
             'role' => 'buyer',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
         ]);
 
         $this->assertGuest();
@@ -130,17 +132,17 @@ class KycRegistrationTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $idFile = UploadedFile::fake()->create('buyer_id.jpg', 500, 'image/jpeg');
+        $idFile = UploadedFile::fake()->image('buyer_id.jpg');
 
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Alex Another Buyer',
             'email' => 'alex.buyer2@example.com',
             'phone' => '+63 917 555 6666',
             'address' => '789 Sunrise Ave',
             'city' => 'Quezon City',
             'role' => 'buyer',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'id_document' => $idFile,
         ]);
 
@@ -158,7 +160,7 @@ class KycRegistrationTest extends TestCase
 
     public function test_seller_registration_requires_business_permit_and_id(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Incomplete Seller',
             'shop_name' => 'Incomplete Store',
             'email' => 'incomplete.seller@example.com',
@@ -167,8 +169,8 @@ class KycRegistrationTest extends TestCase
             'city' => 'Manila',
             'role' => 'seller',
             'birthday' => '2000-01-01',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
         ]);
 
         $response->assertSessionHasErrors(['id_document', 'business_permit']);
@@ -183,7 +185,7 @@ class KycRegistrationTest extends TestCase
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
         $franchiseFile = UploadedFile::fake()->create('franchise_cert.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Captain Arturo Santos',
             'company_name' => 'Southern Freight Express',
             'company_code' => 'SFX',
@@ -196,8 +198,8 @@ class KycRegistrationTest extends TestCase
             'birthday' => '2000-01-01',
             'franchise_number' => 'LTFRB-2026-SFX-9988',
             'fleet_size' => 45,
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'business_permit' => $permitFile,
             'franchise_document' => $franchiseFile,
         ]);

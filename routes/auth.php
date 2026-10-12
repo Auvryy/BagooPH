@@ -58,6 +58,10 @@ Route::middleware('guest')->group(function () {
     Route::get('auth/google/callback', [GoogleOAuthController::class, 'handleGoogleCallback'])
         ->name('auth.google.callback');
 
+    Route::get('auth/google/register', [GoogleOAuthController::class, 'registration'])->name('auth.google.registration');
+    Route::post('auth/google/register', [GoogleOAuthController::class, 'completeRegistration'])
+        ->middleware('throttle:10,1')->block(10, 10)->name('auth.google.registration.store');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
