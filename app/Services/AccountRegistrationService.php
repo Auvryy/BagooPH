@@ -4,14 +4,12 @@ namespace App\Services;
 
 use App\Rules\MiddleInitial;
 use App\Rules\RegistrationDocument;
-use App\Rules\UniqueAccountEmail;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Normalizer;
@@ -19,14 +17,6 @@ use Normalizer;
 class AccountRegistrationService
 {
     private const MANAGED_FIELDS = ['user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'];
-
-    public function emailAvailability(Request $request): array
-    {
-        $values = app(ApplicationValidationService::class)->registrationValues($request->only('email'), 'buyer');
-        $validated = Validator::make($values, ['email' => ApplicationValidationService::emailRules()])->validate();
-
-        return ['email' => $validated['email'], 'available' => ! UniqueAccountEmail::taken($validated['email'])];
-    }
 
     public function preflight(Request $request): void
     {
