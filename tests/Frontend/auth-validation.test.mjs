@@ -356,9 +356,6 @@ test('all registration pages preserve the portal shell and controlled form feedb
         assert.match(result.body, /aria-busy="false"/);
         assert.match(result.body, /<fieldset class="contents">/);
         assert.match(result.body, /BagooPH/);
-        assert.match(result.body, /<input[^>]*id="email"[^>]*aria-describedby="registration-email-feedback"[^>]*aria-invalid="false"/);
-        assert.match(result.body, /id="registration-email-feedback"[^>]*role="status"[^>]*aria-live="polite"/);
-        assert.doesNotMatch(result.body, /Email is available|Checking email/);
         for (const field of ['first_name', 'last_name', 'middle_initial']) assert.match(result.body, new RegExp('<input[^>]*name="' + field + '"'));
         assert.match(result.body, /name="first_name"[^>]*required=""/);
         assert.match(result.body, /name="last_name"[^>]*required=""/);

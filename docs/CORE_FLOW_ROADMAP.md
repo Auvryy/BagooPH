@@ -3901,6 +3901,9 @@ Regression commit: `06c73be test: verify accented and hyphenated signup names`.
 
 ## October 13, 2026: early signup email availability feedback
 
+The automatic checker described in this historical entry was subsequently
+removed at the user’s request; see the removal entry below.
+
 Scope: `feat/registration-email-feedback`, carrying the preceding accented-name
 regression evidence. Buyer, seller, courier and logistics web signup now show
 email availability after a 500 ms typing pause or when leaving the field.
@@ -3945,3 +3948,41 @@ Implementation commits: `2701966 feat: add read-only signup email availability c
 `6b6bd89 feat: show email availability during signup`. The documentation commit
 and combined branch pull request draft are reported in the handoff. Publication
 and deployment remain user actions.
+
+## October 13, 2026: remove automatic signup email checks
+
+Scope: `fix/registration-email-checker-removal`, created after pulling `main`
+through `3c7a1f0`. The user requested removing the automatic availability checker.
+A signed-in browser session could open the registration form, then receive the
+existing guest-session conflict as soon as a valid-looking email was typed.
+That warning depended on the browser session, not whether the typed mailbox
+existed. No account session was fabricated by the checker.
+
+Buyer, seller, courier and logistics forms again use their ordinary email field
+errors, without automatic typing/blur requests or availability status. The unused
+lookup endpoint, coordinator/hook/component and dedicated lookup tests were
+removed. Shared normalization, local format feedback, preflight/final signup
+uniqueness, account-email ownership and OTP/approval requirements remain intact.
+The preceding accented-name regressions are retained. Existing authenticated
+sessions still need to sign out before submitting a separate registration;
+removing early feedback does not silently discard their login.
+
+Verification: **93 isolated SQLite `:memory:` tests / 1,113 assertions passed**
+for registration/preflight, guest feedback, OTP and account-email settings.
+**36 authentication frontend checks, the TypeScript/Vite production build,
+changed PHP style and diff checks passed.** Static inspection found no remaining
+automatic checker references in application code, routes or tests. No database
+reset, browser automation, Azure deployment or real mail check was performed.
+
+**Scoped assessment: email-field usability with an existing browser login
+6/10 -> 8/10 locally.** The distracting automatic warning and retry control are
+removed; format feedback and submission protection remain. Early duplicate
+availability feedback is now deferred. This does not certify live registration
+or raise unrelated platform readiness.
+
+The removal was initially saved locally as `84f0790 revert: remove automatic
+signup email feedback` and `fff0504 revert: remove signup email availability
+endpoint`, then moved onto the updated-main branch as `b5e908a` and `f704995`
+with the same subjects. The documentation commit is reported in the handoff.
+The combined PR description remains a local draft; publication and deployment
+are user actions.

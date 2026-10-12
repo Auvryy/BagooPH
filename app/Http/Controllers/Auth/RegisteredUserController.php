@@ -65,11 +65,6 @@ class RegisteredUserController extends Controller
         return response()->json(['valid' => true]);
     }
 
-    public function validateEmail(Request $request, AccountRegistrationService $registration): JsonResponse
-    {
-        return response()->json($registration->emailAvailability($request))->header('Cache-Control', 'no-store, private');
-    }
-
     /**
      * Handle an incoming registration request.
      */
