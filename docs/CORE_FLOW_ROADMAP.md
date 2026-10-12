@@ -3734,3 +3734,103 @@ Local implementation commits:
 The documentation commit's generated hash is reported in the handoff. The
 combined pull request title and description are a local ignored draft, not a
 saved GitHub pull request.
+
+
+## October 12, 2026: complete registration fields and policy acknowledgement
+
+**Scope: `feat/registration-consent-validation`, AF03 and the local AF04 gate,
+with the selected field-boundary follow-up.** Read the
+[registration field review](auth-plan/REGISTRATION_FIELDS.md) for the exact
+contract and the [rollout](auth-plan/ROLLOUT.md) for deployment/native handoff.
+The stronger password policy selected here supersedes the earlier AF01/AF02
+character-composition statement; existing sign-in credentials stay valid.
+
+Initial buyer, seller, courier and logistics forms now offer optional sex and
+postal code rather than introducing them only in correction. Four-digit postal
+values remain strings, including leading zeroes. First Google signup also asks
+for name parts and optional buyer details before creating an account; verified
+provider email stays fixed. It does not guess legal-name components from the
+provider display name. Platform Admin access remains controlled.
+
+The correction screen removes the duplicate editable full-name input, uses a
+narrower middle field and explicit server-supplied limits, and derives the name
+from changed components. It preserves approval authority and original email.
+Changed company/vehicle identifiers and fleet declarations use the application
+bounds; unchanged legacy identifiers remain eligible under their previous rules.
+Name components stay 2–50 with a combined 100-character limit; new web initials
+stay one letter and optional period, at most two characters. Existing full
+middle names remain supported at 1–50.
+
+New passwords require 12–128 characters with uppercase/lowercase, number and
+punctuation/symbol. Spaces alone do not satisfy symbols, controls are rejected,
+and passphrase spaces are preserved. The shared rule governs signup, both
+reset paths and website/native settings. Company initials use 2–10 ASCII
+letters; declared fleet size is a real whole number 1–10,000 without silent
+fallback. Vehicle identifiers have supported Philippine formats and visible
+limits. These format checks do not prove issued/owned identity: private evidence
+review remains necessary. Overlong paste is rejected rather than silently cut;
+ASCII code casing retains invalid Unicode for feedback. Existing mobile
+prefix/paste handling is preserved.
+
+Application documents must be non-empty and no larger than 5,242,880 bytes,
+with matching allowlisted extension and actual MIME content. Images must
+identify correctly within the documented dimensions/pixel count. Rejection
+happens before file storage or account creation. Real-content disguise checks
+use real uploaded-file MIME detection, because framework fake files report MIME
+from the supplied extension. Existing private inspection/authorization remain.
+
+AF03 has readable versioned Terms/Privacy pages, unchecked acknowledgement and
+server validation on web, native and first Google signup. Acceptance records
+store versions, server time and source inside account/profile creation. Failure
+rolls back the account, uploaded files and acceptance and leaves valid email
+verification available for retry. Current versions are `2026-10-12`. A failed
+preflight, duplicate retry or old account cannot manufacture acceptance. Policy
+history is retained by the existing account-closure review. Google completion
+uses a session-bound nonce and ten-minute expiry; provider email must be verified
+and a conflicting existing provider identity cannot be replaced.
+
+Verification: **773 isolated SQLite `:memory:` authentication tests / 8,223
+assertions passed**. The wider repository run covered **3,451 tests / 81,444
+assertions**, with **3,432 passes and 19 failures in stale valid-input fixtures**
+that omitted acknowledgement, mocked no provider verification, used new passwords
+missing required groups, or used placeholder images/vehicle formats. Those
+fixtures were updated without weakening their access/recovery/state assertions.
+The complete authentication directory and all six affected outside directories/
+files were then rerun: **983 tests / 11,436 assertions passed**, including every
+previous failure. A final correction-metadata adjustment was additionally verified by **91 tests /
+921 assertions passed**. The unchanged remainder of the wider run passed earlier;
+the entire 3,451-case run was not repeated after fixture updates. This is not a
+claim of a second passing full-suite run.
+
+**191 frontend checks and the TypeScript/Vite production build passed.** They
+cover all public form shells, Google application fields, immediate errors,
+policy checkbox state/links, optional demographics, postal leading zeroes,
+identifier/password/file boundaries and rejecting overlong paste without changing
+it into another value. Focused PHP formatting and `git diff --check` passed.
+No browser automation, interactive device, live SMTP or Azure check was performed.
+
+The additive policy-history migration was applied to the confirmed local
+PostgreSQL service only. Before and after counts remain **9 users and 17
+products**, and the new acceptance table has **zero records**. No database reset,
+reseeding or historical acceptance backfill was performed. The separate Flutter
+repository was not changed. Its application form must adopt demographics,
+strong-password rules, required licence input and explicit current-policy
+acknowledgement; old clients receive actionable 422 field errors.
+
+Scoped registration completeness and field-safety assessment: **6/10 -> 9/10
+locally**. Applicants now see the fields up front, malformed types/values fail
+on the server, and correction has matching limits and review behavior. Scoped
+policy acknowledgement: **0/10 -> 8/10 locally**; readable content and transactional
+proof exist, while the operator still needs controller/contact, processing-basis
+and retention decisions before broader public operation. These ratings do not
+increase buyer/seller/logistics lifecycle readiness or establish legal compliance.
+
+AF04's local combined acceptance is verified. Publication/deployment, actual
+delivered email, live sessions/role-host retests and the separate native client
+remain visible release follow-ups. The user publishes the commits; the combined
+PR title/body remains an ignored local draft, not a saved GitHub PR. Local implementation commits:
+
+- `ef22325 feat: validate and record complete account applications`
+- `3bc432f fix: align signup and correction form fields and feedback`
+
+The documentation commit's generated hash is reported in the final handoff.

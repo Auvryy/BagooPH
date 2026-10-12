@@ -1,12 +1,16 @@
 # Authentication validation rollout
 
-Apply the normal code and asset deployment. This delivery adds no database
-migration and needs no database reset or reseeding. Preserve existing accounts,
-approval records, evidence and original sign-in emails.
+Apply the normal code and asset deployment. The combined registration delivery
+adds the `account_policy_acceptances` table through an additive migration.
+It needs no database reset or reseeding. Preserve existing accounts, approval
+records, evidence and original sign-in emails. Do not invent policy acceptance
+for an existing account during installation.
 
 ## Password compatibility
 
-New passwords require 12–128 characters and allow passphrases. This limit
+New passwords require 12–128 characters with uppercase, lowercase, a number
+and punctuation/symbol. Spaces alone do not satisfy the symbol requirement;
+control characters are rejected. Preserve passphrase spaces. This policy
 applies to registration, both reset paths and the existing account password
 writer; login continues to accept existing credentials. Argon2id verifies the
 complete accepted password instead of bcrypt's first 72 bytes.
@@ -96,7 +100,48 @@ session and normal page-navigation redirects. Check registration with both a
 guest session and an already signed-in session; the latter must not send an OTP
 or return an HTML redirect as if validation succeeded.
 
-The native options expose the password limits. Coordinate the separate Flutter
+The native options expose the password character requirements, demographic
+optionality, supported identifier lengths and `registration_policies` with
+current versions and readable document URLs. Coordinate the separate Flutter
 client using the [rider account API](../RIDER_ACCOUNT_API.md); no mobile source
-changes are included here. Readable terms/privacy acknowledgement, recorded
-acceptance and the combined live release gate remain separate AF03/AF04 work.
+changes are included here. An old client that omits required acknowledgement,
+versions, strong new password or licence identifier receives field-level 422
+errors rather than bypassing the gate. Existing sign-in credentials remain usable.
+
+## Policy, demographic and correction checks
+
+Read the [registration field review](REGISTRATION_FIELDS.md) alongside the
+changed code. Every role form now offers optional sex and postal code. Confirm
+they survive submission/reload, including a leading postal zero, and that
+correction uses separated names and matching limits without changing approval.
+Check supported legacy plates and unchanged existing identifiers separately
+from the stricter rules for new/changed identifiers. Browser text alone cannot
+establish real identity or issued vehicle evidence.
+
+New accounts require the current versioned Terms/Privacy acknowledgement.
+The checkbox starts unchecked; rejected submission/preflight creates no
+acceptance record. The account, profile and acceptance record commit together.
+Acceptance-storage failure must roll back new files and account/profile rows
+and leave a verified email token usable. Retain acceptance history through the
+existing account-closure review; a closed account is not automatically erased.
+
+First Google signup now holds the verified identity in the session for ten
+minutes while the applicant supplies their own name parts and optional buyer
+details and reads the policies. Do not guess name components from a provider
+display name. Unverified provider email, stale nonce/version or expired pending
+identity cannot create an account. Existing linked accounts sign in normally
+without a fabricated new policy record or changed original email.
+
+Use an approved demonstration account for role access checks. Check pending,
+rejected, restricted and closed states on both local aliases and role hosts;
+email verification alone must not approve an application. Controlled admin
+login stays separate from public registration. Keep private evidence protected
+on web and native responses, including failed/retried registration.
+
+The readable notice describes current processing and acknowledges outstanding
+operator details. Before broader public operation, the operator must supply
+its controller identity/privacy contact, processing basis and retention
+decisions. Policy versioning must preserve the document an account accepted.
+Local tests do not establish legal compliance, real mail delivery or live session
+behavior. Record the deployed revision and those actual outcomes in the roadmap;
+publication and the live gate remain separate from local implementation.
