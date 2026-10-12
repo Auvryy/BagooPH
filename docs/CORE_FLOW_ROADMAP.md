@@ -3564,3 +3564,74 @@ Real mail delivery, Azure behavior and interactive browser/device behavior were
 not verified. No application behavior, approval policy or development/production
 database was changed; the proposed fixes remain unimplemented and readiness
 ratings are unchanged.
+
+### October 12, 2026: AF01 and AF02 registration and verification repairs
+
+The selected first [authentication batch](auth-plan/README.md) now implements
+shared registration feedback and verification recovery. The earlier planning
+entry describes the prior state; the evidence below records these repairs.
+
+- Buyer, seller, courier and logistics forms validate each step through the same
+  server rules used by final registration. The complete check validates current
+  fields and evidence before OTP, without creating accounts, storing evidence or
+  sending mail. Final submission validates again. Errors focus a summary and
+  return to the relevant step, including derived contact and nested fleet fields.
+- Complete email syntax, control rejection and case-insensitive ownership are
+  shared with web/native verification and additional contact email submission.
+  Custom domains and `@bagoo.test` demos remain eligible. No provider allowlist
+  or DNS check is introduced; format acceptance does not establish inbox ownership.
+  Verification requests also check legacy original identities and additional
+  addresses before sending a registration code.
+- New and reset passwords follow the documented 12–128-character passphrase
+  policy. Reproduction showed bcrypt accepted a changed suffix beyond its byte
+  limit. The default Argon2id configuration verifies the complete accepted value,
+  including Unicode. Existing shorter bcrypt credentials and active bcrypt OTP
+  challenges still verify; successful web login upgrades a legacy hash.
+- The shared mobile input preserves invalid characters and surplus digits for
+  rejection instead of deleting or truncating them. Normal Philippine mobile
+  formatting remains; seller/logistics business contacts retain landline support.
+- Verification shows sent status only after explicit success, distinguishes
+  session expiry, unreadable responses, connection failures and delivery failure,
+  respects cooldown and blocks concurrent or stale requests. Malformed codes
+  cannot turn into a six-digit code by filtering. Web aliases share network send
+  and verification limits in addition to existing per-address/purpose controls.
+- Recovery forms show challenge errors, allow obtaining a new code and explain
+  the password policy. Roles, approval authorities, original email identity and
+  account creation/holding behavior retain their existing contracts.
+
+Verification: **918 isolated SQLite `:memory:` tests passed / 7,191 assertions**
+across authentication, registration, web/native sessions, role hosts and aliases,
+account emails/settings, identity corrections, immutable roles, demo seeders and
+buyer checkout gates. The new checks cover side-effect-free preflight, invalid
+and custom emails, evidence limits, role/resource tampering, raw control/code
+rejection, shared OTP limits, long-password suffix sensitivity and legacy hash
+compatibility. Valid registration/reset fixtures now use compliant raw passwords;
+legacy login fixtures retain shorter credentials. No authorization assertion was
+removed to obtain a pass.
+
+**20 frontend checks passed**, covering authentication request recovery, stale
+and duplicate verification, phone preservation, error mapping, registration
+markup and ordinary account settings. The TypeScript/Vite production build,
+focused PHP style checks and `git diff --check` passed. These are automated and
+static checks; no interactive browser/device check was performed.
+
+Scoped assessments: **registration field feedback 5/10 -> 8/10** and
+**verification failure recovery 4/10 -> 8/10**. Earlier forms could advance with
+values the server would reject and could display misleading mail failure or
+sent feedback. Shared early validation and explicit request outcomes improve
+those behaviors; these ratings do not raise whole buyer/seller/admin readiness.
+
+Readable terms/privacy acknowledgement and recorded acceptance remain AF03.
+The combined live session/mail release gate remains AF04. Additional legal
+identifiers, invitation-only onboarding, uniqueness-policy changes and broader
+location coverage remain separate reviewed scope. The protected access checks
+passed locally; an alleged live leak still requires its exact protected endpoint
+and deployed account state. Original external acceptance results were not
+reclassified from these different automated checks.
+
+No development/production reset, GitHub publication or Azure deployment occurred.
+The separate Flutter repository was not changed. Deployment hashing overrides,
+legacy native-token reauthentication and the native password-policy handoff are
+documented in [authentication rollout](auth-plan/ROLLOUT.md) and the
+[rider account API](RIDER_ACCOUNT_API.md). The branch PR title/body remain a local
+draft until the user publishes it.

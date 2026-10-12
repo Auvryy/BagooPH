@@ -65,6 +65,10 @@ spacing and error treatment. Reuse existing application fields, phone/date input
 OTP handling and server services where their contracts fit. Strengthen those
 components instead of creating an independent validation system for every role.
 
+Use the [authentication rollout](ROLLOUT.md) for password-hash compatibility,
+deployment and the native account contract handoff. Implementation evidence and
+remaining acceptance work belong in the roadmap.
+
 ## Planning windows
 
 Windows are proposed work allocations in Asia/Manila, not logged activity or
