@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useRef, useState } from 'react';
+import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
@@ -29,6 +29,7 @@ import { getDomainUrl } from '@/utils/domain';
 import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
+import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -92,6 +93,16 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         otp_token: '',
     });
 
+    const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
+        setStepErrors(fieldErrors);
+        if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
+    });
+
+    useEffect(() => {
+        if (data.otp_token) setData('otp_token', '');
+        transform(values => values);
+    }, [data.email]);
+
     const handlePermitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -144,58 +155,19 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         }
     };
 
-    const validateStep1 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.company_name.trim()) newErrors.company_name = 'Company or fleet name is required';
-        if (!data.name.trim()) newErrors.name = 'Authorised representative contact name is required';
-        if (!data.birthday) newErrors.birthday = 'Date of birth is required';
-        else if (data.birthday > birthDateLimits.adult_maximum) newErrors.birthday = 'You must be at least 18 for this role';
-        if (!data.email.trim()) {
-            newErrors.email = 'Corporate email address is required';
-        } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-            newErrors.email = 'Valid corporate email address is required';
+    const validateForm = async (step?: number) => {
+        if ((step === 2 || step === undefined) && data.vehicle_types.length === 0) {
+            applyErrors({ vehicle_types: 'Choose at least one vehicle category.' });
+            return false;
         }
-        if (!data.phone.trim()) {
-            newErrors.phone = 'Dispatch hotline phone number is required';
-        }
-        if (!data.password) {
-            newErrors.password = 'Password is required';
-        } else if (data.password.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters';
-        }
-        if (data.password !== data.password_confirmation) {
-            newErrors.password_confirmation = 'Passwords do not match';
-        }
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return validate(step);
     };
 
-    const validateStep2 = () => {
-        const newErrors: Record<string, string> = {};
-        if (data.vehicle_types.length === 0) {
-            newErrors.vehicle_types = 'Please select at least one vehicle category';
-        }
-        if (data.fleet_size < 1) {
-            newErrors.fleet_size = 'Fleet size must be at least 1 unit';
-        }
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const validateStep3 = () => {
-        const newErrors: Record<string, string> = {};
-        if (!data.city.trim()) newErrors.city = 'City or municipality is required';
-        if (!data.address.trim()) newErrors.address = 'Depot or headquarters street address is required';
-        if (!data.business_permit) newErrors.business_permit = 'SEC/DTI Business Permit document is required';
-        setStepErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleNext = () => {
-        if (currentStep === 1) {
-            if (validateStep1()) setCurrentStep(2);
-        } else if (currentStep === 2) {
-            if (validateStep2()) setCurrentStep(3);
+    const handleNext = async () => {
+        if (processing || validating) return;
+        if (await validateForm(currentStep)) {
+            setStepErrors({});
+            setCurrentStep(step => step + 1);
         }
     };
 
@@ -204,35 +176,36 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         setCurrentStep(prev => Math.max(1, prev - 1));
     };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-        if (!validateStep3()) return;
+    const handleRegistrationErrors = (fieldErrors: Record<string, string>) => {
+        applyErrors(fieldErrors);
+        if (fieldErrors.otp_token) setData('otp_token', '');
+    };
 
-        // Prompt partner with 6-digit email OTP modal before account creation
+    const createAccount = (token: string) => {
+        transform(values => ({ ...values, otp_token: token }));
+        post(route('register'), {
+            forceFormData: true,
+            onError: handleRegistrationErrors,
+            onSuccess: () => reset('password', 'password_confirmation'),
+            onFinish: () => transform(values => values),
+        });
+    };
+
+    const submit: FormEventHandler = async (event) => {
+        event.preventDefault();
+        if (currentStep < 3) { await handleNext(); return; }
+        if (processing || validating || !await validateForm()) return;
         if (!data.otp_token) {
             setShowOtpModal(true);
             return;
         }
-
-        post('/register', {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "company_name", "company_code", "phone", "password", "password_confirmation"].some(key => keys.includes(key))) setCurrentStep(1); else if (["franchise_number", "fleet_size", "vehicle_types"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(data.otp_token);
     };
 
     const handleOtpSuccess = (token: string) => {
         setShowOtpModal(false);
         setData('otp_token', token);
-        transform((prevData) => ({
-            ...prevData,
-            otp_token: token,
-        }));
-        post('/register', {
-            forceFormData: true,
-            onError: errors => { const keys = Object.keys(errors).map(key => key.split('.')[0]); if (["name", "email", "birthday", "company_name", "company_code", "phone", "password", "password_confirmation"].some(key => keys.includes(key))) setCurrentStep(1); else if (["franchise_number", "fleet_size", "vehicle_types"].some(key => keys.includes(key))) setCurrentStep(2); },
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
+        createAccount(token);
     };
 
     return (
@@ -323,7 +296,13 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+                {Object.keys(stepErrors).length > 0 && (
+                    <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
+                        <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
+                    </div>
+                )}
+                <fieldset disabled={processing || validating || showOtpModal} className="contents">
                 {/* STEP 1: Corporate Entity & Representative */}
                 {currentStep === 1 && (
                     <div className="space-y-3.5 animate-in fade-in duration-200">
@@ -377,8 +356,8 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         className="w-full pl-9 pr-3 py-2 text-sm font-sans uppercase bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
-                                {errors.company_code && (
-                                    <p className="text-xs text-[#E00D42]">{errors.company_code}</p>
+                                {(stepErrors.company_code || errors.company_code) && (
+                                    <p className="text-xs text-[#E00D42]">{stepErrors.company_code || errors.company_code}</p>
                                 )}
                             </div>
                         </div>
@@ -455,7 +434,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         type={showPassword ? 'text' : 'password'}
                                         value={data.password}
                                         onChange={e => setData('password', e.target.value)}
-                                        placeholder="Min 8 characters"
+                                        placeholder="12–128 characters"
                                         className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                     <button
@@ -466,6 +445,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
+                                <p className="text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
                                 {(stepErrors.password || errors.password) && (
                                     <p className="text-xs text-[#E00D42]">{stepErrors.password || errors.password}</p>
                                 )}
@@ -494,8 +474,8 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                {stepErrors.password_confirmation && (
-                                    <p className="text-xs text-[#E00D42]">{stepErrors.password_confirmation}</p>
+                                {(stepErrors.password_confirmation || errors.password_confirmation) && (
+                                    <p className="text-xs text-[#E00D42]">{stepErrors.password_confirmation || errors.password_confirmation}</p>
                                 )}
                             </div>
                         </div>
@@ -567,7 +547,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
-                                {errors.fleet_size && <p className="text-xs text-[#E00D42]">{errors.fleet_size}</p>}
+                                {(stepErrors.fleet_size || errors.fleet_size) && <p className="text-xs text-[#E00D42]">{stepErrors.fleet_size || errors.fleet_size}</p>}
                             </div>
 
                             <div className="space-y-1">
@@ -719,9 +699,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                 }));
                             }}
                             errors={{
-                                province: errors.province,
-                                municipality: errors.municipality,
-                                barangay: errors.barangay,
+                                province: stepErrors.province || errors.province,
+                                municipality: stepErrors.municipality || errors.municipality,
+                                barangay: stepErrors.barangay || errors.barangay,
                                 city: stepErrors.city || errors.city,
                                 address: stepErrors.address || errors.address,
                             }}
@@ -819,6 +799,8 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                             </div>
                         </div>
 
+                        <InputError message={stepErrors.franchise_document || errors.franchise_document} />
+
                         {/* Navigation & Submit */}
                         <div className="flex items-center gap-3 pt-2">
                             <button
@@ -831,7 +813,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                             </button>
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || validating}
                                 className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#E00D42] hover:bg-[#b00a34] text-white text-xs font-bold uppercase tracking-wider transition shadow-md disabled:opacity-50 cursor-pointer"
                             >
                                 <span>Submit for Accreditation Review</span>
@@ -840,6 +822,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                         </div>
                     </div>
                 )}
+            </fieldset>
             </form>
 
             {/* Email OTP Verification Modal */}

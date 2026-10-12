@@ -1,4 +1,4 @@
-import React, { ChangeEvent, KeyboardEvent } from 'react';
+import React, { ChangeEvent } from 'react';
 import InputError from '@/Components/InputError';
 
 interface PhoneInputProps {
@@ -18,10 +18,11 @@ interface PhoneInputProps {
 }
 
 /**
- * Format raw 10 digits into standard PH mobile format: 9XX XXX XXXX
+ * Format national mobile digits without removing or truncating invalid input.
  */
 export function formatPhNationalNumber(digits: string): string {
-    const clean = digits.replace(/\D/g, '').slice(0, 10);
+    const clean = digits;
+    if (!/^[0-9]*$/.test(clean) || clean.length > 10) return clean;
     if (!clean) return '';
     if (clean.length <= 3) return clean;
     if (clean.length <= 6) return `${clean.slice(0, 3)} ${clean.slice(3)}`;
@@ -29,19 +30,17 @@ export function formatPhNationalNumber(digits: string): string {
 }
 
 /**
- * Extract 10-digit national number from any string representation (e.g. "+63 917 123 4567" -> "9171234567")
+ * Remove one approved prefix and separators while keeping every entered digit.
+ * Unsupported input remains visible for server-side validation.
  */
 export function extractNationalDigits(value: string): string {
-    let clean = (value || '').replace(/\D/g, '');
-    // If prefixed with 63, strip 63
-    if (clean.startsWith('63')) {
-        clean = clean.slice(2);
-    }
-    // If starts with leading 0 (e.g. 0917...), strip leading 0 when more digits follow
-    while (clean.startsWith('0') && clean.length > 1) {
-        clean = clean.slice(1);
-    }
-    return clean.slice(0, 10);
+    if (!/^\+?[0-9 ()-]*$/.test(value)) return value;
+    let clean = value.replace(/[ ()-]/g, '');
+    if (clean.startsWith('+63')) clean = clean.slice(3);
+    else if (clean.startsWith('+')) return value;
+    else if (clean.startsWith('63') && clean.length > 2) clean = clean.slice(2);
+    else if (clean.startsWith('0') && clean.length > 1) clean = clean.slice(1);
+    return clean;
 }
 
 export default function PhoneInput({
@@ -62,49 +61,14 @@ export default function PhoneInput({
     const nationalDigits = extractNationalDigits(value);
     const displayValue = formatPhNationalNumber(nationalDigits);
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        // Allow navigation and edit keys
-        if (
-            e.key === 'Backspace' ||
-            e.key === 'Delete' ||
-            e.key === 'Tab' ||
-            e.key === 'Escape' ||
-            e.key === 'Enter' ||
-            e.key === 'ArrowLeft' ||
-            e.key === 'ArrowRight' ||
-            e.key === 'ArrowUp' ||
-            e.key === 'ArrowDown' ||
-            e.key === 'Home' ||
-            e.key === 'End' ||
-            (e.ctrlKey || e.metaKey)
-        ) {
-            return;
-        }
-
-        // Only block single-character non-digit keys on desktop (never block Android/IME 'Unidentified' or composition)
-        if (e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
-            e.preventDefault();
-        }
-    };
-
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value;
-        const digits = extractNationalDigits(raw);
-
-        if (!digits) {
-            onChange('');
+        const national = extractNationalDigits(raw);
+        if (!/^[0-9]*$/.test(national)) {
+            onChange(raw);
             return;
         }
-
-        // If only "0" was entered, keep state as "0" so user sees feedback and can type 9 next
-        if (digits === '0') {
-            onChange('0');
-            return;
-        }
-
-        // Format to "+63 9XX XXX XXXX"
-        const formattedNational = formatPhNationalNumber(digits);
-        onChange(`+63 ${formattedNational}`);
+        onChange(!national ? '' : national === '0' ? '0' : '+63 ' + formatPhNationalNumber(national));
     };
 
     const focusBorderClass =
@@ -146,12 +110,11 @@ export default function PhoneInput({
                         name={name}
                         value={displayValue}
                         onChange={handleChange}
-                        onKeyDown={handleKeyDown}
                         required={required}
                         disabled={disabled}
                         autoFocus={autoFocus}
                         placeholder={placeholder}
-                        maxLength={12} // 10 digits + 2 space separators
+                        aria-invalid={Boolean(error)}
                         className="w-full pl-3 pr-3.5 py-2.5 text-sm bg-transparent border-0 outline-hidden font-sans text-slate-900 placeholder-slate-400 tracking-wider focus:ring-0"
                     />
                 </div>
