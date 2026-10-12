@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import OtpModal from '@/Components/OtpModal';
+import { validEmailFormat } from '@/utils/authRequests';
 import { ArrowRight, ArrowLeft, Mail, Lock, Eye, EyeOff, ShieldCheck, Check } from 'lucide-react';
 
 export default function ForgotPassword({ status }: { status?: string }) {
@@ -32,7 +33,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             return;
         }
 
-        if (!/\S+@\S+\.\S+/.test(emailForm.data.email)) {
+        if (!validEmailFormat(emailForm.data.email)) {
             setEmailError('Please enter a valid email address.');
             return;
         }
@@ -153,6 +154,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 </div>
             ) : (
                 <form onSubmit={handleResetPassword} className="space-y-4 font-sans">
+                    <InputError message={(resetForm.errors as Record<string, string>).code || resetForm.errors.token || resetForm.errors.email} role="alert" />
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
                         <div>
                             <span className="text-[10px] uppercase tracking-wider text-slate-500 block">Verified Account</span>
@@ -189,6 +191,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
+                        <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
                         <InputError message={resetForm.errors.password} className="mt-1" />
                     </div>
 
@@ -222,11 +225,11 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     <div className="flex items-center gap-3 pt-2">
                         <button
                             type="button"
-                            onClick={() => setStep('email')}
+                            onClick={() => { resetForm.reset('token', 'password', 'password_confirmation'); resetForm.clearErrors(); setStep('email'); }}
                             className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            <span>Back</span>
+                            <span>Get a new code</span>
                         </button>
                         <button
                             type="submit"
