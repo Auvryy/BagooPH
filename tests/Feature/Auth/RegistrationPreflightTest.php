@@ -11,22 +11,24 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class RegistrationPreflightTest extends TestCase
 {
     use InteractsWithKycReviews, RefreshDatabase;
+    use WithRegistrationPolicies;
 
     private function application(string $role): array
     {
-        return [
+        return $this->registrationPolicies() + [
             'role' => $role, 'name' => 'José Dela Cruz', 'first_name' => 'José', 'last_name' => 'Dela Cruz',
             'birthday' => '2000-01-01', 'email' => 'applicant@bagoo.test', 'phone' => '09171234567',
             'address' => '12 Bagoo Street', 'city' => 'Makati', 'province' => 'Metro Manila', 'sex' => 'Male',
-            'password' => 'A valid passphrase', 'password_confirmation' => 'A valid passphrase',
+            'password' => 'A valid passphrase 2026!', 'password_confirmation' => 'A valid passphrase 2026!',
             'shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id,
-            'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'LICENSE-123',
-            'company_name' => 'Bagoo Delivery', 'company_code' => 'BAGOO-TEST', 'fleet_size' => 2,
+            'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-12-345678',
+            'company_name' => 'Bagoo Delivery', 'company_code' => 'BGT', 'fleet_size' => 2,
             'vehicle_types' => ['motorcycle'], 'franchise_number' => null,
             'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
             'business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'application/pdf'),

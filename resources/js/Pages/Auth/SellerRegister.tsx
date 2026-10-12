@@ -1,3 +1,8 @@
+import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
+import PasswordRequirements from '@/Components/PasswordRequirements';
+import { documentError, rejectOverlongRegistrationPaste } from '@/utils/registrationFields';
+import { registrationInputErrors } from '@/utils/registrationValidation';
 import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -29,7 +34,7 @@ import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 
-export default function SellerRegister({ birthDateLimits, masterCategories }: { birthDateLimits: BirthDateLimits; masterCategories: MasterCategoryChoice[] }) {
+export default function SellerRegister({ birthDateLimits, masterCategories, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies; masterCategories: MasterCategoryChoice[] }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -49,11 +54,13 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         middle_initial: string;
         last_name: string;
         birthday: string;
+        sex: string;
         shop_name: string;
         root_category_id: string;
         email: string;
         phone: string;
         address: string;
+        postal_code: string;
         city: string;
         province: string;
         municipality: string;
@@ -64,16 +71,21 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         id_document: File | null;
         business_permit: File | null;
         otp_token: string;
+        policy_accepted: boolean;
+        terms_version: string;
+        privacy_version: string;
     }>({
         first_name: '',
         middle_initial: '',
         last_name: '',
         birthday: '',
+        sex: '',
         shop_name: '',
         root_category_id: '',
         email: '',
         phone: '',
         address: '',
+        postal_code: '',
         city: '',
         province: 'Metro Manila',
         municipality: '',
@@ -84,7 +96,20 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         id_document: null,
         business_permit: null,
         otp_token: '',
+        policy_accepted: false,
+        terms_version: policies.terms_version,
+        privacy_version: policies.privacy_version,
     });
+
+    const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+        const input = event.target as HTMLInputElement;
+        const field = input.name as keyof typeof data;
+        if (!field || !(field in data) || input.type === 'file') return;
+        const value = input.type === 'checkbox' ? input.checked : input.value;
+        const message = registrationInputErrors({ ...data, [field]: value }, birthDateLimits)[field];
+        clearErrors(field);
+        setStepErrors(previous => ({ ...previous, [field]: message ?? '', request: '' }));
+    };
 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
@@ -99,6 +124,14 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeIdFile();
+                setStepErrors(previous => ({ ...previous, id_document: error }));
+                return;
+            }
+            clearErrors('id_document');
+            setStepErrors(previous => ({ ...previous, id_document: '' }));
             setData('id_document', file);
             setIdFileName(file.name);
             setIdFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -120,6 +153,14 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
     const handlePermitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removePermitFile();
+                setStepErrors(previous => ({ ...previous, business_permit: error }));
+                return;
+            }
+            clearErrors('business_permit');
+            setStepErrors(previous => ({ ...previous, business_permit: '' }));
             setData('business_permit', file);
             setPermitFileName(file.name);
             setPermitFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -267,7 +308,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+            <form onPasteCapture={event => rejectOverlongRegistrationPaste(event, (field, message) => setStepErrors(previous => ({ ...previous, [field]: message })))} onChange={fieldFeedback} onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
                 {Object.keys(stepErrors).length > 0 && (
                     <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
                         <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
@@ -287,7 +328,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                     id="shop_name"
                                     type="text"
                                     name="shop_name"
-                                    value={data.shop_name}
+                                    minLength={2} maxLength={255}
+                                        value={data.shop_name}
                                     className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                     placeholder="e.g. Apex Apparel Manila"
                                     autoFocus
@@ -404,6 +446,10 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                 address: stepErrors.address || errors.address,
                             }}
                         />
+                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
+                            onChange={(field, value) => setData(field, value)}
+                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} />
+
                         <p className="text-xs text-slate-500 mt-1">
                             Bagoo Express dispatch riders will collect packaged parcels directly from this pickup location.
                         </p>
@@ -526,6 +572,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
+                                        minLength={12} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -542,7 +589,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <PasswordRequirements />
                                 <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
@@ -556,6 +603,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
+                                        minLength={12} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -575,6 +623,10 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                 <InputError message={stepErrors.password_confirmation || errors.password_confirmation} className="mt-1" />
                             </div>
                         </div>
+
+                        <RegistrationPolicyAcknowledgement policies={policies} accepted={data.policy_accepted}
+                            onChange={accepted => { setData('policy_accepted', accepted); clearErrors('policy_accepted'); setStepErrors(prev => ({ ...prev, policy_accepted: '' })); }}
+                            error={stepErrors.policy_accepted || errors.policy_accepted || errors.terms_version || errors.privacy_version} />
 
                         <div className="flex items-center gap-3 pt-2">
                             <button

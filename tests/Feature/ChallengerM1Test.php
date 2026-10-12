@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class ChallengerM1Test extends TestCase
@@ -23,7 +24,7 @@ class ChallengerM1Test extends TestCase
     use InteractsWithCheckoutNetwork;
     use InteractsWithCheckoutSubmission;
     use InteractsWithKycReviews;
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     /**
      * 1. Test Seller KYC Full State Machine Lifecycle:
@@ -38,7 +39,7 @@ class ChallengerM1Test extends TestCase
         $idDoc = UploadedFile::fake()->createWithContent('seller_gov_id.pdf', '%PDF-1.4 seller identity');
         $permitDoc = UploadedFile::fake()->createWithContent('dti_permit.pdf', '%PDF-1.4 seller permit');
 
-        $regResponse = $this->post('/register', [
+        $regResponse = $this->post('/register', [...$this->registrationPolicies(),
             'role' => 'seller',
             'birthday' => '2000-01-01',
             'name' => 'Adversarial Seller',
@@ -160,7 +161,7 @@ class ChallengerM1Test extends TestCase
         $orCrDoc = UploadedFile::fake()->createWithContent('vehicle_or_cr.pdf', '%PDF-1.4 courier registration');
 
         // Step 1: Courier Registration
-        $regResponse = $this->post('/register', [
+        $regResponse = $this->post('/register', [...$this->registrationPolicies(),
             'role' => 'courier',
             'birthday' => '2000-01-01',
             'name' => 'Speedy Dave',

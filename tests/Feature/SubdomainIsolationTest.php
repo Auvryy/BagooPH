@@ -7,11 +7,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class SubdomainIsolationTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     /*
     |--------------------------------------------------------------------------
@@ -727,7 +728,7 @@ class SubdomainIsolationTest extends TestCase
         $permit = UploadedFile::fake()->create('permit.pdf', 500, 'application/pdf');
         $franchise = UploadedFile::fake()->create('franchise.pdf', 500, 'application/pdf');
 
-        $response = $this->post('http://hub.localhost/register', [
+        $response = $this->post('http://hub.localhost/register', [...$this->registrationPolicies(),
             'name' => 'FastLog Partner',
             'company_name' => 'FastLog Freight',
             'company_code' => 'FLF',

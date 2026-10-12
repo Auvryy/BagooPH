@@ -9,15 +9,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class PasswordPolicyTest extends TestCase
 {
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     public static function rejectedPasswords(): array
     {
-        return [[str_repeat('a', 11)], [str_repeat('a', 129)], [['invalid']]];
+        return [['Aa1!'.str_repeat('a', 7)], ['Aa1!'.str_repeat('a', 125)], [['invalid']], ['lowercase1234!'], ['UPPERCASE1234!'], ['NoNumbersHere!'], ['NoSymbols12345'], ['Password 12345'], ["Bagoo2026!\nPassword"]];
     }
 
     #[DataProvider('rejectedPasswords')]
@@ -37,13 +39,13 @@ class PasswordPolicyTest extends TestCase
 
     public static function acceptedPasswords(): array
     {
-        return [[str_repeat('a', 12)], [str_repeat('a', 128)], ['  a plain passphrase  '], [str_repeat('é', 128)]];
+        return [['Aa1!'.str_repeat('a', 8)], ['Aa1!'.str_repeat('a', 124)], ['  A plain passphrase 2026!  '], ['Aa1!'.str_repeat('é', 124)]];
     }
 
     #[DataProvider('acceptedPasswords')]
-    public function test_valid_passphrases_are_saved_completely_and_authenticate_without_composition_requirements(string $password): void
+    public function test_compliant_passwords_are_saved_completely_and_authenticate_without_truncation(string $password): void
     {
-        $this->post('/register', ['name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
+        $this->post('/register', [...$this->registrationPolicies(), 'name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
             ->assertSessionHasNoErrors();
         $user = User::where('email', 'new@bagoo.test')->sole();
         $this->assertSame('argon2id', password_get_info($user->password)['algoName']);

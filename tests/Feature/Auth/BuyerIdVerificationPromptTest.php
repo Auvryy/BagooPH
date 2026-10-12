@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class BuyerIdVerificationPromptTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     protected function tearDown(): void
     {
@@ -36,6 +37,7 @@ class BuyerIdVerificationPromptTest extends TestCase
     public function test_buyer_registered_via_google_oauth_starts_with_unverified_kyc(): void
     {
         $abstractUser = Mockery::mock(SocialiteUser::class);
+        $abstractUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $abstractUser->shouldReceive('getId')->andReturn('google-kyc-test-999');
         $abstractUser->shouldReceive('getEmail')->andReturn('googlebuyer@example.com');
         $abstractUser->shouldReceive('getName')->andReturn('Google Buyer');
@@ -47,6 +49,10 @@ class BuyerIdVerificationPromptTest extends TestCase
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
         $response = $this->get(route('auth.google.callback'));
+        $response->assertRedirect(route('auth.google.registration'));
+        $this->assertDatabaseCount('users', 0);
+        $nonce = session('registration.google.nonce');
+        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['registration_nonce' => $nonce, 'first_name' => 'Google', 'middle_initial' => '', 'last_name' => 'Buyer']);
 
         $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();

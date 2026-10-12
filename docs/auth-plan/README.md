@@ -15,9 +15,10 @@ application remains separate from company placement. Controlled admin access
 does not become public registration.
 
 Use current normative limits rather than inventing restrictions from example
-values. In particular, the password contract permits passphrases and specifies
-12–128 characters; it does not require an arbitrary combination of character
-types. Worker adulthood cannot automatically become a buyer age restriction.
+values. The selected password policy requires 12–128 characters with uppercase,
+lowercase, a number and a punctuation/symbol character, while retaining
+passphrases and existing sign-in compatibility. Worker adulthood cannot
+automatically become a buyer age restriction.
 Name components and full names need explicit, consistent limits. Additional
 contact emails remain verified contact/recovery addresses rather than sign-in aliases.
 
@@ -68,6 +69,11 @@ components instead of creating an independent validation system for every role.
 Use the [authentication rollout](ROLLOUT.md) for password-hash compatibility,
 deployment and the native account contract handoff. Implementation evidence and
 remaining acceptance work belong in the roadmap.
+
+Use the [registration field review](REGISTRATION_FIELDS.md) to check every
+initial role application against its correction form, including sex, postal
+code, operational identifiers and private upload limits. Preserve each portal’s
+layout and field error treatment when adding shared controls.
 
 ## Planning windows
 

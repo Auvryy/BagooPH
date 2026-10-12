@@ -107,6 +107,9 @@ $registerParcelRecoveryRoutes = function (bool $named = false) {
     }
 };
 
+Route::get('/terms/{version?}', [\App\Http\Controllers\RegistrationPolicyController::class, 'terms'])->name('terms');
+Route::get('/privacy/{version?}', [\App\Http\Controllers\RegistrationPolicyController::class, 'privacy'])->name('privacy');
+
 Route::get('/cash-handover/sign-in', [CodCashController::class, 'login'])->name('cash.login');
 Route::post('/cash-handover/sign-in', [CodCashController::class, 'signIn'])->middleware('throttle:10,1')->name('cash.sign-in');
 Route::middleware(['auth', 'verified'])->prefix('cash-handover')->name('cash.')->group(function () {

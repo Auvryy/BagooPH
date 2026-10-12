@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\RegistrationDocument;
 use App\Rules\UniqueAccountEmail;
 use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\OtpService;
+use App\Services\RegistrationPolicyService;
 use App\Services\RiderAccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,9 +55,14 @@ class RiderAuthController extends Controller
     public function options(): JsonResponse
     {
         return response()->json(['data' => ['birth_date_limits' => app(BirthDateEligibility::class)->limits(),
-            'vehicle_types' => ApplicationValidationService::VEHICLES, 'document_max_bytes' => 5 * 1024 * 1024,
+            'vehicle_types' => ApplicationValidationService::VEHICLES, 'document_max_bytes' => RegistrationDocument::MAX_BYTES,
             'document_types' => ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 'email_verification_required' => true,
-            'password_policy' => ['min_length' => 12, 'max_length' => 128]]]);
+            'password_policy' => ['min_length' => 12, 'max_length' => 128, 'uppercase' => true, 'lowercase' => true, 'number' => true, 'symbol' => true],
+            'registration_policies' => app(RegistrationPolicyService::class)->contract(),
+            'plate_number_max_length' => 8, 'plate_number_max_symbols' => 7,
+            'license_number_format' => 'N01-12-345678', 'license_number_max_length' => 13, 'license_number_compact_length' => 11,
+            'sex_options' => ['Female', 'Male', 'Other'], 'sex_required' => false,
+            'postal_code_length' => 4, 'postal_code_required' => false]]);
     }
 
     public function sendCode(Request $request, OtpService $otp): JsonResponse

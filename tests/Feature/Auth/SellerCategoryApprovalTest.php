@@ -18,11 +18,13 @@ use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class SellerCategoryApprovalTest extends TestCase
 {
     use InteractsWithKycReviews, RefreshDatabase;
+    use WithRegistrationPolicies;
 
     private function categories(): array
     {
@@ -33,12 +35,12 @@ class SellerCategoryApprovalTest extends TestCase
 
     private function registration(array $overrides = []): array
     {
-        return array_replace([
+        return array_replace($this->registrationPolicies() + [
             'name' => 'Bagoo Applicant', 'shop_name' => 'Bagoo Application Shop',
             'email' => 'category-applicant@bagoo.test', 'role' => 'seller',
             'birthday' => '2000-01-01', 'phone' => '+639171234567',
             'address' => 'Bagoo Test Street', 'city' => 'Makati',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
             'business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'application/pdf'),
         ], $overrides);
@@ -374,12 +376,12 @@ class SellerCategoryApprovalTest extends TestCase
     public function test_registration_requires_a_master_category_without_partial_accounts(): void
     {
         Storage::fake('local');
-        $this->post('/register', [
+        $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Bagoo Applicant', 'shop_name' => 'Bagoo Application Shop',
             'email' => 'category-applicant@bagoo.test', 'role' => 'seller',
             'birthday' => '2000-01-01', 'phone' => '+639171234567',
             'address' => 'Bagoo Test Street', 'city' => 'Makati',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
             'business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'application/pdf'),
         ])->assertSessionHasErrors('root_category_id');

@@ -14,6 +14,11 @@ const bundle = buildSync({
     stdin: { contents: [
         "export * from '@/utils/authRequests';",
         "export * from '@/utils/registrationValidation';",
+        "export * from '@/utils/passwordPolicy';",
+        "export * from '@/utils/registrationFields';",
+        "export { default as Demographics } from '@/Components/RegistrationDemographics';",
+        "export { default as PolicyAcknowledgement } from '@/Components/RegistrationPolicyAcknowledgement';",
+        "export { default as ApplicationFields } from '@/Components/ApplicationFields';",
         "export { default as PersonalNames } from '@/Components/PersonalNameFields';",
         "export * from '@/Components/PhoneInput';",
         "export { default as Phone } from '@/Components/PhoneInput';",
@@ -21,6 +26,7 @@ const bundle = buildSync({
         "export { default as Seller } from '@/Pages/Auth/SellerRegister';",
         "export { default as Courier } from '@/Pages/Auth/CourierRegister';",
         "export { default as Logistics } from '@/Pages/Auth/LogisticsRegister';",
+        "export { default as Google } from '@/Pages/Auth/GoogleRegistration';",
     ].join('\n'), resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -203,7 +209,10 @@ test('derived and nested server errors return to their visible registration fiel
 });
 
 const limits = { today: '2026-10-12', past_maximum: '2026-10-11', adult_maximum: '2008-10-12' };
-const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.', last_name: 'O’Connor', email: 'applicant@bagoo.test', birthday: '1999-04-15', phone: '+639171234567', city: 'Makati', address: '12 Bagoo Street', sex: 'Female' });
+const policies = { terms_version: '2026-10-12', privacy_version: '2026-10-12', terms_url: '/terms/2026-10-12', privacy_url: '/privacy/2026-10-12', required: true };
+const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.', last_name: 'O’Connor', email: 'applicant@bagoo.test', birthday: '1999-04-15', phone: '+639171234567', city: 'Makati', address: '12 Bagoo Street', sex: 'Female', postal_code: '0123',
+    password: 'BagooPassword2026!', password_confirmation: 'BagooPassword2026!', shop_name: 'Bagoo Shop', root_category_id: '1', company_name: 'Bagoo Logistics', company_code: 'BGL', fleet_size: '1', vehicle_types: ['motorcycle'], vehicle_type: 'Motorcycle', plate_number: 'AB-12345', license_number: 'N01-12-345678', policy_accepted: true,
+    id_document: new File(['%PDF-1.4'], 'id.pdf', { type: 'application/pdf' }), business_permit: new File(['%PDF-1.4'], 'permit.pdf', { type: 'application/pdf' }), driver_license: new File(['%PDF-1.4'], 'license.pdf', { type: 'application/pdf' }), or_cr_document: new File(['%PDF-1.4'], 'registration.pdf', { type: 'application/pdf' }) });
 
 test('each personal name immediately rejects digits and hidden or unsupported characters while allowing real punctuation', () => {
     for (const label of ['First name', 'Last name']) {
@@ -334,7 +343,7 @@ test('date and combined-name boundaries are checked without truncation or blocki
 test('all registration pages preserve the portal shell and controlled form feedback', async () => {
     for (const [name, Component] of [['Buyer', ui.Buyer], ['Seller', ui.Seller], ['Courier', ui.Courier], ['Logistics', ui.Logistics]]) {
         let view;
-        const props = { auth: { user: null }, flash: {}, errors: {}, birthDateLimits: limits, masterCategories: [{ id: 1, name: 'Pet Supplies' }] };
+        const props = { auth: { user: null }, flash: {}, errors: {}, birthDateLimits: limits, policies, masterCategories: [{ id: 1, name: 'Pet Supplies' }] };
         const result = await createInertiaApp({
             page: { component: 'Auth/' + name, props, url: '/register', version: null },
             resolve: () => Component,
@@ -352,4 +361,113 @@ test('all registration pages preserve the portal shell and controlled form feedb
         assert.match(result.body.match(/<input[^>]*type="email"[^>]*>/)[0], /maxlength="255"/i);
         assert.doesNotMatch(result.body, /Min 8 characters|font-mono|Full Legal Name|<input[^>]*name="name"/);
     }
+});
+
+test('password feedback requires every character group, preserves passphrase spaces and enforces both limits', () => {
+    for (const value of ['Aa1!' + 'a'.repeat(8), 'Aa1!' + 'é'.repeat(124), '  Bagoo passphrase 2026!  ']) assert.equal(ui.passwordError(value), undefined, value);
+    for (const value of ['Aa1!' + 'a'.repeat(7), 'Aa1!' + 'a'.repeat(125), 'password1234!', 'PASSWORD1234!', 'BagooPassword!', 'BagooPassword1', 'BagooPassword1 ', 'BagooPassword1!\n']) assert.ok(ui.passwordError(value), value);
+});
+
+test('company, vehicle and document fields have explicit bounds without changing invalid input into valid values', () => {
+    for (const value of ['BG', 'bagoo', 'A'.repeat(10)]) assert.equal(ui.companyInitialsError(value), undefined);
+    for (const value of ['B', 'A'.repeat(11), 'BG12', 'BG-PH', 'ＢＧ', 'BG\n']) assert.ok(ui.companyInitialsError(value));
+    for (const value of ['AB12345', 'AB-12345', '1234 AB', 'ABC-123']) assert.equal(ui.plateNumberError(value, 'Motorcycle'), undefined, value);
+    for (const value of ['ABC12', 'ABC-123', 'ABC1234']) assert.equal(ui.plateNumberError(value, 'Sedan / Van'), undefined, value);
+    for (const value of ['ABC-1234', 'AB--12345', '123456', 'ＡＢ12345', 'AB-123456']) assert.ok(ui.plateNumberError(value, 'Motorcycle'), value);
+    for (const value of ['N01-12-345678', 'n0112345678']) assert.equal(ui.licenseNumberError(value), undefined, value);
+    for (const value of ['N01--12-345678', 'N01-12-34567', 'N01123456789', '１２３４', '12345678901']) assert.ok(ui.licenseNumberError(value), value);
+    const exact = new File([' '.repeat(ui.documentMaxBytes)], 'evidence.PDF', { type: 'application/pdf' });
+    assert.equal(ui.documentError(exact, true), undefined);
+    for (const file of [new File([], 'empty.pdf', { type: 'application/pdf' }), new File([' '.repeat(ui.documentMaxBytes + 1)], 'large.pdf', { type: 'application/pdf' }), new File(['script'], 'script.svg', { type: 'image/svg+xml' }), new File(['script'], 'script.pdf', { type: 'text/html' })]) assert.ok(ui.documentError(file));
+});
+
+test('overlong paste is rejected as a whole, while operational code edits retain invalid Unicode for feedback', () => {
+    for (const [name, maxLength, pasted] of [['plate_number', 8, 'AB-123456'], ['company_code', 10, 'ABCDEFGHIJK'], ['license_number', 13, 'N01-12-3456789'], ['password', 128, 'Aa1!' + 'a'.repeat(125)], ['postal_code', 4, '12345']]) {
+        let blocked = false;
+        let feedback;
+        const target = { tagName: 'INPUT', type: name === 'password' ? 'password' : 'text', name, maxLength, value: '', selectionStart: 0, selectionEnd: 0 };
+        ui.rejectOverlongRegistrationPaste({ target, clipboardData: { getData: () => pasted }, preventDefault() { blocked = true; } }, (field, message) => { feedback = { field, message }; });
+        assert.equal(blocked, true, name);
+        assert.equal(target.value, '');
+        assert.equal(feedback.field, name);
+        assert.match(feedback.message, /No pasted text was added/);
+    }
+    for (const [name, type, maxLength, pasted] of [['email', 'email', 255, '  ' + 'a'.repeat(242) + '@bagoo.test  '], ['phone', 'tel', 10, '+63 917 123 4567']]) {
+        let blocked = false;
+        ui.rejectOverlongRegistrationPaste({ target: { tagName: 'INPUT', name, type, maxLength, value: '', selectionStart: 0, selectionEnd: 0 }, clipboardData: { getData: () => pasted }, preventDefault() { blocked = true; } }, () => {});
+        assert.equal(blocked, false);
+    }
+    assert.equal(ui.uppercaseOperationalCode('ab-12345'), 'AB-12345');
+    assert.equal(ui.uppercaseOperationalCode('ßＢＧ'), 'ßＢＧ');
+    assert.ok(ui.companyInitialsError(ui.uppercaseOperationalCode('ßＢＧ')));
+});
+
+test('each role checks optional sex and postal values on the actual location step before an OTP request', async () => {
+    let requests = 0;
+    globalThis.fetch = async () => { requests++; return reply(200, { valid: true }); };
+    for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
+        const step = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
+        assert.equal(ui.registrationInputErrors(identity(role), limits, step).postal_code, undefined);
+        assert.equal(ui.registrationInputErrors({ ...identity(role), sex: '', postal_code: '' }, limits, step).sex, undefined);
+        for (const value of ['123', '12345', '１２３４', '1e03']) {
+            await assert.rejects(ui.checkRegistration({ ...identity(role), postal_code: value }, limits, step), error => Boolean(error.fields.postal_code));
+        }
+        await assert.rejects(ui.checkRegistration({ ...identity(role), sex: 'Unknown' }, limits, step), error => Boolean(error.fields.sex));
+        assert.equal(ui.registrationErrorStep(role, { sex: 'Invalid' }), step);
+        assert.equal(ui.registrationErrorStep(role, { postal_code: 'Invalid' }), step);
+        assert.ok(ui.registrationInputErrors({ ...identity(role), policy_accepted: false }, limits).policy_accepted);
+    }
+    assert.equal(requests, 0);
+});
+
+test('demographic inputs preserve leading zeroes and distinguish optional controls', () => {
+    const html = renderToStaticMarkup(createElement(ui.Demographics, { sex: 'Female', postalCode: '0123', onChange() {}, errors: {} }));
+    assert.match(html, /Sex \(optional\)/);
+    assert.match(html, /Postal code \(optional\)/);
+    assert.match(html, /<select[^>]*name="sex"/);
+    const postal = html.match(/<input[^>]*name="postal_code"[^>]*>/)[0];
+    assert.match(postal, /value="0123"/);
+    assert.match(postal, /maxlength="4"/i);
+    assert.match(postal, /inputMode="numeric"/i);
+    assert.doesNotMatch(postal, /required=/);
+});
+
+test('policy acknowledgement starts unchecked with accessible versioned documents and field feedback', () => {
+    const html = renderToStaticMarkup(createElement(ui.PolicyAcknowledgement, { policies, accepted: false, onChange() {}, error: 'Please read and agree.' }));
+    const checkbox = html.match(/<input[^>]*type="checkbox"[^>]*>/)[0];
+    assert.doesNotMatch(checkbox, /checked=/);
+    assert.match(checkbox, /required=""/);
+    assert.match(checkbox, /aria-invalid="true"/);
+    assert.match(html, /href="\/terms\/2026-10-12"/);
+    assert.match(html, /href="\/privacy\/2026-10-12"/);
+    assert.match(html, /Please read and agree/);
+    const accepted = renderToStaticMarkup(createElement(ui.PolicyAcknowledgement, { policies, accepted: true, onChange() {} }));
+    assert.match(accepted.match(/<input[^>]*type="checkbox"[^>]*>/)[0], /checked=""/);
+    assert.deepEqual(ui.registrationErrors('courier', { terms_version: 'Reload and agree.' }), { policy_accepted: 'Reload and agree.' });
+});
+
+test('correction controls show separated names, a narrower middle field and the server limits', () => {
+    const fields = [
+        ['first_name', 'First name', 2, 50, 'text'], ['middle_name', 'Middle name / initial', 1, 50, 'text'], ['last_name', 'Last name', 2, 50, 'text'], ['sex', 'Sex', null, 255, 'select'], ['postal_code', 'Postal code', 4, 4, 'text'],
+    ].map(([key, label, min_length, max_length, type]) => ({ key, label, min_length, max_length, type, required: key === 'first_name' || key === 'last_name', options: key === 'sex' ? ['Female', 'Male', 'Other'] : [], input_mode: key === 'postal_code' ? 'numeric' : null }));
+    const values = { first_name: 'Ana', middle_name: 'J.', last_name: 'Santos', sex: 'Female', postal_code: '0123' };
+    const html = renderToStaticMarkup(createElement(ui.ApplicationFields, { application: { fields, values, errors: {}, can_correct: true }, values, errors: {}, onChange() {} }));
+    assert.doesNotMatch(html, /<input[^>]*name="name"/);
+    assert.match(html, /sm:col-span-3[^>]*><label[^>]*for="application-middle_name"/);
+    assert.match(html.match(/<input[^>]*name="first_name"[^>]*>/)[0], /maxlength="50"/i);
+    assert.match(html.match(/<input[^>]*name="postal_code"[^>]*>/)[0], /maxlength="4"/i);
+});
+
+test('first Google signup collects the same buyer details while relying on the verified provider email', async () => {
+    let view;
+    const Component = ui.Google;
+    const props = { auth: { user: null }, flash: {}, errors: {}, identity: { name: 'Buyer Profile', email: 'verified@bagoo.test' }, birthDateLimits: limits, policies, registrationNonce: 'server-nonce' };
+    const result = await createInertiaApp({ page: { component: 'Auth/GoogleRegistration', props, url: '/auth/google/register', version: null }, resolve: () => Component, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
+    for (const field of ['first_name', 'middle_initial', 'last_name', 'birthday', 'phone', 'postal_code', 'policy_accepted']) assert.match(result.body, new RegExp('<input[^>]*name="' + field + '"'));
+    assert.match(result.body, /<select[^>]*name="sex"/);
+    assert.match(result.body, /verified@bagoo.test/);
+    assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
+    const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '', phone: '', city: '', address: '' };
+    assert.deepEqual(ui.registrationInputErrors(values, limits, undefined, true), {});
+    assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
 });

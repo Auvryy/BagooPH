@@ -1,3 +1,8 @@
+import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
+import PasswordRequirements from '@/Components/PasswordRequirements';
+import { documentError, rejectOverlongRegistrationPaste, uppercaseOperationalCode } from '@/utils/registrationFields';
+import { registrationInputErrors } from '@/utils/registrationValidation';
 import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -33,7 +38,7 @@ import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
+export default function LogisticsRegister({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -53,6 +58,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         middle_initial: string;
         last_name: string;
         birthday: string;
+        sex: string;
         company_name: string;
         company_code: string;
         email: string;
@@ -64,7 +70,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         barangay: string;
         postal_code: string;
         franchise_number: string;
-        fleet_size: number;
+        fleet_size: string;
         vehicle_types: string[];
         role: 'logistics';
         password: string;
@@ -72,11 +78,15 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         business_permit: File | null;
         franchise_document: File | null;
         otp_token: string;
+        policy_accepted: boolean;
+        terms_version: string;
+        privacy_version: string;
     }>({
         first_name: '',
         middle_initial: '',
         last_name: '',
         birthday: '',
+        sex: '',
         company_name: '',
         company_code: '',
         email: '',
@@ -88,7 +98,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         barangay: '',
         postal_code: '',
         franchise_number: '',
-        fleet_size: 25,
+        fleet_size: '25',
         vehicle_types: ['motorcycle', 'l300_van', 'wing_truck'],
         role: 'logistics',
         password: '',
@@ -96,7 +106,20 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         business_permit: null,
         franchise_document: null,
         otp_token: '',
+        policy_accepted: false,
+        terms_version: policies.terms_version,
+        privacy_version: policies.privacy_version,
     });
+
+    const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+        const input = event.target as HTMLInputElement;
+        const field = input.name as keyof typeof data;
+        if (!field || !(field in data) || input.type === 'file') return;
+        const value = input.type === 'checkbox' ? input.checked : input.value;
+        const message = registrationInputErrors({ ...data, [field]: value }, birthDateLimits)[field];
+        clearErrors(field);
+        setStepErrors(previous => ({ ...previous, [field]: message ?? '', request: '' }));
+    };
 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
@@ -111,6 +134,14 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
     const handlePermitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removePermitFile();
+                setStepErrors(previous => ({ ...previous, business_permit: error }));
+                return;
+            }
+            clearErrors('business_permit');
+            setStepErrors(previous => ({ ...previous, business_permit: '' }));
             setData('business_permit', file);
             setPermitFileName(file.name);
             setPermitFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -132,6 +163,14 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
     const handleFranchiseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeFranchiseFile();
+                setStepErrors(previous => ({ ...previous, franchise_document: error }));
+                return;
+            }
+            clearErrors('franchise_document');
+            setStepErrors(previous => ({ ...previous, franchise_document: '' }));
             setData('franchise_document', file);
             setFranchiseFileName(file.name);
             setFranchiseFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -301,7 +340,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+            <form onPasteCapture={event => rejectOverlongRegistrationPaste(event, (field, message) => setStepErrors(previous => ({ ...previous, [field]: message })))} onChange={fieldFeedback} onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
                 {Object.keys(stepErrors).length > 0 && (
                     <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
                         <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
@@ -331,8 +370,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <Building2 className="w-4 h-4" />
                                     </div>
-                                    <input
+                                    <input name="company_name"
                                         type="text"
+                                        minLength={2} maxLength={255}
                                         value={data.company_name}
                                         onChange={e => setData('company_name', e.target.value)}
                                         placeholder="e.g. Tamaraw Freight Express"
@@ -346,17 +386,17 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
 
                             <div className="space-y-1">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                    Code (Acronym)
+                                    Company Initials *
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <Hash className="w-4 h-4" />
                                     </div>
-                                    <input
+                                    <input name="company_code"
                                         type="text"
-                                        maxLength={20}
+                                        minLength={2} maxLength={10}
                                         value={data.company_code}
-                                        onChange={e => setData('company_code', e.target.value.toUpperCase())}
+                                        onChange={e => setData('company_code', uppercaseOperationalCode(e.target.value))}
                                         placeholder="TFX"
                                         className="w-full pl-9 pr-3 py-2 text-sm font-sans uppercase bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
@@ -430,8 +470,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <Lock className="w-4 h-4" />
                                     </div>
-                                    <input
+                                    <input name="password"
                                         type={showPassword ? 'text' : 'password'}
+                                        minLength={12} maxLength={128}
                                         value={data.password}
                                         onChange={e => setData('password', e.target.value)}
                                         placeholder="12–128 characters"
@@ -445,7 +486,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <PasswordRequirements />
                                 {(stepErrors.password || errors.password) && (
                                     <p className="text-xs text-[#E00D42]">{stepErrors.password || errors.password}</p>
                                 )}
@@ -459,8 +500,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <Lock className="w-4 h-4" />
                                     </div>
-                                    <input
+                                    <input name="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
+                                        minLength={12} maxLength={128}
                                         value={data.password_confirmation}
                                         onChange={e => setData('password_confirmation', e.target.value)}
                                         placeholder="Re-enter password"
@@ -515,10 +557,11 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                     <FileCheck2 className="w-4 h-4" />
                                 </div>
-                                <input
+                                <input name="franchise_number"
                                     type="text"
-                                    value={data.franchise_number}
-                                    onChange={e => setData('franchise_number', e.target.value)}
+                                    minLength={2} maxLength={100}
+                                        value={data.franchise_number}
+                                    onChange={e => setData('franchise_number', uppercaseOperationalCode(e.target.value))}
                                     placeholder="e.g. LTFRB-2026-TFX-4412"
                                     className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                 />
@@ -538,12 +581,12 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <Truck className="w-4 h-4" />
                                     </div>
-                                    <input
-                                        type="number"
+                                    <input name="fleet_size"
+                                        type="text" inputMode="numeric" maxLength={5}
                                         min={1}
                                         max={10000}
                                         value={data.fleet_size}
-                                        onChange={e => setData('fleet_size', parseInt(e.target.value) || 1)}
+                                        onChange={e => setData('fleet_size', e.target.value)}
                                         className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
@@ -709,6 +752,10 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                             streetLabel="Central Depot / Headquarters Street Address"
                             streetPlaceholder="e.g. KM 54 National Highway, Real"
                         />
+                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
+                            onChange={(field, value) => setData(field, value)}
+                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} />
+
 
                         {/* Document Upload 1: DTI / SEC Business Permit */}
                         <div className="space-y-1">
@@ -800,6 +847,10 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                         </div>
 
                         <InputError message={stepErrors.franchise_document || errors.franchise_document} />
+
+                        <RegistrationPolicyAcknowledgement policies={policies} accepted={data.policy_accepted}
+                            onChange={accepted => { setData('policy_accepted', accepted); clearErrors('policy_accepted'); setStepErrors(prev => ({ ...prev, policy_accepted: '' })); }}
+                            error={stepErrors.policy_accepted || errors.policy_accepted || errors.terms_version || errors.privacy_version} />
 
                         {/* Navigation & Submit */}
                         <div className="flex items-center gap-3 pt-2">

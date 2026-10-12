@@ -25,11 +25,13 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class WorkerBirthDateEligibilityTest extends TestCase
 {
     use InteractsWithKycReviews, RefreshDatabase;
+    use WithRegistrationPolicies;
 
     protected function setUp(): void
     {
@@ -45,20 +47,20 @@ class WorkerBirthDateEligibilityTest extends TestCase
 
     private function registration(string $role, mixed $birthday): array
     {
-        $data = [
+        $data = $this->registrationPolicies() + [
             'role' => $role, 'name' => 'Bagoo Test Applicant',
             'email' => Str::uuid().'@bagoo.test', 'phone' => '+639171234567',
             'address' => 'Bagoo Test Street', 'city' => 'Makati',
-            'password' => 'A valid test passphrase', 'password_confirmation' => 'A valid test passphrase',
+            'password' => 'A valid test passphrase 2026!', 'password_confirmation' => 'A valid test passphrase 2026!',
             'birthday' => $birthday, 'age' => 99,
         ];
         if ($role === 'seller') {
             $data['shop_name'] = 'Bagoo Application Shop';
             $data['root_category_id'] = $this->validMasterCategory()->id;
         } elseif ($role === 'courier') {
-            $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'TEST-123', 'license_number' => 'TEST-LICENSE'];
+            $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'AB-12345', 'license_number' => 'N01-12-345678'];
         } elseif ($role === 'logistics') {
-            $data += ['company_name' => 'Bagoo Application Logistics', 'company_code' => 'BD'.Str::upper(Str::random(8))];
+            $data += ['company_name' => 'Bagoo Application Logistics', 'company_code' => 'BGL'];
         }
         foreach (match ($role) {
             'seller' => ['id_document', 'business_permit'],

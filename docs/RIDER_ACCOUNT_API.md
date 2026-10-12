@@ -11,18 +11,21 @@ and registration service as the web application. It adds no parcel operations.
 | POST `/auth/tokens` | `email`, `password`, `device_name` | `data.token`, `token_type`, `expires_at`, `user` |
 | GET `/rider/me` | Bearer token | `data` containing own account |
 | DELETE `/auth/tokens/current` | Bearer token | Revokes this device token; `message` |
-| GET `/rider/registration/options` | None | Vehicle types, Manila adult birthday limit, document limits, password policy |
+| GET `/rider/registration/options` | None | Vehicle types, Manila adult birthday limit, document/identifier limits, demographics, password policy and current policy documents/versions |
 | POST `/rider/registration/email/send` | `email` | Delivered-code result, cooldown, expiry; never the code |
 | POST `/rider/registration/email/verify` | `email`, six ASCII digits in `code` | Single-use registration verification `token` |
 | POST `/rider/applications` | Multipart application and documents | Created pending courier, verified email and own-account session |
 
 The application requires a personal name, `birthday`, `email`, Philippine `phone`,
-`address`, `city`, `vehicle_type`, `plate_number`, password/confirmation,
+`address`, `city`, `vehicle_type`, `plate_number`, `license_number`, password/confirmation,
 `otp_token`, `device_name` and private `id_document`, `driver_license`,
 `or_cr_document` uploads. The shared validator governs optional province,
-municipality, barangay, postal and license identifiers. The Flutter wizard
-requires the license identifier as the existing courier web form does.
-Images/PDF use the existing 5 MB-per-file policy, validated from content.
+municipality, barangay, sex and postal code. New courier applications require
+the licence identifier on both web and native paths. Sex is optional and uses
+`Female`, `Male` or `Other`; optional postal code is exactly four ASCII digits
+stored as a string. Images/PDF use the 5 MB-per-file policy (5,242,880 bytes),
+matching content and extension. Images must decode within 10,000 pixels per
+side and 20 million pixels total. Required document checks run before account creation.
 The server assigns the immutable courier role and pending approval statuses.
 
 Credentials are the existing account credentials, with case-insensitive email
@@ -58,10 +61,34 @@ comparisons stay case-insensitive. Internal whitespace, controls and more than
 
 The options response includes `data.password_policy.min_length = 12` and
 `max_length = 128`. New applications and password resets require 12–128
-characters, including Unicode characters, and permit passphrases without a
-required character-type combination. Existing shorter sign-in passwords remain
+characters, including Unicode characters, with uppercase, lowercase, number
+and punctuation/symbol. Spaces alone do not satisfy the symbol requirement;
+control characters are rejected and passphrase spaces are preserved.
+Existing shorter sign-in passwords remain
 usable. The web backend defaults to Argon2id so the end of a long password is
 verified; existing bcrypt credentials and OTP challenges still verify.
+
+Options now include `password_policy.uppercase`, `lowercase`, `number` and
+`symbol`, all true, and `registration_policies` containing `required`,
+`terms_version`, `privacy_version`, `terms_url` and `privacy_url`. Resolve the
+relative document URLs against the backend origin. Show a required unchecked
+acknowledgement and send `policy_accepted`, `terms_version` and `privacy_version`
+with the multipart application. Missing/false acknowledgement or stale versions
+receive 422 field errors without consuming the verified token or storing files.
+Reload the policy options and ask for fresh acknowledgement after a version change;
+never automatically tick consent to make an old client pass. The backend records
+its own time and source atomically with the account. Existing account login does
+not require invented historical acknowledgement.
+
+Options expose `sex_options`, `sex_required = false`, `postal_code_length = 4`
+and `postal_code_required = false`; show the controls in the initial native
+application, not only later correction. Plate input is at most eight characters
+including one optional separator, with supported vehicle-specific formats.
+Licence input uses one letter and ten digits, compact or grouped as
+`N01-12-345678`; options expose lengths 11/13. See the
+[registration field review](auth-plan/REGISTRATION_FIELDS.md) for formats and
+their evidence-review boundary. The Flutter application must adopt these
+contracts separately; this backend delivery does not modify its source.
 
 Email submission requires a complete address with a qualified domain. Custom
 domains and the existing `@bagoo.test` demo addresses remain supported; there is

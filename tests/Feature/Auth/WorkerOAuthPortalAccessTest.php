@@ -39,6 +39,7 @@ class WorkerOAuthPortalAccessTest extends TestCase
     {
         $actor = User::factory()->create(['role' => $role, 'status' => $status, 'kyc_status' => $kyc, 'google_id' => 'oauth-access-test']);
         $providerUser = Mockery::mock(SocialiteUser::class);
+        $providerUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $providerUser->shouldReceive('getId')->andReturn($actor->google_id);
         $providerUser->shouldReceive('getEmail')->andReturn($actor->email);
         $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');

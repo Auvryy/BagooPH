@@ -126,6 +126,8 @@ function AuthEcosystemFooter() {
                         <li>
                             <span className="text-slate-400">Strict KYC Compliance Verified</span>
                         </li>
+                        <li><a href="/terms" className="hover:text-slate-900 underline-offset-4 hover:underline">Terms of Use</a></li>
+                        <li><a href="/privacy" className="hover:text-slate-900 underline-offset-4 hover:underline">Privacy Notice</a></li>
                         <li>
                             <span className="text-slate-400">10% Flat Platform Fee Standard</span>
                         </li>

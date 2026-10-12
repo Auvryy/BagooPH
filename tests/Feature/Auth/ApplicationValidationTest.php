@@ -20,26 +20,28 @@ use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class ApplicationValidationTest extends TestCase
 {
     use InteractsWithKycReviews, RefreshDatabase;
+    use WithRegistrationPolicies;
 
     public function test_registration_rejects_digits_in_a_person_name(): void
     {
         Storage::fake('local');
-        $this->post('/register', ['name' => 'Bagoo123', 'email' => 'validation@bagoo.test', 'password' => 'Password1234', 'password_confirmation' => 'Password1234'])->assertSessionHasErrors('name');
+        $this->post('/register', [...$this->registrationPolicies(), 'name' => 'Bagoo123', 'email' => 'validation@bagoo.test', 'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'])->assertSessionHasErrors('name');
         $this->assertDatabaseCount('users', 0);
     }
 
     public function test_courier_registration_rejects_an_unknown_vehicle_enum(): void
     {
         Storage::fake('local');
-        $this->post('/register', [
+        $this->post('/register', [...$this->registrationPolicies(),
             'role' => 'courier', 'name' => 'Juan Bagoo', 'email' => 'courier-validation@bagoo.test',
             'phone' => '09171234567', 'birthday' => '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'vehicle_type' => 'Unknown aircraft', 'plate_number' => 'ABC-123',
             'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
             'driver_license' => UploadedFile::fake()->create('license.pdf', 10, 'application/pdf'),
@@ -52,13 +54,13 @@ class ApplicationValidationTest extends TestCase
 
     private function payload(string $role = 'buyer'): array
     {
-        $data = ['role' => $role, 'name' => 'José Dela Cruz', 'email' => Str::uuid().'@bagoo.test', 'phone' => '09171234567',
+        $data = $this->registrationPolicies() + ['role' => $role, 'name' => 'José Dela Cruz', 'email' => Str::uuid().'@bagoo.test', 'phone' => '09171234567',
             'birthday' => $role === 'buyer' ? null : '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200',
-            'password' => 'Password1234', 'password_confirmation' => 'Password1234'];
+            'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'];
         if ($role === 'seller') {
             $data += ['shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id];
         } elseif ($role === 'courier') {
-            $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'TEST-LICENSE'];
+            $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-12-345678'];
         } elseif ($role === 'logistics') {
             $data += ['company_name' => 'Bagoo Logistics', 'company_code' => 'BAGOO', 'fleet_size' => 2, 'vehicle_types' => ['motorcycle']];
         }

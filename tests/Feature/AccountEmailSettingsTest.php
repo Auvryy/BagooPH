@@ -143,12 +143,12 @@ class AccountEmailSettingsTest extends TestCase
         $buyer = $this->buyer();
         $this->added($buyer);
         $this->issue($buyer, 'contact@bagoo.test', 'password_reset');
-        $payload = ['email' => 'contact@bagoo.test', 'code' => '123456', 'password' => 'RecoveredPassword1234', 'password_confirmation' => 'RecoveredPassword1234'];
+        $payload = ['email' => 'contact@bagoo.test', 'code' => '123456', 'password' => 'RecoveredPassword1234!', 'password_confirmation' => 'RecoveredPassword1234!'];
         $this->postJson('/api/password/reset-otp', $payload)->assertOk();
-        $this->assertTrue(Hash::check('RecoveredPassword1234', $buyer->fresh()->password));
+        $this->assertTrue(Hash::check('RecoveredPassword1234!', $buyer->fresh()->password));
         $this->postJson('/api/password/reset-otp', $payload)->assertUnprocessable();
-        $this->post('/login', ['email' => 'contact@bagoo.test', 'password' => 'RecoveredPassword1234'])->assertSessionHasErrors('email');
-        $this->post('/login', ['email' => $buyer->email, 'password' => 'RecoveredPassword1234'])->assertSessionHasNoErrors();
+        $this->post('/login', ['email' => 'contact@bagoo.test', 'password' => 'RecoveredPassword1234!'])->assertSessionHasErrors('email');
+        $this->post('/login', ['email' => $buyer->email, 'password' => 'RecoveredPassword1234!'])->assertSessionHasNoErrors();
         $this->assertAuthenticatedAs($buyer);
     }
 

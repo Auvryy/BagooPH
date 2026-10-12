@@ -10,12 +10,14 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithKycReviews;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class Milestone1AdversarialSecurityTest extends TestCase
 {
     use InteractsWithKycReviews;
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     /*
     |--------------------------------------------------------------------------
@@ -594,7 +596,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_seller_registration_strictly_requires_documents_and_shop_name(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Fraud Seller',
             'email' => 'fraud.seller@bagoo.test',
             'password' => 'password123',
@@ -609,7 +611,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_courier_registration_strictly_requires_vehicle_and_license_documents(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Fraud Courier',
             'email' => 'fraud.courier@bagoo.test',
             'password' => 'password123',
@@ -630,11 +632,11 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_registration_blocks_admin_role_escalation_attempt(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Hacker Admin',
             'email' => 'hacker.admin@bagoo.test',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'role' => 'admin', // disallowed in registration
         ]);
 
@@ -644,11 +646,11 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_registration_ignores_injected_status_or_kyc_status_payload(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Bypass User',
             'email' => 'bypass@bagoo.test',
-            'password' => 'Password1234',
-            'password_confirmation' => 'Password1234',
+            'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!',
             'role' => 'buyer',
             'status' => 'suspended',
             'kyc_status' => 'approved',
@@ -858,7 +860,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         CourierProfile::factory()->create(['user_id' => $courier->id]);
 
-        $newLicense = UploadedFile::fake()->create('new_license.jpg', 300, 'image/jpeg');
+        $newLicense = UploadedFile::fake()->image('new_license.jpg');
         $newOrCr = UploadedFile::fake()->create('new_or_cr.pdf', 400, 'application/pdf');
 
         $response = $this->actingAs($courier)->post('/kyc/resubmit', [

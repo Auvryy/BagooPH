@@ -6,6 +6,7 @@ use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -17,7 +18,7 @@ use Tests\TestCase;
 class F01_to_F06_SubdomainAuthTest extends TestCase
 {
     use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     protected function setUp(): void
     {
@@ -185,9 +186,9 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_01_buyer_registration(): void
     {
-        $idDoc = UploadedFile::fake()->create('valid_id.jpg', 500, 'image/jpeg');
+        $idDoc = UploadedFile::fake()->image('valid_id.jpg');
 
-        $response = $this->portalPost('buyer', '/register', [
+        $response = $this->portalPost('buyer', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Buyer User',
             'email' => 't1_buyer_reg@example.com',
             'password' => 'Secret123456!',
@@ -209,10 +210,10 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_02_seller_registration_with_permit(): void
     {
-        $idDoc = UploadedFile::fake()->create('seller_id.png', 500, 'image/png');
+        $idDoc = UploadedFile::fake()->image('seller_id.png');
         $permit = UploadedFile::fake()->create('permit.pdf', 800, 'application/pdf');
 
-        $response = $this->portalPost('seller', '/register', [
+        $response = $this->portalPost('seller', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Seller User',
             'email' => 't1_seller_reg@example.com',
             'password' => 'Secret123456!',
@@ -237,11 +238,11 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_03_courier_registration_with_or_cr(): void
     {
-        $idDoc = UploadedFile::fake()->create('id.jpg', 500, 'image/jpeg');
-        $license = UploadedFile::fake()->create('license.jpg', 500, 'image/jpeg');
+        $idDoc = UploadedFile::fake()->image('id.jpg');
+        $license = UploadedFile::fake()->image('license.jpg');
         $orCr = UploadedFile::fake()->create('or_cr.pdf', 800, 'application/pdf');
 
-        $response = $this->portalPost('courier', '/register', [
+        $response = $this->portalPost('courier', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Courier Rider',
             'email' => 't1_courier_reg@example.com',
             'password' => 'Secret123456!',
@@ -252,7 +253,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'address' => '555 Fleet St',
             'city' => 'Taguig',
             'vehicle_type' => 'Motorcycle',
-            'plate_number' => 'ABC-1234',
+            'plate_number' => 'AB-12345',
             'license_number' => 'N01-23-456789',
             'id_document' => $idDoc,
             'driver_license' => $license,

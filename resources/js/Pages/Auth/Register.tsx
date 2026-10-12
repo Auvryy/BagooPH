@@ -1,3 +1,8 @@
+import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
+import PasswordRequirements from '@/Components/PasswordRequirements';
+import { documentError, rejectOverlongRegistrationPaste } from '@/utils/registrationFields';
+import { registrationInputErrors } from '@/utils/registrationValidation';
 import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -27,7 +32,7 @@ import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function Register({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
+export default function Register({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -54,9 +59,13 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         municipality: string;
         barangay: string;
         address: string;
+        postal_code: string;
         role: 'buyer';
         id_document: File | null;
         otp_token: string;
+        policy_accepted: boolean;
+        terms_version: string;
+        privacy_version: string;
     }>({
         first_name: '',
         middle_initial: '',
@@ -73,10 +82,24 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         municipality: '',
         barangay: '',
         address: '',
+        postal_code: '',
         role: 'buyer',
         id_document: null,
         otp_token: '',
+        policy_accepted: false,
+        terms_version: policies.terms_version,
+        privacy_version: policies.privacy_version,
     });
+
+    const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+        const input = event.target as HTMLInputElement;
+        const field = input.name as keyof typeof data;
+        if (!field || !(field in data) || input.type === 'file') return;
+        const value = input.type === 'checkbox' ? input.checked : input.value;
+        const message = registrationInputErrors({ ...data, [field]: value }, birthDateLimits)[field];
+        clearErrors(field);
+        setStepErrors(previous => ({ ...previous, [field]: message ?? '', request: '' }));
+    };
 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
@@ -119,6 +142,14 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeFile();
+                setStepErrors(previous => ({ ...previous, id_document: error }));
+                return;
+            }
+            clearErrors('id_document');
+            setStepErrors(previous => ({ ...previous, id_document: '' }));
             setData('id_document', file);
             setFileName(file.name);
             setFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -272,7 +303,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-3.5 font-sans" noValidate aria-busy={processing || validating}>
+            <form onPasteCapture={event => rejectOverlongRegistrationPaste(event, (field, message) => setStepErrors(previous => ({ ...previous, [field]: message })))} onChange={fieldFeedback} onSubmit={submit} className="space-y-3.5 font-sans" noValidate aria-busy={processing || validating}>
                 {Object.keys(stepErrors).length > 0 && (
                     <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
                         <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
@@ -329,6 +360,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
+                                        minLength={12} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -345,7 +377,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <PasswordRequirements />
                                 <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
@@ -359,6 +391,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
+                                        minLength={12} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -441,26 +474,6 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                         {/* Sex & Phone */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    Sex *
-                                </label>
-                                <select
-                                    id="sex"
-                                    name="sex"
-                                    value={data.sex}
-                                    onChange={(e) => setData('sex', e.target.value)}
-                                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900"
-                                    required
-                                >
-                                    <option value="">Select Sex</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Other">Other / Prefer not to say</option>
-                                </select>
-                                <InputError message={stepErrors.sex || errors.sex} className="mt-1" />
-                            </div>
-
-                            <div>
                                 <PhoneInput
                                     id="phone"
                                     name="phone"
@@ -512,6 +525,10 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                 address: stepErrors.address || errors.address,
                             }}
                         />
+                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
+                            onChange={(field, value) => setData(field, value)}
+                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} />
+
 
                         {/* Optional Government ID Document Upload */}
                         <div>
@@ -553,6 +570,10 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                         </div>
 
                         {/* Back & Submit Buttons */}
+                        <RegistrationPolicyAcknowledgement policies={policies} accepted={data.policy_accepted}
+                            onChange={accepted => { setData('policy_accepted', accepted); clearErrors('policy_accepted'); setStepErrors(prev => ({ ...prev, policy_accepted: '' })); }}
+                            error={stepErrors.policy_accepted || errors.policy_accepted || errors.terms_version || errors.privacy_version} />
+
                         <div className="flex items-center gap-3 pt-2">
                             <button
                                 type="button"

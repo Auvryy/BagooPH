@@ -7,11 +7,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class GoogleOAuthTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithRegistrationPolicies;
 
     protected function tearDown(): void
     {
@@ -30,6 +31,7 @@ class GoogleOAuthTest extends TestCase
     public function test_google_callback_registers_new_buyer_successfully(): void
     {
         $abstractUser = Mockery::mock(SocialiteUser::class);
+        $abstractUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $abstractUser->shouldReceive('getId')->andReturn('google-id-1001');
         $abstractUser->shouldReceive('getEmail')->andReturn('newuser@gmail.com');
         $abstractUser->shouldReceive('getName')->andReturn('Juan Dela Cruz');
@@ -41,6 +43,10 @@ class GoogleOAuthTest extends TestCase
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
         $response = $this->get(route('auth.google.callback'));
+        $response->assertRedirect(route('auth.google.registration'));
+        $this->assertDatabaseCount('users', 0);
+        $nonce = session('registration.google.nonce');
+        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['registration_nonce' => $nonce, 'first_name' => 'Juan', 'middle_initial' => '', 'last_name' => 'Dela Cruz']);
 
         $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();
@@ -65,6 +71,7 @@ class GoogleOAuthTest extends TestCase
         ]);
 
         $abstractUser = Mockery::mock(SocialiteUser::class);
+        $abstractUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $abstractUser->shouldReceive('getId')->andReturn('google-id-2002');
         $abstractUser->shouldReceive('getEmail')->andReturn('existingbuyer@bagoo.test');
         $abstractUser->shouldReceive('getName')->andReturn('Existing Buyer');
@@ -97,6 +104,7 @@ class GoogleOAuthTest extends TestCase
         ]);
 
         $abstractUser = Mockery::mock(SocialiteUser::class);
+        $abstractUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $abstractUser->shouldReceive('getId')->andReturn('google-id-3003');
         $abstractUser->shouldReceive('getEmail')->andReturn('buyerwithid@gmail.com');
 
@@ -120,6 +128,7 @@ class GoogleOAuthTest extends TestCase
         ]);
 
         $abstractUser = Mockery::mock(SocialiteUser::class);
+        $abstractUser->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $abstractUser->shouldReceive('getId')->andReturn('google-id-seller-99');
         $abstractUser->shouldReceive('getEmail')->andReturn('merchant@gmail.com');
 

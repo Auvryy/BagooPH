@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\TestCase;
 
 class OtpVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use WithRegistrationPolicies;
 
     public function test_can_send_otp_verification_code_for_registration(): void
     {
@@ -248,7 +250,7 @@ class OtpVerificationTest extends TestCase
             'attempts' => 1,
         ]);
 
-        $response = $this->post('/register', [
+        $response = $this->post('/register', [...$this->registrationPolicies(),
             'name' => 'Verified Buyer',
             'email' => $email,
             'password' => 'Password123!',

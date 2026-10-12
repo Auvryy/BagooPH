@@ -1,3 +1,4 @@
+import PasswordRequirements from '@/Components/PasswordRequirements';
 import React, { FormEventHandler } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -68,12 +69,13 @@ export default function ResetPassword({ token, email }: Props) {
                             className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
+                            minLength={12} maxLength={128}
                             autoFocus
                             onChange={(e) => setData('password', e.target.value)}
                             required
                         />
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                    <PasswordRequirements />
                     <InputError message={errors.password} className="mt-1" />
                 </div>
 
@@ -91,6 +93,7 @@ export default function ResetPassword({ token, email }: Props) {
                             className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
+                            minLength={12} maxLength={128}
                             onChange={(e) => setData('password_confirmation', e.target.value)}
                             required
                         />

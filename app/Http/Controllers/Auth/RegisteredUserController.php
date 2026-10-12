@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\RegistrationDocument;
 use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
+use App\Services\RegistrationPolicyService;
 use App\Services\VerificationDocumentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +27,7 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Auth/Register', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
+        return Inertia::render('Auth/Register', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
     }
 
     /**
@@ -35,6 +37,7 @@ class RegisteredUserController extends Controller
     {
         return Inertia::render('Auth/SellerRegister', [
             'birthDateLimits' => app(BirthDateEligibility::class)->limits(),
+            'policies' => app(RegistrationPolicyService::class)->contract(),
             'masterCategories' => app(MasterCategoryService::class)->choices(),
         ]);
     }
@@ -44,7 +47,7 @@ class RegisteredUserController extends Controller
      */
     public function createCourier(): Response
     {
-        return Inertia::render('Auth/CourierRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
+        return Inertia::render('Auth/CourierRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
     }
 
     /**
@@ -52,7 +55,7 @@ class RegisteredUserController extends Controller
      */
     public function createLogistics(): Response
     {
-        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits()]);
+        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
     }
 
     public function validateRegistration(Request $request, AccountRegistrationService $registration): JsonResponse
@@ -171,13 +174,13 @@ class RegisteredUserController extends Controller
         }
 
         $applications = app(ApplicationValidationService::class);
-        $request->merge($applications->normalize($request->all(), $user->role));
+        $request->merge($applications->correctionValues($request->all(), $user));
         $rules = [];
         foreach ($applications->rules($user->role, $user) as $field => $fieldRules) {
             $rules[$field] = ['sometimes', ...$fieldRules];
         }
         foreach (['id_document', 'business_permit', 'driver_license', 'or_cr_document', 'franchise_document'] as $field) {
-            $rules[$field] = 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120';
+            $rules[$field] = ['bail', 'nullable', 'file', new RegistrationDocument];
         }
         foreach (['role', 'user_id', 'shop_id', 'company_id', 'logistics_company_id', 'hub_id', 'assigned_hub_id', 'vehicle_id'] as $field) {
             $rules[$field] = ['prohibited'];

@@ -35,7 +35,7 @@ class AccountSettingsService
             }
             $values = $request->validate([
                 'current_password' => ['required', 'string', 'max:4096', new AccountCurrentPassword($user)],
-                'password' => ['required', 'string', Password::min(12)->max(128), 'confirmed'],
+                'password' => ['required', 'string', Password::defaults(), 'confirmed'],
             ]);
             $user->update(['password' => $values['password']]);
             $user->tokens()->delete();
