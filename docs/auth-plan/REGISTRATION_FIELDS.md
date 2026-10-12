@@ -67,34 +67,18 @@ remain readable and eligible under their existing rules. Changed company/vehicle
 identifiers and fleet declarations must pass the new application limits.
 Corrections do not approve the account or replace the original sign-in email.
 
-## Signup email availability
+## Registration email checks
 
-Early availability feedback is advisory. Global ownership includes other roles
-and verified additional addresses. An available result does not reserve an
-address, establish mailbox existence, verify ownership or allow approval bypass.
-Full-form validation, final signup, database uniqueness and existing OTP checks
-remain authoritative when another applicant takes the address afterward.
+Email format feedback and submission checks must agree on normalized addresses,
+malformed input, controls and length limits. Preflight and final signup recheck
+global ownership, including case/space equivalents, other roles and verified
+additional addresses. An earlier successful check never reserves an address
+or bypasses final validation or database uniqueness.
 
-Buyer, seller, courier and logistics web forms check a complete valid address
-after a 500 ms typing pause or on blur. Blank/incomplete entries do not start
-lookups. Edits, step changes and modal/submission transitions cancel pending work;
-late replies must never apply to a different current address. Existing field
-errors take priority over availability feedback. Google registration retains
-the fixed verified provider email rather than offering an editable lookup.
-
-`POST /register/email/validate` receives only `email`, uses the shared signup
-normalization and format rules, and returns the normalized submitted email with
-an `available` boolean. It reveals the existing duplicate-registration outcome,
-without account details. Successful responses are private and uncached. Keep
-the web guest/CSRF middleware and the independent 30-per-minute request limit;
-availability lookups must not exhaust full-form preflight's request bucket.
-
-Acceptance must cover invalid/control/overlong values, case/space equivalents,
-cross-role and additional-address duplicates, no account/mail/OTP side effects,
-typing and blur deduplication, clearing/navigation, out-of-order replies and
-timeout/retry recovery. A failed or unreadable check cannot claim availability.
-Rate-limit cooldown must remain effective when the address changes. Checks do
-not depend on DNS lookups, so configured demo and custom domains remain usable.
+Mailbox ownership requires the existing OTP verification. A syntactically valid
+address does not establish that the mailbox exists. Guest/session restrictions,
+original sign-in identity and approval requirements remain independent of the
+address entered. Do not silently sign out an existing account to submit signup.
 
 ## Standards and interpretation
 
