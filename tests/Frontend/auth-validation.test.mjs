@@ -217,7 +217,7 @@ const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.'
 
 test('each personal name immediately rejects digits and hidden or unsupported characters while allowing real punctuation', () => {
     for (const label of ['First name', 'Last name']) {
-        for (const value of ['Ana-María', 'José', "O'Hara", 'O’Connor', 'Anne-Marie', 'Santos Jr.', 'Dela Cruz', '  Jose\u0301  ']) {
+        for (const value of ['Ana-María', 'José', 'Peña', 'Muñoz', 'Peña-O’Connor', 'Pen\u0303a-Santos', "O'Hara", 'O’Connor', 'Anne-Marie', 'Santos Jr.', 'Dela Cruz', '  Jose\u0301  ']) {
             assert.equal(ui.personalNameError(value, label), undefined, value);
         }
         for (const value of ['Ana1', '3', 'Ana@', 'Ana#', 'Ana😀', '<script>', '---', 'Ana\u200b', 'Ana\u034f', 'Ana\ufe0f', 'Ana\n']) {
@@ -260,8 +260,9 @@ test('invalid typed and pasted names display accessible inline feedback and pres
         assert.match(html, /aria-live="polite"/);
         assert.match(input, field === 'middle_initial' ? /maxlength="2"/i : /maxlength="50"/i);
     }
-    const valid = renderToStaticMarkup(createElement(ui.PersonalNames, { values: identity('courier'), onChange() {} }));
+    const valid = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { ...identity('courier'), last_name: 'Peña-O’Connor' }, onChange() {} }));
     assert.doesNotMatch(valid, /aria-invalid="true"/);
+    assert.match(valid, /value="Peña-O’Connor"/);
     assert.match(valid, /Middle initial \(optional\)/);
     const empty = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { first_name: '', middle_initial: '', last_name: '' }, onChange() {} }));
     assert.doesNotMatch(empty, /is required|aria-invalid="true"/);
@@ -355,6 +356,9 @@ test('all registration pages preserve the portal shell and controlled form feedb
         assert.match(result.body, /aria-busy="false"/);
         assert.match(result.body, /<fieldset class="contents">/);
         assert.match(result.body, /BagooPH/);
+        assert.match(result.body, /<input[^>]*id="email"[^>]*aria-describedby="registration-email-feedback"[^>]*aria-invalid="false"/);
+        assert.match(result.body, /id="registration-email-feedback"[^>]*role="status"[^>]*aria-live="polite"/);
+        assert.doesNotMatch(result.body, /Email is available|Checking email/);
         for (const field of ['first_name', 'last_name', 'middle_initial']) assert.match(result.body, new RegExp('<input[^>]*name="' + field + '"'));
         assert.match(result.body, /name="first_name"[^>]*required=""/);
         assert.match(result.body, /name="last_name"[^>]*required=""/);
