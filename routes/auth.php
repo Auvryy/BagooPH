@@ -34,6 +34,9 @@ Route::middleware('guest')->group(function () {
     Route::post('register/validate', [RegisteredUserController::class, 'validateRegistration'])
         ->middleware('throttle:30,1')->name('register.validate');
 
+    Route::post('register/email/validate', [RegisteredUserController::class, 'validateEmail'])
+        ->middleware('throttle:30,1,registration-email')->name('register.email.validate');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
