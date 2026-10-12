@@ -61,7 +61,7 @@ export default function UpdatePasswordForm({
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Use a unique password between 12 and 128 characters.
+                    Use 12–128 characters with uppercase and lowercase letters, a number and a symbol.
                 </p>
             </header>
 
@@ -110,6 +110,7 @@ export default function UpdatePasswordForm({
                             type="password"
                             className="mt-1 block w-full"
                             autoComplete="new-password"
+                            minLength={12} maxLength={128}
                         />
 
                         <InputError message={errors.password} className="mt-2" />
@@ -130,6 +131,7 @@ export default function UpdatePasswordForm({
                             type="password"
                             className="mt-1 block w-full"
                             autoComplete="new-password"
+                            minLength={12} maxLength={128}
                         />
 
                         <InputError

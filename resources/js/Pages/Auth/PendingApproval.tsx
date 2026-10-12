@@ -61,7 +61,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
     const [licenseFileName, setLicenseFileName] = useState<string | null>(null);
     const [orCrFileName, setOrCrFileName] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, transform } = useForm<{
+    const { data, setData, post, processing, errors, clearErrors, reset, transform } = useForm<{
         birthday: string;
         details: ApplicationValues;
         root_category_id: string;
@@ -129,7 +129,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                         {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}
                         {sellerCategory?.issue && <p className="text-xs text-amber-800">{sellerCategory.issue}</p>}
                         {!birthDate.needs_correction && <InputError message={errors.birthday} />}
-                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => setData('details', { ...data.details, [key]: value })} />}
+                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => { clearErrors(key as keyof typeof data); setData('details', { ...data.details, [key]: value }); }} />}
                         <InputError message={(errors as { application?: string }).application} />
                         <InputError message={(errors as { documents?: string }).documents} />
                         <button type="submit" disabled={processing || (data.birthday === (birthDate.value || '') && data.root_category_id === (sellerCategory?.value ? String(sellerCategory.value) : '') && JSON.stringify(data.details) === JSON.stringify(application.values))} className="rounded-[12px] border border-[#E00D42] bg-[#E00D42] px-4 py-2 font-semibold text-white disabled:opacity-50">{processing ? 'Submitting...' : 'Submit correction for review'}</button>
@@ -298,7 +298,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 {/* Resubmission Form (Rejected Mode) */}
                 {isRejected && (
                     <form onSubmit={handleResubmit} className="p-4 bg-white border-2 border-[#E00D42]/30 rounded-xl space-y-4">
-                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => setData('details', { ...data.details, [key]: value })} />}
+                        {application.can_correct && <ApplicationFields application={application} values={data.details} errors={errors as Record<string, string>} onChange={(key, value) => { clearErrors(key as keyof typeof data); setData('details', { ...data.details, [key]: value }); }} />}
                         <InputError message={(errors as { documents?: string }).documents} />
                         <BirthDateInput value={data.birthday} maximum={birthDate.limits.adult_maximum} onChange={value => setData('birthday', value)} error={errors.birthday} />
                         {sellerCategory?.can_correct && <MasterCategorySelect choices={sellerCategory.choices} value={data.root_category_id} currentName={sellerCategory.name} onChange={value => setData('root_category_id', value)} error={errors.root_category_id} />}

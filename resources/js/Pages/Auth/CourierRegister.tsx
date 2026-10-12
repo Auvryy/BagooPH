@@ -1,3 +1,8 @@
+import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
+import PasswordRequirements from '@/Components/PasswordRequirements';
+import { documentError, rejectOverlongRegistrationPaste, uppercaseOperationalCode } from '@/utils/registrationFields';
+import { registrationInputErrors } from '@/utils/registrationValidation';
 import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -30,7 +35,7 @@ import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function CourierRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
+export default function CourierRegister({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -55,9 +60,11 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         middle_initial: string;
         last_name: string;
         birthday: string;
+        sex: string;
         email: string;
         phone: string;
         address: string;
+        postal_code: string;
         city: string;
         province: string;
         municipality: string;
@@ -72,14 +79,19 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         driver_license: File | null;
         or_cr_document: File | null;
         otp_token: string;
+        policy_accepted: boolean;
+        terms_version: string;
+        privacy_version: string;
     }>({
         first_name: '',
         middle_initial: '',
         last_name: '',
         birthday: '',
+        sex: '',
         email: '',
         phone: '',
         address: '',
+        postal_code: '',
         city: '',
         province: 'Metro Manila',
         municipality: '',
@@ -94,7 +106,20 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
         driver_license: null,
         or_cr_document: null,
         otp_token: '',
+        policy_accepted: false,
+        terms_version: policies.terms_version,
+        privacy_version: policies.privacy_version,
     });
+
+    const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
+        const input = event.target as HTMLInputElement;
+        const field = input.name as keyof typeof data;
+        if (!field || !(field in data) || input.type === 'file') return;
+        const value = input.type === 'checkbox' ? input.checked : input.value;
+        const message = registrationInputErrors({ ...data, [field]: value }, birthDateLimits)[field];
+        clearErrors(field);
+        setStepErrors(previous => ({ ...previous, [field]: message ?? '', request: '' }));
+    };
 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
@@ -109,6 +134,14 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeIdFile();
+                setStepErrors(previous => ({ ...previous, id_document: error }));
+                return;
+            }
+            clearErrors('id_document');
+            setStepErrors(previous => ({ ...previous, id_document: '' }));
             setData('id_document', file);
             setIdFileName(file.name);
             setIdFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -130,6 +163,14 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
     const handleLicenseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeLicenseFile();
+                setStepErrors(previous => ({ ...previous, driver_license: error }));
+                return;
+            }
+            clearErrors('driver_license');
+            setStepErrors(previous => ({ ...previous, driver_license: '' }));
             setData('driver_license', file);
             setLicenseFileName(file.name);
             setLicenseFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -151,6 +192,14 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
     const handleOrCrChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const error = documentError(file);
+            if (error) {
+                removeOrCrFile();
+                setStepErrors(previous => ({ ...previous, or_cr_document: error }));
+                return;
+            }
+            clearErrors('or_cr_document');
+            setStepErrors(previous => ({ ...previous, or_cr_document: '' }));
             setData('or_cr_document', file);
             setOrCrFileName(file.name);
             setOrCrFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
@@ -302,7 +351,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                 </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
+            <form onPasteCapture={event => rejectOverlongRegistrationPaste(event, (field, message) => setStepErrors(previous => ({ ...previous, [field]: message })))} onChange={fieldFeedback} onSubmit={submit} className="space-y-4" noValidate aria-busy={processing || validating}>
                 {Object.keys(stepErrors).length > 0 && (
                     <div ref={feedbackRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00D42]/20">
                         <InputError message={stepErrors.request ?? Object.values(stepErrors)[0]} />
@@ -399,6 +448,10 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                 address: stepErrors.address || errors.address,
                             }}
                         />
+                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
+                            onChange={(field, value) => setData(field, value)}
+                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} courier />
+
 
                         <div className="pt-2">
                             <button
@@ -453,11 +506,12 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         id="plate_number"
                                         type="text"
                                         name="plate_number"
+                                        minLength={5} maxLength={8}
                                         value={data.plate_number}
                                         className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-sans"
                                         placeholder="e.g. 123-ABC"
                                         onChange={(e) => {
-                                            setData('plate_number', e.target.value.toUpperCase());
+                                            setData('plate_number', uppercaseOperationalCode(e.target.value));
                                             if (stepErrors.plate_number) setStepErrors(prev => ({ ...prev, plate_number: '' }));
                                         }}
                                         required
@@ -480,11 +534,12 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         id="license_number"
                                         type="text"
                                         name="license_number"
+                                        minLength={11} maxLength={13}
                                         value={data.license_number}
                                         className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400 uppercase font-sans"
                                         placeholder="e.g. N01-12-345678"
                                         onChange={(e) => {
-                                            setData('license_number', e.target.value.toUpperCase());
+                                            setData('license_number', uppercaseOperationalCode(e.target.value));
                                             if (stepErrors.license_number) setStepErrors(prev => ({ ...prev, license_number: '' }));
                                         }}
                                         required
@@ -655,6 +710,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
+                                        minLength={12} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -671,7 +727,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                                <PasswordRequirements />
                                 <InputError message={stepErrors.password || errors.password} className="mt-1" />
                             </div>
 
@@ -685,6 +741,7 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
+                                        minLength={12} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -704,6 +761,10 @@ export default function CourierRegister({ birthDateLimits }: { birthDateLimits: 
                                 <InputError message={stepErrors.password_confirmation || errors.password_confirmation} className="mt-1" />
                             </div>
                         </div>
+
+                        <RegistrationPolicyAcknowledgement policies={policies} accepted={data.policy_accepted}
+                            onChange={accepted => { setData('policy_accepted', accepted); clearErrors('policy_accepted'); setStepErrors(prev => ({ ...prev, policy_accepted: '' })); }}
+                            error={stepErrors.policy_accepted || errors.policy_accepted || errors.terms_version || errors.privacy_version} courier />
 
                         <div className="flex items-center gap-3 pt-2">
                             <button

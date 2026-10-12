@@ -345,6 +345,8 @@ export default function PhilippineAddressSelector({
                                 type="text"
                                 name="address"
                                 value={values.address}
+                                minLength={5}
+                                maxLength={500}
                                 onChange={handleStreetChange}
                                 placeholder={streetPlaceholder}
                                 className={`w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-hidden transition text-slate-900 placeholder-slate-400 ${focusBorderClass}`}

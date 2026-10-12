@@ -1,3 +1,4 @@
+import PasswordRequirements from '@/Components/PasswordRequirements';
 import React, { FormEventHandler, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -191,7 +192,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">Use 12–128 characters. Passphrases are welcome.</p>
+                        <PasswordRequirements />
                         <InputError message={resetForm.errors.password} className="mt-1" />
                     </div>
 

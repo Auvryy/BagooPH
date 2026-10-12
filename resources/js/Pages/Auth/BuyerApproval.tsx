@@ -55,7 +55,7 @@ export default function BuyerApproval({ user, application, identityDocumentUrl, 
 
                 {canCorrect && (
                     <form onSubmit={submit} className="space-y-4">
-                        <ApplicationFields application={application} values={form.data.details} errors={form.errors as Record<string, string>} onChange={(key, value) => form.setData('details', { ...form.data.details, [key]: value })} />
+                        <ApplicationFields application={application} values={form.data.details} errors={form.errors as Record<string, string>} onChange={(key, value) => { form.clearErrors(key as keyof typeof form.data); form.setData('details', { ...form.data.details, [key]: value }); }} />
                         <BirthDateInput adult={false} value={String(form.data.details.birthday || '')} maximum={birthDateLimits.past_maximum} onChange={value => form.setData('details', { ...form.data.details, birthday: value })} error={(form.errors as Record<string, string>).birthday} />
                         <div className="space-y-2">
                             <label htmlFor="buyer-identity-document" className="block font-semibold">Government identity document</label>
