@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Rules\MiddleInitial;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use Normalizer;
 
 class AccountRegistrationService
 {
@@ -22,8 +24,8 @@ class AccountRegistrationService
             'step' => ['nullable', 'integer', 'between:1,3'],
         ]);
         $role = $selection['role'];
-        $this->prepare($request, $role);
-        $rules = $this->rules($role);
+        $separatedName = $this->prepare($request, $role);
+        $rules = $this->rules($role, $separatedName);
         if ($step = $selection['step'] ?? null) {
             $fields = $this->stepFields($role)[$step - 1] ?? null;
             if ($fields === null) {
@@ -34,35 +36,54 @@ class AccountRegistrationService
         $request->validate($rules);
     }
 
-    private function prepare(Request $request, string $role): void
+    private function prepare(Request $request, string $role): bool
     {
-        // Merge composite name if first_name or last_name is provided without a full name
-        if (! $request->filled('name') && ($request->filled('first_name') || $request->filled('last_name'))) {
-            foreach (['first_name', 'middle_name', 'last_name'] as $field) {
-                if ($request->filled($field) && ! is_string($request->input($field))) {
-                    throw ValidationException::withMessages([$field => 'Enter a valid name.']);
+        $hasInitial = $request->exists('middle_initial');
+        $separatedName = $request->exists('first_name') || $request->exists('middle_name') || $request->exists('last_name') || $hasInitial;
+        if ($separatedName) {
+            $errors = [];
+            foreach (['first_name', $hasInitial ? 'middle_initial' : 'middle_name', 'last_name'] as $field) {
+                if ($request->input($field) !== null && ! is_string($request->input($field))) {
+                    $errors[$field] = 'Enter a name using letters, spaces, apostrophes, hyphens or periods.';
                 }
             }
-            $compositeName = trim(
-                ($request->input('first_name', '').' '.
-                ($request->input('middle_name') ? $request->input('middle_name').' ' : '').
-                $request->input('last_name', ''))
-            );
-            $request->merge(['name' => $compositeName]);
+            if ($errors) {
+                throw ValidationException::withMessages($errors);
+            }
+        }
+
+        if ($hasInitial) {
+            $initial = $request->input('middle_initial');
+            if (is_string($initial) && ! preg_match('/\p{C}/u', $initial)) {
+                $initial = trim(Normalizer::normalize($initial, Normalizer::FORM_KC), ' ');
+            }
+            $request->merge(['middle_initial' => $initial, 'middle_name' => $initial]);
         }
 
         $applications = app(ApplicationValidationService::class);
         $request->merge($applications->registrationValues($request->all(), $role));
+        if ($separatedName) {
+            $parts = array_filter(array_map(fn ($field) => $request->input($field), ['first_name', 'middle_name', 'last_name']), fn ($value) => $value !== null && $value !== '');
+            $request->merge(['name' => implode(' ', $parts)]);
+        }
+
+        return $separatedName;
     }
 
-    private function rules(string $role): array
+    private function rules(string $role, bool $separatedName = false): array
     {
         $rules = app(ApplicationValidationService::class)->rules($role) + [
             'password' => ['bail', 'required', 'string', 'confirmed', Rules\Password::defaults()],
             'otp_token' => ['nullable', 'string', 'max:128'],
             'role' => 'nullable|string|in:buyer,seller,courier,logistics',
             'id_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+            'middle_initial' => ['bail', 'nullable', 'string', new MiddleInitial],
         ];
+        if ($separatedName) {
+            foreach (['first_name', 'last_name'] as $field) {
+                $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
+            }
+        }
         foreach (self::MANAGED_FIELDS as $field) {
             $rules[$field] = ['prohibited'];
         }
@@ -86,24 +107,25 @@ class AccountRegistrationService
     {
         $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
         $password = ['password', 'password_confirmation'];
+        $name = ['name', 'first_name', 'middle_name', 'middle_initial', 'last_name'];
 
         return match ($role) {
             'buyer' => [
-                ['name', 'first_name', 'middle_name', 'last_name', 'email', ...$password],
+                [...$name, 'email', ...$password],
                 ['sex', 'birthday', 'phone', ...$location, 'id_document'],
             ],
             'seller' => [
-                ['name', 'birthday', 'shop_name', 'root_category_id', 'email'],
+                [...$name, 'birthday', 'shop_name', 'root_category_id', 'email'],
                 ['phone', ...$location, 'shop_phone', 'shop_address', 'shop_city'],
                 [...$password, 'id_document', 'business_permit'],
             ],
             'courier' => [
-                ['name', 'birthday', 'email', 'phone', ...$location],
+                [...$name, 'birthday', 'email', 'phone', ...$location],
                 ['vehicle_type', 'plate_number', 'license_number'],
                 [...$password, 'id_document', 'driver_license', 'or_cr_document'],
             ],
             'logistics' => [
-                ['name', 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
+                [...$name, 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
                 ['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'],
                 [...$location, 'company_address', 'business_permit', 'franchise_document'],
             ],
@@ -117,8 +139,8 @@ class AccountRegistrationService
             throw ValidationException::withMessages(['role' => 'Choose a supported account role.']);
         }
         $birthDates = app(BirthDateEligibility::class);
-        $this->prepare($request, $role);
-        $validated = $request->validate($this->rules($role));
+        $separatedName = $this->prepare($request, $role);
+        $validated = $request->validate($this->rules($role, $separatedName));
 
         if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration')) {
             throw ValidationException::withMessages(['otp_token' => 'Verify your email before submitting your rider application.']);

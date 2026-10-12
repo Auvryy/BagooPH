@@ -143,7 +143,7 @@ class ApplicationValidationTest extends TestCase
         Storage::fake('local');
         $data = array_replace($this->payload($role), ['name' => $name, 'phone' => $phone, 'email' => 'Juan@BAGOO.TEST']);
         $this->post('/register', $data)->assertSessionHasNoErrors();
-        $user = User::where('email', 'Juan@bagoo.test')->sole();
+        $user = User::where('email', 'juan@bagoo.test')->sole();
         $this->assertSame($expectedName, $user->name);
         $this->assertSame($expectedPhone, $user->phone);
         $this->addKycEvidence($user);

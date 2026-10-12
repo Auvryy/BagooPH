@@ -54,7 +54,7 @@ class ApplicationValidationService
         $text = fn (string $kind, int $min, int $max, bool $required = false) => ['bail', $required ? 'required' : 'nullable', 'string', new ApplicationText($kind, $min, $max)];
         $rules = [
             'name' => $text('name', 2, 100, true),
-            'first_name' => $text('name', 1, 100), 'last_name' => $text('name', 1, 100), 'middle_name' => $text('name', 1, 100),
+            'first_name' => $text('name', 2, 50), 'last_name' => $text('name', 2, 50), 'middle_name' => $text('name', 1, 50),
             'sex' => ['nullable', Rule::in(['Female', 'Male', 'Other'])],
             'birthday' => [$worker ? 'required' : 'nullable', new BirthDate($worker)],
             'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id)],
@@ -94,7 +94,14 @@ class ApplicationValidationService
             $data = array_replace($data, ['company_email' => $data['email'] ?? null, 'company_phone' => $data['phone'] ?? null, 'company_address' => $data['address'] ?? null, 'operating_province' => $data['operating_province'] ?? $data['province'] ?? null]);
         }
 
-        return $this->normalize($data, $role);
+        $data = $this->normalize($data, $role);
+        foreach (['email', 'company_email'] as $field) {
+            if (isset($data[$field]) && is_string($data[$field])) {
+                $data[$field] = mb_strtolower($data[$field]);
+            }
+        }
+
+        return $data;
     }
 
     public function fieldErrors(array $values, string $role, ?User $user = null): array

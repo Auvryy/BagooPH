@@ -25,7 +25,9 @@ class ApplicationText implements ValidationRule
         };
         $unsafe = preg_match('/[\x{034f}\x{fe00}-\x{fe0f}]|(?:javascript|vbscript|data)\s*:|\bon[a-z]+\s*=/iu', $value);
         if ($unsafe || ! preg_match($pattern, $value) || ! preg_match($this->kind === 'name' ? '/\p{Latin}/u' : '/[\p{L}\p{N}]/u', $value)) {
-            $fail('The :attribute must contain meaningful plain text in the permitted format, without hidden characters or markup.');
+            $fail($this->kind === 'name'
+                ? 'Use letters, spaces, apostrophes, hyphens or periods for the :attribute. Numbers and other symbols are not allowed.'
+                : 'The :attribute must contain meaningful plain text in the permitted format, without hidden characters or markup.');
         }
     }
 }

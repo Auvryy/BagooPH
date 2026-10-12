@@ -195,6 +195,25 @@ class RiderApiAuthTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
+    public function test_native_application_checks_separated_names_without_consuming_verification_on_rejection(): void
+    {
+        Storage::fake('local');
+        $email = 'named-rider@bagoo.test';
+        $token = $this->verification($email);
+        $data = $this->application($email, $token) + ['first_name' => 'José', 'middle_name' => '', 'last_name' => "O'Hara"];
+        $this->postJson('/api/v1/rider/applications', array_replace($data, ['first_name' => 'José123', 'last_name' => '']))
+            ->assertJsonValidationErrors(['first_name', 'last_name']);
+        $this->assertDatabaseCount('users', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->postJson('/api/v1/rider/applications', $data)->assertCreated()
+            ->assertJsonPath('data.user.name', "José O'Hara")
+            ->assertJsonPath('data.user.status', 'pending_approval');
+        $user = User::sole();
+        $this->assertSame('José', $user->first_name);
+        $this->assertSame("O'Hara", $user->last_name);
+        $this->assertNull($user->middle_name);
+    }
+
     public function test_registration_rejects_unverified_wrong_email_missing_files_underage_and_privileged_inputs(): void
     {
         Storage::fake('local');
