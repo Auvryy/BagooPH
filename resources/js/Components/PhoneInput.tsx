@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React, { useState } from 'react';
 import InputError from '@/Components/InputError';
 
 interface PhoneInputProps {
@@ -34,13 +34,28 @@ export function formatPhNationalNumber(digits: string): string {
  * Unsupported input remains visible for server-side validation.
  */
 export function extractNationalDigits(value: string): string {
-    if (!/^\+?[0-9 ()-]*$/.test(value)) return value;
+    if (!/^\+?[0-9 ()-]*$/.test(value) || /[\r\n]/.test(value)) return value;
     let clean = value.replace(/[ ()-]/g, '');
     if (clean.startsWith('+63')) clean = clean.slice(3);
     else if (clean.startsWith('+')) return value;
     else if (clean.startsWith('63') && clean.length > 2) clean = clean.slice(2);
     else if (clean.startsWith('0') && clean.length > 1) clean = clean.slice(1);
     return clean;
+}
+
+export function mobileInputChange(raw: string): { value?: string; error?: string } {
+    const national = extractNationalDigits(raw);
+    if (/[^0-9]/.test(national)) return { error: 'Use numbers only. No text was added.' };
+    if (national.length > 10) return { error: 'Use exactly 10 digits after +63. No extra digits were added.' };
+    if (national && !national.startsWith('9')) return { error: 'Start with 9 after +63. No digits were added.' };
+    return { value: national ? '+63' + national : '' };
+}
+
+export function mobileNumberError(value: string, required = false): string | undefined {
+    const national = extractNationalDigits(value);
+    if (!national) return required ? 'Mobile number is required.' : undefined;
+    return national.length === 10 && /^9[0-9]{9}$/.test(national)
+        ? undefined : 'Enter exactly 10 digits after +63, starting with 9.';
 }
 
 export default function PhoneInput({
@@ -52,23 +67,22 @@ export default function PhoneInput({
     required = false,
     error,
     disabled = false,
-    placeholder = '917 123 4567',
+    placeholder = '9171234567',
     accentColor = 'primary',
     className = '',
     autoFocus = false,
     helperText,
 }: PhoneInputProps) {
+    const [touched, setTouched] = useState(false);
+    const [inputError, setInputError] = useState<string>();
     const nationalDigits = extractNationalDigits(value);
-    const displayValue = formatPhNationalNumber(nationalDigits);
+    const feedback = inputError ?? error ?? (touched || value ? mobileNumberError(value, required) : undefined);
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const raw = e.target.value;
-        const national = extractNationalDigits(raw);
-        if (!/^[0-9]*$/.test(national)) {
-            onChange(raw);
-            return;
-        }
-        onChange(!national ? '' : national === '0' ? '0' : '+63 ' + formatPhNationalNumber(national));
+    const applyChange = (raw: string) => {
+        setTouched(true);
+        const result = mobileInputChange(raw);
+        setInputError(result.error);
+        if (result.value !== undefined) onChange(result.value);
     };
 
     const focusBorderClass =
@@ -90,7 +104,7 @@ export default function PhoneInput({
             )}
 
             <div
-                className={`relative flex items-stretch rounded-lg border border-slate-300 bg-white transition shadow-2xs ${focusBorderClass} ${
+                className={`relative flex items-stretch rounded-lg border ${feedback ? 'border-red-600' : 'border-slate-300'} bg-white transition shadow-2xs ${focusBorderClass} ${
                     disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : ''
                 }`}
             >
@@ -108,23 +122,34 @@ export default function PhoneInput({
                         type="tel"
                         inputMode="numeric"
                         name={name}
-                        value={displayValue}
-                        onChange={handleChange}
+                        value={nationalDigits}
+                        minLength={10}
+                        maxLength={10}
+                        pattern="9[0-9]{9}"
+                        autoComplete="tel-national"
+                        onChange={event => applyChange(event.target.value)}
+                        onPaste={event => {
+                            event.preventDefault();
+                            const input = event.currentTarget;
+                            applyChange(input.value.slice(0, input.selectionStart ?? input.value.length) + event.clipboardData.getData('text') + input.value.slice(input.selectionEnd ?? input.value.length));
+                        }}
+                        onBlur={() => setTouched(true)}
                         required={required}
                         disabled={disabled}
                         autoFocus={autoFocus}
                         placeholder={placeholder}
-                        aria-invalid={Boolean(error)}
+                        aria-invalid={Boolean(feedback)}
+                        aria-describedby={feedback ? id + '-error' : helperText ? id + '-help' : undefined}
                         className="w-full pl-3 pr-3.5 py-2.5 text-sm bg-transparent border-0 outline-hidden font-sans text-slate-900 placeholder-slate-400 tracking-wider focus:ring-0"
                     />
                 </div>
             </div>
 
-            {helperText && !error && (
-                <p className="text-[11px] text-slate-500 mt-1 font-sans">{helperText}</p>
+            {helperText && !feedback && (
+                <p id={id + '-help'} className="text-[11px] text-slate-500 mt-1 font-sans">{helperText}</p>
             )}
 
-            {error && <InputError message={error} className="mt-1" />}
+            <InputError id={id + '-error'} role="status" aria-live="polite" message={feedback} className="mt-1" />
         </div>
     );
 }

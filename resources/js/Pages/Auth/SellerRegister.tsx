@@ -2,13 +2,13 @@ import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import PersonalNameFields from '@/Components/PersonalNameFields';
 import { 
     ArrowRight, 
     ArrowLeft, 
     Lock, 
     Mail, 
     Store, 
-    User, 
     Upload, 
     FileText, 
     X, 
@@ -25,6 +25,7 @@ import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
+import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 
@@ -43,8 +44,10 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
     const [permitFileName, setPermitFileName] = useState<string | null>(null);
     const [permitFileSize, setPermitFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, transform } = useForm<{
-        name: string;
+    const { data, setData, post, processing, errors, clearErrors, reset, transform } = useForm<{
+        first_name: string;
+        middle_initial: string;
+        last_name: string;
         birthday: string;
         shop_name: string;
         root_category_id: string;
@@ -62,7 +65,9 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
         business_permit: File | null;
         otp_token: string;
     }>({
-        name: '',
+        first_name: '',
+        middle_initial: '',
+        last_name: '',
         birthday: '',
         shop_name: '',
         root_category_id: '',
@@ -84,7 +89,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
-    });
+    }, birthDateLimits);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -300,30 +305,11 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
 
                         <MasterCategorySelect choices={masterCategories} value={data.root_category_id} onChange={value => { setData('root_category_id', value); setStepErrors(previous => ({ ...previous, root_category_id: '' })); }} error={stepErrors.root_category_id || errors.root_category_id} />
 
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                Merchant Contact Name *
-                            </label>
-                            <div className="relative">
-                                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                                <input
-                                    id="name"
-                                    type="text"
-                                    name="name"
-                                    value={data.name}
-                                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="e.g. Maria Santos"
-                                    onChange={(e) => {
-                                        setData('name', e.target.value);
-                                        if (stepErrors.name) setStepErrors(prev => ({ ...prev, name: '' }));
-                                    }}
-                                    required
-                                />
-                            </div>
-                            {(stepErrors.name || errors.name) && (
-                                <InputError message={stepErrors.name || errors.name} className="mt-1" />
-                            )}
-                        </div>
+                        <PersonalNameFields values={data} errors={{ ...errors, ...stepErrors }} context="Shop owner" onChange={(field, value) => {
+                            setData(field, value);
+                            clearErrors(field, 'name' as keyof typeof data);
+                            setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
+                        }} />
 
                         <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
@@ -336,13 +322,17 @@ export default function SellerRegister({ birthDateLimits, masterCategories }: { 
                                 <input
                                     id="email"
                                     type="email"
+                                    maxLength={255}
+                                    autoCapitalize="none"
+                                    spellCheck={false}
                                     name="email"
                                     value={data.email}
                                     className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                     placeholder="merchant@domain.com"
                                     autoComplete="username"
                                     onChange={(e) => {
-                                        setData('email', e.target.value);
+                                        setData('email', normalizeRegistrationEmail(e.target.value));
+                                        clearErrors('email');
                                         if (stepErrors.email) setStepErrors(prev => ({ ...prev, email: '' }));
                                     }}
                                     required

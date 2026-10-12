@@ -79,6 +79,11 @@ export async function requestOtp(action: 'send' | 'verify', data: Record<string,
     return reply;
 }
 
+export function normalizeRegistrationEmail(value: string): string {
+    if (/\p{C}/u.test(value)) return value;
+    return value.normalize('NFKC').replace(/^ +| +$/g, '').toLowerCase();
+}
+
 export function validEmailFormat(value: string): boolean {
     if (/[\p{C}]/u.test(value)) return false;
     const email = value.normalize('NFKC').replace(/^ +| +$/g, '');
@@ -101,12 +106,12 @@ export function registrationFormData(data: Record<string, unknown>, step?: numbe
     return form;
 }
 
-export function registrationErrors(role: string, fields: Record<string, string>): Record<string, string> {
+export function registrationErrors(_role: string, fields: Record<string, string>): Record<string, string> {
     const aliases: Record<string, string> = {
+        middle_name: 'middle_initial',
         shop_phone: 'phone', shop_address: 'address', shop_city: 'city',
         company_email: 'email', company_phone: 'phone', company_address: 'address',
         otp_token: 'request',
-        ...(role === 'buyer' ? { name: 'first_name' } : {}),
     };
     const errors: Record<string, string> = {};
     for (const [field, message] of Object.entries(fields)) {
@@ -118,10 +123,11 @@ export function registrationErrors(role: string, fields: Record<string, string>)
 
 export function registrationErrorStep(role: string, fields: Record<string, string>): number {
     const keys = Object.keys(registrationErrors(role, fields));
-    const identity = role === 'buyer' ? ['first_name', 'middle_name', 'last_name', 'email', 'password', 'password_confirmation']
-        : role === 'seller' ? ['name', 'birthday', 'shop_name', 'root_category_id', 'email']
-        : role === 'courier' ? ['name', 'birthday', 'email', 'phone', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']
-        : ['name', 'birthday', 'company_name', 'company_code', 'email', 'phone', 'password', 'password_confirmation'];
+    if (keys.some(key => ['name', 'first_name', 'middle_initial', 'last_name'].includes(key))) return 1;
+    const identity = role === 'buyer' ? ['email', 'password', 'password_confirmation']
+        : role === 'seller' ? ['birthday', 'shop_name', 'root_category_id', 'email']
+        : role === 'courier' ? ['birthday', 'email', 'phone', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']
+        : ['birthday', 'company_name', 'company_code', 'email', 'phone', 'password', 'password_confirmation'];
     if (keys.some(key => identity.includes(key))) return 1;
     if (role === 'buyer') return 2;
     const middle = role === 'seller' ? ['phone', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']

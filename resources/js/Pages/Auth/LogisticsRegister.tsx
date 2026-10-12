@@ -2,13 +2,13 @@ import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import PersonalNameFields from '@/Components/PersonalNameFields';
 import { 
     ArrowRight, 
     ArrowLeft, 
     Lock, 
     Mail, 
     Truck, 
-    User, 
     Upload, 
     FileText, 
     X, 
@@ -30,6 +30,7 @@ import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
+import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -47,8 +48,10 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
     const [franchiseFileName, setFranchiseFileName] = useState<string | null>(null);
     const [franchiseFileSize, setFranchiseFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, transform } = useForm<{
-        name: string;
+    const { data, setData, post, processing, errors, clearErrors, reset, transform } = useForm<{
+        first_name: string;
+        middle_initial: string;
+        last_name: string;
         birthday: string;
         company_name: string;
         company_code: string;
@@ -70,7 +73,9 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
         franchise_document: File | null;
         otp_token: string;
     }>({
-        name: '',
+        first_name: '',
+        middle_initial: '',
+        last_name: '',
         birthday: '',
         company_name: '',
         company_code: '',
@@ -96,7 +101,7 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
-    });
+    }, birthDateLimits);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -362,27 +367,11 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                             </div>
                         </div>
 
-                        {/* Authorised Representative Name */}
-                        <div className="space-y-1">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                Authorised Officer / Lead Representative <span className="text-[#E00D42]">*</span>
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <User className="w-4 h-4" />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={data.name}
-                                    onChange={e => setData('name', e.target.value)}
-                                    placeholder="e.g. Captain Arturo Santos"
-                                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
-                                />
-                            </div>
-                            {(stepErrors.name || errors.name) && (
-                                <p className="text-xs text-[#E00D42]">{stepErrors.name || errors.name}</p>
-                            )}
-                        </div>
+                        <PersonalNameFields values={data} errors={{ ...errors, ...stepErrors }} context="Authorised representative" onChange={(field, value) => {
+                            setData(field, value);
+                            clearErrors(field, 'name' as keyof typeof data);
+                            setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
+                        }} />
 
                         <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
@@ -397,9 +386,20 @@ export default function LogisticsRegister({ birthDateLimits }: { birthDateLimits
                                         <Mail className="w-4 h-4" />
                                     </div>
                                     <input
+                                        id="email"
+                                        name="email"
                                         type="email"
+                                        maxLength={255}
+                                        autoCapitalize="none"
+                                        spellCheck={false}
+                                        autoComplete="username"
+                                        required
                                         value={data.email}
-                                        onChange={e => setData('email', e.target.value)}
+                                        onChange={e => {
+                                            setData('email', normalizeRegistrationEmail(e.target.value));
+                                            clearErrors('email');
+                                            setStepErrors(previous => ({ ...previous, email: '' }));
+                                        }}
                                         placeholder="dispatch@tamarawexpress.ph"
                                         className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />

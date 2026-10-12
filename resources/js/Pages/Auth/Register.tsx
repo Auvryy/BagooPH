@@ -2,12 +2,12 @@ import React, { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
+import PersonalNameFields from '@/Components/PersonalNameFields';
 import { 
     ArrowRight, 
     ArrowLeft,
     Lock, 
     Mail, 
-    User, 
     Upload, 
     FileText, 
     X, 
@@ -24,6 +24,7 @@ import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
+import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function Register({ birthDateLimits }: { birthDateLimits: BirthDateLimits }) {
@@ -37,9 +38,9 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
     const [fileName, setFileName] = useState<string | null>(null);
     const [fileSize, setFileSize] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, transform } = useForm<{
+    const { data, setData, post, processing, errors, clearErrors, reset, transform } = useForm<{
         first_name: string;
-        middle_name: string;
+        middle_initial: string;
         last_name: string;
         email: string;
         password: string;
@@ -58,7 +59,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         otp_token: string;
     }>({
         first_name: '',
-        middle_name: '',
+        middle_initial: '',
         last_name: '',
         email: '',
         password: '',
@@ -80,7 +81,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
     const { validate, validating, applyErrors, feedbackRef } = useRegistrationValidation(data, (fieldErrors, step) => {
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
-    });
+    }, birthDateLimits);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -131,12 +132,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const validateForm = async (step?: number) => {
-        const required = step === 1 ? ['first_name', 'last_name'] : step === 2 ? ['sex', 'city', 'address'] : ['first_name', 'last_name', 'sex', 'city', 'address'];
-        const missing = Object.fromEntries(required.filter(key => !String(data[key as keyof typeof data] ?? '').trim()).map(key => [key, 'This field is required.']));
-        if (Object.keys(missing).length) { applyErrors(missing); return false; }
-        return validate(step);
-    };
+    const validateForm = (step?: number) => validate(step);
 
     const handleNext = async () => {
         if (processing || validating) return;
@@ -286,62 +282,11 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                 {/* CHECKPOINT 1: CREDENTIALS & NAME */}
                 {currentStep === 1 && (
                     <div className="space-y-3.5">
-                        {/* Separated Name: First Name, Middle Name, Last Name */}
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                            <div className="sm:col-span-5">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    First Name *
-                                </label>
-                                <div className="relative">
-                                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        id="first_name"
-                                        type="text"
-                                        name="first_name"
-                                        value={data.first_name}
-                                        className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                        placeholder="Juan"
-                                        autoFocus
-                                        onChange={(e) => setData('first_name', e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <InputError message={stepErrors.first_name || errors.first_name || (errors as Record<string, string>).name} className="mt-1" />
-                            </div>
-
-                            <div className="sm:col-span-3">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    M.I. / Middle
-                                </label>
-                                <input
-                                    id="middle_name"
-                                    type="text"
-                                    name="middle_name"
-                                    value={data.middle_name}
-                                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="Santos"
-                                    onChange={(e) => setData('middle_name', e.target.value)}
-                                />
-                                <InputError message={stepErrors.middle_name || errors.middle_name} className="mt-1" />
-                            </div>
-
-                            <div className="sm:col-span-4">
-                                <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    Last Name *
-                                </label>
-                                <input
-                                    id="last_name"
-                                    type="text"
-                                    name="last_name"
-                                    value={data.last_name}
-                                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
-                                    placeholder="Dela Cruz"
-                                    onChange={(e) => setData('last_name', e.target.value)}
-                                    required
-                                />
-                                <InputError message={stepErrors.last_name || errors.last_name} className="mt-1" />
-                            </div>
-                        </div>
+                        <PersonalNameFields values={data} errors={{ ...errors, ...stepErrors }} autoFocus onChange={(field, value) => {
+                            setData(field, value);
+                            clearErrors(field, 'name' as keyof typeof data);
+                            setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
+                        }} />
 
                         {/* Email Address */}
                         <div>
@@ -353,12 +298,19 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                 <input
                                     id="email"
                                     type="email"
+                                    maxLength={255}
+                                    autoCapitalize="none"
+                                    spellCheck={false}
                                     name="email"
                                     value={data.email}
                                     className="w-full pl-10 pr-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                     placeholder="juan.delacruz@example.com"
                                     autoComplete="username"
-                                    onChange={(e) => setData('email', e.target.value)}
+                                    onChange={(e) => {
+                                        setData('email', normalizeRegistrationEmail(e.target.value));
+                                        clearErrors('email');
+                                        setStepErrors(previous => ({ ...previous, email: '' }));
+                                    }}
                                     required
                                 />
                             </div>
@@ -516,6 +468,7 @@ export default function Register({ birthDateLimits }: { birthDateLimits: BirthDa
                                     value={data.phone}
                                     onChange={(val) => {
                                         setData('phone', val);
+                                        clearErrors('phone');
                                         if (stepErrors.phone) setStepErrors(prev => ({ ...prev, phone: '' }));
                                     }}
                                     placeholder="917 123 4567"
