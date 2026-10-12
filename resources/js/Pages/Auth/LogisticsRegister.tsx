@@ -35,6 +35,8 @@ import BusinessContactInput from '@/Components/BusinessContactInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
+import { useRegistrationEmailAvailability } from '@/hooks/useRegistrationEmailAvailability';
+import RegistrationEmailFeedback from '@/Components/RegistrationEmailFeedback';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
@@ -125,6 +127,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
+    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -428,6 +431,9 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     </div>
                                     <input
                                         id="email"
+                                        onBlur={emailAvailability.checkNow}
+                                        aria-describedby="registration-email-feedback"
+                                        aria-invalid={Boolean(stepErrors.email || errors.email) || emailAvailability.invalid}
                                         name="email"
                                         type="email"
                                         maxLength={255}
@@ -445,9 +451,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                         className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                 </div>
-                                {(stepErrors.email || errors.email) && (
-                                    <p className="text-xs text-[#E00D42]">{stepErrors.email || errors.email}</p>
-                                )}
+                                <RegistrationEmailFeedback state={emailAvailability.state} error={stepErrors.email || errors.email} onRetry={emailAvailability.checkNow} />
                             </div>
 
                             <div className="space-y-1">
