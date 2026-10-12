@@ -3834,3 +3834,35 @@ PR title/body remains an ignored local draft, not a saved GitHub PR. Local imple
 - `3bc432f fix: align signup and correction form fields and feedback`
 
 The documentation commit's generated hash is reported in the final handoff.
+
+## October 13, 2026: registration field grouping and concise name feedback
+
+Scope: `fix/registration-field-layout`. Buyer, seller, courier, logistics and
+first Google signup place sex immediately after the separated name fields.
+Postal code appears beside barangay in the address grid; the street address
+uses the next full-width row, and narrow screens stack the controls. Other
+address-selector callers keep their existing layout.
+
+The long permanent name instructions are removed. Required fields, 2–50-character
+first/last-name limits, the shorter optional initial, combined-name bounds,
+permitted punctuation, paste restrictions and accessible inline errors remain.
+There is no dangling accessibility reference to the removed paragraph. Sex
+validation and error navigation now use the first step on both client and server;
+postal validation and navigation remain on each role's address step.
+
+Verification: **103 isolated SQLite `:memory:` tests / 2,225 assertions passed**
+for registration preflight, field boundaries/persistence and Google signup.
+**36 authentication frontend checks, the TypeScript/Vite production build, two
+changed PHP files' style checks and `git diff --check` passed.** Rendered markup
+checks cover sex placement on every initial role form, Google field order,
+postal grouping, leading zeroes, optionality and name feedback after the paragraph
+is removed. All five pages' address-control wiring was also inspected.
+No interactive browser or Azure check was performed for this follow-up.
+
+Scoped engineering assessment: **registration field grouping/copy 7/10 to 9/10
+locally**. Related details are now together and names have less permanent copy;
+validation strength and whole-role readiness do not receive an unrelated increase.
+No migration, database reset, policy-version change or Flutter source change is
+needed for this presentation follow-up.
+
+Implementation commit: `d4946a3 fix: group registration details with names and addresses`.

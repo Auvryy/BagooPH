@@ -29,6 +29,7 @@ interface PhilippineAddressSelectorProps {
     showStreetAddress?: boolean;
     streetLabel?: string;
     streetPlaceholder?: string;
+    postalCodeField?: React.ReactNode;
 }
 
 export default function PhilippineAddressSelector({
@@ -40,6 +41,7 @@ export default function PhilippineAddressSelector({
     showStreetAddress = true,
     streetLabel = 'Street / House / Unit No.',
     streetPlaceholder = 'e.g. Unit 401, 123 Katipunan Ave',
+    postalCodeField,
 }: PhilippineAddressSelectorProps) {
     const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
     const [cities, setCities] = useState<CityOption[]>([]);
@@ -271,10 +273,10 @@ export default function PhilippineAddressSelector({
                 </div>
             </div>
 
-            {/* Row 2: Barangay & Street Address */}
+            {/* Barangay, optional postal code and street address */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 {/* Barangay Dropdown */}
-                <div className={showStreetAddress ? 'sm:col-span-5' : 'sm:col-span-12'}>
+                <div className={postalCodeField ? 'sm:col-span-7' : showStreetAddress ? 'sm:col-span-5' : 'sm:col-span-12'}>
                     <div className="h-5 flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                             Barangay {required && <span className="text-[#E00D42]">*</span>}
@@ -331,9 +333,11 @@ export default function PhilippineAddressSelector({
                     {errors.barangay && <InputError message={errors.barangay} className="mt-1" />}
                 </div>
 
+                {postalCodeField && <div className="sm:col-span-5">{postalCodeField}</div>}
+
                 {/* Street Address / House No. */}
                 {showStreetAddress && (
-                    <div className="sm:col-span-7">
+                    <div className={postalCodeField ? 'sm:col-span-12' : 'sm:col-span-7'}>
                         <div className="h-5 flex items-center mb-1">
                             <label className="text-xs font-semibold text-slate-800 uppercase tracking-wider font-sans truncate">
                                 {streetLabel} {required && <span className="text-[#E00D42]">*</span>}

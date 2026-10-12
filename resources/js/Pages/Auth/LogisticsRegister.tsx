@@ -1,4 +1,4 @@
-import RegistrationDemographics from '@/Components/RegistrationDemographics';
+import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
 import { documentError, rejectOverlongRegistrationPaste, uppercaseOperationalCode } from '@/utils/registrationFields';
@@ -412,6 +412,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             clearErrors(field, 'name' as keyof typeof data);
                             setStepErrors(previous => { const next = { ...previous }; delete next[field]; delete next.name; delete next.request; return next; });
                         }} />
+                        <RegistrationSexField value={data.sex} onChange={value => setData('sex', value)} error={stepErrors.sex || errors.sex} />
 
                         <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => { setData('birthday', value); setStepErrors(prev => ({ ...prev, birthday: '' })); }} error={stepErrors.birthday || errors.birthday} />
 
@@ -724,6 +725,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
 
                         {/* Philippine Address Hierarchy & Street */}
                         <PhilippineAddressSelector
+                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
                                 province: data.province,
                                 city: data.city,
@@ -752,10 +754,6 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             streetLabel="Central Depot / Headquarters Street Address"
                             streetPlaceholder="e.g. KM 54 National Highway, Real"
                         />
-                        <RegistrationDemographics sex={data.sex} postalCode={data.postal_code}
-                            onChange={(field, value) => setData(field, value)}
-                            errors={{ sex: stepErrors.sex || errors.sex, postal_code: stepErrors.postal_code || errors.postal_code }} />
-
 
                         {/* Document Upload 1: DTI / SEC Business Permit */}
                         <div className="space-y-1">

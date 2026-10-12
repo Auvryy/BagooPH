@@ -59,6 +59,7 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
             const error = combinedPersonalNameError({ first_name: value('first_name'), middle_initial: value('middle_initial'), last_name: value('last_name') });
             if (error) errors.name = error;
         }
+        if (value('sex') && !['Female', 'Male', 'Other'].includes(value('sex'))) errors.sex = 'Choose an available option.';
         if (!google) {
             if (!value('email').trim()) errors.email = 'Email address is required.';
             else if (!validEmailFormat(value('email'))) errors.email = 'Enter a complete email address, such as name@example.com.';
@@ -75,7 +76,6 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
             const required = worker || (role === 'buyer' && !google);
             add(field, !value(field).trim() && required ? label + ' is required.' : registrationTextError(value(field), field === 'address' ? 5 : 2, field === 'address' ? 500 : 255, required));
         }
-        if (value('sex') && !['Female', 'Male', 'Other'].includes(value('sex'))) errors.sex = 'Choose an available option.';
         for (const field of ['province', 'municipality', 'barangay']) add(field, registrationTextError(value(field), 2, 255));
         if (value('postal_code') && !/^[0-9]{4}$/.test(value('postal_code'))) errors.postal_code = 'Use exactly 4 digits.';
     }

@@ -23,6 +23,12 @@ location selectors guide entry; submitted names do not establish serviceability.
 Worker birthday and approval remain mandatory. Buyer birthday does not acquire
 the worker age requirement.
 
+On web signup, sex follows the name fields in the first step. Postal code sits
+beside barangay in the address section, with the street address below; these
+controls stack on narrow screens. This grouping also applies to first Google
+signup. Name limits remain enforced through input bounds and inline feedback,
+without a permanent paragraph of instructions underneath the names.
+
 ## Field contracts
 
 | Field | Limits and handling |

@@ -16,7 +16,8 @@ const bundle = buildSync({
         "export * from '@/utils/registrationValidation';",
         "export * from '@/utils/passwordPolicy';",
         "export * from '@/utils/registrationFields';",
-        "export { default as Demographics } from '@/Components/RegistrationDemographics';",
+        "export * from '@/Components/RegistrationDemographics';",
+        "export { default as AddressSelector } from '@/Components/PhilippineAddressSelector';",
         "export { default as PolicyAcknowledgement } from '@/Components/RegistrationPolicyAcknowledgement';",
         "export { default as ApplicationFields } from '@/Components/ApplicationFields';",
         "export { default as PersonalNames } from '@/Components/PersonalNameFields';",
@@ -254,7 +255,7 @@ test('invalid typed and pasted names display accessible inline feedback and pres
         const input = html.match(new RegExp('<input[^>]*id="' + field + '"[^>]*>'))[0];
         assert.match(input, /value="Ana123"/);
         assert.match(input, /aria-invalid="true"/);
-        assert.match(input, new RegExp('aria-describedby="personal-name-help ' + field + '-error"'));
+        assert.match(input, new RegExp('aria-describedby="' + field + '-error"'));
         assert.match(html, field === 'middle_initial' ? /Enter one letter/ : /Numbers and other symbols are not allowed/);
         assert.match(html, /aria-live="polite"/);
         assert.match(input, field === 'middle_initial' ? /maxlength="2"/i : /maxlength="50"/i);
@@ -264,7 +265,7 @@ test('invalid typed and pasted names display accessible inline feedback and pres
     assert.match(valid, /Middle initial \(optional\)/);
     const empty = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { first_name: '', middle_initial: '', last_name: '' }, onChange() {} }));
     assert.doesNotMatch(empty, /is required|aria-invalid="true"/);
-    assert.match(empty, /Total limit: 100 characters, including spaces/);
+    assert.doesNotMatch(empty, /personal-name-help|First and last names:|Total limit:/);
     assert.match(empty, /sm:col-span-3[^>]*><label[^>]*for="middle_initial"/);
     const longName = 'A'.repeat(51);
     const overlong = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { first_name: longName, middle_initial: '', last_name: 'Santos' }, onChange() {} }));
@@ -358,6 +359,10 @@ test('all registration pages preserve the portal shell and controlled form feedb
         assert.match(result.body, /name="first_name"[^>]*required=""/);
         assert.match(result.body, /name="last_name"[^>]*required=""/);
         assert.doesNotMatch(result.body, /name="middle_initial"[^>]*required/);
+        assert.match(result.body, /<select[^>]*name="sex"/);
+        assert.ok(result.body.indexOf('name="last_name"') < result.body.indexOf('name="sex"'));
+        assert.ok(result.body.indexOf('name="sex"') < result.body.indexOf('name="email"'));
+        assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
         assert.match(result.body.match(/<input[^>]*type="email"[^>]*>/)[0], /maxlength="255"/i);
         assert.doesNotMatch(result.body, /Min 8 characters|font-mono|Full Legal Name|<input[^>]*name="name"/);
     }
@@ -402,7 +407,7 @@ test('overlong paste is rejected as a whole, while operational code edits retain
     assert.ok(ui.companyInitialsError(ui.uppercaseOperationalCode('ßＢＧ')));
 });
 
-test('each role checks optional sex and postal values on the actual location step before an OTP request', async () => {
+test('each role checks sex on the name step and postal values on the address step before an OTP request', async () => {
     let requests = 0;
     globalThis.fetch = async () => { requests++; return reply(200, { valid: true }); };
     for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
@@ -412,8 +417,9 @@ test('each role checks optional sex and postal values on the actual location ste
         for (const value of ['123', '12345', '１２３４', '1e03']) {
             await assert.rejects(ui.checkRegistration({ ...identity(role), postal_code: value }, limits, step), error => Boolean(error.fields.postal_code));
         }
-        await assert.rejects(ui.checkRegistration({ ...identity(role), sex: 'Unknown' }, limits, step), error => Boolean(error.fields.sex));
-        assert.equal(ui.registrationErrorStep(role, { sex: 'Invalid' }), step);
+        await assert.rejects(ui.checkRegistration({ ...identity(role), sex: 'Unknown' }, limits, 1), error => Boolean(error.fields.sex));
+        if (step !== 1) assert.equal(ui.registrationInputErrors({ ...identity(role), sex: 'Unknown' }, limits, step).sex, undefined);
+        assert.equal(ui.registrationErrorStep(role, { sex: 'Invalid' }), 1);
         assert.equal(ui.registrationErrorStep(role, { postal_code: 'Invalid' }), step);
         assert.ok(ui.registrationInputErrors({ ...identity(role), policy_accepted: false }, limits).policy_accepted);
     }
@@ -421,10 +427,16 @@ test('each role checks optional sex and postal values on the actual location ste
 });
 
 test('demographic inputs preserve leading zeroes and distinguish optional controls', () => {
-    const html = renderToStaticMarkup(createElement(ui.Demographics, { sex: 'Female', postalCode: '0123', onChange() {}, errors: {} }));
-    assert.match(html, /Sex \(optional\)/);
+    const sex = renderToStaticMarkup(createElement(ui.RegistrationSexField, { value: 'Female', onChange() {} }));
+    assert.match(sex, /Sex \(optional\)/);
+    assert.match(sex, /<select[^>]*name="sex"/);
+    const html = renderToStaticMarkup(createElement(ui.AddressSelector, {
+        values: { province: '', city: '', municipality: '', barangay: '', address: '' }, onChange() {},
+        postalCodeField: createElement(ui.RegistrationPostalCodeField, { value: '0123', onChange() {} }),
+    }));
     assert.match(html, /Postal code \(optional\)/);
-    assert.match(html, /<select[^>]*name="sex"/);
+    assert.doesNotMatch(html, /name="sex"/);
+    assert.match(html, /sm:col-span-7[\s\S]*name="barangay"[\s\S]*sm:col-span-5[\s\S]*name="postal_code"[\s\S]*sm:col-span-12[\s\S]*name="address"/);
     const postal = html.match(/<input[^>]*name="postal_code"[^>]*>/)[0];
     assert.match(postal, /value="0123"/);
     assert.match(postal, /maxlength="4"/i);
@@ -465,6 +477,11 @@ test('first Google signup collects the same buyer details while relying on the v
     const result = await createInertiaApp({ page: { component: 'Auth/GoogleRegistration', props, url: '/auth/google/register', version: null }, resolve: () => Component, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
     for (const field of ['first_name', 'middle_initial', 'last_name', 'birthday', 'phone', 'postal_code', 'policy_accepted']) assert.match(result.body, new RegExp('<input[^>]*name="' + field + '"'));
     assert.match(result.body, /<select[^>]*name="sex"/);
+    assert.ok(result.body.indexOf('name="last_name"') < result.body.indexOf('name="sex"'));
+    assert.ok(result.body.indexOf('name="sex"') < result.body.indexOf('name="birthday"'));
+    assert.ok(result.body.indexOf('name="barangay"') < result.body.indexOf('name="postal_code"'));
+    assert.ok(result.body.indexOf('name="postal_code"') < result.body.indexOf('name="address"'));
+    assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
     assert.match(result.body, /verified@bagoo.test/);
     assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
     const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '', phone: '', city: '', address: '' };

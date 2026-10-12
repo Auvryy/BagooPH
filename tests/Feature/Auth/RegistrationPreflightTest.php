@@ -58,10 +58,10 @@ class RegistrationPreflightTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_name_and_email_errors_are_available_at_the_first_step(string $role): void
+    public function test_name_sex_and_email_errors_are_available_at_the_first_step(string $role): void
     {
-        $data = array_replace($this->application($role), ['step' => 1, 'first_name' => 'Applicant123', 'email' => 'person @bagoo.test']);
-        $this->postJson('/register/validate', $data)->assertJsonValidationErrors(['name', 'first_name', 'email']);
+        $data = array_replace($this->application($role), ['step' => 1, 'first_name' => 'Applicant123', 'sex' => 'Unknown', 'email' => 'person @bagoo.test']);
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors(['name', 'first_name', 'sex', 'email']);
         $this->assertDatabaseCount('users', 0);
         $this->assertDatabaseCount('email_otps', 0);
     }
