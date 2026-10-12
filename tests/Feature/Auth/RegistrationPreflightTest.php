@@ -121,19 +121,19 @@ class RegistrationPreflightTest extends TestCase
         Storage::fake('local');
         Mail::fake();
         $data = array_replace($this->application($role), [
-            'name' => 'Different Name123', 'first_name' => '  Ana-María  ', 'middle_name' => 'J.', 'last_name' => 'O’Connor',
+            'name' => 'Different Name123', 'first_name' => '  Ana-María  ', 'middle_name' => 'J.', 'last_name' => '  Peña-O’Connor  ',
             'email' => '  New.Applicant@BAGOO.TEST  ',
         ]);
         $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect();
         $user = User::sole();
-        $this->assertSame('Ana-María J. O’Connor', $user->name);
+        $this->assertSame('Ana-María J. Peña-O’Connor', $user->name);
         $this->assertSame('new.applicant@bagoo.test', $user->email);
         if ($role === 'logistics') {
             $this->assertSame('new.applicant@bagoo.test', $user->logisticsCompany->contact_email);
         }
         $this->assertSame('Ana-María', $user->first_name);
         $this->assertSame('J.', $user->middle_name);
-        $this->assertSame('O’Connor', $user->last_name);
+        $this->assertSame('Peña-O’Connor', $user->last_name);
         $this->assertSame($role, $user->role);
     }
 
