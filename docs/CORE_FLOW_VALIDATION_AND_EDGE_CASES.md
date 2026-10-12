@@ -36,9 +36,10 @@ Frontend restrictions improve usability but never replace server validation. Cli
 | Field | Accepted input | Canonical storage and rejection rules |
 |---|---|---|
 | Person or recipient name | Latin letters with diacritics, spaces, apostrophe, hyphen, and period | NFKC normalized; 2–100 characters; reject digits, emoji, controls, markup, and punctuation-only values |
+| Account name components | Required first and last names on separated-name registration; optional middle initial on web signup | First/last 2–50 characters each. A middle initial is one Latin letter with an optional period, at most 2 characters. Legacy full middle-name input remains 1–50 when supplied. Trim outer spaces; the joined account name stays within 100 characters including separators. Initial validation applies at preflight/submission; shared stored-name validation also governs correction/approval |
 | Philippine mobile number | `09XXXXXXXXX`, `639XXXXXXXXX`, or `+639XXXXXXXXX` | Normalize to `+639XXXXXXXXX`; reject letters, extensions, too few/many digits, premium/service numbers, and mixed scripts |
 | Shop/company contact number | Valid Philippine mobile or landline | Normalize to one E.164-compatible representation; store no decorative spaces or punctuation |
-| Email | Valid address | Trim and lowercase the domain; reject controls, whitespace inside the address, and duplicate accounts under case-insensitive comparison |
+| Email | Valid address | Trim outer spaces and lowercase the whole address for new registration. Preserve existing sign-in identity during edits; normalize the domain for comparison. Reject controls, whitespace inside the address, over 255 characters, and duplicate ownership under case-insensitive comparison |
 | Philippine postal code | Four ASCII digits | Reject letters, Unicode look-alike digits, signs, decimals, and values with other lengths |
 | Address and landmark | Letters, numbers, spaces, and normal address punctuation | NFKC normalized; meaningful street/address length 5–500; reject controls, markup, and punctuation-only values |
 | Barangay, city, province | Existing supported location or normalized approved free-text value | Compare case-insensitively; do not infer serviceability from client text alone |
@@ -63,6 +64,8 @@ Frontend restrictions improve usability but never replace server validation. Cli
 
 ### Authentication, Password, and OTP
 
+- Web signup uses labelled first name, middle initial and last name fields, with the optional initial narrower on shared rows. Show immediate component errors, cap first/last name edits at 50 characters and initials at 2, and reject overlong paste without silently shortening it. The `middle_initial` request alias stores the validated initial in the existing optional middle-name field; it does not add a column or rewrite existing full middle names. Existing name-only and full-middle-name native requests remain compatible.
+- Mobile controls show the fixed `+63` prefix and accept exactly ten national ASCII digits starting with 9. Block letters and extra digits, show incomplete-number feedback, and recognize supported complete-number prefixes on paste. A malformed or overlong paste is rejected as a whole; the server still validates every request. Business contacts retain valid landlines with area codes.
 - Passwords are 12–128 characters, may use passphrases, are confirmed at creation/reset, and are stored only with the framework password hash.
 - Login errors do not reveal whether an email exists. Login, password reset, OTP request, and OTP verification are rate-limited by normalized account identifier and network source.
 - Successful login and privilege changes regenerate the session; logout and suspension invalidate active sessions where supported.
