@@ -32,8 +32,6 @@ import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
-import { useRegistrationEmailAvailability } from '@/hooks/useRegistrationEmailAvailability';
-import RegistrationEmailFeedback from '@/Components/RegistrationEmailFeedback';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
@@ -127,7 +125,6 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
-    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -382,9 +379,6 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
                                         id="email"
-                                        onBlur={emailAvailability.checkNow}
-                                        aria-describedby="registration-email-feedback"
-                                        aria-invalid={Boolean(stepErrors.email || errors.email) || emailAvailability.invalid}
                                         type="email"
                                         maxLength={255}
                                         autoCapitalize="none"
@@ -402,7 +396,9 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                                         required
                                     />
                                 </div>
-                                <RegistrationEmailFeedback state={emailAvailability.state} error={stepErrors.email || errors.email} onRetry={emailAvailability.checkNow} />
+                                {(stepErrors.email || errors.email) && (
+                                    <InputError message={stepErrors.email || errors.email} className="mt-1" />
+                                )}
                             </div>
 
                             <PhoneInput
