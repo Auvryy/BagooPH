@@ -31,6 +31,9 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    Route::post('register/validate', [RegisteredUserController::class, 'validateRegistration'])
+        ->middleware('throttle:30,1')->name('register.validate');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
@@ -68,15 +71,15 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 
     // Email OTP Verification Endpoints
-    Route::post('otp/send', [OtpVerificationController::class, 'send'])->name('otp.send');
-    Route::post('otp/verify', [OtpVerificationController::class, 'verify'])->name('otp.verify');
-    Route::post('otp/resend', [OtpVerificationController::class, 'resend'])->name('otp.resend');
-    Route::post('password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->name('password.reset.otp');
+    Route::post('otp/send', [OtpVerificationController::class, 'send'])->middleware('throttle:web-otp-send')->name('otp.send');
+    Route::post('otp/verify', [OtpVerificationController::class, 'verify'])->middleware('throttle:web-otp-verify')->name('otp.verify');
+    Route::post('otp/resend', [OtpVerificationController::class, 'resend'])->middleware('throttle:web-otp-send')->name('otp.resend');
+    Route::post('password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->middleware('throttle:web-otp-verify')->name('password.reset.otp');
 
-    Route::post('api/otp/send', [OtpVerificationController::class, 'send'])->name('api.otp.send');
-    Route::post('api/otp/verify', [OtpVerificationController::class, 'verify'])->name('api.otp.verify');
-    Route::post('api/otp/resend', [OtpVerificationController::class, 'resend'])->name('api.otp.resend');
-    Route::post('api/password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->name('api.password.reset.otp');
+    Route::post('api/otp/send', [OtpVerificationController::class, 'send'])->middleware('throttle:web-otp-send')->name('api.otp.send');
+    Route::post('api/otp/verify', [OtpVerificationController::class, 'verify'])->middleware('throttle:web-otp-verify')->name('api.otp.verify');
+    Route::post('api/otp/resend', [OtpVerificationController::class, 'resend'])->middleware('throttle:web-otp-send')->name('api.otp.resend');
+    Route::post('api/password/reset-otp', [OtpVerificationController::class, 'resetPasswordWithOtp'])->middleware('throttle:web-otp-verify')->name('api.password.reset.otp');
 });
 
 Route::middleware('auth')->group(function () {

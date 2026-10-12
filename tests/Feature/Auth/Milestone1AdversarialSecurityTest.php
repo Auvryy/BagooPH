@@ -633,8 +633,8 @@ class Milestone1AdversarialSecurityTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Hacker Admin',
             'email' => 'hacker.admin@bagoo.test',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'role' => 'admin', // disallowed in registration
         ]);
 
@@ -647,8 +647,8 @@ class Milestone1AdversarialSecurityTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Bypass User',
             'email' => 'bypass@bagoo.test',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'role' => 'buyer',
             'status' => 'suspended',
             'kyc_status' => 'approved',

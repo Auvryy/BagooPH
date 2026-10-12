@@ -110,7 +110,7 @@ class B01_to_B06_SubdomainAuthBoundaryTest extends TestCase
     public function test_t2_b03_01_buyer_credentials_on_seller_domain(): void
     {
         $buyer = $this->createApprovedUser('buyer', [
-            'password' => bcrypt('SecretPass123!'),
+            'password' => 'SecretPass123!',
         ]);
 
         $response = $this->portalPost('seller', '/login', [
@@ -125,7 +125,7 @@ class B01_to_B06_SubdomainAuthBoundaryTest extends TestCase
     public function test_t2_b03_02_seller_credentials_on_courier_domain(): void
     {
         $seller = $this->createApprovedUser('seller', [
-            'password' => bcrypt('SecretPass123!'),
+            'password' => 'SecretPass123!',
         ]);
 
         $response = $this->portalPost('courier', '/login', [
@@ -139,7 +139,7 @@ class B01_to_B06_SubdomainAuthBoundaryTest extends TestCase
     public function test_t2_b03_03_courier_credentials_on_hub_domain(): void
     {
         $courier = $this->createApprovedUser('courier', [
-            'password' => bcrypt('SecretPass123!'),
+            'password' => 'SecretPass123!',
         ]);
 
         $response = $this->portalPost('hub', '/login', [
@@ -153,7 +153,7 @@ class B01_to_B06_SubdomainAuthBoundaryTest extends TestCase
     public function test_t2_b03_04_hub_credentials_on_buyer_domain(): void
     {
         $hub = $this->createApprovedUser('logistics', [
-            'password' => bcrypt('SecretPass123!'),
+            'password' => 'SecretPass123!',
         ]);
 
         $response = $this->portalPost('buyer', '/login', [
@@ -167,7 +167,7 @@ class B01_to_B06_SubdomainAuthBoundaryTest extends TestCase
     public function test_t2_b03_05_admin_credentials_on_courier_domain(): void
     {
         $admin = $this->createApprovedUser('admin', [
-            'password' => bcrypt('SecretPass123!'),
+            'password' => 'SecretPass123!',
         ]);
 
         $response = $this->portalPost('courier', '/login', [

@@ -33,8 +33,8 @@ class KycRegistrationTest extends TestCase
             'city' => 'Makati City',
             'role' => 'seller',
             'birthday' => '2000-01-01',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'id_document' => $idFile,
             'business_permit' => $permitFile,
         ]);
@@ -76,8 +76,8 @@ class KycRegistrationTest extends TestCase
             'license_number' => 'N02-22-123456',
             'role' => 'courier',
             'birthday' => '2000-01-01',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'id_document' => $idFile,
             'driver_license' => $licenseFile,
             'or_cr_document' => $orCrFile,
@@ -110,8 +110,8 @@ class KycRegistrationTest extends TestCase
             'address' => '789 Sunrise Ave',
             'city' => 'Quezon City',
             'role' => 'buyer',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
         ]);
 
         $this->assertGuest();
@@ -139,8 +139,8 @@ class KycRegistrationTest extends TestCase
             'address' => '789 Sunrise Ave',
             'city' => 'Quezon City',
             'role' => 'buyer',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'id_document' => $idFile,
         ]);
 
@@ -167,8 +167,8 @@ class KycRegistrationTest extends TestCase
             'city' => 'Manila',
             'role' => 'seller',
             'birthday' => '2000-01-01',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
         ]);
 
         $response->assertSessionHasErrors(['id_document', 'business_permit']);
@@ -196,8 +196,8 @@ class KycRegistrationTest extends TestCase
             'birthday' => '2000-01-01',
             'franchise_number' => 'LTFRB-2026-SFX-9988',
             'fleet_size' => 45,
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password1234',
+            'password_confirmation' => 'Password1234',
             'business_permit' => $permitFile,
             'franchise_document' => $franchiseFile,
         ]);

@@ -107,7 +107,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
     public function test_t1_f03_01_buyer_login_success_on_buyer_domain(): void
     {
         $buyer = $this->createApprovedUser('buyer', [
-            'password' => bcrypt('ValidPassword123!'),
+            'password' => 'ValidPassword123!',
         ]);
 
         $response = $this->portalPost('buyer', '/login', [
@@ -122,7 +122,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
     public function test_t1_f03_02_seller_login_success_on_seller_domain(): void
     {
         $seller = $this->createApprovedUser('seller', [
-            'password' => bcrypt('ValidPassword123!'),
+            'password' => 'ValidPassword123!',
         ]);
 
         $response = $this->portalPost('seller', '/login', [
@@ -137,7 +137,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
     public function test_t1_f03_03_courier_login_success_on_courier_domain(): void
     {
         $courier = $this->createApprovedUser('courier', [
-            'password' => bcrypt('ValidPassword123!'),
+            'password' => 'ValidPassword123!',
         ]);
 
         $response = $this->portalPost('courier', '/login', [
@@ -152,7 +152,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
     public function test_t1_f03_04_hub_login_success_on_hub_domain(): void
     {
         $hub = $this->createApprovedUser('logistics', [
-            'password' => bcrypt('ValidPassword123!'),
+            'password' => 'ValidPassword123!',
         ]);
 
         $response = $this->portalPost('hub', '/login', [
@@ -167,7 +167,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
     public function test_t1_f03_05_admin_login_success_on_admin_domain(): void
     {
         $admin = $this->createApprovedUser('admin', [
-            'password' => bcrypt('ValidPassword123!'),
+            'password' => 'ValidPassword123!',
         ]);
 
         $response = $this->portalPost('admin', '/login', [
@@ -190,8 +190,8 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
         $response = $this->portalPost('buyer', '/register', [
             'name' => 'Test Buyer User',
             'email' => 't1_buyer_reg@example.com',
-            'password' => 'Secret123!',
-            'password_confirmation' => 'Secret123!',
+            'password' => 'Secret123456!',
+            'password_confirmation' => 'Secret123456!',
             'role' => 'buyer',
             'phone' => '+63 917 111 0001',
             'address' => '123 Market St',
@@ -215,8 +215,8 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
         $response = $this->portalPost('seller', '/register', [
             'name' => 'Test Seller User',
             'email' => 't1_seller_reg@example.com',
-            'password' => 'Secret123!',
-            'password_confirmation' => 'Secret123!',
+            'password' => 'Secret123456!',
+            'password_confirmation' => 'Secret123456!',
             'role' => 'seller',
             'birthday' => '2000-01-01',
             'shop_name' => 'Artisan Craft Hub',
@@ -244,8 +244,8 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
         $response = $this->portalPost('courier', '/register', [
             'name' => 'Test Courier Rider',
             'email' => 't1_courier_reg@example.com',
-            'password' => 'Secret123!',
-            'password_confirmation' => 'Secret123!',
+            'password' => 'Secret123456!',
+            'password_confirmation' => 'Secret123456!',
             'role' => 'courier',
             'birthday' => '2000-01-01',
             'phone' => '+63 917 111 0003',

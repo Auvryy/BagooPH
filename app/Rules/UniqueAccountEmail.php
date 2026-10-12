@@ -13,9 +13,14 @@ class UniqueAccountEmail implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (AccountEmail::where('email', strtolower(trim($value)))->when($this->ignore, fn ($query) => $query->where('user_id', '<>', $this->ignore))->exists()
-            || User::whereRaw('LOWER(email) = LOWER(?)', [$value])->when($this->ignore, fn ($query) => $query->where('id', '<>', $this->ignore))->exists()) {
+        if (self::taken($value, $this->ignore)) {
             $fail('This email address is already registered.');
         }
+    }
+
+    public static function taken(string $email, ?int $ignore = null): bool
+    {
+        return AccountEmail::where('email', strtolower(trim($email)))->when($ignore, fn ($query) => $query->where('user_id', '<>', $ignore))->exists()
+            || User::whereRaw('LOWER(email) = LOWER(?)', [trim($email)])->when($ignore, fn ($query) => $query->where('id', '<>', $ignore))->exists();
     }
 }

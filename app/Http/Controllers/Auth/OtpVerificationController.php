@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\AccountEmail;
+use App\Rules\UniqueAccountEmail;
 use App\Services\AccountEmailService;
+use App\Services\ApplicationValidationService;
 use App\Services\OtpService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
@@ -26,8 +27,9 @@ class OtpVerificationController extends Controller
      */
     public function send(Request $request): JsonResponse
     {
+        $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ApplicationValidationService::emailRules(),
             'purpose' => ['nullable', 'string', 'in:registration,password_reset'],
         ]);
 
@@ -36,7 +38,7 @@ class OtpVerificationController extends Controller
 
         // Validate account existence based on purpose
         if ($purpose === 'registration') {
-            if (AccountEmail::where('email', $email)->exists()) {
+            if (UniqueAccountEmail::taken($email)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'An account with this email already exists. Please sign in instead.',
@@ -68,8 +70,9 @@ class OtpVerificationController extends Controller
      */
     public function verify(Request $request): JsonResponse
     {
+        $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ApplicationValidationService::emailRules(),
             'code' => ['required', 'string', 'regex:/\A[0-9]{6}\z/'],
             'purpose' => ['nullable', 'string', 'in:registration,password_reset'],
         ]);
@@ -100,8 +103,9 @@ class OtpVerificationController extends Controller
      */
     public function resetPasswordWithOtp(Request $request): JsonResponse|RedirectResponse
     {
+        $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ApplicationValidationService::emailRules(),
             'token' => ['nullable', 'string'],
             'code' => ['nullable', 'string', 'regex:/\A[0-9]{6}\z/'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
