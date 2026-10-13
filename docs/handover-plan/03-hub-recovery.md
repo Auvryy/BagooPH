@@ -2,6 +2,9 @@
 
 Start after H02 and the existing parcel recovery checks. Cover missed origin intake, manifest loading/dispatch/receipt and final-mile handover at the correct facility.
 
+Use the [writer and receipt contract](03-writer-and-receipt-contract.md) for
+individual/batch holds, corrective manifest counts and existing recovery links.
+
 ## Approach
 
 - Extend reviewed holds to each affected manifest, sorting, assignment and counter mutation. Inventory batch writers as well as individual parcel commands.
