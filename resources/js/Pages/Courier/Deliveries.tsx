@@ -13,6 +13,7 @@ import { cashInputCents } from '@/utils/codCash';
 
 interface PickupTask {
     tracking?: OrderTracking | null;
+    handoverHold?: boolean;
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
@@ -27,6 +28,7 @@ interface PickupTask {
 
 interface FinalMileTask {
     tracking?: OrderTracking | null;
+    handoverHold?: boolean;
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
@@ -35,7 +37,7 @@ interface FinalMileTask {
     payment: { method: string; codAmount: number | null; codAmountCents: number | null };
     destinationHub: CourierPlace;
     assignedAt: string | null;
-    nextAction: 'start_delivery' | 'complete_delivery' | 'return_to_hub';
+    nextAction: 'start_delivery' | 'complete_delivery' | 'return_to_hub' | null;
     failureAttempts: number;
     failureReason: string | null;
     canMessage: boolean;
@@ -86,20 +88,20 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const matchingDeliveries = deliveries.filter((task) => matches(task.trackingNumber, task.orderNumber, task.recipient.name, task.recipient.address, task.destinationHub.name, task.destinationHub.address));
     const mapJobs: CourierMapJob[] = tab === 'pickup' || tab === 'available'
         ? matchingPickups(tab === 'pickup' ? pickups : available).map((task) => {
-            const collected = task.nextAction === 'await_origin_hub_scan';
+            const collected = task.status === 'picked_up';
             return {
                 key: `${tab}-${task.id}`, trackingNumber: task.trackingNumber,
-                stage: tab === 'available' ? 'Available pickup' : collected ? 'Bring to origin hub' : 'Collect from seller',
+                stage: task.handoverHold ? 'Handover hold' : tab === 'available' ? 'Available pickup' : collected ? 'Bring to origin hub' : 'Collect from seller',
                 stopLabel: collected ? 'Origin Bayan Hub' : 'Seller pickup point',
                 place: collected ? task.originHub : task.merchant, preview: tab === 'available',
-                instruction: collected ? 'Hub staff must scan this parcel into custody before it can travel onward.' : tab === 'available' ? 'This is a preview. Claim the pickup before collecting the parcel.' : 'Collect this parcel from the seller, then bring it to the origin Bayan Hub.',
+                instruction: task.handoverHold ? 'Complete the authorized handover recovery before ordinary parcel work continues.' : collected ? 'Hub staff must scan this parcel into custody before it can travel onward.' : tab === 'available' ? 'This is a preview. Claim the pickup before collecting the parcel.' : 'Collect this parcel from the seller, then bring it to the origin Bayan Hub.',
             };
         }) : tab === 'final_mile' ? matchingDeliveries.map((task) => ({
             key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
-            stage: task.nextAction === 'return_to_hub' ? 'Return to destination hub' : task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
+            stage: task.handoverHold ? 'Handover hold' : task.nextAction === 'return_to_hub' ? 'Return to destination hub' : task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
             stopLabel: task.nextAction !== 'complete_delivery' ? 'Destination Bayan Hub' : 'Saved buyer destination',
             place: task.nextAction !== 'complete_delivery' ? task.destinationHub : task.recipient, preview: false,
-            instruction: task.nextAction === 'return_to_hub' ? 'Return this parcel to the destination hub. Its handler must scan it back before retry or reverse routing.' : task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
+            instruction: task.handoverHold ? 'Return the evidenced parcel to the named recovery hub. Its eligible handler must record actual receipt.' : task.nextAction === 'return_to_hub' ? 'Return this parcel to the destination hub. Its handler must scan it back before retry or reverse routing.' : task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
         })) : [];
     const selectedMapJob = selectCourierMapJob(mapJobs, selectedMapKey);
     const showOnMap = (key: string) => {
@@ -248,12 +250,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     {selectedPickup && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedPickup.merchant, label: 'Seller pickup point' }, { place: selectedPickup.originHub, label: 'Origin Bayan Hub' }]} currentStop={collected ? 1 : 0} parcelLabel={`${selectedPickup.itemCount} ${selectedPickup.itemCount === 1 ? 'item' : 'items'} · Pickup leg`} phone={collected ? null : selectedPickup.merchant.phone} messageDeliveryId={!collected && selectedPickup.canMessage ? selectedPickup.id : undefined} messagePhase="pickup" tracking={selectedPickup.tracking}>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Parcel details</summary><div className="space-y-2 pb-4"><p>Order: {selectedPickup.orderNumber || 'Not provided'}</p><p>Items: {selectedPickup.itemCount}</p><p>Assigned: {courierDate(selectedPickup.assignedAt)}</p>{collected && selectedPickup.canMessage && <Link href={`${courierPath('/messages')}?delivery=${selectedPickup.id}&phase=pickup`} className={courierButton}>Message seller</Link>}</div></details>
                         {tab === 'available' && <><button type="button" onClick={() => claim(selectedPickup.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full`}>{loadingId === selectedPickup.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="mt-2 text-sm leading-relaxed text-slate-600">{claimReason}</p>}</>}
-                        {selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
+                        {selectedPickup.handoverHold && <Link href="/handover-issues" className={`${courierButton} w-full`}>Open handover recovery</Link>}{selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
                     </CourierCurrentJob>}
                     {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile" tracking={selectedDelivery.tracking}>
                         <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmountCents === null ? null : selectedDelivery.payment.codAmountCents / 100) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Record counted cash with delivery. Hub handover and platform reconciliation follow separately.</p>}</div>
                         <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order: {selectedDelivery.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
-                        {selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}
+                        {selectedDelivery.handoverHold ? <Link href="/handover-issues" className={`${courierButton} w-full`}>Open handover recovery</Link> : selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}
                     </CourierCurrentJob>}
                 </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : tab === 'available' ? 'No available pickups' : tab === 'pickup' ? 'No assigned pickups' : 'No assigned deliveries'}>{normalizedSearch ? 'Try another tracking number, name, or address.' : tab === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : tab === 'pickup' ? 'Pickups you claim will stay here until the origin hub records intake.' : 'Final-mile parcels appear after your destination hub assigns them to you.'}</CourierEmpty>}
                 <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('pickup')} />

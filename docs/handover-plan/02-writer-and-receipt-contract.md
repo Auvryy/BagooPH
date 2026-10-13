@@ -44,6 +44,7 @@ held. Existing committed request results remain evidence, rather than new work.
 | Writer | Held actions |
 |---|---|
 | `OrderLifecycleService` | Seller fulfillment, bulk readiness, cancellation/stock restoration, buyer completion |
+| `LogisticsRoutingEngine` | Replanning an existing held parcel route |
 | `CourierOperationsService` | Pickup claims shared by web and native |
 | `OrderStateMachineService` | Ordinary pickup, intake, sorting, assignment, departure and delivery outcomes |
 | `DeliveryRecoveryService` | Failure, hub return, retry approval and retry departure |

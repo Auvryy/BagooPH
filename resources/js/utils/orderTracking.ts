@@ -26,7 +26,7 @@ export function currentOrderSelection<T extends { id: number }>(rows: T[], selec
     return selected ? rows.find(row => row.id === selected.id) ?? null : null;
 }
 
-export function currentCourierAction(target: { id: number; status: string }, pickups: Array<{ id: number; nextAction: string | null; tracking?: { notice: string | null } | null }>, deliveries: Array<{ id: number; nextAction: string; tracking?: { notice: string | null } | null }>): boolean {
+export function currentCourierAction(target: { id: number; status: string }, pickups: Array<{ id: number; nextAction: string | null; tracking?: { notice: string | null } | null }>, deliveries: Array<{ id: number; nextAction: string | null; tracking?: { notice: string | null } | null }>): boolean {
     const task = (target.status === 'picked_up' ? pickups : deliveries).find(task => task.id === target.id);
     if (!task || task.tracking?.notice) return false;
     return target.status === 'picked_up' ? task.nextAction === 'confirm_pickup'

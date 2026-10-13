@@ -5,8 +5,10 @@ namespace App\Services\Courier;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HandoverIssue;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
@@ -28,6 +30,7 @@ class CourierOperationsService
 
         return match ($phase) {
             'available' => $query->whereNull('courier_id')->whereRaw('deliveries.status = ?', ['unassigned'])
+                ->whereNotIn('deliveries.id', HandoverIssue::where('state', 'needs_recovery')->whereNotNull('active_delivery_id')->select('active_delivery_id'))
                 ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
                 ->whereHas('order', fn ($order) => $order->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
                 ->when(! $this->eligibility->canReceivePickups($profile), fn ($empty) => $empty->whereRaw('1 = 0'))
@@ -60,6 +63,7 @@ class CourierOperationsService
 
             $this->assertEligibleRider($rider, $profile);
             $this->eligibility->assertCourierScope($profile, (int) $lockedDelivery->logistics_company_id, (int) $lockedDelivery->origin_bayan_hub_id, newWork: true);
+            app(HandoverHoldService::class)->assertMovable($lockedDelivery);
 
             if (Delivery::activePickupCount($rider->id) >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) {
                 throw new DomainException(

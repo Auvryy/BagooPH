@@ -12,6 +12,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -131,6 +132,9 @@ class OrderLifecycleService
 
     private function assertSellerTransition(Order $order, string $targetStatus): void
     {
+        if ($order->delivery) {
+            app(HandoverHoldService::class)->assertMovable($order->delivery);
+        }
         $expectedTarget = self::SELLER_TRANSITIONS[$order->status] ?? null;
         if ($expectedTarget !== $targetStatus) {
             throw new RuntimeException(
@@ -186,11 +190,13 @@ class OrderLifecycleService
 
     public function sellerActionFlags(Order $order, bool $eligible, bool $fullyOwned): array
     {
-        $work = $eligible && $fullyOwned;
+        $held = $order->delivery && app(HandoverHoldService::class)->held($order->delivery);
+        $work = $eligible && $fullyOwned && ! $held;
         $unclaimed = ! $order->delivery || $this->isUnclaimed($order->delivery);
         $canAdvance = $work && $unclaimed && $order->delivery;
 
         return [
+            'handover_hold' => (bool) $held,
             'can_fulfill' => $work,
             'can_accept_and_pack' => $canAdvance && in_array($order->status, ['placed', 'pending'], true),
             'can_pack' => $canAdvance && $order->status === 'confirmed',
@@ -220,6 +226,9 @@ class OrderLifecycleService
             $lockedOrder = $this->lockSellerOrder($order->id);
 
             $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
+            if ($lockedOrder->delivery) {
+                app(HandoverHoldService::class)->assertMovable($lockedOrder->delivery);
+            }
             if (! in_array($lockedOrder->status, ['placed', 'pending', 'confirmed', 'preparing', 'processing', 'packaging', 'ready_for_pickup'], true)) {
                 throw new RuntimeException('This order can no longer be cancelled by the seller.');
             }
@@ -264,6 +273,9 @@ class OrderLifecycleService
             app(BuyerAccessService::class)->requireExistingOrders($buyer, $lockedOrder);
             if ($lockedOrder->status === 'completed') {
                 return $lockedOrder;
+            }
+            if ($lockedOrder->delivery) {
+                app(HandoverHoldService::class)->assertMovable($lockedOrder->delivery);
             }
             $physical = $lockedOrder->delivery;
             $collected = $physical?->status === 'customer_collected' && app(PickupClaimService::class)->hasCollectionEvidence($physical);

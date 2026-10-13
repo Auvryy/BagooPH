@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
@@ -60,7 +61,7 @@ class SellerOrderController extends Controller
                 try {
                     $route = $returns->route($delivery);
                     $delivery->setAttribute('return_route_reference', $route->reference);
-                    $delivery->setAttribute('return_ready_for_receipt', $fullyOwned && $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
+                    $delivery->setAttribute('return_ready_for_receipt', ! app(HandoverHoldService::class)->held($delivery) && $fullyOwned && $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
                 } catch (DomainException $error) {
                     $delivery->setAttribute('return_ready_for_receipt', false);
                 }

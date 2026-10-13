@@ -66,6 +66,7 @@ class DeliveryReturnService
 
     private function freeze(Delivery $parcel, User $actor, DeliveryCheckpoint $source): DeliveryReturnRoute
     {
+        app(HandoverHoldService::class)->assertMovable($parcel);
         $route = $this->forwardRoute($parcel);
         $hubs = [$route['origin_bayan_hub_id'], $route['origin_mother_hub_id']];
         if ($route['destination_mother_hub_id'] !== $route['origin_mother_hub_id']) {
@@ -328,6 +329,7 @@ class DeliveryReturnService
         if (! $actor->canAccessPortal()) {
             throw new DomainException('This action requires the current active approved account.');
         }
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return [$parcel, $actor];
     }

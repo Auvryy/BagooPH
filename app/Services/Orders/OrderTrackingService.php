@@ -6,6 +6,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Vouchers\VoucherReceiptService;
 
@@ -41,6 +42,9 @@ class OrderTrackingService
     ];
 
     public const EVENTS = [
+        'handover_fulfillment_confirmed' => 'Seller confirmed an omitted fulfillment step now',
+        'handover_holder_acknowledged' => 'Rider confirmed current possession during recovery',
+        'handover_recovery_received' => 'Actual recovery receipt recorded at the named hub',
         'order_placed' => 'Order placed', 'placed' => 'Order placed', 'confirmed' => 'Seller confirmed',
         'preparing' => 'Seller preparation started', 'seller_pack' => 'Seller preparation recorded',
         'ready_for_pickup' => 'Seller marked the parcel ready for pickup', 'assigned_pickup' => 'Pickup rider assigned',
@@ -117,6 +121,10 @@ class OrderTrackingService
         [$step, $responsible] = $this->next($order, $parcel, $status, $custody);
         if ($notice) {
             [$step, $responsible] = ['Refresh tracking. Contact support if the records still need review.', 'Bagoo support'];
+        }
+        if ($parcel && app(HandoverHoldService::class)->held($parcel)) {
+            $notice = 'This parcel is on a reviewed handover hold. Ordinary movement is paused until its authorized recovery receipt.';
+            [$step, $responsible] = ['Await supervised handover recovery and the actual receiving-hub scan.', 'Logistics company and named holder'];
         }
 
         return [

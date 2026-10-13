@@ -99,6 +99,7 @@ class LogisticsManifestService
             }
             if ($recovery) {
                 $recovery = ParcelRecoveryCase::whereKey($recovery->id)->lockForUpdate()->firstOrFail();
+                app(HandoverHoldService::class)->assertMovable($recoveryParcel);
                 abort_unless($recovery->logistics_company_id === $company->id, 403);
                 if ($recoveryParcel->current_hub_id !== (int) $input['source_hub_id']
                     || app(ParcelRecoveryService::class)->nextHub($recovery, $recoveryParcel) !== (int) $input['destination_hub_id']) {
@@ -176,6 +177,13 @@ class LogisticsManifestService
             }
             if ($manifest->version !== (int) $input['version']) {
                 throw new DomainException('The manifest changed. Refresh its current list and state before continuing.');
+            }
+            if ($action !== 'report-discrepancy') {
+                foreach ($deliveries as $parcel) {
+                    if ($parcel->id === $candidate?->id || $manifest->parcels()->where('delivery_id', $parcel->id)->where('included', true)->exists()) {
+                        app(HandoverHoldService::class)->assertMovable($parcel);
+                    }
+                }
             }
             $before = $manifest->state();
             $parcel = null;

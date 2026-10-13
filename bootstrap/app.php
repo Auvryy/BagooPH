@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\HandoverHoldException;
 use App\Http\Middleware\CrossDomainFallbackMiddleware;
 use App\Http\Middleware\EnsureAccountOpen;
 use App\Http\Middleware\EnsureApprovedAccount;
@@ -64,6 +65,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
                 return false;
             }
+        });
+        $exceptions->render(function (HandoverHoldException $exception, Request $request) {
+            return $request->expectsJson() || RiderApiResponse::applies($request)
+                ? response()->json(['code' => 'HANDOVER_HOLD', 'message' => $exception->getMessage()], 409)
+                : back()->withErrors(['handover' => $exception->getMessage()]);
         });
         $exceptions->render(function (QueryException $exception, Request $request) {
             if (RiderApiResponse::applies($request)) {

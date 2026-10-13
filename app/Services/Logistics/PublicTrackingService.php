@@ -9,6 +9,9 @@ use App\Services\Orders\OrderTrackingService;
 class PublicTrackingService
 {
     private const CHECKPOINT_LOCATIONS = [
+        'handover_fulfillment_confirmed' => 'Seller fulfillment confirmed during recovery',
+        'handover_holder_acknowledged' => 'Current rider possession confirmed',
+        'handover_recovery_received' => 'Actual recovery receipt at the named hub',
         'parcel_recovery_intake' => 'Parcel received for route recovery',
         'parcel_recovery_departed' => 'Parcel travelling on its recovery route',
         'parcel_recovery_received' => 'Recovery transfer received at a sorting hub',

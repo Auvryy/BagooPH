@@ -275,6 +275,7 @@ class ParcelRecoveryService
 
     public function depart(LogisticsManifest $manifest, Delivery $parcel, User $actor, LogisticsManifestEvent $scan): void
     {
+        app(HandoverHoldService::class)->assertMovable($parcel);
         $case = ParcelRecoveryCase::whereKey($manifest->parcel_recovery_case_id)->lockForUpdate()->firstOrFail();
         if ($this->nextHub($case, $parcel) !== $manifest->destination_hub_id || $case->leg_index !== $manifest->recovery_leg_index
             || $parcel->current_hub_id !== $manifest->source_hub_id) {
@@ -293,6 +294,7 @@ class ParcelRecoveryService
 
     public function receive(LogisticsManifest $manifest, Delivery $parcel, User $actor, LogisticsManifestEvent $scan): void
     {
+        app(HandoverHoldService::class)->assertMovable($parcel);
         $case = ParcelRecoveryCase::whereKey($manifest->parcel_recovery_case_id)->lockForUpdate()->firstOrFail();
         $this->assertOriginal($case, $parcel);
         $custody = DeliveryCheckpoint::lastCustody($parcel);
@@ -408,6 +410,8 @@ class ParcelRecoveryService
         $order = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
         $parcel = Delivery::whereKey($id)->lockForUpdate()->firstOrFail();
         $parcel->setRelation('order', $order);
+
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return $parcel;
     }

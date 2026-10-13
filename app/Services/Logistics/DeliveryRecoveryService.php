@@ -257,6 +257,7 @@ class DeliveryRecoveryService
             throw new DomainException('This account or terminal order cannot change delivery recovery.');
         }
         $this->eligibility->assertBayanHub($parcel->destination_bayan_hub_id);
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return [$parcel, $actor];
     }
