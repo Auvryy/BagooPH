@@ -42,7 +42,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             title="Governance Console" 
             subtitle="Platform Infrastructure & Administrative Authorization"
             headerBadge="GOVERNANCE // 00"

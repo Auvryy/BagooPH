@@ -66,7 +66,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             title={step === 'email' ? 'Reset Password' : 'Set New Password'}
             subtitle={step === 'email' 
                 ? 'Verify your identity with a 6-digit code sent to your email' 

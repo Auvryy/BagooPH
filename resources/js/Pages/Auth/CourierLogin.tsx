@@ -42,7 +42,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             formPosition="left"
             imageSrc="/images/auth/courier_login.jpg"
             imageAlt="Bagoo Express Courier Fleet Visual"

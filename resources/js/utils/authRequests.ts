@@ -1,5 +1,7 @@
+import { redirectAuthenticatedSession } from './authSession';
+
 export class AuthRequestError extends Error {
-    constructor(message: string, public status = 0, public fields: Record<string, string> = {}, public cooldown = 0) {
+    constructor(message: string, public status = 0, public fields: Record<string, string> = {}, public cooldown = 0, public redirect?: string) {
         super(message);
     }
 }
@@ -31,6 +33,8 @@ export async function authRequest(path: string, body: FormData | Record<string, 
         throw new AuthRequestError('We could not read the response. Please try again shortly.', response.status);
     }
     if (!isObject(data)) throw new AuthRequestError('We could not read the response. Please try again shortly.', response.status);
+    const destination = redirectAuthenticatedSession(data, response.status);
+    if (destination) throw new AuthRequestError('Returning to your account.', response.status, {}, 0, destination);
     const fields: Record<string, string> = {};
     if (isObject(data.errors)) {
         for (const [key, messages] of Object.entries(data.errors)) {

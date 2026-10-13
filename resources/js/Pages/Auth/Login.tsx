@@ -46,7 +46,7 @@ export default function Login({ status, canResetPassword }: Props) {
     };
 
     return (
-        <GuestLayout
+        <GuestLayout guestOnly
             formPosition="left"
             imageSrc="/images/auth/buyer_login.jpg?v=20260911"
             imageAlt="BagooPH Shopping Visual"
