@@ -1,6 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import NotificationLink from '@/Components/NotificationLink';
+import { RecoveryActionForm, RecoveryGrantSummary } from '@/Components/HandoverRecoveryPanel';
+import { type RecoveryGrant } from '@/Components/HandoverUI';
 
 type Grant = {id: number; reference: string; order_number: string; tracking_number: string; hub: {name: string; address: string}; expires_at: string; acknowledged: boolean};
 
@@ -21,11 +23,18 @@ function Handover({grant, requestToken, receiving}: {grant: Grant; requestToken:
     </section>;
 }
 
-export default function OwnedRecovery({grants, requestToken, receiving = false}: {grants: Grant[]; requestToken: string; receiving?: boolean}) {
+export default function OwnedRecovery({grants, handoverGrants = [], requestToken, receiving = false}: {grants: Grant[]; handoverGrants?: RecoveryGrant[]; requestToken: string; receiving?: boolean}) {
     return <main className="min-h-screen bg-[#FFFAFB] px-4 py-10 text-slate-900"><Head title="Authorized parcel handovers" /><div className="mx-auto max-w-3xl space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">{receiving ? 'Receive authorized handovers' : 'My authorized handover'}</h1><div className="flex items-center gap-3"><Link href="/notifications" className="text-sm font-semibold text-[#E00D42]">Account updates</Link><NotificationLink /></div></div>
         <p className="text-sm text-slate-700">Authorization keeps the current parcel and cash responsibilities in place. The receiving facility's scan records the physical parcel handover.</p>
         {grants.map(grant => <Handover key={grant.id} grant={grant} requestToken={requestToken} receiving={receiving} />)}
-        {grants.length === 0 && <p className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">No current handover is available. Ask the logistics manager to review the parcel's existing custody and authorization.</p>}
+        {handoverGrants.map(grant => <section key={`handover-${grant.id}`} className="space-y-4 rounded-[8px] border border-slate-300 bg-white p-5 shadow-sm">
+            <h2 className="font-bold">Order {grant.order_number}</h2><RecoveryGrantSummary grant={grant} />
+            <p className="text-sm leading-relaxed text-slate-700">This parcel stays on hold until the named hub receives it. This access allows only your authorized handover.</p>
+            {grant.can_acknowledge && <RecoveryActionForm url={`/custody-recovery/handover/${grant.id}/acknowledge`} title="Confirm my current possession" button="Acknowledge possession" metadata={grant} barcode
+                description="Scan the waybill on the parcel you physically hold now. Return this parcel to the named hub for its actual receipt scan."
+                confirmations={[{ name: 'possession_verified', label: 'I physically hold this exact parcel now and will hand it to the named receiving hub.' }]} />}
+        </section>)}
+        {grants.length === 0 && handoverGrants.length === 0 && <p className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">No current handover is available. Ask the logistics manager to review the parcel's existing custody and authorization.</p>}
     </div></main>;
 }

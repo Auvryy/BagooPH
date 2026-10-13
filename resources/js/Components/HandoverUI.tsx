@@ -13,7 +13,7 @@ export const issueInput = `${courierInput} !border-slate-300`;
 export const issueSurface = 'rounded-[8px] border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.035)] sm:p-6';
 
 export interface IssueSummary {
-    id: number; reference: string; state: 'pending_review' | 'needs_recovery' | 'dismissed'; kind: 'missed_ready' | 'missed_scan';
+    id: number; reference: string; state: 'pending_review' | 'needs_recovery' | 'dismissed' | 'recovered'; kind: 'missed_ready' | 'missed_scan';
     tracking_number: string; order_number: string; reporter_name: string; created_at: string;
 }
 export interface ParcelSnapshot {
@@ -22,11 +22,28 @@ export interface ParcelSnapshot {
 export interface IssueDetail extends IssueSummary {
     version: number; reported_holder: string; reported_location: string; notes: string;
     original: ParcelSnapshot; current: ParcelSnapshot; source_token: string; can_review: boolean; evidence_url: string;
-    events: Array<{ id: number; type: 'reported' | 'confirmed' | 'dismissed'; actor_name: string; actor_role: string; notes: string; created_at: string; parcel_snapshot: ParcelSnapshot }>;
+    recovery: RecoveryDetail;
+    events: Array<{ id: number; type: keyof typeof issueEvent; actor_name: string; actor_role: string; notes: string; created_at: string; parcel_snapshot: ParcelSnapshot }>;
+}
+
+export interface RecoveryGrant {
+    id: number; reference: string; holder_name: string; holder_id: number;
+    hub: { id: number; name: string; address: string }; expires_at: string; mode: 'pickup' | 'departure';
+    acknowledged: boolean; closed: boolean; blocker: string | null;
+    can_acknowledge: boolean; can_receive: boolean; can_withdraw: boolean;
+    expected_version: number; source_token: string; order_number: string; tracking_number: string;
+}
+export interface RecoveryDetail {
+    held: boolean; source_token: string; mode: 'pickup' | 'departure' | null;
+    fulfillment_required: boolean; can_confirm_fulfillment: boolean; can_authorize: boolean;
+    holder_options: Array<{ id: number; name: string; status: string }>; grant: RecoveryGrant | null;
 }
 
 export const issueKind = { missed_ready: 'Readiness step missed', missed_scan: 'Handover scan missed' };
-export const issueState = { pending_review: 'Awaiting review', needs_recovery: 'Needs recovery', dismissed: 'Dismissed' };
+export const issueState = { pending_review: 'Awaiting review', needs_recovery: 'Needs recovery', dismissed: 'Dismissed', recovered: 'Recovered' };
+export const issueEvent = { reported: 'Report submitted', confirmed: 'Concern confirmed', dismissed: 'Report dismissed',
+    fulfillment_confirmed: 'Seller fulfillment confirmed now', recovery_authorized: 'Recovery authorized',
+    holder_acknowledged: 'Holder confirmed current possession', recovery_received: 'Actual hub receipt recorded', recovery_withdrawn: 'Authorization withdrawn' };
 export const issueDate = (date: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(date));
 const stage = (value: string) => value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase());
 
@@ -39,7 +56,7 @@ export function IssueFrame({ children, title, isOnline = false }: PropsWithChild
 }
 
 export function IssueBadge({ state }: { state: IssueSummary['state'] }) {
-    return <span className={`inline-flex rounded-[8px] border px-3 py-1.5 text-xs font-semibold ${state === 'dismissed' ? 'border-slate-300 bg-slate-50 text-slate-700' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>{issueState[state]}</span>;
+    return <span className={`inline-flex rounded-[8px] border px-3 py-1.5 text-xs font-semibold ${state === 'recovered' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : state === 'dismissed' ? 'border-slate-300 bg-slate-50 text-slate-700' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>{issueState[state]}</span>;
 }
 
 export function IssueNotice() {
