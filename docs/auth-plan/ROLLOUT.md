@@ -111,9 +111,14 @@ errors rather than bypassing the gate. Existing sign-in credentials remain usabl
 ## Policy, demographic and correction checks
 
 Read the [registration field review](REGISTRATION_FIELDS.md) alongside the
-changed code. Every role form now offers optional sex and postal code. Confirm
+changed code. Every role form requires sex and offers an optional postal code. Confirm
 they survive submission/reload, including a leading postal zero, and that
 correction uses separated names and matching limits without changing approval.
+Missing, blank and malformed sex must fail the first-step check and final
+submission, including Google signup and native rider applications. The native
+registration options must advertise `sex_required: true`. Corrections cannot
+clear a stored selection; pending applications missing sex need a selection
+before resubmission or approval.
 Check supported legacy plates and unchanged existing identifiers separately
 from the stricter rules for new/changed identifiers. Browser text alone cannot
 establish real identity or issued vehicle evidence.

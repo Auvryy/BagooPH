@@ -3986,3 +3986,103 @@ endpoint`, then moved onto the updated-main branch as `b5e908a` and `f704995`
 with the same subjects. The documentation commit is reported in the handoff.
 The combined PR description remains a local draft; publication and deployment
 are user actions.
+
+## October 13, 2026: restore email feedback and route existing sessions
+
+Scope: `fix/auth-page-session-routing`, created from updated `main` at `ccfcd6f`.
+The user requested restoring early email checks and preventing existing sessions
+from opening login or registration forms, including a new tab and role entry
+pages. The underlying mismatch was that domain-specific authentication routes
+rendered forms without the guest middleware, while the JSON registration
+endpoints already rejected authenticated sessions. The typed email did not
+create a login or establish that a mailbox existed.
+
+All buyer, seller, courier, logistics and admin login entries, the four public
+registration flows, role aliases and worker landing entries now use the same
+session routing. An eligible account returns to its own portal; pending,
+restricted and closed accounts keep their existing approval and denial rules.
+Normal navigation, Inertia requests and JSON conflicts use the same destination.
+Old intended URLs cannot return an existing session to an auth form or another
+website. Guest authentication posts cannot replace that session with another
+account or create an additional account. Domain routing preserves the request's
+scheme and port and only navigates between known portal siblings.
+
+The four editable signup email fields again check after a 500 ms pause or on
+blur. The lookup applies existing normalized format and global ownership rules,
+including verified additional addresses. It remains guest-only, CSRF-protected,
+independently rate-limited and private, with no account, mail or OTP writes.
+Cancellation, stale-response rejection, timeout, field-error priority and retry
+cooldown remain in place. Availability does not reserve an email or prove a
+mailbox exists; final validation, database uniqueness and OTP still apply.
+Google signup retains its fixed provider identity.
+
+Guest-only forms additionally read session state on mount, focus, visibility
+return and page restoration. The read is rate-limited and uncached, uses a
+ten-second timeout and does not poll. Network failures preserve entered values.
+If another tab signed in, the form returns to the account's permitted destination;
+an already-running email/preflight/OTP request also handles that session response
+by navigating instead of displaying the old sign-out warning and retry button.
+Authenticated verification, password-confirmation and holding pages keep their
+existing access requirements.
+
+Verification: **870 isolated SQLite `:memory:` authentication and account-email
+tests / 10,349 assertions passed**, without warnings. These cover all role
+hosts and path aliases, Inertia and JSON handling, approval/restriction states,
+unsafe intended URLs, final signup uniqueness, guest feedback, OTP and native
+authentication regressions. **Five additional checks / 80 assertions passed**
+using actual login session cookies: each role's second-tab form redirects, the
+session probe preserves the account, and logout reopens guest forms. **All 213
+frontend tests passed**, covering redirect safety, stale email/OTP requests,
+visibility/focus checks, cancellation, timeout and role-specific feedback.
+The TypeScript/Vite production build, changed PHP style checks and
+`git diff --check` passed. No PostgreSQL reset, browser UI test, Azure deployment
+or real delivered-email test was performed; the Flutter project was untouched.
+
+**Scoped assessments: existing-session auth routing 5/10 -> 9/10 locally;
+signup email feedback 7/10 -> 9/10 locally.** Signed-in users return to their
+account and guests receive early duplicate feedback while existing approval
+and OTP authority is preserved. These assessments do not raise unrelated
+platform readiness. Live role-host session/signup and delivered-OTP acceptance
+remain pending. Local implementation commits and the combined pull request
+draft are reported in the handoff; publication and deployment are user actions.
+
+Implementation commits: `7daca36 fix(auth): route signed-in users away from guest
+pages`; `809be05 fix(auth): restore email feedback with session redirects`.
+The documentation commit and local combined PR draft are reported in the handoff.
+
+## October 13, 2026: required sex in account applications
+
+Scope: a follow-up on `fix/auth-page-session-routing`. The user changed sex from
+optional to required. Buyer, seller, courier, logistics and first Google signup
+now require an explicit selection. The existing `Female`, `Male`, `Other`
+allowlist remains authoritative; no default selection is supplied to applicants.
+The shared web control shows the required marker and browser/accessibility
+attributes, and first-step feedback blocks an empty selection before continuing.
+
+Shared server rules reject missing, null, blank, unknown and malformed sex on
+preflight, final signup and native rider application submission. Correction and
+review metadata also mark sex required; an application correction cannot clear
+a saved selection. Pending applications missing sex need a selection before
+resubmission or approval. Native registration options advertise
+`sex_required: true`. The Flutter project was untouched; its client must submit
+a valid sex and follow the updated registration options.
+
+Verification: **872 isolated SQLite `:memory:` authentication tests / 10,730
+assertions passed**, including new rejection/retry checks across all four public
+roles, Google signup and native rider submission, correction persistence and
+the native options contract. An older throttle-test fixture initially omitted
+sex; it was updated and the full authentication run then passed. Registration
+fixtures and fictional user factories now supply valid values without changing
+the production database. **59 frontend checks, the TypeScript/Vite production
+build, changed PHP style checks and diff checks passed.** No database reset,
+browser UI test, Azure deployment or Flutter UI verification was performed.
+
+**Scoped assessment: required-sex enforcement 4/10 -> 9/10 locally.** Previously
+only invalid supplied choices failed; applicants could omit sex. The form,
+server, correction metadata and native contract now agree that a choice is
+mandatory. Live signup/session and delivered-email acceptance remain pending;
+this does not raise unrelated platform readiness. Local commits and the updated
+combined pull request draft are reported in the handoff.
+
+Implementation commit: `4aa51b0 fix(auth): require sex in account applications`.
+The documentation commit is reported in the handoff.

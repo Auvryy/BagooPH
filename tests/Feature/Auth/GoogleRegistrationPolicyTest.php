@@ -80,7 +80,7 @@ class GoogleRegistrationPolicyTest extends TestCase
     {
         $this->provider();
         $this->get(route('auth.google.callback'));
-        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'Bagoo', 'last_name' => 'Applicant'];
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'Bagoo', 'last_name' => 'Applicant', 'sex' => 'Female'];
         $this->partialMock(RegistrationPolicyService::class)->shouldReceive('record')->once()->andThrow(new \RuntimeException('Acceptance storage unavailable.'));
         $this->postJson(route('auth.google.registration.store'), $data)->assertServerError();
         $this->assertGuest();
@@ -114,6 +114,22 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->assertGuest();
         $this->assertSame($before, $existing->fresh()->getRawOriginal());
         $this->assertDatabaseCount('account_policy_acceptances', 0);
+    }
+
+    public function test_first_google_signup_requires_sex_and_preserves_the_pending_identity_after_rejection(): void
+    {
+        $this->provider();
+        $this->get(route('auth.google.callback'));
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'Ana', 'last_name' => 'Santos'];
+        $this->postJson(route('auth.google.registration.store'), $data)->assertUnprocessable()->assertJsonValidationErrors('sex');
+        foreach ([null, '', '   ', 'Unknown', ['Female'], true, 1] as $sex) {
+            $this->postJson(route('auth.google.registration.store'), $data + ['sex' => $sex])->assertUnprocessable()->assertJsonValidationErrors('sex');
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('account_policy_acceptances', 0);
+        $this->assertGuest();
+        $this->post(route('auth.google.registration.store'), $data + ['sex' => 'Other'])->assertSessionHasNoErrors();
+        $this->assertSame('Other', User::sole()->sex);
     }
 
     public function test_google_application_validates_name_components_demographics_and_address_before_creation(): void

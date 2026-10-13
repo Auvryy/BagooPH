@@ -48,7 +48,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             formPosition="left"
             imageSrc="/images/auth/hub_login.jpg?v=20260919"
             imageAlt="BagooPH Logistics Sorting Hub Visual"

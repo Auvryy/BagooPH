@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\AuthenticatedSessionRedirect;
 use App\Services\BuyerAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,23 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function session(Request $request, AuthenticatedSessionRedirect $redirect): HttpResponse
+    {
+        if (! $request->user()) {
+            return response()->json(['authenticated' => false])->header('Cache-Control', 'no-store, private');
+        }
+        $destination = $redirect->response($request);
+        if (! $destination instanceof RedirectResponse) {
+            return $destination;
+        }
+
+        return response()->json([
+            'authenticated' => Auth::check(),
+            'code' => Auth::check() ? 'ALREADY_AUTHENTICATED' : 'SESSION_UNAVAILABLE',
+            'redirect' => $destination->getTargetUrl(),
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
     /**
      * Display the default / buyer login view.
      */

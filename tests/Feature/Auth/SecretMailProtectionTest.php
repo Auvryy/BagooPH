@@ -65,7 +65,7 @@ class SecretMailProtectionTest extends TestCase
     {
         config(['mail.default' => 'log']);
         Notification::fake();
-        $this->post('/register', [...$this->registrationPolicies(),
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Bagoo Mail Applicant', 'email' => 'mail.applicant@bagoo.test', 'role' => 'buyer',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
         ])->assertRedirect(route('login'))->assertSessionHasErrors('email')->assertSessionMissing('status');
@@ -97,7 +97,7 @@ class SecretMailProtectionTest extends TestCase
 
     public function test_authentication_secrets_are_not_flashed_after_invalid_input(): void
     {
-        $this->post('/register', [...$this->registrationPolicies(),
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'email' => 'invalid', 'password' => 'private password', 'password_confirmation' => 'private password',
             'otp_token' => 'private otp token', 'token' => 'private reset token', 'code' => '123456', 'claim_code' => 'private claim',
         ])->assertSessionHasErrors();

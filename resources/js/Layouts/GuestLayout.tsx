@@ -2,6 +2,7 @@ import React, { PropsWithChildren } from 'react';
 import { Link } from '@inertiajs/react';
 import BagooLogo from '@/Components/BagooLogo';
 import { getDomainUrl } from '@/utils/domain';
+import { useGuestSessionGuard } from '@/hooks/useGuestSessionGuard';
 
 export interface AlternatePortal {
     label?: string;
@@ -25,6 +26,7 @@ interface Props {
     noCard?: boolean;
     alternatePortal?: AlternatePortal;
     showFooter?: boolean;
+    guestOnly?: boolean;
 }
 
 function AuthEcosystemFooter() {
@@ -159,7 +161,9 @@ export default function GuestLayout({
     noCard = false,
     alternatePortal,
     showFooter = true,
+    guestOnly = false,
 }: PropsWithChildren<Props>) {
+    useGuestSessionGuard(guestOnly);
     // If an image is provided, render the full-viewport split-screen layout
     if (imageSrc) {
         const isFormLeft = formPosition === 'left';

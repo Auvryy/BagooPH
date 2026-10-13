@@ -29,7 +29,7 @@ export default function GoogleRegistration({ identity, registrationNonce, polici
         if (Object.keys(invalid).length) return;
         post('/auth/google/register');
     };
-    return <GuestLayout title="Finish creating your account" subtitle="Confirm your application details and review the account policies.">
+    return <GuestLayout guestOnly title="Finish creating your account" subtitle="Confirm your application details and review the account policies.">
         <Head title="Complete registration — BagooPH" />
         <div className="mb-5 rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm">
             <p className="font-semibold text-slate-900">{identity.name}</p>

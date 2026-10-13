@@ -42,15 +42,16 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
+use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
-use App\Http\Controllers\Seller\SellerOrderController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
@@ -107,8 +108,8 @@ $registerParcelRecoveryRoutes = function (bool $named = false) {
     }
 };
 
-Route::get('/terms/{version?}', [\App\Http\Controllers\RegistrationPolicyController::class, 'terms'])->name('terms');
-Route::get('/privacy/{version?}', [\App\Http\Controllers\RegistrationPolicyController::class, 'privacy'])->name('privacy');
+Route::get('/terms/{version?}', [RegistrationPolicyController::class, 'terms'])->name('terms');
+Route::get('/privacy/{version?}', [RegistrationPolicyController::class, 'privacy'])->name('privacy');
 
 Route::get('/cash-handover/sign-in', [CodCashController::class, 'login'])->name('cash.login');
 Route::post('/cash-handover/sign-in', [CodCashController::class, 'signIn'])->middleware('throttle:10,1')->name('cash.sign-in');
@@ -170,15 +171,15 @@ $registerSellerRoutes = function () {
         }
 
         return Inertia::render('Seller/Landing');
-    });
-    Route::get('/login', [AuthenticatedSessionController::class, 'createSeller']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'createSeller']);
-    Route::post('/register', [RegisteredUserController::class, 'store']);
-    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    })->middleware('guest');
+    Route::get('/login', [AuthenticatedSessionController::class, 'createSeller'])->middleware('guest');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
+    Route::get('/register', [RegisteredUserController::class, 'createSeller'])->middleware('guest');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('guest');
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval'])->middleware('auth');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/seller/login', fn () => redirect('/login'));
-    Route::get('/seller/register', fn () => redirect('/register'));
+    Route::get('/seller/login', fn () => redirect('/login'))->middleware('guest');
+    Route::get('/seller/register', fn () => redirect('/register'))->middleware('guest');
 
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
@@ -234,15 +235,15 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
         }
 
         return app(AuthenticatedSessionController::class)->createCourier();
-    });
-    Route::get('/login', [AuthenticatedSessionController::class, 'createCourier']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'createCourier']);
-    Route::post('/register', [RegisteredUserController::class, 'store']);
-    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    })->middleware('guest');
+    Route::get('/login', [AuthenticatedSessionController::class, 'createCourier'])->middleware('guest');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
+    Route::get('/register', [RegisteredUserController::class, 'createCourier'])->middleware('guest');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('guest');
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval'])->middleware('auth');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/courier/login', fn () => redirect('/login'));
-    Route::get('/courier/register', fn () => redirect('/register'));
+    Route::get('/courier/login', fn () => redirect('/login'))->middleware('guest');
+    Route::get('/courier/register', fn () => redirect('/register'))->middleware('guest');
 
     Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () use ($registerCodRoutes) {
         $registerCodRoutes();
@@ -269,15 +270,15 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         }
 
         return app(AuthenticatedSessionController::class)->createHub();
-    });
-    Route::get('/login', [AuthenticatedSessionController::class, 'createHub']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'createLogistics']);
-    Route::post('/register', [RegisteredUserController::class, 'store']);
-    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval']);
+    })->middleware('guest');
+    Route::get('/login', [AuthenticatedSessionController::class, 'createHub'])->middleware('guest');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
+    Route::get('/register', [RegisteredUserController::class, 'createLogistics'])->middleware('guest');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('guest');
+    Route::get('/pending-approval', [RegisteredUserController::class, 'pendingApproval'])->middleware('auth');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    Route::get('/hub/login', fn () => redirect('/login'));
-    Route::get('/hub/register', fn () => redirect('/register'));
+    Route::get('/hub/login', fn () => redirect('/login'))->middleware('guest');
+    Route::get('/hub/register', fn () => redirect('/register'))->middleware('guest');
 
     Route::middleware(['auth', 'subdomain.role:logistics'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes, $registerParcelRecoveryRoutes) {
         $registerParcelRecoveryRoutes();
@@ -316,10 +317,10 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         }
 
         return app(AuthenticatedSessionController::class)->createAdmin();
-    });
-    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/admin/login', fn () => redirect('/login'));
+    })->middleware('guest');
+    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin'])->middleware('guest');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
+    Route::get('/admin/login', fn () => redirect('/login'))->middleware('guest');
 
     Route::middleware(['auth', 'subdomain.role:admin'])->group(function () use ($registerResourceRestrictionRoutes, $registerCodRoutes) {
         $registerCodRoutes();
@@ -356,10 +357,10 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
 
 $registerBuyerDomainRoutes = function () {
     Route::get('/sitemap.xml', [SitemapController::class, 'index']);
-    Route::get('/login', [AuthenticatedSessionController::class, 'create']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/register', [RegisteredUserController::class, 'create']);
-    Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->middleware('guest');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
+    Route::get('/register', [RegisteredUserController::class, 'create'])->middleware('guest');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('guest');
 };
 
 foreach ($baseDomains as $domain) {
@@ -376,7 +377,7 @@ Route::get('/seller', function () {
     }
 
     return Inertia::render('Seller/Landing');
-})->name('seller.landing');
+})->middleware('guest')->name('seller.landing');
 
 Route::get('/courier', function () {
     if (auth()->check() && auth()->user()->isCourier()) {
@@ -384,7 +385,7 @@ Route::get('/courier', function () {
     }
 
     return app(AuthenticatedSessionController::class)->createCourier();
-})->name('courier.landing');
+})->middleware('guest')->name('courier.landing');
 
 Route::get('/logistics', function () {
     if (auth()->check() && (auth()->user()->isLogistics() || auth()->user()->isAdmin())) {
@@ -392,7 +393,7 @@ Route::get('/logistics', function () {
     }
 
     return redirect()->route('logistics.register');
-})->name('logistics.landing');
+})->middleware('guest')->name('logistics.landing');
 
 Route::get('/admin', function () {
     if (auth()->check() && auth()->user()->isAdmin()) {
@@ -400,7 +401,7 @@ Route::get('/admin', function () {
     }
 
     return app(AuthenticatedSessionController::class)->createAdmin();
-})->name('admin.landing');
+})->middleware('guest')->name('admin.landing');
 
 /*
 |--------------------------------------------------------------------------

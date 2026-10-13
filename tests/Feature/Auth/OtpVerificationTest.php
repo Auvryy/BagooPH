@@ -250,7 +250,7 @@ class OtpVerificationTest extends TestCase
             'attempts' => 1,
         ]);
 
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Verified Buyer',
             'email' => $email,
             'password' => 'Password123!',

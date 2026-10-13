@@ -195,7 +195,7 @@ class PrivateVerificationDocumentsTest extends TestCase
 
     public function test_registration_does_not_store_unvalidated_role_documents(): void
     {
-        $this->post('/register', [...$this->registrationPolicies(),
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Bagoo Buyer', 'email' => 'documents.buyer@bagoo.test', 'role' => 'buyer',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'driver_license' => UploadedFile::fake()->create('ignored.exe', 20, 'application/x-msdownload'),

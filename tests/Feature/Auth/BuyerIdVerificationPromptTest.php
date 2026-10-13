@@ -52,7 +52,7 @@ class BuyerIdVerificationPromptTest extends TestCase
         $response->assertRedirect(route('auth.google.registration'));
         $this->assertDatabaseCount('users', 0);
         $nonce = session('registration.google.nonce');
-        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['registration_nonce' => $nonce, 'first_name' => 'Google', 'middle_initial' => '', 'last_name' => 'Buyer']);
+        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['sex' => 'Female', 'registration_nonce' => $nonce, 'first_name' => 'Google', 'middle_initial' => '', 'last_name' => 'Buyer']);
 
         $response->assertRedirect(route('kyc.pending'));
         $this->assertAuthenticated();

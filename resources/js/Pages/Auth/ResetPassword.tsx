@@ -27,7 +27,7 @@ export default function ResetPassword({ token, email }: Props) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             title="Set New Password" 
             subtitle="Choose a strong password to protect your account"
             headerBadge="SECURITY // 05"

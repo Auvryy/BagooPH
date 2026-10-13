@@ -48,7 +48,7 @@ export default function SellerLogin({ status, canResetPassword }: Props) {
     };
 
     return (
-        <GuestLayout 
+        <GuestLayout guestOnly
             formPosition="left"
             imageSrc="/images/auth/seller_login.jpg?v=20260911"
             imageAlt="BagooPH Merchant Storefront Visual"

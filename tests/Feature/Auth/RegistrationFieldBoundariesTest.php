@@ -67,6 +67,29 @@ class RegistrationFieldBoundariesTest extends TestCase
     }
 
     #[DataProvider('roles')]
+    public function test_every_public_role_requires_a_valid_sex_before_continuing_or_creating_an_account(string $role): void
+    {
+        Storage::fake('local');
+        $data = $this->application($role);
+        $missing = $data;
+        unset($missing['sex']);
+        $invalid = [$missing];
+        foreach ([null, '', '   ', 'Unknown', ['Female'], true, 1] as $sex) {
+            $invalid[] = array_replace($data, ['sex' => $sex]);
+        }
+        foreach ($invalid as $request) {
+            $this->postJson('/register/validate', array_replace($request, ['step' => 1]))->assertUnprocessable()->assertJsonValidationErrors('sex');
+            $this->postJson('/register/validate', $request)->assertUnprocessable()->assertJsonValidationErrors('sex');
+            $this->post('/register', $request)->assertSessionHasErrors('sex');
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        foreach (['Female', 'Male', 'Other'] as $sex) {
+            $this->postJson('/register/validate', array_replace($data, ['sex' => $sex]))->assertOk();
+        }
+    }
+
+    #[DataProvider('roles')]
     public function test_sex_and_postal_code_are_validated_and_saved_for_every_public_role(string $role): void
     {
         Storage::fake('local');

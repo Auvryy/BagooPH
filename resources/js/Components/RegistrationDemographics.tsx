@@ -14,8 +14,8 @@ function controlClass(courier: boolean) {
 
 export function RegistrationSexField({ value, onChange, error, courier = false }: FieldProps) {
     return <div className="space-y-1">
-            <label htmlFor="sex" className="flex h-5 items-center text-xs font-semibold uppercase tracking-wider text-slate-800">Sex (optional)</label>
-            <select id="sex" name="sex" value={value} onChange={event => onChange(event.target.value)} className={controlClass(courier)} aria-invalid={Boolean(error)} aria-describedby={error ? 'sex-error' : undefined}>
+            <label htmlFor="sex" className="flex h-5 items-center text-xs font-semibold uppercase tracking-wider text-slate-800">Sex <span className="ml-1 text-[#E00D42]">*</span></label>
+            <select id="sex" name="sex" value={value} onChange={event => onChange(event.target.value)} required aria-required="true" className={controlClass(courier)} aria-invalid={Boolean(error)} aria-describedby={error ? 'sex-error' : undefined}>
                 <option value="">Choose an option</option>
                 <option value="Female">Female</option><option value="Male">Male</option><option value="Other">Other</option>
             </select>

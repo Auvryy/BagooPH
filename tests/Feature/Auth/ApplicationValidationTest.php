@@ -31,14 +31,14 @@ class ApplicationValidationTest extends TestCase
     public function test_registration_rejects_digits_in_a_person_name(): void
     {
         Storage::fake('local');
-        $this->post('/register', [...$this->registrationPolicies(), 'name' => 'Bagoo123', 'email' => 'validation@bagoo.test', 'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'])->assertSessionHasErrors('name');
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female', 'name' => 'Bagoo123', 'email' => 'validation@bagoo.test', 'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'])->assertSessionHasErrors('name');
         $this->assertDatabaseCount('users', 0);
     }
 
     public function test_courier_registration_rejects_an_unknown_vehicle_enum(): void
     {
         Storage::fake('local');
-        $this->post('/register', [...$this->registrationPolicies(),
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'role' => 'courier', 'name' => 'Juan Bagoo', 'email' => 'courier-validation@bagoo.test',
             'phone' => '09171234567', 'birthday' => '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
@@ -54,7 +54,7 @@ class ApplicationValidationTest extends TestCase
 
     private function payload(string $role = 'buyer'): array
     {
-        $data = $this->registrationPolicies() + ['role' => $role, 'name' => 'José Dela Cruz', 'email' => Str::uuid().'@bagoo.test', 'phone' => '09171234567',
+        $data = $this->registrationPolicies() + ['sex' => 'Female', 'role' => $role, 'name' => 'José Dela Cruz', 'email' => Str::uuid().'@bagoo.test', 'phone' => '09171234567',
             'birthday' => $role === 'buyer' ? null : '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'];
         if ($role === 'seller') {

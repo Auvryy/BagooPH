@@ -59,7 +59,8 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
             const error = combinedPersonalNameError({ first_name: value('first_name'), middle_initial: value('middle_initial'), last_name: value('last_name') });
             if (error) errors.name = error;
         }
-        if (value('sex') && !['Female', 'Male', 'Other'].includes(value('sex'))) errors.sex = 'Choose an available option.';
+        if (!value('sex').trim()) errors.sex = 'Sex is required. Choose an option.';
+        else if (!['Female', 'Male', 'Other'].includes(value('sex'))) errors.sex = 'Choose an available option.';
         if (!google) {
             if (!value('email').trim()) errors.email = 'Email address is required.';
             else if (!validEmailFormat(value('email'))) errors.email = 'Enter a complete email address, such as name@example.com.';

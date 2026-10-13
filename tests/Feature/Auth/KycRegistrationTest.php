@@ -25,7 +25,7 @@ class KycRegistrationTest extends TestCase
         $idFile = UploadedFile::fake()->image('seller_id.jpg');
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Sarah Store Owner',
             'shop_name' => 'Sarah Prime Boutique',
             'root_category_id' => $this->validMasterCategory()->id,
@@ -67,7 +67,7 @@ class KycRegistrationTest extends TestCase
         $licenseFile = UploadedFile::fake()->image('driver_license.jpg');
         $orCrFile = UploadedFile::fake()->create('vehicle_orcr.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Juan Rider',
             'email' => 'juan.rider@example.com',
             'phone' => '+63 917 333 4444',
@@ -105,7 +105,7 @@ class KycRegistrationTest extends TestCase
 
     public function test_buyer_registration_without_id_defaults_to_none_and_redirects_to_login(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Alex Buyer',
             'email' => 'alex.buyer@example.com',
             'phone' => '+63 917 555 6666',
@@ -134,7 +134,7 @@ class KycRegistrationTest extends TestCase
         Storage::fake('local');
         $idFile = UploadedFile::fake()->image('buyer_id.jpg');
 
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Alex Another Buyer',
             'email' => 'alex.buyer2@example.com',
             'phone' => '+63 917 555 6666',
@@ -160,7 +160,7 @@ class KycRegistrationTest extends TestCase
 
     public function test_seller_registration_requires_business_permit_and_id(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Incomplete Seller',
             'shop_name' => 'Incomplete Store',
             'email' => 'incomplete.seller@example.com',
@@ -185,7 +185,7 @@ class KycRegistrationTest extends TestCase
         $permitFile = UploadedFile::fake()->create('business_permit.pdf', 1000, 'application/pdf');
         $franchiseFile = UploadedFile::fake()->create('franchise_cert.pdf', 1000, 'application/pdf');
 
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Captain Arturo Santos',
             'company_name' => 'Southern Freight Express',
             'company_code' => 'SFX',

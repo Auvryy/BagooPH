@@ -596,7 +596,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_seller_registration_strictly_requires_documents_and_shop_name(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Fraud Seller',
             'email' => 'fraud.seller@bagoo.test',
             'password' => 'password123',
@@ -611,7 +611,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_courier_registration_strictly_requires_vehicle_and_license_documents(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Fraud Courier',
             'email' => 'fraud.courier@bagoo.test',
             'password' => 'password123',
@@ -632,7 +632,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_registration_blocks_admin_role_escalation_attempt(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Hacker Admin',
             'email' => 'hacker.admin@bagoo.test',
             'password' => 'Password1234!',
@@ -646,7 +646,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
     public function test_registration_ignores_injected_status_or_kyc_status_payload(): void
     {
-        $response = $this->post('/register', [...$this->registrationPolicies(),
+        $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Bypass User',
             'email' => 'bypass@bagoo.test',
             'password' => 'Password1234!',
