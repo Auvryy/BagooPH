@@ -10,15 +10,15 @@ for rejection, retry, permissions and persistence checks.
 
 | Entry | Identity and contact | Application details and evidence |
 |---|---|---|
-| Buyer web signup | First name, optional middle initial, last name, registration email, password/confirmation; optional birthday, mobile, sex and postal code | Address controls and optional private identity document; identity approval still gates purchases |
-| First Google signup | Verified provider email is fixed; applicant supplies first/last names and optional middle initial, birthday, mobile, sex and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
-| Seller web signup | Separated names, adult birthday, email, password/confirmation, Philippine business contact; optional sex and postal code | One shop name/root category, pickup address, private ID and business permit |
-| Courier web/native signup | Names, adult birthday, email, mobile, password/confirmation; optional sex and postal code | Application address, vehicle, plate and licence identifiers, private ID, driver’s licence and OR/CR; native submission also needs verified email and device name |
-| Logistics web signup | Separated names, adult birthday, email, business contact, password/confirmation; optional sex and postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
+| Buyer web signup | First name, optional middle initial, last name, required sex, registration email, password/confirmation; optional birthday, mobile and postal code | Address controls and optional private identity document; identity approval still gates purchases |
+| First Google signup | Verified provider email is fixed; required first/last names and sex; optional middle initial, birthday, mobile and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
+| Seller web signup | Separated names, required sex, adult birthday, email, password/confirmation, Philippine business contact; optional postal code | One shop name/root category, pickup address, private ID and business permit |
+| Courier web/native signup | Names, required sex, adult birthday, email, mobile, password/confirmation; optional postal code | Application address, vehicle, plate and licence identifiers, private ID, driver’s licence and OR/CR; native submission also needs verified email and device name |
+| Logistics web signup | Separated names, required sex, adult birthday, email, business contact, password/confirmation; optional postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
 | Platform Admin | Controlled account provisioning and existing login | No public admin signup or role-conversion option |
 
 Sex and postal code are visible on all four public forms and the first Google
-application. They remain optional, matching the existing server policy. Browser
+application. Sex is required; postal code remains optional. Browser
 location selectors guide entry; submitted names do not establish serviceability.
 Worker birthday and approval remain mandatory. Buyer birthday does not acquire
 the worker age requirement.
@@ -39,7 +39,7 @@ without a permanent paragraph of instructions underneath the names.
 | Mobile | Ten ASCII national digits beginning with 9 after `+63`; supported whole-number prefixes work on paste. Reject extra digits, letters, unsupported prefixes and extensions without shortening a different number into validity. |
 | Business contact | Philippine mobile or supported area-coded landline; raw application input maximum 24 characters before canonicalization. |
 | Birthday | Real calendar date before today; workers must be at least 18 in Asia/Manila. Age is derived, never client authority. |
-| Sex | Optional `Female`, `Male` or `Other`; reject unknown choices and non-string values. |
+| Sex | Required `Female`, `Male` or `Other`; reject missing, null, blank, unknown choices and non-string values. Check it on the first web step, full preflight, final signup, Google signup and native rider submission. |
 | Postal code | Optional exactly four ASCII digits, stored as text so a leading zero survives. Reject overlong paste, non-ASCII digits, letters and numeric notation. |
 | Street/pickup/company address | Meaningful plain text, 5–500 characters when supplied; mandatory for workers. |
 | City/province/municipality/barangay | Meaningful plain text, 2–255 characters when supplied. Worker city is required; existing server optionality for other components is preserved. |

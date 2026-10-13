@@ -4049,3 +4049,40 @@ draft are reported in the handoff; publication and deployment are user actions.
 Implementation commits: `7daca36 fix(auth): route signed-in users away from guest
 pages`; `809be05 fix(auth): restore email feedback with session redirects`.
 The documentation commit and local combined PR draft are reported in the handoff.
+
+## October 13, 2026: required sex in account applications
+
+Scope: a follow-up on `fix/auth-page-session-routing`. The user changed sex from
+optional to required. Buyer, seller, courier, logistics and first Google signup
+now require an explicit selection. The existing `Female`, `Male`, `Other`
+allowlist remains authoritative; no default selection is supplied to applicants.
+The shared web control shows the required marker and browser/accessibility
+attributes, and first-step feedback blocks an empty selection before continuing.
+
+Shared server rules reject missing, null, blank, unknown and malformed sex on
+preflight, final signup and native rider application submission. Correction and
+review metadata also mark sex required; an application correction cannot clear
+a saved selection. Pending applications missing sex need a selection before
+resubmission or approval. Native registration options advertise
+`sex_required: true`. The Flutter project was untouched; its client must submit
+a valid sex and follow the updated registration options.
+
+Verification: **872 isolated SQLite `:memory:` authentication tests / 10,730
+assertions passed**, including new rejection/retry checks across all four public
+roles, Google signup and native rider submission, correction persistence and
+the native options contract. An older throttle-test fixture initially omitted
+sex; it was updated and the full authentication run then passed. Registration
+fixtures and fictional user factories now supply valid values without changing
+the production database. **59 frontend checks, the TypeScript/Vite production
+build, changed PHP style checks and diff checks passed.** No database reset,
+browser UI test, Azure deployment or Flutter UI verification was performed.
+
+**Scoped assessment: required-sex enforcement 4/10 -> 9/10 locally.** Previously
+only invalid supplied choices failed; applicants could omit sex. The form,
+server, correction metadata and native contract now agree that a choice is
+mandatory. Live signup/session and delivered-email acceptance remain pending;
+this does not raise unrelated platform readiness. Local commits and the updated
+combined pull request draft are reported in the handoff.
+
+Implementation commit: `4aa51b0 fix(auth): require sex in account applications`.
+The documentation commit is reported in the handoff.
