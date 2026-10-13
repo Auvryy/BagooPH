@@ -41,4 +41,9 @@ class HandoverIssue extends Model
     {
         return $this->hasMany(HandoverIssueEvent::class)->orderBy('id');
     }
+
+    public function recoveryGrants(): HasMany
+    {
+        return $this->hasMany(HandoverRecoveryGrant::class)->orderBy('id');
+    }
 }

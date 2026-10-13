@@ -77,8 +77,12 @@ class HandoverIssueService
 
         return $query->where(function (Builder $issue) use ($actor) {
             $issue->where('reporter_id', $actor->id)->orWhereIn('delivery_id', $this->parcels($actor)->select('deliveries.id'));
+            if ($actor->isCourier()) {
+                $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->where('holder_id', $actor->id));
+            }
             if ($actor->isLogistics()) {
                 $issue->orWhereIn('logistics_company_id', LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id'));
+                $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->whereIn('hub_id', HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id')));
             }
         });
     }
