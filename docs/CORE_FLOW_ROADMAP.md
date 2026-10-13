@@ -4162,3 +4162,63 @@ conflicts require explicit record correction and retry, without reset/reseed.
 Implementation commits: `10619ce Allow eight-character passwords across account
 writers`; `6101891 Enforce unique account mobiles and shop names`. The upload
 commit and combined local pull request draft are reported in the handoff.
+
+## October 13, 2026 — H01 handover reports and independent review
+
+The [handover plan](handover-plan/README.md) separates reporting, pickup recovery,
+hub/manifest recovery and native integration. The first branch,
+`feat/handover-issue-reporting`, implements the reporting and review gate.
+
+Involved sellers, assigned riders, eligible hub handlers and company
+administrators can report an exact known waybill with their observation of the
+holder/location and private supporting evidence. A report retains the original
+parcel/order/route state and original custody checkpoint. Reported possession
+never replaces recorded custody. A different eligible company administrator or
+platform admin can confirm a concern or dismiss it with a reason; confirmation
+keeps the case open as Needs recovery.
+
+One open report per parcel, request-token replay checks and version/current-source
+checks prevent duplicate reports and stale decisions. Losing account, facility or
+company authority prevents new work. Original reporters retain scoped read access
+while eligible. Mixed-shop legacy orders cannot be reported as wholly owned
+parcels. Original facts and events resist model and direct SQL edits/deletion.
+Missing or altered evidence prevents a new review. Private downloads recheck
+scope and the saved hash; actual type/extension and bounded readable-image checks
+reuse the existing 5 MB JPG/PNG/WEBP/PDF policy.
+
+All affected portals link to the workspace using their existing shell. The rider
+keeps four bottom tabs and gains a sidebar/drawer link. The pages separate
+reported facts, original records, current records and review history, with field
+feedback, safe retries, clear empty states and automatic review refresh.
+
+Verification:
+
+- Final focused run: **74 tests / 2,071 assertions**, including all supported
+  formats, forged/empty/oversized evidence, ownership and authority loss,
+  self-review, competing reports and decisions, retries, stale parcel facts,
+  private downloads, retained history, rollback and scoped pagination.
+- Broader Docker/SQLite run: **737 tests / 42,287 assertions** across logistics,
+  rider/native operations, finance, seller order workspaces and account closure.
+  This run includes the original 72 handover cases; the two added image-format
+  cases passed in the final focused run. It is not a full-repository suite claim.
+- All **222 frontend checks**, the TypeScript/Vite production build, changed PHP
+  style checks, documentation links and whitespace checks passed.
+- The additive local PostgreSQL migration succeeded. Before/after audits retained
+  **9 accounts, 1 shop, 17 products, 17 visible products, 3 orders and 3 parcels**;
+  the two new reporting tables have no demo reports. No reset, reseed or
+  PostgreSQL test was run.
+
+**Scoped assessment: missed-handover reporting and triage 2/10 -> 8/10 locally.**
+Staff now have an accountable cross-role reporting and review path instead of
+forcing an unsupported ordinary scan. This rating does not raise complete
+recovery readiness: H01 adds no operational hold, corrective receipt, custody
+transfer, notification delivery promise or native reporting endpoint. Confirmed
+concerns stay open for H02/H03. PostgreSQL simultaneous-request behaviour,
+rendered browser/device interactions and Azure deployment remain unverified.
+Apply ordinary migrations when deploying; original scans, transport routing,
+stock, cash and buyer-only completion retain their existing rules.
+
+Local implementation commits: `f96adb3 Plan handover reporting and controlled
+recovery`; `c102421 Add private handover reports and independent review`;
+`6bd05a2 Connect handover issue reporting to each staff portal`. The combined PR
+is a local draft; publication and later planned batches remain separate work.

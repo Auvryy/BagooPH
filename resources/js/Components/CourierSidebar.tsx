@@ -1,6 +1,6 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Link } from '@inertiajs/react';
-import { ArrowUpRight, History, LayoutDashboard, MapPin, Menu, MessageSquare, UserRound, X } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, History, LayoutDashboard, MapPin, Menu, MessageSquare, UserRound, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import BagooLogo from '@/Components/BagooLogo';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
@@ -42,6 +42,7 @@ function SidebarContent({ component, hub, company, name, initials, subtle, onClo
             {courierNavItems.map(({ name: label, path, page, icon: Icon }) => (
                 <Link key={path} href={courierPath(path)} onClick={mobile ? onClose : undefined} aria-current={component === page ? 'page' : undefined} className={courierClasses('flex min-h-12 items-center gap-3 rounded-[8px] border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none', component === page ? subtle ? 'border-transparent bg-[#FFF5F7] text-[#C20836]' : 'border-rose-200 bg-[#FFF2F4] text-[#C20836]' : 'border-transparent text-slate-600 hover:bg-slate-50')}><Icon className="h-[18px] w-[18px]" aria-hidden="true" />{label}</Link>
             ))}
+            <Link href="/handover-issues" onClick={mobile ? onClose : undefined} aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={courierClasses('flex min-h-12 items-center gap-3 rounded-[8px] px-3 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]', component.startsWith('Handover/') ? 'bg-[#FFF5F7] text-[#C20836]' : 'text-slate-600 hover:bg-slate-50')}><AlertTriangle className="h-[18px] w-[18px]" aria-hidden="true" />Handover issues</Link>
         </nav>
         <div className="mt-auto shrink-0 px-3 pb-4 pt-8">
             <div className="courier-dispatch-card rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-4">
