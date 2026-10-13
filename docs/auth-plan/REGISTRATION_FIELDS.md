@@ -69,16 +69,43 @@ Corrections do not approve the account or replace the original sign-in email.
 
 ## Registration email checks
 
-Email format feedback and submission checks must agree on normalized addresses,
-malformed input, controls and length limits. Preflight and final signup recheck
-global ownership, including case/space equivalents, other roles and verified
-additional addresses. An earlier successful check never reserves an address
-or bypasses final validation or database uniqueness.
+Buyer, seller, courier and logistics signup check email availability after a
+500 ms typing pause or on blur. Local format feedback, the read-only lookup,
+preflight and final signup must agree on normalized addresses, malformed input,
+controls and length limits. Ownership checks include case/space equivalents,
+other roles and verified additional addresses. An earlier successful check
+never reserves an address or bypasses final validation or database uniqueness.
+
+Blank or incomplete input does not request availability. Editing, changing the
+active step or opening verification cancels pending checks; outdated responses
+cannot replace current feedback. Requests have a ten-second timeout and respect
+the server retry cooldown. Failed checks must not claim availability. Existing
+field errors take priority, and lookup results reveal no account details.
+Google signup retains its fixed provider email.
 
 Mailbox ownership requires the existing OTP verification. A syntactically valid
 address does not establish that the mailbox exists. Guest/session restrictions,
 original sign-in identity and approval requirements remain independent of the
 address entered. Do not silently sign out an existing account to submit signup.
+
+## Existing sessions and guest pages
+
+Every login and registration entry, including role subdomains and path aliases,
+must return a signed-in user to that account's own portal. Apply the existing
+approval, identity and restriction rules before choosing the destination:
+unapproved applicants return to their holding page, and denied accounts retain
+their existing access restrictions. An old intended URL must not return a user
+to an authentication form or an unrelated website. Guest authentication posts
+cannot switch an existing session to another account or create an extra account.
+
+Guest-only layouts read `/auth/session` on entry, focus, page restoration and
+returning to a visible tab, without polling. The private, rate-limited response
+uses the same account access rules. Probe requests time out after ten seconds;
+unreadable or failed replies preserve form input. Stale signup, email or OTP
+requests that report an existing session navigate to the supplied safe account
+destination instead of asking the user to sign out. Authenticated password
+confirmation, verification and approval pages remain available under their
+existing rules.
 
 ## Standards and interpretation
 
