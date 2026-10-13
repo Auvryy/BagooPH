@@ -34,6 +34,7 @@ use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
+use App\Http\Controllers\Logistics\HandoverIssueController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\ParcelRecoveryController;
@@ -123,6 +124,14 @@ Route::middleware(['auth', 'verified'])->prefix('cash-handover')->name('cash.')-
 
 Route::middleware('auth')->get('/verification-documents/{user}/{document}', [VerificationDocumentController::class, 'show'])
     ->name('verification-documents.show');
+
+Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handover-issues.')->group(function () {
+    Route::get('/', [HandoverIssueController::class, 'index'])->name('index');
+    Route::post('/', [HandoverIssueController::class, 'store'])->middleware('throttle:10,1')->name('store');
+    Route::get('/{issue}', [HandoverIssueController::class, 'show'])->whereNumber('issue')->name('show');
+    Route::get('/{issue}/evidence', [HandoverIssueController::class, 'evidence'])->whereNumber('issue')->name('evidence');
+    Route::post('/{issue}/review', [HandoverIssueController::class, 'review'])->whereNumber('issue')->middleware('throttle:20,1')->name('review');
+});
 
 Route::middleware('auth')->group(function () {
     Route::middleware('verified')->prefix('financial-oversight')->name('financial-oversight.')->group(function () {
