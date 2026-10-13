@@ -61,7 +61,7 @@ class RiderAuthController extends Controller
             'registration_policies' => app(RegistrationPolicyService::class)->contract(),
             'plate_number_max_length' => 8, 'plate_number_max_symbols' => 7,
             'license_number_format' => 'N01-12-345678', 'license_number_max_length' => 13, 'license_number_compact_length' => 11,
-            'sex_options' => ['Female', 'Male', 'Other'], 'sex_required' => false,
+            'sex_options' => ['Female', 'Male', 'Other'], 'sex_required' => true,
             'postal_code_length' => 4, 'postal_code_required' => false]]);
     }
 

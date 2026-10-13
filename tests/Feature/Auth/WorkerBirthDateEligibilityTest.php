@@ -47,7 +47,7 @@ class WorkerBirthDateEligibilityTest extends TestCase
 
     private function registration(string $role, mixed $birthday): array
     {
-        $data = $this->registrationPolicies() + [
+        $data = $this->registrationPolicies() + ['sex' => 'Female',
             'role' => $role, 'name' => 'Bagoo Test Applicant',
             'email' => Str::uuid().'@bagoo.test', 'phone' => '+639171234567',
             'address' => 'Bagoo Test Street', 'city' => 'Makati',

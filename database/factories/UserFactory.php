@@ -20,6 +20,7 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'sex' => fake()->randomElement(['Female', 'Male', 'Other']),
             'email' => fake()->unique()->safeEmail(),
             'role' => 'buyer',
             'phone' => '+63 9'.fake()->numerify('## ### ####'),

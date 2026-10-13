@@ -171,12 +171,29 @@ class RiderApiAuthTest extends TestCase
 
     private function application(string $email, string $token): array
     {
-        return $this->registrationPolicies() + ['name' => 'Test Rider', 'birthday' => '2000-01-01', 'email' => $email, 'phone' => '09173334444', 'address' => 'Sample Street', 'city' => 'Pasig', 'barangay' => 'San Antonio',
+        return $this->registrationPolicies() + ['name' => 'Test Rider', 'sex' => 'Female', 'birthday' => '2000-01-01', 'email' => $email, 'phone' => '09173334444', 'address' => 'Sample Street', 'city' => 'Pasig', 'barangay' => 'San Antonio',
             'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-22-123456',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!', 'device_name' => 'Test rider', 'otp_token' => $token,
             'id_document' => UploadedFile::fake()->create('identity.pdf', 10, 'application/pdf'),
             'driver_license' => UploadedFile::fake()->create('license.pdf', 10, 'application/pdf'),
             'or_cr_document' => UploadedFile::fake()->create('vehicle.pdf', 10, 'application/pdf')];
+    }
+
+    public function test_native_signup_requires_sex_without_creating_an_account_or_consuming_verification(): void
+    {
+        Storage::fake('local');
+        $email = 'sex-required@bagoo.test';
+        $data = $this->application($email, $this->verification($email));
+        $missing = $data;
+        unset($missing['sex']);
+        $this->postJson('/api/v1/rider/applications', $missing)->assertUnprocessable()->assertJsonValidationErrors('sex');
+        foreach ([null, '', '   ', 'Unknown', ['Female'], true, 1] as $sex) {
+            $this->postJson('/api/v1/rider/applications', array_replace($data, ['sex' => $sex]))->assertUnprocessable()->assertJsonValidationErrors('sex');
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->postJson('/api/v1/rider/applications', $data)->assertCreated();
+        $this->assertSame('Female', User::where('email', $email)->sole()->sex);
     }
 
     public function test_email_verified_application_uses_web_models_private_documents_and_pending_review(): void
@@ -317,7 +334,7 @@ class RiderApiAuthTest extends TestCase
         $this->getJson('/api/v1/rider/registration/options')->assertOk()
             ->assertJsonPath('data.registration_policies.required', true)
             ->assertJsonPath('data.password_policy.uppercase', true)
-            ->assertJsonPath('data.sex_required', false)
+            ->assertJsonPath('data.sex_required', true)
             ->assertJsonPath('data.postal_code_length', 4);
     }
 }

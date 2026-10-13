@@ -127,7 +127,7 @@ class RegistrationEmailAvailabilityTest extends TestCase
     {
         $this->postJson('/register/email/validate', ['email' => 'applicant@bagoo.test'])->assertJsonPath('available', true);
         User::factory()->create(['email' => 'applicant@bagoo.test', 'role' => 'seller']);
-        $data = $this->registrationPolicies() + [
+        $data = $this->registrationPolicies() + ['sex' => 'Female',
             'role' => 'buyer', 'first_name' => 'Ana', 'last_name' => 'Peña', 'email' => 'APPLICANT@BAGOO.TEST',
             'password' => 'Strong Password 2026!', 'password_confirmation' => 'Strong Password 2026!',
         ];
@@ -144,7 +144,7 @@ class RegistrationEmailAvailabilityTest extends TestCase
         }
         $this->postJson('/register/email/validate', ['email' => 'applicant@bagoo.test'])->assertStatus(429)->assertHeader('Retry-After');
         $this->postJson('/register/validate', [
-            'role' => 'buyer', 'step' => 1, 'first_name' => 'Ana', 'last_name' => 'Peña', 'email' => 'applicant@bagoo.test',
+            'role' => 'buyer', 'step' => 1, 'first_name' => 'Ana', 'last_name' => 'Peña', 'sex' => 'Female', 'email' => 'applicant@bagoo.test',
             'password' => 'Strong Password 2026!', 'password_confirmation' => 'Strong Password 2026!',
         ])->assertOk()->assertExactJson(['valid' => true]);
     }

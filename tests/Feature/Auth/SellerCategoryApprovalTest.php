@@ -35,7 +35,7 @@ class SellerCategoryApprovalTest extends TestCase
 
     private function registration(array $overrides = []): array
     {
-        return array_replace($this->registrationPolicies() + [
+        return array_replace($this->registrationPolicies() + ['sex' => 'Female',
             'name' => 'Bagoo Applicant', 'shop_name' => 'Bagoo Application Shop',
             'email' => 'category-applicant@bagoo.test', 'role' => 'seller',
             'birthday' => '2000-01-01', 'phone' => '+639171234567',
@@ -376,7 +376,7 @@ class SellerCategoryApprovalTest extends TestCase
     public function test_registration_requires_a_master_category_without_partial_accounts(): void
     {
         Storage::fake('local');
-        $this->post('/register', [...$this->registrationPolicies(),
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Bagoo Applicant', 'shop_name' => 'Bagoo Application Shop',
             'email' => 'category-applicant@bagoo.test', 'role' => 'seller',
             'birthday' => '2000-01-01', 'phone' => '+639171234567',

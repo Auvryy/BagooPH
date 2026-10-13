@@ -293,6 +293,9 @@ test('incomplete and malformed identities get field errors before any request or
         });
         await assert.rejects(ui.checkRegistration({ ...identity(role), first_name: '', middle_initial: '', last_name: '' }, limits, 1), error => Boolean(error.fields.first_name && error.fields.last_name && !error.fields.middle_initial));
     }
+    for (const sex of ['', '   ', undefined, null, 1, ['Female']]) {
+        assert.match(ui.registrationInputErrors({ ...identity('buyer'), sex }, limits, undefined, true).sex, /required/);
+    }
     assert.equal(requests, 0);
 });
 
@@ -363,7 +366,7 @@ test('all registration pages preserve the portal shell and controlled form feedb
         assert.match(result.body, /name="first_name"[^>]*required=""/);
         assert.match(result.body, /name="last_name"[^>]*required=""/);
         assert.doesNotMatch(result.body, /name="middle_initial"[^>]*required/);
-        assert.match(result.body, /<select[^>]*name="sex"/);
+        assert.match(result.body, /<select[^>]*name="sex"[^>]*required=""/);
         assert.ok(result.body.indexOf('name="last_name"') < result.body.indexOf('name="sex"'));
         assert.ok(result.body.indexOf('name="sex"') < result.body.indexOf('name="email"'));
         assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
@@ -417,7 +420,11 @@ test('each role checks sex on the name step and postal values on the address ste
     for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
         const step = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
         assert.equal(ui.registrationInputErrors(identity(role), limits, step).postal_code, undefined);
-        assert.equal(ui.registrationInputErrors({ ...identity(role), sex: '', postal_code: '' }, limits, step).sex, undefined);
+        assert.equal(ui.registrationInputErrors({ ...identity(role), postal_code: '' }, limits, step).postal_code, undefined);
+        for (const sex of ['', '   ', undefined, null, 1, ['Female']]) {
+            assert.match(ui.registrationInputErrors({ ...identity(role), sex }, limits, 1).sex, /required/);
+            await assert.rejects(ui.checkRegistration({ ...identity(role), sex }, limits, 1), error => Boolean(error.fields.sex));
+        }
         for (const value of ['123', '12345', '１２３４', '1e03']) {
             await assert.rejects(ui.checkRegistration({ ...identity(role), postal_code: value }, limits, step), error => Boolean(error.fields.postal_code));
         }
@@ -430,10 +437,10 @@ test('each role checks sex on the name step and postal values on the address ste
     assert.equal(requests, 0);
 });
 
-test('demographic inputs preserve leading zeroes and distinguish optional controls', () => {
+test('sex is required while postal code preserves leading zeroes and remains optional', () => {
     const sex = renderToStaticMarkup(createElement(ui.RegistrationSexField, { value: 'Female', onChange() {} }));
-    assert.match(sex, /Sex \(optional\)/);
-    assert.match(sex, /<select[^>]*name="sex"/);
+    assert.doesNotMatch(sex, /Sex \(optional\)/);
+    assert.match(sex, /<select[^>]*name="sex"[^>]*required=""[^>]*aria-required="true"/);
     const html = renderToStaticMarkup(createElement(ui.AddressSelector, {
         values: { province: '', city: '', municipality: '', barangay: '', address: '' }, onChange() {},
         postalCodeField: createElement(ui.RegistrationPostalCodeField, { value: '0123', onChange() {} }),
@@ -465,13 +472,14 @@ test('policy acknowledgement starts unchecked with accessible versioned document
 test('correction controls show separated names, a narrower middle field and the server limits', () => {
     const fields = [
         ['first_name', 'First name', 2, 50, 'text'], ['middle_name', 'Middle name / initial', 1, 50, 'text'], ['last_name', 'Last name', 2, 50, 'text'], ['sex', 'Sex', null, 255, 'select'], ['postal_code', 'Postal code', 4, 4, 'text'],
-    ].map(([key, label, min_length, max_length, type]) => ({ key, label, min_length, max_length, type, required: key === 'first_name' || key === 'last_name', options: key === 'sex' ? ['Female', 'Male', 'Other'] : [], input_mode: key === 'postal_code' ? 'numeric' : null }));
+    ].map(([key, label, min_length, max_length, type]) => ({ key, label, min_length, max_length, type, required: ['first_name', 'last_name', 'sex'].includes(key), options: key === 'sex' ? ['Female', 'Male', 'Other'] : [], input_mode: key === 'postal_code' ? 'numeric' : null }));
     const values = { first_name: 'Ana', middle_name: 'J.', last_name: 'Santos', sex: 'Female', postal_code: '0123' };
     const html = renderToStaticMarkup(createElement(ui.ApplicationFields, { application: { fields, values, errors: {}, can_correct: true }, values, errors: {}, onChange() {} }));
     assert.doesNotMatch(html, /<input[^>]*name="name"/);
     assert.match(html, /sm:col-span-3[^>]*><label[^>]*for="application-middle_name"/);
     assert.match(html.match(/<input[^>]*name="first_name"[^>]*>/)[0], /maxlength="50"/i);
     assert.match(html.match(/<input[^>]*name="postal_code"[^>]*>/)[0], /maxlength="4"/i);
+    assert.match(html, /<select[^>]*name="sex"[^>]*required=""/);
 });
 
 test('first Google signup collects the same buyer details while relying on the verified provider email', async () => {
@@ -480,7 +488,7 @@ test('first Google signup collects the same buyer details while relying on the v
     const props = { auth: { user: null }, flash: {}, errors: {}, identity: { name: 'Buyer Profile', email: 'verified@bagoo.test' }, birthDateLimits: limits, policies, registrationNonce: 'server-nonce' };
     const result = await createInertiaApp({ page: { component: 'Auth/GoogleRegistration', props, url: '/auth/google/register', version: null }, resolve: () => Component, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
     for (const field of ['first_name', 'middle_initial', 'last_name', 'birthday', 'phone', 'postal_code', 'policy_accepted']) assert.match(result.body, new RegExp('<input[^>]*name="' + field + '"'));
-    assert.match(result.body, /<select[^>]*name="sex"/);
+    assert.match(result.body, /<select[^>]*name="sex"[^>]*required=""[^>]*aria-required="true"/);
     assert.ok(result.body.indexOf('name="last_name"') < result.body.indexOf('name="sex"'));
     assert.ok(result.body.indexOf('name="sex"') < result.body.indexOf('name="birthday"'));
     assert.ok(result.body.indexOf('name="barangay"') < result.body.indexOf('name="postal_code"'));

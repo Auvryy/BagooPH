@@ -40,6 +40,19 @@ class ApplicationFormConsistencyTest extends TestCase
     }
 
     #[DataProvider('roles')]
+    public function test_application_corrections_cannot_clear_the_required_sex(string $role): void
+    {
+        $user = $this->applicant($role);
+        foreach ([null, '', '   ', ['Female']] as $sex) {
+            $this->actingAs($user)->post('/kyc/resubmit', ['sex' => $sex])->assertSessionHasErrors('sex');
+            $this->assertSame('Female', $user->fresh()->sex);
+            $this->assertSame('pending_approval', $user->fresh()->kyc_status);
+        }
+        $this->actingAs($user)->post('/kyc/resubmit', ['sex' => 'Other'])->assertSessionHasNoErrors();
+        $this->assertSame('Other', $user->fresh()->sex);
+    }
+
+    #[DataProvider('roles')]
     public function test_signup_details_and_correction_controls_match_for_each_role(string $role): void
     {
         $user = $this->applicant($role);
@@ -53,7 +66,7 @@ class ApplicationFormConsistencyTest extends TestCase
         $this->assertSame(50, $fields['last_name']['max_length']);
         $this->assertSame(4, $fields['postal_code']['max_length']);
         $this->assertSame('numeric', $fields['postal_code']['input_mode']);
-        $this->assertFalse($fields['sex']['required']);
+        $this->assertTrue($fields['sex']['required']);
         $this->assertFalse($fields['postal_code']['required']);
         $this->assertSame('Female', $form['values']['sex']);
         $this->assertSame('0123', $form['values']['postal_code']);

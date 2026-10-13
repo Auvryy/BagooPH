@@ -45,7 +45,7 @@ class PasswordPolicyTest extends TestCase
     #[DataProvider('acceptedPasswords')]
     public function test_compliant_passwords_are_saved_completely_and_authenticate_without_truncation(string $password): void
     {
-        $this->post('/register', [...$this->registrationPolicies(), 'name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female', 'name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
             ->assertSessionHasNoErrors();
         $user = User::where('email', 'new@bagoo.test')->sole();
         $this->assertSame('argon2id', password_get_info($user->password)['algoName']);

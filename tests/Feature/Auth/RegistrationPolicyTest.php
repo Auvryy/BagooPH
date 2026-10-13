@@ -23,7 +23,7 @@ class RegistrationPolicyTest extends TestCase
 
     private function application(string $role): array
     {
-        return $this->registrationPolicies() + [
+        return $this->registrationPolicies() + ['sex' => 'Female',
             'role' => $role, 'name' => 'Bagoo Applicant', 'email' => 'applicant@bagoo.test',
             'password' => 'BagooPassword2026!', 'password_confirmation' => 'BagooPassword2026!',
             'birthday' => '2000-01-01', 'phone' => '09171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati',
