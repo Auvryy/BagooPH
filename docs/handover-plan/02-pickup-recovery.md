@@ -2,6 +2,9 @@
 
 Start after H01 review and publication. Cover parcels handed to a pickup rider before readiness was recorded and assigned riders missing a pickup or destination-hub departure scan.
 
+Use the [writer and receipt contract](02-writer-and-receipt-contract.md) for the
+hold boundary, truthful fulfillment corrections and two-party receipt process.
+
 ## Approach
 
 1. Classify the discrepancy from retained original facts and current physical evidence. Unknown possession remains unresolved; do not guess a rider or create an assignment retrospectively.
