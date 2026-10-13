@@ -22,15 +22,15 @@ class PasswordUpdateTest extends TestCase
                 ->from('/profile')
                 ->put('/password', [
                     'current_password' => 'password',
-                    'password' => 'NewPassword2026!',
-                    'password_confirmation' => 'NewPassword2026!',
+                    'password' => 'Aa1!aaaa',
+                    'password_confirmation' => 'Aa1!aaaa',
                 ]);
 
             $response
                 ->assertSessionHasNoErrors()
                 ->assertRedirect('/profile');
 
-            $this->assertTrue(Hash::check('NewPassword2026!', $user->refresh()->password));
+            $this->assertTrue(Hash::check('Aa1!aaaa', $user->refresh()->password));
         }
     }
 
@@ -72,7 +72,7 @@ class PasswordUpdateTest extends TestCase
         $this->assertTrue(Hash::check('password', $user->refresh()->password));
     }
 
-    public function test_new_password_must_follow_the_12_character_minimum(): void
+    public function test_new_password_must_follow_the_8_character_minimum(): void
     {
         $user = User::factory()->create();
 
@@ -81,8 +81,8 @@ class PasswordUpdateTest extends TestCase
             ->from('/profile')
             ->put('/password', [
                 'current_password' => 'password',
-                'password' => 'TooShort1!',
-                'password_confirmation' => 'TooShort1!',
+                'password' => 'Short1!',
+                'password_confirmation' => 'Short1!',
             ])
             ->assertSessionHasErrors('password');
     }

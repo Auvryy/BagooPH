@@ -520,7 +520,7 @@ class RiderSettingsApiTest extends TestCase
 
     public static function acceptedPasswordLengths(): array
     {
-        return [[12], [128]];
+        return [[8], [128]];
     }
 
     public function test_website_password_changes_revoke_native_tokens_and_native_reads_observe_website_email_changes(): void

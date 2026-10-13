@@ -19,7 +19,7 @@ class PasswordPolicyTest extends TestCase
 
     public static function rejectedPasswords(): array
     {
-        return [['Aa1!'.str_repeat('a', 7)], ['Aa1!'.str_repeat('a', 125)], [['invalid']], ['lowercase1234!'], ['UPPERCASE1234!'], ['NoNumbersHere!'], ['NoSymbols12345'], ['Password 12345'], ["Bagoo2026!\nPassword"]];
+        return [['Aa1!'.str_repeat('a', 3)], ['Aa1!'.str_repeat('a', 125)], [['invalid']], ['lowercase1234!'], ['UPPERCASE1234!'], ['NoNumbersHere!'], ['NoSymbols12345'], ['Password 12345'], ["Bagoo2026!\nPassword"]];
     }
 
     #[DataProvider('rejectedPasswords')]
@@ -39,7 +39,7 @@ class PasswordPolicyTest extends TestCase
 
     public static function acceptedPasswords(): array
     {
-        return [['Aa1!'.str_repeat('a', 8)], ['Aa1!'.str_repeat('a', 124)], ['  A plain passphrase 2026!  '], ['Aa1!'.str_repeat('é', 124)]];
+        return [['Aa1!'.str_repeat('a', 4)], ['Aa1!'.str_repeat('a', 124)], ['  A plain passphrase 2026!  '], ['Aa1!'.str_repeat('é', 124)]];
     }
 
     #[DataProvider('acceptedPasswords')]
@@ -80,7 +80,7 @@ class PasswordPolicyTest extends TestCase
             ->assertOk()->assertJsonPath('data.user.id', (string) $user->id);
         $this->withToken($response->json('data.token'))->getJson('/api/v1/rider/me')->assertOk();
         $this->getJson('/api/v1/rider/registration/options')->assertOk()
-            ->assertJsonPath('data.password_policy.min_length', 12)
+            ->assertJsonPath('data.password_policy.min_length', 8)
             ->assertJsonPath('data.password_policy.max_length', 128);
     }
 }

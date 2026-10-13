@@ -51,7 +51,7 @@ without a permanent paragraph of instructions underneath the names.
 | Driver’s licence | Required for new courier applications: one letter and ten digits, either compact or grouped as `N01-12-345678`. Maximum 13 displayed characters; a valid compact identifier is stored in the grouped form without dropping symbols. |
 | Declared fleet size | Optional whole number 1–10,000; reject booleans, decimals, exponents, signs, leading zeroes and arrays. Do not silently substitute 1 for invalid input. |
 | Franchise declaration | Optional visible ASCII code, 2–100; no fabricated `PENDING-LTFRB` value. Optional evidence does not imply verified accreditation. |
-| New password | 12–128 characters with uppercase, lowercase, number and punctuation/symbol. Spaces alone do not satisfy the symbol requirement; controls are rejected. Preserve passphrase spaces and verify the whole password. Existing sign-in passwords still work. |
+| New password | 8–128 characters with uppercase, lowercase, number and punctuation/symbol. Spaces alone do not satisfy the symbol requirement; controls are rejected. Preserve passphrase spaces and verify the whole password. Existing sign-in passwords still work. |
 | Private application upload | JPG/JPEG/PNG/WEBP/PDF only, matching actual MIME content and extension. Non-empty, at most 5,242,880 bytes each. Images must decode, at most 10,000 pixels per side and 20 million pixels total. Private storage and authorized inspection remain required. |
 | Policies | Required unchecked acknowledgement, current Terms/Privacy versions, server acceptance timestamp and source. Account/profile/acceptance writes commit together; rejected or failed signup must not create an acceptance record or consume usable verification. |
 

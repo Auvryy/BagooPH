@@ -712,7 +712,7 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -743,7 +743,7 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"

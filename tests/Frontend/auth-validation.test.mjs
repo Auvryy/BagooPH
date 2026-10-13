@@ -376,8 +376,8 @@ test('all registration pages preserve the portal shell and controlled form feedb
 });
 
 test('password feedback requires every character group, preserves passphrase spaces and enforces both limits', () => {
-    for (const value of ['Aa1!' + 'a'.repeat(8), 'Aa1!' + 'é'.repeat(124), '  Bagoo passphrase 2026!  ']) assert.equal(ui.passwordError(value), undefined, value);
-    for (const value of ['Aa1!' + 'a'.repeat(7), 'Aa1!' + 'a'.repeat(125), 'password1234!', 'PASSWORD1234!', 'BagooPassword!', 'BagooPassword1', 'BagooPassword1 ', 'BagooPassword1!\n']) assert.ok(ui.passwordError(value), value);
+    for (const value of ['Aa1!' + 'a'.repeat(4), 'Aa1!' + 'é'.repeat(124), '  Bagoo passphrase 2026!  ']) assert.equal(ui.passwordError(value), undefined, value);
+    for (const value of ['Aa1!' + 'a'.repeat(3), 'Aa1!' + 'a'.repeat(125), 'password1234!', 'PASSWORD1234!', 'BagooPassword!', 'BagooPassword1', 'BagooPassword1 ', 'BagooPassword1!\n']) assert.ok(ui.passwordError(value), value);
 });
 
 test('company, vehicle and document fields have explicit bounds without changing invalid input into valid values', () => {

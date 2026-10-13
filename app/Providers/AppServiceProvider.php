@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Password::defaults(fn () => Password::min(12)->max(128)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u']));
+        Password::defaults(fn () => Password::min(8)->max(128)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u']));
 
         RateLimiter::for('web-otp-send', fn (Request $request) => Limit::perMinute(10)->by(hash('sha256', 'otp-send|'.$request->ip())));
         RateLimiter::for('web-otp-verify', fn (Request $request) => Limit::perMinute(30)->by(hash('sha256', 'otp-verify|'.$request->ip())));

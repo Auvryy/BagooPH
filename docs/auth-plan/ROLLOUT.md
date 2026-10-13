@@ -8,7 +8,7 @@ for an existing account during installation.
 
 ## Password compatibility
 
-New passwords require 12–128 characters with uppercase, lowercase, a number
+New passwords require 8–128 characters with uppercase, lowercase, a number
 and punctuation/symbol. Spaces alone do not satisfy the symbol requirement;
 control characters are rejected. Preserve passphrase spaces. This policy
 applies to registration, both reset paths and the existing account password

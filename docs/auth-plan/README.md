@@ -15,7 +15,7 @@ application remains separate from company placement. Controlled admin access
 does not become public registration.
 
 Use current normative limits rather than inventing restrictions from example
-values. The selected password policy requires 12–128 characters with uppercase,
+values. The selected password policy requires 8–128 characters with uppercase,
 lowercase, a number and a punctuation/symbol character, while retaining
 passphrases and existing sign-in compatibility. Worker adulthood cannot
 automatically become a buyer age restriction.

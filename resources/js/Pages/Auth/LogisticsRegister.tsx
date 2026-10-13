@@ -477,10 +477,10 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     </div>
                                     <input name="password"
                                         type={showPassword ? 'text' : 'password'}
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password}
                                         onChange={e => setData('password', e.target.value)}
-                                        placeholder="12–128 characters"
+                                        placeholder="8–128 characters"
                                         className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                     <button
@@ -507,7 +507,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     </div>
                                     <input name="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password_confirmation}
                                         onChange={e => setData('password_confirmation', e.target.value)}
                                         placeholder="Re-enter password"

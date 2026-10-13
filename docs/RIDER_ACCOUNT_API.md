@@ -59,8 +59,8 @@ comparisons stay case-insensitive. Internal whitespace, controls and more than
 255 characters are rejected. Courier mobile numbers must normalize to
 `+639XXXXXXXXX`; short, overlong, non-ASCII or non-mobile numbers are rejected.
 
-The options response includes `data.password_policy.min_length = 12` and
-`max_length = 128`. New applications and password resets require 12–128
+The options response includes `data.password_policy.min_length = 8` and
+`max_length = 128`. New applications and password resets require 8–128
 characters, including Unicode characters, with uppercase, lowercase, number
 and punctuation/symbol. Spaces alone do not satisfy the symbol requirement;
 control characters are rejected and passphrase spaces are preserved.
