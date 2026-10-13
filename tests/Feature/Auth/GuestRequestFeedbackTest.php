@@ -22,10 +22,10 @@ class GuestRequestFeedbackTest extends TestCase
     public function test_existing_session_on_a_role_registration_form_gets_json_feedback_instead_of_an_html_redirect(string $role, string $prefix): void
     {
         $user = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
-        $this->actingAs($user)->get('http://'.$prefix.'localhost/register')->assertOk();
+        $this->actingAs($user)->get('http://'.$prefix.'localhost/register')->assertRedirect();
         $this->post('http://'.$prefix.'localhost/register/validate', ['role' => $role, 'step' => 1], ['Accept' => 'application/json'])
             ->assertConflict()->assertHeader('Content-Type', 'application/json')
-            ->assertJsonPath('message', 'You are already signed in. Sign out before continuing with this form.');
+            ->assertJsonPath('message', 'You are already signed in. Returning to your account.');
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('email_otps', 0);
@@ -36,7 +36,7 @@ class GuestRequestFeedbackTest extends TestCase
         Mail::fake();
         $user = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
         $this->actingAs($user)->postJson('/api/otp/send', ['email' => 'new-person@bagoo.test'])
-            ->assertConflict()->assertJsonPath('message', 'You are already signed in. Sign out before continuing with this form.');
+            ->assertConflict()->assertJsonPath('message', 'You are already signed in. Returning to your account.');
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseCount('email_otps', 0);
         Mail::assertNotSent(OtpVerificationMail::class);

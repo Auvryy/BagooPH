@@ -13,6 +13,9 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('auth/session', [AuthenticatedSessionController::class, 'session'])
+    ->middleware('throttle:60,1,guest-session')->name('auth.session');
+
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
@@ -33,6 +36,9 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register/validate', [RegisteredUserController::class, 'validateRegistration'])
         ->middleware('throttle:30,1')->name('register.validate');
+
+    Route::post('register/email/validate', [RegisteredUserController::class, 'validateEmail'])
+        ->middleware('throttle:30,1,registration-email')->name('register.email.validate');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
