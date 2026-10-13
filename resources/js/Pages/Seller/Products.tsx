@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, useForm, router } from '@inertiajs/react';
@@ -1425,6 +1426,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                 {imageMode === 'file' ? (
                     <div className="space-y-2">
+                        <UploadHint formats="JPG, PNG, WEBP or GIF" />
                         <div
                             onClick={() => fileInputRef.current?.click()}
                             className={`border-2 border-dashed ${
@@ -1759,7 +1761,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             </label>
                             <label className="w-full cursor-pointer flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-dashed border-slate-300 hover:border-[#E00D42] bg-slate-50 hover:bg-rose-50/30 text-slate-700 hover:text-[#E00D42] transition font-bold text-xs font-sans">
                                 <Upload className="w-4 h-4 text-[#E00D42]" />
-                                <span>Browse Image File (JPEG, PNG, WEBP max 5MB)</span>
+                                <span>Browse image file</span>
                                 <input
                                     type="file"
                                     accept={ALLOWED_MIME_TYPES.join(',')}
@@ -1793,6 +1795,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     }}
                                 />
                             </label>
+                            <UploadHint formats="JPG, PNG, WEBP or GIF" />
                             {fileError && (
                                 <div className="flex items-start gap-2 rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800" role="alert">
                                     <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

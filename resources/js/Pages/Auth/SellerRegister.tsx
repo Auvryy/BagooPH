@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -494,6 +495,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!permitFileName ? (
                                 <div 
                                     onClick={() => permitInputRef.current?.click()}
@@ -535,6 +537,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!idFileName ? (
                                 <div 
                                     onClick={() => idInputRef.current?.click()}

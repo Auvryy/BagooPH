@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import axios from 'axios';
@@ -114,7 +115,8 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
             </label>
             <label className="mt-4 block text-sm font-medium">Reason<textarea required value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-lg border-slate-300" /></label>
             <p className="mt-3 text-sm text-slate-600">Upload replacement evidence if the current documents do not support the correction. Earlier reviewed files are retained.</p>
-            <div key={fileVersion} className="mt-3 grid gap-3 sm:grid-cols-2">{subject.required_documents.map(kind => <label key={kind} className="text-sm font-medium capitalize">{kind === 'orcr' ? 'OR/CR' : kind} document<input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => form.setData(fileInputs[kind as keyof typeof fileInputs], event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" /></label>)}</div>
+            <div key={fileVersion} className="mt-3 grid gap-3 sm:grid-cols-2">{subject.required_documents.map(kind => <label key={kind} className="text-sm font-medium capitalize">{kind === 'orcr' ? 'OR/CR' : kind} document<input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => form.setData(fileInputs[kind as keyof typeof fileInputs], event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" />
+            <UploadHint /></label>)}</div>
             {Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="mt-2 text-sm text-rose-700">{error}</p>)}
             {result && <p role="status" className="mt-3 text-sm text-emerald-700">{result}</p>}
             <button disabled={sending || form.data.reason.trim().length < 5} className="mt-4 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{sending ? 'Submitting...' : 'Submit correction request'}</button>

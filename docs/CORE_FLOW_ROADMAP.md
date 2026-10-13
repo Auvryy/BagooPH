@@ -4086,3 +4086,79 @@ combined pull request draft are reported in the handoff.
 
 Implementation commit: `4aa51b0 fix(auth): require sex in account applications`.
 The documentation commit is reported in the handoff.
+
+
+## October 13, 2026: account ownership and upload guidance
+
+Scope: `fix/registration-contact-uniqueness`, starting from merged `main` at
+`0571f75`. The user selected an eight-character password minimum, globally
+unique account mobiles and shop names, and subtle format/size guidance beside
+every web upload control.
+
+New registration, reset and password-change writers accept **8–128 characters**
+with uppercase, lowercase, a number and a symbol. Web controls, the shared
+password service and native registration options agree. Existing sign-in
+credentials remain usable. This is an authorized policy change from the previous
+12-character minimum, rather than a claim of stronger password security.
+
+Every account role stores a personal mobile as `+639XXXXXXXXX`. Complete local
+`09XXXXXXXXX` and supported country-prefix inputs identify the same number.
+Preflight, final signup, native rider signup, profile/contact edits and model
+writes reject another account's mobile, including inactive/closed ownership.
+Unchanged owner edits succeed; optional blanks remain null. Separate public
+shop/company contacts and order-recipient numbers retain their sharing and
+landline rules. Hub counter searches accept a complete local number while
+matching canonical storage within the authorized destination facility.
+
+Shop names are platform-wide unique after Unicode normalization, case folding
+and spacing normalization. Display names retain the existing 2–255 length
+contract. Signup and reviewed corrections exclude the current owner, recheck
+ownership before saving and preserve approval/history on rejection. Final
+mobile and name-key constraints translate competing insert conflicts into field
+errors. The additive migration refuses invalid legacy contacts or equivalent
+owners/names before changing records; it never deletes, renames or reassigns
+ownership automatically.
+
+All web file controls now have subtle allowed-format and maximum-MB text,
+including registration, resubmission, correction, buyer verification/checkout,
+review photos, seller products/branding, rider delivery proof and existing
+finance evidence. Private documents allow JPG, PNG, WEBP or PDF up to **5 MB**;
+avatars/logos use **3 MB**, banners and product/review images use **5 MB**.
+Existing image-only controls retain their actual image format allowlists.
+Private document writers check non-empty content, actual MIME type, matching
+extension and readable image limits before storing any files. Videos and
+renamed non-documents fail with field errors; browser filters are supplementary.
+
+Verification:
+
+- The affected Docker/SQLite run exercised **1,130 cases**, with **1,128 passing**
+  and two counter-fixture errors. Creating both orders with their original buyer
+  fixed those fixtures; the final counter/authentication run passed **64 tests /
+  7,374 assertions**, including both counter cases and three corrected
+  subdomain-registration scenarios.
+- A broader host scan exercised **3,605 tests**. Its 19 failures and 240 errors
+  included missing host GD support, stale fixtures and the corrected shop-review
+  validation ordering. A Docker retry of every failing method exercised **305
+  cases**: 302 passed, and three registration fixtures omitted required sex.
+  Those three now pass with explicit no-validation-error assertions. All
+  identified failures were cleared in their retries; there is no single passing
+  full-suite run for this branch.
+- Migration refusal/retention checks passed **4 tests / 33 assertions** on
+  isolated SQLite `:memory:`. No PostgreSQL test or database reset was used.
+- All **214 frontend checks**, the TypeScript/Vite production build, changed
+  PHP style checks and whitespace checks passed.
+- The normal local PostgreSQL migration succeeded. Before/after audits retained
+  **9 accounts, 1 shop, 17 products and 17 visible products**, with identical
+  account identity, shop business values and shop-review fingerprints.
+
+**Scoped assessments: mobile/shop ownership checks 4/10 -> 9/10 locally;
+upload guidance and private-document consistency 6/10 -> 9/10 locally.** These
+ratings reflect tested rejection, retry and saved-value behavior. Phone
+ownership by SMS, rendered browser/Flutter acceptance, Azure deployment and
+simultaneous PostgreSQL requests remain unverified or outside this change.
+Apply normal migrations before serving the new ownership checks; installation
+conflicts require explicit record correction and retry, without reset/reseed.
+
+Implementation commits: `10619ce Allow eight-character passwords across account
+writers`; `6101891 Enforce unique account mobiles and shop names`. The upload
+commit and combined local pull request draft are reported in the handoff.

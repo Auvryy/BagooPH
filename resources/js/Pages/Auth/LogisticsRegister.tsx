@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -772,6 +773,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     accept=".jpg,.jpeg,.png,.pdf,.webp"
                                     className="hidden"
                                 />
+                                <UploadHint />
                                 {permitFileName ? (
                                     <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
                                         <div className="flex items-center gap-2 min-w-0">
@@ -818,6 +820,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     accept=".jpg,.jpeg,.png,.pdf,.webp"
                                     className="hidden"
                                 />
+                                <UploadHint />
                                 {franchiseFileName ? (
                                     <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
                                         <div className="flex items-center gap-2 min-w-0">

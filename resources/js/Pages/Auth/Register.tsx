@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -546,6 +547,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!fileName ? (
                                 <div 
                                     onClick={() => fileInputRef.current?.click()}

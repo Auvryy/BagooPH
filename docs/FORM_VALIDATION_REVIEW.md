@@ -75,7 +75,7 @@ by rejecting everything.
 | Addresses | Meaningful street text, supported location relationships, postal format and actual serviceability. A matching label or selected dropdown is not proof that a parcel route exists. |
 | Operational identifiers | Supported visible-character format, separators, case normalization, meaningful length and documented uniqueness. Define accepted formats before adding a more restrictive pattern. |
 | Amounts and quantities | Zero where permitted, negative values, fractions where integers are required, excessive precision, exponent notation, maximums and current stock. Server calculations remain authoritative. |
-| Files and images | Required evidence, allowed content and extensions, renamed invalid content, empty files, exact byte limits, count limits, private access and replacement/rollback cleanup. |
+| Files and images | Show subtle allowed-format and maximum-MB guidance beside every upload control, matching its actual server limit. Check required evidence, allowed content and extensions, videos and renamed invalid content, empty files, exact byte limits, count limits, private access and replacement/rollback cleanup. Browser file filters never replace server validation. |
 | Confirmation controls | Default unchecked state, keyboard use, missing/false values and direct-request bypass. A required acknowledgement needs actual readable content and server-side acceptance. |
 
 Treat a duplicate at its documented scope as a separate case from an invalid

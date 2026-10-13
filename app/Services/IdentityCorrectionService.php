@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\BirthDate;
+use App\Rules\RegistrationDocument;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,7 +149,7 @@ class IdentityCorrectionService
             $rules['changes.'.$field] = ['sometimes', ...($fieldRules[$field] ?? ['nullable', 'string', 'max:100'])];
         }
         foreach (['id_document', 'business_permit', 'driver_license', 'or_cr_document', 'franchise_document'] as $field) {
-            $rules[$field] = ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'];
+            $rules[$field] = ['bail', 'nullable', 'file', new RegistrationDocument];
         }
         $data = Validator::make($input, $rules)->validate();
         $paths = $this->documents->storeUploads($data);

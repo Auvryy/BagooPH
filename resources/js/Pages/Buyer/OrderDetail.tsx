@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
@@ -421,6 +422,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                                     </div>
                                 </div>
 
+                                <UploadHint formats="JPG, PNG or WEBP" />
                                 {recentlySuccessful && (
                                     <p className="text-xs text-emerald-600 font-sans font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
                                         <Check className="w-4 h-4" /> Review & photos submitted successfully!

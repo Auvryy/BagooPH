@@ -7,6 +7,7 @@ use App\Models\KycDecision;
 use App\Models\Shop;
 use App\Models\ShopReviewDecision;
 use App\Models\User;
+use App\Rules\RegistrationDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -116,7 +117,7 @@ class ShopReviewService
             'shop_address' => $data['address'] ?? null, 'shop_city' => $data['city'] ?? null]);
         $data = app(ApplicationValidationService::class)->normalize($data, 'seller');
         $validated = Validator::make($data, $this->rules($subject) + [
-            'description' => 'nullable|string|max:1000', 'business_permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'description' => 'nullable|string|max:1000', 'business_permit' => ['bail', 'nullable', 'file', new RegistrationDocument],
             'review_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
             'status' => 'prohibited', 'review_status' => 'prohibited', 'approved' => 'prohibited', 'review_decision_id' => 'prohibited',
         ])->validate();

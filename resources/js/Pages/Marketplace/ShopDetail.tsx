@@ -579,7 +579,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-sans">
-                                    <span>Recommended: 1200 x 400px (JPG, PNG, WEBP up to 4MB)</span>
+                                    <span>Recommended: 1200 x 400px (JPG, PNG, WEBP up to 5 MB)</span>
                                     <button
                                         type="button"
                                         onClick={() => bannerFileRef.current?.click()}

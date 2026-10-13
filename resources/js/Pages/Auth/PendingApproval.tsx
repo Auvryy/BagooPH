@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { FormEventHandler, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -327,6 +328,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!idFileName ? (
                                 <div 
                                     onClick={() => idInputRef.current?.click()}
@@ -376,6 +378,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                     accept="image/jpeg,image/png,image/webp,application/pdf"
                                     className="hidden"
                                 />
+                                <UploadHint />
                                 {!permitFileName ? (
                                     <div 
                                         onClick={() => permitInputRef.current?.click()}
@@ -419,6 +422,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                     onChange={(event) => setData('franchise_document', event.target.files?.[0] ?? null)}
                                     className="w-full rounded-xs border border-slate-300 p-2 text-xs font-sans"
                                 />
+                                <UploadHint />
                                 <InputError message={errors.franchise_document} className="mt-1" />
                             </div>
                         )}
@@ -443,6 +447,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                         accept="image/jpeg,image/png,image/webp,application/pdf"
                                         className="hidden"
                                     />
+                                    <UploadHint />
                                     {!licenseFileName ? (
                                         <div 
                                             onClick={() => licenseInputRef.current?.click()}
@@ -490,6 +495,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                         accept="image/jpeg,image/png,image/webp,application/pdf"
                                         className="hidden"
                                     />
+                                    <UploadHint />
                                     {!orCrFileName ? (
                                         <div 
                                             onClick={() => orCrInputRef.current?.click()}

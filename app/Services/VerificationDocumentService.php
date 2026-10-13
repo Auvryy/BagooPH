@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\KycDecision;
 use App\Models\User;
+use App\Rules\RegistrationDocument;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -30,6 +32,8 @@ class VerificationDocumentService
 
     public function storeUploads(array $validated): array
     {
+        Validator::make($validated,
+            array_fill_keys(array_keys(self::INPUTS), ['bail', 'nullable', 'file', new RegistrationDocument]))->validate();
         $paths = [];
         foreach (self::INPUTS as $input => $field) {
             $file = $validated[$input] ?? null;

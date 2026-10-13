@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
@@ -1050,6 +1051,7 @@ export default function BuyerProfile({
                                                 className="hidden"
                                                 onChange={(e) => handleKycFileSelect(e.target.files?.[0])}
                                             />
+                                            <UploadHint />
 
                                             {!kycFile ? (
                                                 <div

@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -206,8 +207,8 @@ export default function SellerSettings({ shop }: Props) {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="text-sm font-semibold">Upload shop logo<input key={`logo-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('logo_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /></label>
-                        <label className="text-sm font-semibold">Upload shop banner<input key={`banner-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('banner_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /></label>
+                        <label className="text-sm font-semibold">Upload shop logo<input key={`logo-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('logo_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /><UploadHint maxMb={3} formats="JPG, PNG, WEBP or GIF" /></label>
+                        <label className="text-sm font-semibold">Upload shop banner<input key={`banner-${fileVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => setData('banner_file', event.target.files?.[0] ?? null)} className="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm" /><UploadHint formats="JPG, PNG, WEBP or GIF" /></label>
                     </div>
                     {Object.entries(errors).map(([field, error]) => <p key={field} role="alert" className="text-xs text-rose-700">{error}</p>)}
 

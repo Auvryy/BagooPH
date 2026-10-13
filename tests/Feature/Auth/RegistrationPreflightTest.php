@@ -350,6 +350,25 @@ class RegistrationPreflightTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    #[DataProvider('roles')]
+    public function test_videos_and_disguised_documents_are_rejected_without_saving_anything(string $role): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        $field = $role === 'logistics' ? 'business_permit' : 'id_document';
+        $payload = UploadedFile::fake()->createWithContent('payload.txt', '<html>This is not a PDF.</html>');
+        foreach ([UploadedFile::fake()->create('clip.mp4', 10, 'video/mp4'),
+            new UploadedFile($payload->getPathname(), 'not-a-document.pdf', 'application/pdf', UPLOAD_ERR_OK, true)] as $file) {
+            $data = array_replace($this->application($role), [$field => $file]);
+            $this->postJson('/register/validate', $data)->assertJsonValidationErrors($field);
+            $this->post('/register', $data)->assertSessionHasErrors($field);
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('email_otps', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        Mail::assertNothingSent();
+    }
+
     public static function malformedEmails(): array
     {
         return [['@example.com'], ['name@example'], ['name@bagoo'], ['name @bagoo.test'], ['name@bagoo..test'],

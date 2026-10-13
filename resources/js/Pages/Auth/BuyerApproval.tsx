@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { FormEventHandler, useRef } from 'react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import ApplicationFields, { ApplicationDetails, ApplicationValues } from '@/Components/ApplicationFields';
@@ -62,6 +63,7 @@ export default function BuyerApproval({ user, application, identityDocumentUrl, 
                             <p className="text-xs text-slate-600">JPEG, PNG, WebP or PDF, up to 5 MB. Uploading a document sends it for review; it does not approve your account.</p>
                             {identityDocumentUrl ? <a href={identityDocumentUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#C20836] underline">View your current private document</a> : <p className="text-amber-900">An identity document is still needed before approval.</p>}
                             <input ref={input} id="buyer-identity-document" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event => form.setData('id_document', event.target.files?.[0] ?? null)} className="block w-full rounded-xl border border-slate-300 p-2" />
+                            <UploadHint />
                             <InputError message={form.errors.id_document || (form.errors as Record<string, string>).documents} />
                         </div>
                         <InputError message={(form.errors as Record<string, string>).application} />

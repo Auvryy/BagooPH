@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { 
@@ -172,6 +173,7 @@ export default function BuyerIdVerificationModal({
                         className="hidden"
                         onChange={(e) => handleFileSelect(e.target.files?.[0])}
                     />
+                    <UploadHint />
 
                     {/* Drag & Drop Area */}
                     {!file ? (
