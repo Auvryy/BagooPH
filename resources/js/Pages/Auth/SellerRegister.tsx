@@ -26,7 +26,7 @@ import {
     Check
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import BusinessContactInput from '@/Components/BusinessContactInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
@@ -407,8 +407,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                 {currentStep === 2 && (
                     <div className="space-y-4">
                         <div>
-                            <BusinessContactInput
-                                label="Merchant contact number"
+                            <PhoneInput
+                                label="Account mobile number"
                                 value={data.phone}
                                 onChange={(val) => {
                                     setData('phone', val);

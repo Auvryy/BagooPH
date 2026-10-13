@@ -8,6 +8,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\PickupClaimEvent;
 use App\Models\User;
+use App\Rules\PhilippineContact;
 use App\Services\Orders\OrderTrackingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,10 +49,12 @@ class HubParcelWorkstationService
             ->whereIn('status', ['arrived_at_destination_hub', 'ready_for_hub_pickup', 'sorted_to_barangay_bin']);
 
         if ($search !== '') {
+            $mobile = PhilippineContact::canonical($search);
             $query->where(fn ($match) => $match->where('tracking_number', 'like', "%{$search}%")
                 ->orWhereHas('order', fn ($order) => $order->where('order_number', 'like', "%{$search}%"))
                 ->orWhereHas('order.buyer', fn ($buyer) => $buyer->where(fn ($contact) => $contact
-                    ->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))));
+                    ->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%")
+                    ->when($mobile !== null, fn ($buyer) => $buyer->orWhere('phone', $mobile)))));
         }
 
         return $query;

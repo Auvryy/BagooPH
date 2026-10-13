@@ -31,7 +31,7 @@ import {
     Compass
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import BusinessContactInput from '@/Components/BusinessContactInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
@@ -455,10 +455,10 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             </div>
 
                             <div className="space-y-1">
-                                <BusinessContactInput
+                                <PhoneInput
                                     value={data.phone}
                                     onChange={val => setData('phone', val)}
-                                    label="Dispatch contact number"
+                                    label="Account mobile number"
                                     required
                                     error={stepErrors.phone || errors.phone}
                                 />

@@ -58,6 +58,7 @@ class RiderAuthController extends Controller
             'vehicle_types' => ApplicationValidationService::VEHICLES, 'document_max_bytes' => RegistrationDocument::MAX_BYTES,
             'document_types' => ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 'email_verification_required' => true,
             'password_policy' => ['min_length' => 8, 'max_length' => 128, 'uppercase' => true, 'lowercase' => true, 'number' => true, 'symbol' => true],
+            'mobile_number_format' => '+639XXXXXXXXX', 'mobile_number_unique' => true,
             'registration_policies' => app(RegistrationPolicyService::class)->contract(),
             'plate_number_max_length' => 8, 'plate_number_max_symbols' => 7,
             'license_number_format' => 'N01-12-345678', 'license_number_max_length' => 13, 'license_number_compact_length' => 11,

@@ -18,7 +18,7 @@ class ShopFactory extends Factory
 
     public function definition(): array
     {
-        $name = fake()->company().' Boutique';
+        $name = fake()->unique()->company().' Boutique';
 
         return [
             'user_id' => User::factory()->seller(),

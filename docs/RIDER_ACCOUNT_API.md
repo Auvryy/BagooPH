@@ -58,6 +58,10 @@ lowercase. Existing sign-in addresses remain unchanged and ownership/sign-in
 comparisons stay case-insensitive. Internal whitespace, controls and more than
 255 characters are rejected. Courier mobile numbers must normalize to
 `+639XXXXXXXXX`; short, overlong, non-ASCII or non-mobile numbers are rejected.
+Account mobiles are unique across all platform roles. A taken number returns a
+422 `errors.phone` response and leaves verified email and uploads reusable.
+Options advertise `mobile_number_format = +639XXXXXXXXX` and
+`mobile_number_unique = true`.
 
 The options response includes `data.password_policy.min_length = 8` and
 `max_length = 128`. New applications and password resets require 8–128

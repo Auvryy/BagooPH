@@ -22,11 +22,12 @@ automatically become a buyer age restriction.
 Name components and full names need explicit, consistent limits. Additional
 contact emails remain verified contact/recovery addresses rather than sign-in aliases.
 
-Shared contacts and public shop/company names do not become globally unique by
-default. Review a proposed phone, display-name, plate or licence uniqueness rule
-against its purpose and existing legitimate records before enforcing it. Any
-new constraint needs a conflict report and migration plan, with no automatic
-deletion, renaming or reassignment of identity.
+Personal account mobiles and shop names are globally unique under the approved
+policy. Canonical mobile storage and normalized shop-name keys have database
+constraints, owner exclusions for unchanged edits, and a migration that refuses
+legacy conflicts without deleting or reassigning records. Separate public
+business contacts and delivery-recipient numbers remain shareable. Company
+names, personal names, plates and licences retain their documented scopes.
 
 New tax/corporate identifiers, evidence categories, licence-expiry fields,
 invitation-only onboarding and broader location coverage need separate policy

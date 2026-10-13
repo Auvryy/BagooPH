@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Mail\OtpVerificationMail;
+use App\Models\Shop;
 use App\Models\User;
 use App\Services\ApplicationValidationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -277,16 +278,76 @@ class RegistrationPreflightTest extends TestCase
         $this->postJson('/register/validate', ['role' => 'buyer', 'step' => 3])->assertJsonValidationErrors('step');
     }
 
-    public function test_business_landlines_are_valid_but_personal_mobile_fields_reject_them(): void
+    public function test_every_personal_account_mobile_field_rejects_landlines(): void
     {
-        foreach (['seller', 'logistics'] as $role) {
-            $this->postJson('/register/validate', array_replace($this->application($role), ['phone' => '(02) 8123-4567']))
-                ->assertExactJson(['valid' => true]);
-        }
-        foreach (['buyer', 'courier'] as $role) {
+        foreach (['buyer', 'seller', 'courier', 'logistics'] as $role) {
             $this->postJson('/register/validate', array_replace($this->application($role), ['phone' => '(02) 8123-4567']))
                 ->assertJsonValidationErrors('phone');
         }
+    }
+
+    public static function mobileOwnersAndApplicants(): array
+    {
+        $cases = [];
+        foreach (['buyer', 'seller', 'courier', 'logistics', 'admin'] as $owner) {
+            foreach (['buyer', 'seller', 'courier', 'logistics'] as $applicant) {
+                $cases[$owner.' to '.$applicant] = [$owner, $applicant];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('mobileOwnersAndApplicants')]
+    public function test_a_mobile_stays_reserved_across_roles_and_equivalent_formats(string $ownerRole, string $applicantRole): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        User::factory()->create(['role' => $ownerRole, 'status' => 'inactive', 'phone' => '+639171234567']);
+        $data = $this->application($applicantRole);
+        $step = in_array($applicantRole, ['courier', 'logistics'], true) ? 1 : 2;
+        foreach (['09171234567', '+639171234567', '+63 917 123 4567'] as $phone) {
+            $this->postJson('/register/validate', array_replace($data, ['step' => $step, 'phone' => $phone]))
+                ->assertUnprocessable()->assertJsonValidationErrors('phone');
+        }
+        $this->postJson('/register/validate', $data)->assertJsonValidationErrors('phone');
+        $this->post('/register', $data)->assertSessionHasErrors('phone');
+        $this->assertDatabaseCount('users', 1);
+        foreach (['shops', 'courier_profiles', 'logistics_companies', 'email_otps'] as $table) {
+            $this->assertDatabaseCount($table, 0);
+        }
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        Mail::assertNothingSent();
+    }
+
+    public function test_a_mobile_claimed_after_preflight_is_rechecked_before_creating_an_account(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        $data = $this->application('buyer');
+        $this->postJson('/register/validate', $data)->assertExactJson(['valid' => true]);
+        User::factory()->admin()->create(['phone' => '+639171234567']);
+        $this->post('/register', $data)->assertSessionHasErrors('phone');
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('email_otps', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        Mail::assertNothingSent();
+    }
+
+    public function test_equivalent_shop_names_are_rejected_before_uploads_or_accounts_are_created(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        Shop::factory()->create(['name' => 'Bagoo Shop', 'status' => 'suspended']);
+        foreach (['bagoo shop', ' BAGOO   SHOP ', 'Ｂａｇｏｏ Shop'] as $name) {
+            $data = array_replace($this->application('seller'), ['shop_name' => $name]);
+            $this->postJson('/register/validate', $data + ['step' => 1])->assertJsonValidationErrors('shop_name');
+            $this->post('/register', $data)->assertSessionHasErrors('shop_name');
+        }
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('shops', 1);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        Mail::assertNothingSent();
     }
 
     public static function malformedEmails(): array

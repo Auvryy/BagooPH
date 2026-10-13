@@ -70,9 +70,9 @@ class RegistrationTest extends TestCase
     {
         $phoneFormats = [
             '+63 918 222 3333',
-            '09182223333',
-            '639182223333',
-            '+639182223333',
+            '09182223334',
+            '639182223335',
+            '+639182223336',
         ];
 
         foreach ($phoneFormats as $idx => $phone) {
@@ -92,7 +92,7 @@ class RegistrationTest extends TestCase
             $response->assertSessionHasNoErrors();
             $user = User::where('email', $email)->first();
             $this->assertNotNull($user);
-            $this->assertEquals('+639182223333', $user->phone);
+            $this->assertEquals('+63918222333'.(3 + $idx), $user->phone);
         }
     }
 }

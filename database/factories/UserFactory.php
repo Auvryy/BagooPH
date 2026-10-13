@@ -23,7 +23,7 @@ class UserFactory extends Factory
             'sex' => fake()->randomElement(['Female', 'Male', 'Other']),
             'email' => fake()->unique()->safeEmail(),
             'role' => 'buyer',
-            'phone' => '+63 9'.fake()->numerify('## ### ####'),
+            'phone' => '+639'.fake()->unique()->numerify('#########'),
             'avatar' => null,
             'address' => fake()->streetAddress(),
             'city' => fake()->randomElement(['Manila', 'Quezon City', 'Makati', 'Taguig', 'Pasig']),

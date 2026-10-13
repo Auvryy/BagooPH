@@ -10,6 +10,8 @@ use App\Rules\PhilippineContact;
 use App\Rules\PhilippineLicenseNumber;
 use App\Rules\PhilippinePlateNumber;
 use App\Rules\UniqueAccountEmail;
+use App\Rules\UniqueAccountMobile;
+use App\Rules\UniqueShopName;
 use App\Rules\WholeNumber;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -37,7 +39,7 @@ class ApplicationValidationService
             // Phone/postal digits must be ASCII before normalization can hide look-alikes.
             $value = in_array($field, ['phone', 'shop_phone', 'company_phone', 'postal_code'], true) ? trim($value, ' ') : trim(Normalizer::normalize($value, Normalizer::FORM_KC), ' ');
             if (in_array($field, ['phone', 'shop_phone', 'company_phone'], true)) {
-                $landline = $field !== 'phone' || in_array($role, ['seller', 'logistics'], true);
+                $landline = $field !== 'phone';
                 $value = PhilippineContact::canonical($value, $landline) ?? $value;
             } elseif (in_array($field, ['email', 'company_email'], true) && str_contains($value, '@')) {
                 [$local, $domain] = explode('@', $value, 2);
@@ -61,14 +63,14 @@ class ApplicationValidationService
             'sex' => ['bail', 'required', 'string', Rule::in(['Female', 'Male', 'Other'])],
             'birthday' => [$worker ? 'required' : 'nullable', new BirthDate($worker)],
             'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id)],
-            'phone' => ['bail', $worker ? 'required' : 'nullable', 'string', new PhilippineContact(in_array($role, ['seller', 'logistics'], true))],
+            'phone' => ['bail', $worker ? 'required' : 'nullable', 'string', new PhilippineContact, new UniqueAccountMobile($user?->id)],
             'address' => $text('address', 5, 500, $worker),
             'city' => $text('location', 2, 255, $worker),
             'province' => $text('location', 2, 255), 'municipality' => $text('location', 2, 255), 'barangay' => $text('location', 2, 255),
             'postal_code' => ['bail', 'nullable', 'string', 'regex:/\A[0-9]{4}\z/'],
         ];
         if ($role === 'seller') {
-            $rules += ['shop_name' => $text('text', 2, 255, true), 'root_category_id' => ['bail', 'required', 'integer', new MasterCategory],
+            $rules += ['shop_name' => [...$text('text', 2, 255, true), new UniqueShopName($user?->shop?->id)], 'root_category_id' => ['bail', 'required', 'integer', new MasterCategory],
                 'shop_phone' => ['bail', 'required', 'string', new PhilippineContact(true)], 'shop_address' => $text('address', 5, 500, true), 'shop_city' => $text('location', 2, 255, true)];
         } elseif ($role === 'courier') {
             $rules += ['vehicle_type' => ['bail', 'required', 'string', Rule::in(self::VEHICLES)], 'plate_number' => $text('code', 2, 50, true), 'license_number' => $text('code', 2, 50)];
@@ -195,7 +197,7 @@ class ApplicationValidationService
     {
         $labels = [
             'first_name' => 'First name', 'last_name' => 'Last name', 'middle_name' => 'Middle name / initial',
-            'sex' => 'Sex', 'email' => 'Account email', 'phone' => 'Contact number', 'address' => 'Street address', 'city' => 'City',
+            'sex' => 'Sex', 'email' => 'Account email', 'phone' => 'Account mobile number', 'address' => 'Street address', 'city' => 'City',
             'province' => 'Province', 'municipality' => 'Municipality', 'barangay' => 'Barangay', 'postal_code' => 'Postal code',
             'shop_name' => 'Shop name', 'shop_phone' => 'Shop contact number', 'shop_address' => 'Shop street address', 'shop_city' => 'Shop city',
             'vehicle_type' => 'Vehicle type', 'plate_number' => 'Plate number', 'license_number' => 'License number',

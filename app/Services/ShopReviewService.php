@@ -24,9 +24,9 @@ class ShopReviewService
             'shop_city' => $shop->city, 'root_category_id' => $shop->root_category_id];
     }
 
-    public function rules(): array
+    public function rules(?Shop $shop = null): array
     {
-        return array_intersect_key(app(ApplicationValidationService::class)->rules('seller'), array_flip(['shop_name', 'shop_phone', 'shop_address', 'shop_city', 'root_category_id']));
+        return array_intersect_key(app(ApplicationValidationService::class)->rules('seller', $shop?->user), array_flip(['shop_name', 'shop_phone', 'shop_address', 'shop_city', 'root_category_id']));
     }
 
     public function submission(Shop $shop): array
@@ -53,7 +53,7 @@ class ShopReviewService
     public function issues(Shop $shop, array $submission): array
     {
         $values = app(ApplicationValidationService::class)->normalize($this->values($shop), 'seller');
-        $issues = array_merge(...array_values(Validator::make($values, $this->rules())->errors()->toArray())) ?: [];
+        $issues = array_merge(...array_values(Validator::make($values, $this->rules($shop))->errors()->toArray())) ?: [];
         $owner = $shop->user()->firstOrFail();
         if (! $owner->isSeller() || ! $owner->isKycApproved()) {
             $issues[] = 'The seller account must already have identity approval.';
@@ -103,11 +103,19 @@ class ShopReviewService
 
     public function submit(Request $request, Shop $subject): Shop
     {
+        $owner = $request->user()?->fresh();
+        abort_unless($owner?->isSeller() && $owner->canAccessPortal(), 403);
+        abort_unless($subject->user_id === $owner->id, 404);
+        abort_unless(in_array($subject->review_status, [null, 'pending_approval', 'rejected'], true), 409, 'Reviewed shop changes require a separate correction review.');
+        $token = $request->input('review_token');
+        if (is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)) {
+            abort_unless(hash_equals($this->token($this->submission($subject)), $token), 409, 'This shop changed. Reload its current details before submitting.');
+        }
         $data = $request->all();
         $data = array_replace($data, ['shop_name' => $data['name'] ?? null, 'shop_phone' => $data['phone'] ?? null,
             'shop_address' => $data['address'] ?? null, 'shop_city' => $data['city'] ?? null]);
         $data = app(ApplicationValidationService::class)->normalize($data, 'seller');
-        $validated = Validator::make($data, $this->rules() + [
+        $validated = Validator::make($data, $this->rules($subject) + [
             'description' => 'nullable|string|max:1000', 'business_permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'review_token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
             'status' => 'prohibited', 'review_status' => 'prohibited', 'approved' => 'prohibited', 'review_decision_id' => 'prohibited',

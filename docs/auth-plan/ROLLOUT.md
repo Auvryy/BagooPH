@@ -86,7 +86,8 @@ invalid. Mobile fields show a fixed `+63`, allow exactly ten national ASCII
 digits starting with 9, block extra digits/letters and report incomplete input.
 Supported complete-number prefixes work on paste; malformed or overlong pasted
 numbers are rejected without changing them into a different number. Business
-contacts retain the server's mobile-or-landline validation.
+contacts retain the server's mobile-or-landline validation only in separate
+public shop/company contact fields. Every personal account phone is mobile-only.
 
 Obvious missing or malformed identity/contact details are checked locally before
 preflight. Passing this feedback still requires the server's confirmation; file,
@@ -150,3 +151,17 @@ decisions. Policy versioning must preserve the document an account accepted.
 Local tests do not establish legal compliance, real mail delivery or live session
 behavior. Record the deployed revision and those actual outcomes in the roadmap;
 publication and the live gate remain separate from local implementation.
+
+## Account mobile and shop-name uniqueness
+
+The additive `enforce_unique_account_mobiles_and_shop_names` migration
+canonicalizes existing account mobiles and adds their unique index. It derives
+unique shop-name keys without changing display names, approval snapshots,
+products or original sign-in emails. Apply normal migrations; do not reset or
+reseed the database for this change.
+
+Existing invalid account contacts, equivalent duplicate mobiles or equivalent
+shop names stop installation before any record changes. The message identifies
+record IDs for an explicit ownership correction. Resolve the reported records
+and retry the migration; never discard one owner or automatically rename a shop.
+The migration must succeed before serving the new validation code.

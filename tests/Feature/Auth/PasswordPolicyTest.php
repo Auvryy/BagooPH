@@ -81,6 +81,8 @@ class PasswordPolicyTest extends TestCase
         $this->withToken($response->json('data.token'))->getJson('/api/v1/rider/me')->assertOk();
         $this->getJson('/api/v1/rider/registration/options')->assertOk()
             ->assertJsonPath('data.password_policy.min_length', 8)
+            ->assertJsonPath('data.mobile_number_format', '+639XXXXXXXXX')
+            ->assertJsonPath('data.mobile_number_unique', true)
             ->assertJsonPath('data.password_policy.max_length', 128);
     }
 }

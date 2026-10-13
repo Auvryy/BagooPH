@@ -186,10 +186,12 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_01_buyer_registration(): void
     {
+        Storage::fake('local');
         $idDoc = UploadedFile::fake()->image('valid_id.jpg');
 
         $response = $this->portalPost('buyer', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Buyer User',
+            'sex' => 'Female',
             'email' => 't1_buyer_reg@example.com',
             'password' => 'Secret123456!',
             'password_confirmation' => 'Secret123456!',
@@ -201,7 +203,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'id_document' => $idDoc,
         ]);
 
-        $this->assertTrue($response->isRedirect());
+        $response->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('users', [
             'email' => 't1_buyer_reg@example.com',
             'role' => 'buyer',
@@ -210,11 +212,13 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_02_seller_registration_with_permit(): void
     {
+        Storage::fake('local');
         $idDoc = UploadedFile::fake()->image('seller_id.png');
         $permit = UploadedFile::fake()->create('permit.pdf', 800, 'application/pdf');
 
         $response = $this->portalPost('seller', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Seller User',
+            'sex' => 'Male',
             'email' => 't1_seller_reg@example.com',
             'password' => 'Secret123456!',
             'password_confirmation' => 'Secret123456!',
@@ -229,7 +233,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'business_permit' => $permit,
         ]);
 
-        $this->assertTrue($response->isRedirect());
+        $response->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('users', [
             'email' => 't1_seller_reg@example.com',
             'role' => 'seller',
@@ -238,12 +242,14 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
 
     public function test_t1_f04_03_courier_registration_with_or_cr(): void
     {
+        Storage::fake('local');
         $idDoc = UploadedFile::fake()->image('id.jpg');
         $license = UploadedFile::fake()->image('license.jpg');
         $orCr = UploadedFile::fake()->create('or_cr.pdf', 800, 'application/pdf');
 
         $response = $this->portalPost('courier', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Courier Rider',
+            'sex' => 'Female',
             'email' => 't1_courier_reg@example.com',
             'password' => 'Secret123456!',
             'password_confirmation' => 'Secret123456!',
@@ -260,7 +266,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'or_cr_document' => $orCr,
         ]);
 
-        $this->assertTrue($response->isRedirect());
+        $response->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('users', [
             'email' => 't1_courier_reg@example.com',
             'role' => 'courier',

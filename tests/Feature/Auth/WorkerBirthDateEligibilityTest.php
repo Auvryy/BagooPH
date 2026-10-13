@@ -125,8 +125,9 @@ class WorkerBirthDateEligibilityTest extends TestCase
 
     public function test_buyer_age_is_derived_and_optional_birth_date_never_creates_a_claimed_age(): void
     {
-        foreach ([['2013-10-04', 13], [null, null], ['2000-10-04', 26]] as [$date, $expected]) {
+        foreach ([['2013-10-04', 13], [null, null], ['2000-10-04', 26]] as $index => [$date, $expected]) {
             $data = $this->registration('buyer', $date);
+            $data['phone'] = '+63917123456'.$index;
             $data['age'] = 'client-selected age';
             $this->post('/register', $data)->assertRedirect(route('login'))->assertSessionHasNoErrors();
             $this->assertSame($expected, User::where('email', $data['email'])->sole()->age);

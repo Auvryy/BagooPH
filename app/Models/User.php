@@ -3,7 +3,10 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Models\Concerns\ReportsApplicationIdentityConflicts;
 use App\Notifications\AccountRecoveryNotification;
+use App\Rules\PhilippineContact;
+use App\Rules\UniqueAccountMobile;
 use App\Services\AccountClosureService;
 use App\Services\BirthDateEligibility;
 use App\Services\SecretMailService;
@@ -16,12 +19,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmailContract
 {
     use HasApiTokens, HasFactory, Notifiable;
+    use ReportsApplicationIdentityConflicts;
 
     public const APPROVED_KYC_STATUSES = ['approved', 'verified'];
 
@@ -74,6 +79,22 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     protected static function booted(): void
     {
+        static::saving(function (User $user): void {
+            if ($user->exists && ! $user->isDirty('phone')) {
+                return;
+            }
+            if ($user->phone === null || (is_string($user->phone) && trim($user->phone, ' ') === '')) {
+                $user->phone = null;
+
+                return;
+            }
+            $phone = PhilippineContact::canonical($user->phone);
+            if ($phone === null) {
+                throw ValidationException::withMessages(['phone' => 'Enter a complete Philippine mobile number, such as 09171234567 or +639171234567.']);
+            }
+            Validator::make(['phone' => $phone], ['phone' => [new UniqueAccountMobile($user->exists ? $user->id : null)]])->validate();
+            $user->phone = $phone;
+        });
         static::creating(function (User $user): void {
             $user->age = app(BirthDateEligibility::class)->age($user->birthday);
         });

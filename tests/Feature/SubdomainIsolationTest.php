@@ -730,6 +730,7 @@ class SubdomainIsolationTest extends TestCase
 
         $response = $this->post('http://hub.localhost/register', [...$this->registrationPolicies(),
             'name' => 'FastLog Partner',
+            'sex' => 'Male',
             'company_name' => 'FastLog Freight',
             'company_code' => 'FLF',
             'email' => 'fastlog@hub.test',

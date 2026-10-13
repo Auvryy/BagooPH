@@ -38,7 +38,7 @@ export default function ApplicationFields({ application, values, errors, onChang
         if (field.key === 'plate_number') return plateNumberError(value, String(values.vehicle_type ?? ''));
         if (field.key === 'license_number') return !value && !field.required ? undefined : licenseNumberError(value);
         if (field.key === 'fleet_size') return value && (!/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 10000) ? 'Use a whole number from 1 to 10,000.' : undefined;
-        if (field.type === 'tel') return application.fields.some(item => item.key === 'company_name' || item.key === 'shop_name') ? businessContactError(value, field.required) : mobileNumberError(value, field.required);
+        if (field.type === 'tel') return field.key === 'phone' ? mobileNumberError(value, field.required) : businessContactError(value, field.required);
         if (field.type === 'text') return registrationTextError(value, field.min_length ?? 2, field.max_length, field.required, field.key === 'franchise_number');
         return undefined;
     };
@@ -88,7 +88,7 @@ export default function ApplicationFields({ application, values, errors, onChang
                                         }
                                     }} />
                             )}
-                            {field.type === 'tel' && <p className="mt-1 text-xs text-slate-500">Use a Philippine number; business landlines need an area code.</p>}
+                            {field.type === 'tel' && <p className="mt-1 text-xs text-slate-500">{field.key === 'phone' ? 'Use your Philippine mobile number, such as 09171234567.' : 'Use a Philippine number; business landlines need an area code.'}</p>}
                             <InputError id={`application-${field.key}-error`} role="status" aria-live="polite" message={error} />
                         </div>
                     );
