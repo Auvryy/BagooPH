@@ -8,6 +8,7 @@ use App\Services\VerificationDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -23,6 +24,27 @@ class PrivateVerificationDocumentsTest extends TestCase
         parent::setUp();
         Storage::fake('local');
         Storage::fake('public');
+    }
+
+    public static function documentInputs(): array
+    {
+        return [['id_document'], ['business_permit'], ['driver_license'], ['or_cr_document'], ['franchise_document']];
+    }
+
+    #[DataProvider('documentInputs')]
+    public function test_the_shared_document_writer_rejects_video_and_disguised_content_before_storing_files(string $field): void
+    {
+        $payload = UploadedFile::fake()->createWithContent('payload.txt', '<html>Not a PDF document.</html>');
+        foreach ([UploadedFile::fake()->create('clip.mp4', 10, 'video/mp4'),
+            new UploadedFile($payload->getPathname(), 'false.pdf', 'application/pdf', UPLOAD_ERR_OK, true)] as $file) {
+            try {
+                app(VerificationDocumentService::class)->storeUploads(['id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'), $field => $file]);
+                $this->fail('Invalid evidence must be rejected before storing any uploads.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey($field, $exception->errors());
+            }
+            $this->assertSame([], Storage::disk('local')->allFiles());
+        }
     }
 
     private function applicant(string $role = 'courier'): User

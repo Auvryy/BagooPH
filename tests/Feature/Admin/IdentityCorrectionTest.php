@@ -168,6 +168,33 @@ class IdentityCorrectionTest extends TestCase
         $this->get('/verification-documents/'.$subject->id.'/id.pdf?decision='.KycDecision::sole()->id)->assertOk();
     }
 
+    public function test_shop_name_correction_rejects_a_name_reserved_by_another_seller(): void
+    {
+        $subject = $this->subject('seller');
+        Shop::factory()->create(['name' => 'Bagoo Reserved Shop']);
+        $before = $subject->shop->getAttributes();
+        $this->actingAs($subject)->post('/account/identity-corrections', $this->payload($subject, ['shop_name' => ' bagoo  RESERVED shop ']))
+            ->assertSessionHasErrors('changes.shop_name');
+        $this->assertDatabaseCount('identity_correction_requests', 0);
+        $this->assertSame($before, $subject->shop->fresh()->getAttributes());
+    }
+
+    public function test_a_shop_name_claimed_after_a_correction_request_blocks_approval_without_partial_changes(): void
+    {
+        $subject = $this->subject('seller');
+        $correction = $this->submit($subject, ['shop_name' => 'Bagoo Proposed Shop']);
+        Shop::factory()->create(['name' => 'BAGOO PROPOSED SHOP']);
+        $shopBefore = $subject->shop->getAttributes();
+        $userBefore = $subject->getAttributes();
+        $this->post('/admin/identity-corrections/'.$correction->id.'/decision', $this->inspect($this->admin(), $correction))
+            ->assertSessionHasErrors('shop_name');
+        $this->assertSame($shopBefore, $subject->shop->fresh()->getAttributes());
+        $this->assertSame($userBefore, $subject->fresh()->getAttributes());
+        $this->assertDatabaseCount('identity_correction_decisions', 0);
+        $this->assertDatabaseCount('shop_review_decisions', 0);
+        $this->assertNull($correction->fresh()->decided_at);
+    }
+
     public function test_shop_correction_has_current_review_and_preserves_restriction_and_listings(): void
     {
         $subject = $this->subject('seller');

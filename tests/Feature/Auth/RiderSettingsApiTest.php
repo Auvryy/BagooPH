@@ -57,6 +57,18 @@ class RiderSettingsApiTest extends TestCase
         return $this->getJson(self::BASE)->assertOk()->json('data');
     }
 
+    public function test_a_duplicate_mobile_does_not_change_contact_revision_or_revoke_the_session(): void
+    {
+        User::factory()->admin()->create(['phone' => '+639171234567']);
+        $rider = $this->rider(['phone' => '+639181234567']);
+        $this->withToken($this->token($rider));
+        $snapshot = $this->snapshot();
+        $this->patchJson(self::BASE.'/profile', ['phone' => '0917 123 4567', 'revision' => $snapshot['revision']])
+            ->assertUnprocessable()->assertJsonValidationErrors('phone');
+        $this->assertSame('+639181234567', $rider->fresh()->phone);
+        $this->assertSame($snapshot['revision'], $this->snapshot()['revision']);
+    }
+
     private function issue(User $user, string $email = 'extra@bagoo.test', string $purpose = 'account_email', string $code = '123456'): EmailOtp
     {
         return EmailOtp::create(['user_id' => $user->id, 'email' => $email, 'purpose' => $purpose, 'code_hash' => Hash::make($code), 'expires_at' => now()->addMinutes(10), 'attempts' => 0]);
@@ -520,7 +532,7 @@ class RiderSettingsApiTest extends TestCase
 
     public static function acceptedPasswordLengths(): array
     {
-        return [[12], [128]];
+        return [[8], [128]];
     }
 
     public function test_website_password_changes_revoke_native_tokens_and_native_reads_observe_website_email_changes(): void

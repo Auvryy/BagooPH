@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -367,7 +368,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -398,7 +399,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -546,6 +547,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!fileName ? (
                                 <div 
                                     onClick={() => fileInputRef.current?.click()}

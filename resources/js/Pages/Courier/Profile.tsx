@@ -127,7 +127,7 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                         <div className="mb-5"><AccountEmailSettings theme="courier" /></div>
                         <EmailVerificationStatus email={rider.email} verifiedAt={rider.email_verified_at} comfortable className="mt-4 !border-transparent" />
                         <form onSubmit={savePassword} className="mt-5 space-y-4">
-                            <p id="rider-password-help" className="text-sm leading-relaxed text-slate-600">Use 12–128 characters with uppercase and lowercase letters, a number and a symbol. Verify your email before making this change.</p>
+                            <p id="rider-password-help" className="text-sm leading-relaxed text-slate-600">Use 8–128 characters with uppercase and lowercase letters, a number and a symbol. Verify your email before making this change.</p>
                             <CourierFieldError message={(password.errors as Record<string, string>).email} />
                             {passwordFields.map(({ key, label, autocomplete }) => <div key={key}>
                                 <label htmlFor={`rider-${key}`} className="text-sm font-semibold">{label}</label>

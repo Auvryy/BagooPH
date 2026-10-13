@@ -1,8 +1,8 @@
 import type { BirthDateLimits } from '@/Components/BirthDateInput';
-import { extractNationalDigits } from '@/Components/PhoneInput';
+import { mobileNumberError } from '@/Components/PhoneInput';
 import { AuthRequestError, authRequest, registrationFormData, validEmailFormat } from '@/utils/authRequests';
 import { passwordError } from '@/utils/passwordPolicy';
-import { businessContactError, companyInitialsError, documentError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
+import { companyInitialsError, documentError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
 
 export type PersonalNameField = 'first_name' | 'middle_initial' | 'last_name';
 export type PersonalNameValues = Record<PersonalNameField, string>;
@@ -82,12 +82,7 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     }
     const phoneStep = role === 'courier' || role === 'logistics' ? 1 : 2;
     if (checking(phoneStep)) {
-        if (worker && !value('phone').trim()) errors.phone = 'Contact number is required.';
-        else if ((role === 'courier' || role === 'buyer') && value('phone')) {
-            const national = extractNationalDigits(value('phone'));
-            if (national.length !== 10 || !/^9[0-9]{9}$/.test(national)) errors.phone = 'Enter a valid 10-digit Philippine mobile number, starting with 9 after +63.';
-        }
-        else if (role === 'seller' || role === 'logistics') add('phone', businessContactError(value('phone'), true));
+        add('phone', mobileNumberError(value('phone'), worker));
     }
     const passwordStep = role === 'buyer' || role === 'logistics' ? 1 : 3;
     if (!google && checking(passwordStep)) {

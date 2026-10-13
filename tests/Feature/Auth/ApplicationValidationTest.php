@@ -118,7 +118,7 @@ class ApplicationValidationTest extends TestCase
         $this->assertSame($before, $user->fresh()->getRawOriginal());
         // Persisted malformed legacy fields also block a new approval, without silently fixing them.
         if (is_string($value)) {
-            $user->update([$field => $value]);
+            DB::table('users')->where('id', $user->id)->update([$field => $value]);
             $submission = app(KycDecisionService::class)->submission($user->fresh());
             $this->assertArrayHasKey($field, app(KycDecisionService::class)->fieldErrors($submission));
             $admin = $this->admin();
@@ -133,8 +133,8 @@ class ApplicationValidationTest extends TestCase
         return [
             ['buyer', "  Jose\u{301} Dela Cruz  ", '09 17123-4567', 'José Dela Cruz', '+639171234567'],
             ['buyer', 'Ana-Marie O’Neil', '639171234567', 'Ana-Marie O’Neil', '+639171234567'],
-            ['seller', 'Ｊｕａｎ Cruz', '(02) 8123-4567', 'Juan Cruz', '+63281234567'],
-            ['logistics', 'María Dela Cruz', '032 234-5678', 'María Dela Cruz', '+63322345678'],
+            ['seller', 'Ｊｕａｎ Cruz', '09181234567', 'Juan Cruz', '+639181234567'],
+            ['logistics', 'María Dela Cruz', '09191234567', 'María Dela Cruz', '+639191234567'],
             ['courier', 'J. Dela Cruz', '+639171234567', 'J. Dela Cruz', '+639171234567'],
         ];
     }

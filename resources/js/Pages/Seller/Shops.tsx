@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { FormEvent, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -79,8 +80,9 @@ export default function Shops({ shop, categories }: { shop: ReviewedShop | null;
                     <textarea value={form.data.description} maxLength={1000} onChange={e => form.setData('description', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                     {errors.description && <span className="mt-1 block text-red-700">{errors.description}</span>}
                 </label>
-                <label className="block text-sm font-semibold">Business permit (PDF, JPG, PNG or WEBP; up to 5 MB)
+                <label className="block text-sm font-semibold">Business permit
                     <input required={!shop.documents.permit} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => form.setData('business_permit', e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 font-normal" />
+                    <UploadHint />
                     {shop.documents.permit && <a href={shop.documents.permit} target="_blank" rel="noopener noreferrer" className="mt-1 block font-normal text-[#E00D42] underline">View current permit; leave upload empty to keep it</a>}
                     {errors.business_permit && <span className="mt-1 block text-red-700">{errors.business_permit}</span>}
                 </label>

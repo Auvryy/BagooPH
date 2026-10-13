@@ -75,7 +75,7 @@ class BuyerIdVerificationPromptTest extends TestCase
             'kyc_status' => 'none',
         ]);
 
-        $file = UploadedFile::fake()->create('valid_id.jpg', 800, 'image/jpeg');
+        $file = UploadedFile::fake()->image('valid_id.jpg')->size(800);
 
         $response = $this->actingAs($buyer)
             ->post(route('buyer.kyc.upload'), [

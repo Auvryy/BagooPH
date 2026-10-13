@@ -12,9 +12,9 @@ for rejection, retry, permissions and persistence checks.
 |---|---|---|
 | Buyer web signup | First name, optional middle initial, last name, required sex, registration email, password/confirmation; optional birthday, mobile and postal code | Address controls and optional private identity document; identity approval still gates purchases |
 | First Google signup | Verified provider email is fixed; required first/last names and sex; optional middle initial, birthday, mobile and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
-| Seller web signup | Separated names, required sex, adult birthday, email, password/confirmation, Philippine business contact; optional postal code | One shop name/root category, pickup address, private ID and business permit |
+| Seller web signup | Separated names, required sex, adult birthday, email, password/confirmation, Philippine account mobile; optional postal code | One unique shop name/root category, pickup address, private ID and business permit |
 | Courier web/native signup | Names, required sex, adult birthday, email, mobile, password/confirmation; optional postal code | Application address, vehicle, plate and licence identifiers, private ID, driver’s licence and OR/CR; native submission also needs verified email and device name |
-| Logistics web signup | Separated names, required sex, adult birthday, email, business contact, password/confirmation; optional postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
+| Logistics web signup | Separated names, required sex, adult birthday, email, account mobile, password/confirmation; optional postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
 | Platform Admin | Controlled account provisioning and existing login | No public admin signup or role-conversion option |
 
 Sex and postal code are visible on all four public forms and the first Google
@@ -36,14 +36,14 @@ without a permanent paragraph of instructions underneath the names.
 | First/last names | 2–50 characters each; Latin letters/accents, spaces, apostrophes, hyphens and periods. No digits, markup, hidden characters or punctuation-only values. Derive the display name on the server; combined limit 100, including spaces. |
 | Middle initial | Optional one Latin letter, optionally followed by a period; maximum 2 characters. Keep its control narrower than the other names. Existing full middle names remain supported at 1–50 characters in legacy requests/corrections. |
 | Email | Maximum 255; trim outer ASCII spaces and lowercase new signup addresses. Reject internal whitespace/controls and malformed syntax. Ownership comparison is case-insensitive; existing sign-in identity stays fixed. |
-| Mobile | Ten ASCII national digits beginning with 9 after `+63`; supported whole-number prefixes work on paste. Reject extra digits, letters, unsupported prefixes and extensions without shortening a different number into validity. |
-| Business contact | Philippine mobile or supported area-coded landline; raw application input maximum 24 characters before canonicalization. |
+| Account mobile | Accept `09XXXXXXXXX` or `+639XXXXXXXXX`, including supported formatting; store the 13-character `+639XXXXXXXXX`. Ten ASCII national digits start with 9 after `+63`. Unique across buyer, seller, courier, logistics and admin accounts, including inactive/closed records. Optional blank buyer/contact edits remain null. Reject landlines, extra digits, letters, unsupported prefixes and extensions. |
+| Shop/company public contact | Philippine mobile or supported area-coded landline. These separate business contacts and delivery-recipient numbers may be shared. Raw application phone input is limited to 24 characters before canonicalization. |
 | Birthday | Real calendar date before today; workers must be at least 18 in Asia/Manila. Age is derived, never client authority. |
 | Sex | Required `Female`, `Male` or `Other`; reject missing, null, blank, unknown choices and non-string values. Check it on the first web step, full preflight, final signup, Google signup and native rider submission. |
 | Postal code | Optional exactly four ASCII digits, stored as text so a leading zero survives. Reject overlong paste, non-ASCII digits, letters and numeric notation. |
 | Street/pickup/company address | Meaningful plain text, 5–500 characters when supplied; mandatory for workers. |
 | City/province/municipality/barangay | Meaningful plain text, 2–255 characters when supplied. Worker city is required; existing server optionality for other components is preserved. |
-| Shop/company display name | Meaningful plain text, 2–255 characters; separate from personal-name syntax. |
+| Shop/company display name | Meaningful plain text, 2–255 characters; separate from personal-name syntax. Shop names are platform-wide unique after Unicode normalization, case folding and spacing normalization. Company names retain their existing policy. |
 | Shop category | Existing active master root from the 14 categories; positive integer, checked again on the server. |
 | Company initials | 2–10 ASCII letters, stored uppercase; reject numbers/symbols and duplicate company codes. This is a Bagoo application limit, not a national acronym rule. |
 | Vehicle type/categories | Exact existing allowlists. Fleet categories are distinct, at most three; reject nested arrays and unknown values. |
@@ -51,14 +51,16 @@ without a permanent paragraph of instructions underneath the names.
 | Driver’s licence | Required for new courier applications: one letter and ten digits, either compact or grouped as `N01-12-345678`. Maximum 13 displayed characters; a valid compact identifier is stored in the grouped form without dropping symbols. |
 | Declared fleet size | Optional whole number 1–10,000; reject booleans, decimals, exponents, signs, leading zeroes and arrays. Do not silently substitute 1 for invalid input. |
 | Franchise declaration | Optional visible ASCII code, 2–100; no fabricated `PENDING-LTFRB` value. Optional evidence does not imply verified accreditation. |
-| New password | 12–128 characters with uppercase, lowercase, number and punctuation/symbol. Spaces alone do not satisfy the symbol requirement; controls are rejected. Preserve passphrase spaces and verify the whole password. Existing sign-in passwords still work. |
+| New password | 8–128 characters with uppercase, lowercase, number and punctuation/symbol. Spaces alone do not satisfy the symbol requirement; controls are rejected. Preserve passphrase spaces and verify the whole password. Existing sign-in passwords still work. |
 | Private application upload | JPG/JPEG/PNG/WEBP/PDF only, matching actual MIME content and extension. Non-empty, at most 5,242,880 bytes each. Images must decode, at most 10,000 pixels per side and 20 million pixels total. Private storage and authorized inspection remain required. |
 | Policies | Required unchecked acknowledgement, current Terms/Privacy versions, server acceptance timestamp and source. Account/profile/acceptance writes commit together; rejected or failed signup must not create an acceptance record or consume usable verification. |
 
 Plate/licence checks bound supported formats; they do not prove that an identifier
 was issued or matches a person/vehicle. Review the supplied evidence. Do not add
-global plate, phone or personal-name uniqueness without its own policy and
-existing-record conflict review.
+global plate or personal-name uniqueness without its own policy and
+existing-record conflict review. Account-mobile and shop-name uniqueness are
+explicit platform policy. Their migration refuses existing conflicts before
+changing records; it never deletes, renames or reassigns an owner automatically.
 
 The correction screen uses the same field limits and offers separate names,
 sex and postal code. It does not offer a second editable full-name input.

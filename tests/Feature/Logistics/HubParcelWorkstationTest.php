@@ -7,6 +7,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\PickupClaim;
+use App\Models\User;
 use App\Services\Logistics\PickupClaimService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -461,17 +462,16 @@ class HubParcelWorkstationTest extends TestCase
     public function test_counter_phone_search_remains_within_the_actual_destination_facility(string $base): void
     {
         $parcel = $this->selfPickup(true);
-        $other = $this->selfPickup(true);
+        $other = $this->selfPickup(true, $parcel->order->buyer);
         $phone = '09170000001';
         $parcel->order->buyer->update(['phone' => $phone]);
-        $other->order->buyer->update(['phone' => $phone]);
         // An explicit stale legacy location must not join the matching counter queue.
         $other->update(['current_hub_id' => $other->origin_bayan_hub_id]);
         $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
         $before = $this->snapshot($parcel);
         $this->actingAs($this->flowHandler($hub))->get($base.'/counter?hub_id='.$hub->id.'&search='.$phone)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('search', $phone)->where('counterParcels.total', 1)->has('counterParcels.data', 1)
-            ->where('counterParcels.data.0.id', $parcel->id)->where('counterParcels.data.0.buyer_phone', $phone)
+            ->where('counterParcels.data.0.id', $parcel->id)->where('counterParcels.data.0.buyer_phone', '+639170000001')
             ->where('counterCounts.ready', 1));
         $this->get($base.'/counter?hub_id='.$hub->id.'&search=09170000009')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('counterParcels.total', 0)->has('counterParcels.data', 0));
@@ -479,13 +479,13 @@ class HubParcelWorkstationTest extends TestCase
         $this->assertSame($before, $this->snapshot($parcel));
     }
 
-    private function selfPickup(bool $stage): Delivery
+    private function selfPickup(bool $stage, ?User $buyer = null): Delivery
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));
         $this->flowNetwork($shop);
         $hub = LogisticsHub::where('city_municipality', 'Santa Cruz')->where('tier', 'local_bayan_hub')->sole();
         $hub->update(['allows_self_pickup' => true, 'operating_hours' => 'Monday to Saturday, 08:00 to 17:00']);
-        $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer', ['name' => 'Mara Santos']), $shop, shipping: ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id]);
+        $order = $this->checkoutFlowOrder($buyer ?? $this->createApprovedUser('buyer', ['name' => 'Mara Santos']), $shop, shipping: ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id]);
         $parcel = $this->flowDelivery($order, 'arrived_at_destination_hub');
         if ($stage) {
             $this->confirmFlowScan($parcel, $hub, 'STAGE_FOR_PICKUP');

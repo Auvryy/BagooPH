@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
@@ -1050,6 +1051,7 @@ export default function BuyerProfile({
                                                 className="hidden"
                                                 onChange={(e) => handleKycFileSelect(e.target.files?.[0])}
                                             />
+                                            <UploadHint />
 
                                             {!kycFile ? (
                                                 <div
@@ -1135,7 +1137,7 @@ export default function BuyerProfile({
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Account Password & Security</h3>
-                                        <p className="text-xs text-slate-500 font-sans">Use a unique password between 12 and 128 characters</p>
+                                        <p className="text-xs text-slate-500 font-sans">Use a unique password between 8 and 128 characters</p>
                                     </div>
 
                                     {user.google_id && (

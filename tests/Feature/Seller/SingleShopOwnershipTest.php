@@ -6,6 +6,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\ApplicationIdentityService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,8 @@ class SingleShopOwnershipTest extends TestCase
         $before = $shop->fresh()->getAttributes();
 
         try {
-            DB::table('shops')->insert(['user_id' => $shop->user_id, 'name' => 'Another shop', 'slug' => 'another-shop']);
+            DB::table('shops')->insert(['user_id' => $shop->user_id, 'name' => 'Another shop', 'slug' => 'another-shop',
+                'name_key' => ApplicationIdentityService::shopNameKey('Another shop')]);
             $this->fail('Even a direct database insert must respect the one-shop rule.');
         } catch (QueryException $exception) {
             $this->assertStringContainsString('UNIQUE', $exception->getMessage());

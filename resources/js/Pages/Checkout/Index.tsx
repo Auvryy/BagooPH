@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -1034,6 +1035,7 @@ export default function CheckoutIndex({
                                                 onChange={handleKycFileSelect}
                                                 className="hidden"
                                             />
+                                            <UploadHint />
                                             <button
                                                 type="button"
                                                 onClick={() => kycFileInputRef.current?.click()}

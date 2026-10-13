@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ReportsApplicationIdentityConflicts;
 use App\Models\Concerns\RetainsRestrictionHistory;
+use App\Rules\UniqueShopName;
+use App\Services\ApplicationIdentityService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,10 +13,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Validator;
 
 class Shop extends Model
 {
     use HasFactory;
+    use ReportsApplicationIdentityConflicts;
     use RetainsRestrictionHistory;
 
     protected $fillable = [
@@ -34,7 +39,17 @@ class Shop extends Model
         'business_permit_path', 'review_decision_id', 'review_version',
     ];
 
-    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version', 'verified_rating'];
+    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version', 'verified_rating', 'name_key'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Shop $shop): void {
+            if (! $shop->exists || $shop->isDirty('name')) {
+                Validator::make(['shop_name' => $shop->name], ['shop_name' => ['bail', 'required', 'string', new UniqueShopName($shop->exists ? $shop->id : null)]])->validate();
+            }
+            $shop->name_key = ApplicationIdentityService::shopNameKey($shop->name);
+        });
+    }
 
     protected $casts = [
         'is_default' => 'boolean',

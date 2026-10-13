@@ -284,7 +284,7 @@ test('incomplete and malformed identities get field errors before any request or
             assert.match(error.fields.email, /complete email/);
             if (role !== 'buyer') assert.match(error.fields.birthday, /real birth date/);
             if (role === 'courier') {
-                assert.match(error.fields.phone, /mobile/);
+                assert.match(error.fields.phone, /10 digits after \+63/);
                 assert.match(error.fields.city, /required/);
                 assert.match(error.fields.address, /required/);
             }
@@ -337,12 +337,25 @@ test('date and combined-name boundaries are checked without truncation or blocki
     const names = { ...identity('buyer'), first_name: 'A'.repeat(49), middle_initial: '', last_name: 'B'.repeat(50) };
     assert.equal(ui.registrationInputErrors(names, limits, 1).name, undefined);
     assert.ok(ui.registrationInputErrors({ ...names, first_name: 'A'.repeat(50) }, limits, 1).name);
-    assert.deepEqual(ui.registrationInputErrors({ ...identity('seller'), birthday: '', phone: '', city: '', address: '' }, limits, 2), { phone: 'Contact number is required.', city: 'City or municipality is required.', address: 'Street address is required.' });
+    assert.deepEqual(ui.registrationInputErrors({ ...identity('seller'), birthday: '', phone: '', city: '', address: '' }, limits, 2), { phone: 'Mobile number is required.', city: 'City or municipality is required.', address: 'Street address is required.' });
     const courierStep2 = ui.registrationInputErrors({ ...identity('courier'), first_name: '', birthday: '', email: '' }, limits, 2);
     assert.deepEqual(courierStep2, {});
     for (const phone of ['+639171234567\n', '0917ABC4567', '+649171234567', '091712345678']) {
         assert.ok(ui.registrationInputErrors({ ...identity('courier'), phone }, limits, 1).phone, phone);
     }
+});
+
+test('every account role uses mobile-only input while public business contacts may use landlines', () => {
+    for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
+        const step = ['courier', 'logistics'].includes(role) ? 1 : 2;
+        for (const phone of ['09171234567', '+639171234567', '+63 917 123 4567']) {
+            assert.equal(ui.registrationInputErrors({ ...identity(role), phone }, limits, step).phone, undefined, role);
+        }
+        for (const phone of ['(02) 8123-4567', '0917123456', '091712345678', '0917ABC4567']) {
+            assert.ok(ui.registrationInputErrors({ ...identity(role), phone }, limits, step).phone, role + ': ' + phone);
+        }
+    }
+    assert.equal(ui.businessContactError('(02) 8123-4567', true), undefined);
 });
 
 test('all registration pages preserve the portal shell and controlled form feedback', async () => {
@@ -376,8 +389,8 @@ test('all registration pages preserve the portal shell and controlled form feedb
 });
 
 test('password feedback requires every character group, preserves passphrase spaces and enforces both limits', () => {
-    for (const value of ['Aa1!' + 'a'.repeat(8), 'Aa1!' + 'é'.repeat(124), '  Bagoo passphrase 2026!  ']) assert.equal(ui.passwordError(value), undefined, value);
-    for (const value of ['Aa1!' + 'a'.repeat(7), 'Aa1!' + 'a'.repeat(125), 'password1234!', 'PASSWORD1234!', 'BagooPassword!', 'BagooPassword1', 'BagooPassword1 ', 'BagooPassword1!\n']) assert.ok(ui.passwordError(value), value);
+    for (const value of ['Aa1!' + 'a'.repeat(4), 'Aa1!' + 'é'.repeat(124), '  Bagoo passphrase 2026!  ']) assert.equal(ui.passwordError(value), undefined, value);
+    for (const value of ['Aa1!' + 'a'.repeat(3), 'Aa1!' + 'a'.repeat(125), 'password1234!', 'PASSWORD1234!', 'BagooPassword!', 'BagooPassword1', 'BagooPassword1 ', 'BagooPassword1!\n']) assert.ok(ui.passwordError(value), value);
 });
 
 test('company, vehicle and document fields have explicit bounds without changing invalid input into valid values', () => {

@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -26,7 +27,7 @@ import {
     Check
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import BusinessContactInput from '@/Components/BusinessContactInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
@@ -407,8 +408,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                 {currentStep === 2 && (
                     <div className="space-y-4">
                         <div>
-                            <BusinessContactInput
-                                label="Merchant contact number"
+                            <PhoneInput
+                                label="Account mobile number"
                                 value={data.phone}
                                 onChange={(val) => {
                                     setData('phone', val);
@@ -494,6 +495,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!permitFileName ? (
                                 <div 
                                     onClick={() => permitInputRef.current?.click()}
@@ -535,6 +537,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 accept="image/jpeg,image/png,image/webp,application/pdf"
                                 className="hidden"
                             />
+                            <UploadHint />
                             {!idFileName ? (
                                 <div 
                                     onClick={() => idInputRef.current?.click()}
@@ -576,7 +579,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"
@@ -607,7 +610,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                         id="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         name="password_confirmation"
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password_confirmation}
                                         className="w-full pl-10 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900 placeholder-slate-400"
                                         placeholder="••••••••••••"

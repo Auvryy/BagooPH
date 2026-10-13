@@ -1,3 +1,4 @@
+import UploadHint from '@/Components/UploadHint';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -31,7 +32,7 @@ import {
     Compass
 } from 'lucide-react';
 import { getDomainUrl } from '@/utils/domain';
-import BusinessContactInput from '@/Components/BusinessContactInput';
+import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
@@ -455,10 +456,10 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             </div>
 
                             <div className="space-y-1">
-                                <BusinessContactInput
+                                <PhoneInput
                                     value={data.phone}
                                     onChange={val => setData('phone', val)}
-                                    label="Dispatch contact number"
+                                    label="Account mobile number"
                                     required
                                     error={stepErrors.phone || errors.phone}
                                 />
@@ -477,10 +478,10 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     </div>
                                     <input name="password"
                                         type={showPassword ? 'text' : 'password'}
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password}
                                         onChange={e => setData('password', e.target.value)}
-                                        placeholder="12–128 characters"
+                                        placeholder="8–128 characters"
                                         className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
                                     />
                                     <button
@@ -507,7 +508,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     </div>
                                     <input name="password_confirmation"
                                         type={showConfirmPassword ? 'text' : 'password'}
-                                        minLength={12} maxLength={128}
+                                        minLength={8} maxLength={128}
                                         value={data.password_confirmation}
                                         onChange={e => setData('password_confirmation', e.target.value)}
                                         placeholder="Re-enter password"
@@ -772,6 +773,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     accept=".jpg,.jpeg,.png,.pdf,.webp"
                                     className="hidden"
                                 />
+                                <UploadHint />
                                 {permitFileName ? (
                                     <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
                                         <div className="flex items-center gap-2 min-w-0">
@@ -818,6 +820,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                     accept=".jpg,.jpeg,.png,.pdf,.webp"
                                     className="hidden"
                                 />
+                                <UploadHint />
                                 {franchiseFileName ? (
                                     <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
                                         <div className="flex items-center gap-2 min-w-0">

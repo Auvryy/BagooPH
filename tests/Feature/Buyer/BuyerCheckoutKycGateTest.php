@@ -113,7 +113,7 @@ class BuyerCheckoutKycGateTest extends TestCase
             'id_document_path' => null,
         ]);
 
-        $idFile = UploadedFile::fake()->create('government_id.jpg', 500, 'image/jpeg');
+        $idFile = UploadedFile::fake()->image('government_id.jpg')->size(500);
 
         $response = $this->actingAs($buyer)->post('/checkout/kyc/upload', [
             'id_document' => $idFile,

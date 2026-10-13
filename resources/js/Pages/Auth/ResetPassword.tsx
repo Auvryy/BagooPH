@@ -69,7 +69,7 @@ export default function ResetPassword({ token, email }: Props) {
                             className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
-                            minLength={12} maxLength={128}
+                            minLength={8} maxLength={128}
                             autoFocus
                             onChange={(e) => setData('password', e.target.value)}
                             required
@@ -93,7 +93,7 @@ export default function ResetPassword({ token, email }: Props) {
                             className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-black/20 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden font-sans transition"
                             placeholder="••••••••"
                             autoComplete="new-password"
-                            minLength={12} maxLength={128}
+                            minLength={8} maxLength={128}
                             onChange={(e) => setData('password_confirmation', e.target.value)}
                             required
                         />

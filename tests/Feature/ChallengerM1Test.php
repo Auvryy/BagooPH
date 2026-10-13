@@ -43,6 +43,7 @@ class ChallengerM1Test extends TestCase
             'role' => 'seller',
             'birthday' => '2000-01-01',
             'name' => 'Adversarial Seller',
+            'sex' => 'Female',
             'email' => 'adv.seller@bagoo.test',
             'password' => 'SecurePass123!',
             'password_confirmation' => 'SecurePass123!',
@@ -163,6 +164,7 @@ class ChallengerM1Test extends TestCase
         // Step 1: Courier Registration
         $regResponse = $this->post('/register', [...$this->registrationPolicies(),
             'role' => 'courier',
+            'sex' => 'Male',
             'birthday' => '2000-01-01',
             'name' => 'Speedy Dave',
             'email' => 'speedy.dave@bagoo.test',

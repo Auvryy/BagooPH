@@ -179,6 +179,21 @@ class RiderApiAuthTest extends TestCase
             'or_cr_document' => UploadedFile::fake()->create('vehicle.pdf', 10, 'application/pdf')];
     }
 
+    public function test_native_signup_rejects_a_taken_mobile_without_consuming_verification(): void
+    {
+        Storage::fake('local');
+        User::factory()->buyer()->create(['phone' => '+639173334444']);
+        $email = 'mobile-applicant@bagoo.test';
+        $data = $this->application($email, $this->verification($email));
+        $this->postJson('/api/v1/rider/applications', $data)->assertUnprocessable()->assertJsonValidationErrors('phone');
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('courier_profiles', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->assertNotNull(EmailOtp::where('email', $email)->sole()->token);
+        $this->postJson('/api/v1/rider/applications', array_replace($data, ['phone' => '09173334445']))->assertCreated();
+        $this->assertSame('+639173334445', User::where('email', $email)->sole()->phone);
+    }
+
     public function test_native_signup_requires_sex_without_creating_an_account_or_consuming_verification(): void
     {
         Storage::fake('local');
