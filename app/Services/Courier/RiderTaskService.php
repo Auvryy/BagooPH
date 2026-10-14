@@ -13,6 +13,7 @@ use App\Services\Finance\CodMoney;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\RiderAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -27,8 +28,9 @@ class RiderTaskService
         $operational = $this->eligibility->isOperational($profile);
         $pickups = Delivery::activePickupCount($actor->id);
         $canClaim = $this->eligibility->canReceivePickups($profile);
+        $handoverAvailable = Route::has('rider.api.handover-issues') && app(RiderAccountService::class)->handoverAvailable();
 
-        return ['account_id' => (string) $actor->id, 'operations_api_version' => 1,
+        return ['account_id' => (string) $actor->id, 'operations_api_version' => 1, 'handover_api_version' => $handoverAvailable ? 1 : null,
             'on_duty' => (bool) $profile?->is_available, 'observed_at' => RiderApiInput::time(now()),
             'placement' => ['company_id' => $profile?->logistics_company_id ? (string) $profile->logistics_company_id : null,
                 'company_name' => $profile?->company?->name, 'hub_id' => $profile?->assigned_hub_id ? (string) $profile->assigned_hub_id : null,
@@ -44,6 +46,8 @@ class RiderTaskService
                 'messages' => Route::has('rider.api.conversations') && Schema::hasTable('messages'),
                 'notifications' => Route::has('rider.api.notifications') && Schema::hasTable('notifications'),
                 'cash' => Route::has('rider.api.cash') && Schema::hasTable('cod_cash_events'),
+                'handover_issues' => $handoverAvailable && $actor->canAccessPortal(),
+                'handover_reporting' => $handoverAvailable && $actor->canAccessPortal() && ($actor->currentAccessToken()?->can(RiderAccountService::HANDOVER_ABILITY) ?? false),
                 'pre_custody_release' => false, 'native_restricted_recovery' => false, 'rider_earnings' => false],
             'limits' => ['per_page_max' => 50, 'poll_interval_seconds' => 30, 'request_budget_per_minute' => 30,
                 'proof_bytes_max' => 5242880, 'message_characters_max' => 1000, 'idempotency_days' => 7]];

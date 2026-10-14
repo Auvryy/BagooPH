@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderCashController;
+use App\Http\Controllers\Api\RiderHandoverController;
 use App\Http\Controllers\Api\RiderMessagingController;
 use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderOperationsController;
@@ -45,6 +46,13 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
             Route::get('notifications', [RiderNotificationController::class, 'index'])->name('rider.api.notifications');
             Route::get('cash', [RiderCashController::class, 'index'])->name('rider.api.cash');
             Route::get('cash/{account}', [RiderCashController::class, 'show']);
+            Route::get('handover-issues', [RiderHandoverController::class, 'index'])->name('rider.api.handover-issues');
+            Route::get('handover-issues/{issue}', [RiderHandoverController::class, 'show']);
+            Route::get('handover-issues/{issue}/evidence', [RiderHandoverController::class, 'evidence']);
+        });
+        Route::middleware([EnsureRiderAccountToken::class.':operations:handover', 'throttle:10,1'])->group(function () {
+            Route::post('handover-issues', [RiderHandoverController::class, 'report']);
+            Route::post('handover-recoveries/{grant}/acknowledge', [RiderHandoverController::class, 'acknowledge']);
         });
         Route::middleware([EnsureRiderAccountToken::class.':operations:messages', 'throttle:10,1'])->group(function () {
             Route::post('conversations/{thread}/messages', [RiderMessagingController::class, 'send']);

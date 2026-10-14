@@ -37,7 +37,9 @@
       "cash": true,
       "pre_custody_release": false,
       "native_restricted_recovery": false,
-      "rider_earnings": false
+      "rider_earnings": false,
+      "handover_issues": true,
+      "handover_reporting": true
     },
     "limits": {
       "per_page_max": 50,
@@ -46,7 +48,8 @@
       "proof_bytes_max": 5242880,
       "message_characters_max": 1000,
       "idempotency_days": 7
-    }
+    },
+    "handover_api_version": 1
   },
   "request_id": "00000000-0000-4000-8000-000000000001"
 }

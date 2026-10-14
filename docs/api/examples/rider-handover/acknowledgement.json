@@ -1,0 +1,23 @@
+{
+  "data": {
+    "idempotency_key": "f64f2de7-84d9-48fb-8697-489d413807a7",
+    "action": "handover.acknowledge",
+    "resource": "handover-recovery-1",
+    "state": "committed",
+    "result": {
+      "issue_id": "1",
+      "reference": "HI-A4E46517-4D32-4146-80C0-CA618C6081AB",
+      "state": "needs_recovery",
+      "version": 5,
+      "held": true,
+      "grant_id": "1",
+      "event_id": "5",
+      "event_type": "holder_acknowledged"
+    },
+    "recorded_at": "2026-10-14T08:57:02.000Z",
+    "expires_at": "2026-10-21T08:57:02.000Z",
+    "retry_expired": false,
+    "replayed": false
+  },
+  "request_id": "d090c636-a064-4017-b444-9b03c845762a"
+}
