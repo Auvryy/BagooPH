@@ -14,6 +14,14 @@ class RiderAccountService
 
     public const OPERATIONS_ABILITIES = ['rider:operations:read', 'rider:operations:work', 'rider:operations:messages', 'rider:operations:notifications', 'rider:operations:cash'];
 
+    public const HANDOVER_ABILITY = 'rider:operations:handover';
+
+    public function handoverAvailable(): bool
+    {
+        return $this->operationsAvailable() && collect(['handover_issues', 'handover_issue_events', 'handover_recovery_grants', 'handover_manifest_receipts'])
+            ->every(fn ($table) => Schema::hasTable($table));
+    }
+
     public function operationsAvailable(): bool
     {
         return $this->settingsAvailable() && Schema::hasTable('rider_commands') && Schema::hasTable('delivery_checkpoints') && Schema::hasTable('cod_accounts');
@@ -70,7 +78,8 @@ class RiderAccountService
     public function resource(User $user): array
     {
         return ['id' => (string) $user->id, ...($this->settingsAvailable() ? ['settings_api_version' => 1] : []),
-            ...($this->operationsAvailable() ? ['operations_api_version' => 1] : []), 'name' => $user->name, 'email' => $user->email,
+            ...($this->operationsAvailable() ? ['operations_api_version' => 1] : []),
+            ...($this->handoverAvailable() ? ['handover_api_version' => 1] : []), 'name' => $user->name, 'email' => $user->email,
             'email_verified' => $user->email_verified_at !== null, 'role' => 'courier',
             'status' => $user->status, 'kyc_status' => $user->kyc_status, 'kyc_feedback' => $user->kyc_feedback,
             'can_access_portal' => $user->canAccessPortal(), 'access_state' => $user->canAccessPortal() ? 'approved' : 'holding'];
@@ -81,7 +90,8 @@ class RiderAccountService
         $this->assertAccessible($user);
         $expires = now()->addMinutes(max(1, min(10080, (int) config('rider_auth.token_minutes'))));
         $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout', ...($this->settingsAvailable() ? self::SETTINGS_ABILITIES : []),
-            ...($this->operationsAvailable() ? self::OPERATIONS_ABILITIES : [])], $expires);
+            ...($this->operationsAvailable() ? self::OPERATIONS_ABILITIES : []),
+            ...($this->handoverAvailable() && $user->isEligibleCourier() && $user->canAccessPortal() ? [self::HANDOVER_ABILITY] : [])], $expires);
         $issued->accessToken->forceFill(['credential_fingerprint' => hash('sha256', $user->getAuthPassword())])->save();
 
         return ['token' => $issued->plainTextToken, 'token_type' => 'Bearer',

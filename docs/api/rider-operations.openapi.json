@@ -2448,6 +2448,494 @@
           }
         }
       }
+    },
+    "/rider/handover-issues": {
+      "get": {
+        "operationId": "riderHandoverIssues",
+        "summary": "Involved handover reports and retained review history",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "recovered",
+                "dismissed",
+                "all"
+              ],
+              "default": "open"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Involved handover reports and retained review history",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      },
+      "post": {
+        "operationId": "riderHandoverReport",
+        "summary": "Record a private missed-scan observation without changing custody",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:handover",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record a private missed-scan observation without changing custody",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverReportCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoverReportBody"
+              },
+              "encoding": {
+                "evidence": {
+                  "contentType": "image/jpeg, image/png, image/webp, application/pdf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rider/handover-issues/{issue}": {
+      "get": {
+        "operationId": "riderHandoverIssue",
+        "summary": "Involved issue facts and permitted known-holder recovery",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "issue",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Involved issue facts and permitted known-holder recovery",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/handover-issues/{issue}/evidence": {
+      "get": {
+        "operationId": "riderHandoverEvidence",
+        "summary": "Authorized hash-verified private handover evidence",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "issue",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized hash-verified private handover evidence",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/rider/handover-recoveries/{grant}/acknowledge": {
+      "post": {
+        "operationId": "riderHandoverAcknowledge",
+        "summary": "Named holder acknowledges actual matching-waybill possession",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:operations:handover",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Actor-scoped retained intent. Keep this key and the exact payload/file bytes after a timeout."
+          },
+          {
+            "name": "grant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Named holder acknowledges actual matching-waybill possession",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverAcknowledgeCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoverAcknowledgeBody"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2742,6 +3230,12 @@
               },
               "rider_earnings": {
                 "type": "boolean"
+              },
+              "handover_issues": {
+                "type": "boolean"
+              },
+              "handover_reporting": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -2755,7 +3249,9 @@
               "cash",
               "pre_custody_release",
               "native_restricted_recovery",
-              "rider_earnings"
+              "rider_earnings",
+              "handover_issues",
+              "handover_reporting"
             ],
             "additionalProperties": false
           },
@@ -2796,6 +3292,16 @@
               "idempotency_days"
             ],
             "additionalProperties": false
+          },
+          "handover_api_version": {
+            "anyOf": [
+              {
+                "const": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2808,7 +3314,8 @@
           "capacity",
           "counts",
           "capabilities",
-          "limits"
+          "limits",
+          "handover_api_version"
         ],
         "additionalProperties": false
       },
@@ -3051,11 +3558,22 @@
                     "type": "null"
                   }
                 ]
+              },
+              "handover": {
+                "anyOf": [
+                  {
+                    "const": "HANDOVER_HOLD"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
               "release",
-              "deliver"
+              "deliver",
+              "handover"
             ],
             "additionalProperties": false
           },
@@ -3125,6 +3643,9 @@
           },
           "next_instruction": {
             "type": "string"
+          },
+          "handover_hold": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -3145,7 +3666,8 @@
           "actions",
           "action_denials",
           "failure_policy",
-          "next_instruction"
+          "next_instruction",
+          "handover_hold"
         ],
         "additionalProperties": false
       },
@@ -4231,7 +4753,9 @@
               "message.send",
               "message.read",
               "notification.read",
-              "cash.offer"
+              "cash.offer",
+              "handover.report",
+              "handover.acknowledge"
             ]
           },
           "resource": {
@@ -4259,6 +4783,12 @@
               },
               {
                 "$ref": "#/components/schemas/CashOfferResult"
+              },
+              {
+                "$ref": "#/components/schemas/HandoverReportResult"
+              },
+              {
+                "$ref": "#/components/schemas/HandoverAcknowledgeResult"
               }
             ]
           },
@@ -5372,6 +5902,704 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "HandoverVersion": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      },
+      "HandoverState": {
+        "type": "string",
+        "enum": [
+          "pending_review",
+          "needs_recovery",
+          "dismissed",
+          "recovered"
+        ]
+      },
+      "HandoverKind": {
+        "type": "string",
+        "enum": [
+          "missed_ready",
+          "missed_scan"
+        ]
+      },
+      "HandoverSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/HandoverState"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/HandoverKind"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "version": {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          "held": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "state",
+          "kind",
+          "tracking_number",
+          "created_at",
+          "version",
+          "held"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverSnapshot": {
+        "type": "object",
+        "properties": {
+          "commercial_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operational_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "custody_kind": {
+            "type": "string"
+          },
+          "custody_label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "commercial_status",
+          "operational_stage",
+          "custody_kind",
+          "custody_label"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverRecovery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "departure",
+              "hub_intake",
+              "hub_manifest",
+              "hub_failed_return",
+              "hub_existing"
+            ]
+          },
+          "holder_is_me": {
+            "type": "boolean"
+          },
+          "receiving_hub": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ID"
+              },
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "address"
+            ],
+            "additionalProperties": false
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "acknowledged": {
+            "type": "boolean"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_version": {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          "source_token": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Version"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_recovery_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "acknowledge": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "acknowledge"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "mode",
+          "holder_is_me",
+          "receiving_hub",
+          "expires_at",
+          "acknowledged",
+          "closed",
+          "blocker",
+          "expected_version",
+          "source_token",
+          "manifest_reference",
+          "linked_recovery_reference",
+          "actions"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/HandoverState"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/HandoverKind"
+          },
+          "tracking_number": {
+            "type": "string"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "version": {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "reported": {
+            "type": "object",
+            "properties": {
+              "holder": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "holder",
+              "location",
+              "notes"
+            ],
+            "additionalProperties": false
+          },
+          "recorded": {
+            "type": "object",
+            "properties": {
+              "original": {
+                "$ref": "#/components/schemas/HandoverSnapshot"
+              },
+              "current": {
+                "$ref": "#/components/schemas/HandoverSnapshot"
+              }
+            },
+            "required": [
+              "original",
+              "current"
+            ],
+            "additionalProperties": false
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "download_path": {
+                "type": "string",
+                "pattern": "^/api/v1/rider/handover-issues/[1-9][0-9]*/evidence$"
+              },
+              "mime_type": {
+                "type": "string",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "application/pdf"
+                ]
+              }
+            },
+            "required": [
+              "download_path",
+              "mime_type"
+            ],
+            "additionalProperties": false
+          },
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverRecovery"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/ID"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "actor_role": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "recorded_at": {
+                  "$ref": "#/components/schemas/UTC"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "actor_role",
+                "notes",
+                "recorded_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "state",
+          "kind",
+          "tracking_number",
+          "created_at",
+          "version",
+          "held",
+          "reported",
+          "recorded",
+          "evidence",
+          "recovery",
+          "history"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverReportResult": {
+        "type": "object",
+        "properties": {
+          "issue_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/HandoverState"
+          },
+          "version": {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          "held": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "issue_id",
+          "reference",
+          "state",
+          "version",
+          "held"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverAcknowledgeResult": {
+        "type": "object",
+        "properties": {
+          "issue_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/HandoverState"
+          },
+          "version": {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "grant_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "event_type": {
+            "const": "holder_acknowledged"
+          }
+        },
+        "required": [
+          "issue_id",
+          "reference",
+          "state",
+          "version",
+          "held",
+          "grant_id",
+          "event_id",
+          "event_type"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverReportBody": {
+        "type": "object",
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[A-Z0-9][A-Z0-9_-]*$"
+          },
+          "kind": {
+            "const": "missed_scan"
+          },
+          "reported_holder": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "reported_location": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 255
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          "evidence": {
+            "type": "string",
+            "format": "binary",
+            "description": "Non-empty actual JPG/JPEG/PNG/WEBP/PDF; maximum 5,242,880 bytes. Content must match extension; images retain the shared dimension limits."
+          }
+        },
+        "required": [
+          "barcode",
+          "kind",
+          "reported_holder",
+          "reported_location",
+          "notes",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverAcknowledgeBody": {
+        "type": "object",
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[A-Z0-9][A-Z0-9_-]*$"
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          "expected_version": {
+            "$ref": "#/components/schemas/HandoverVersionInput"
+          },
+          "source_token": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "possession_verified": {
+            "const": true
+          }
+        },
+        "required": [
+          "barcode",
+          "notes",
+          "expected_version",
+          "source_token",
+          "possession_verified"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverReportCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "const": "handover.report"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/HandoverReportResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverReportCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HandoverReportCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverAcknowledgeCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "const": "handover.acknowledge"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/HandoverAcknowledgeResult"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverAcknowledgeCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HandoverAcknowledgeCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/HandoverSummary"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverDetailEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HandoverDetail"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "HandoverVersionInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HandoverVersion"
+          },
+          {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]{0,5}|1000000)$"
+          }
+        ]
       }
     },
     "responses": {
