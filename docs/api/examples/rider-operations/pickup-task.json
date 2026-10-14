@@ -36,10 +36,12 @@
     },
     "action_denials": {
       "release": "SHARED_RELEASE_POLICY_UNAVAILABLE",
-      "deliver": null
+      "deliver": null,
+      "handover": null
     },
     "failure_policy": null,
-    "next_instruction": "Scan the parcel waybill at the seller."
+    "next_instruction": "Scan the parcel waybill at the seller.",
+    "handover_hold": false
   },
   "request_id": "00000000-0000-4000-8000-000000000001"
 }

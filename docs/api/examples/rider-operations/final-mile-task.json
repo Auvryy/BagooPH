@@ -40,7 +40,8 @@
     },
     "action_denials": {
       "release": "SHARED_RELEASE_POLICY_UNAVAILABLE",
-      "deliver": null
+      "deliver": null,
+      "handover": null
     },
     "failure_policy": {
       "attempt_limit": 3,
@@ -77,7 +78,8 @@
       "retry_authority": "destination_hub",
       "return_hub_id": "3"
     },
-    "next_instruction": "Record recipient handoff and exact cash. The buyer confirms receipt separately."
+    "next_instruction": "Record recipient handoff and exact cash. The buyer confirms receipt separately.",
+    "handover_hold": false
   },
   "request_id": "00000000-0000-4000-8000-000000000001"
 }

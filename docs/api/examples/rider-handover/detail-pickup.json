@@ -1,0 +1,88 @@
+{
+  "data": {
+    "id": "1",
+    "reference": "HI-A4E46517-4D32-4146-80C0-CA618C6081AB",
+    "state": "needs_recovery",
+    "kind": "missed_scan",
+    "tracking_number": "BGO-Y62PSIT3E9",
+    "created_at": "2026-10-14T08:57:01.000Z",
+    "version": 4,
+    "held": true,
+    "reported": {
+      "holder": "The known rider holding this parcel",
+      "location": "At the assigned hub receiving desk",
+      "notes": "The actual handover happened without the expected waybill scan."
+    },
+    "recorded": {
+      "original": {
+        "commercial_status": "placed",
+        "operational_stage": "unassigned",
+        "custody_kind": "unknown",
+        "custody_label": "Custody not established"
+      },
+      "current": {
+        "commercial_status": "ready_for_pickup",
+        "operational_stage": "unassigned",
+        "custody_kind": "unknown",
+        "custody_label": "Custody not established"
+      }
+    },
+    "evidence": {
+      "download_path": "/api/v1/rider/handover-issues/1/evidence",
+      "mime_type": "image/png"
+    },
+    "recovery": {
+      "id": "1",
+      "reference": "HRG-DDDD59E3-281C-46E2-B7FC-991C4696C565",
+      "mode": "pickup",
+      "holder_is_me": true,
+      "receiving_hub": {
+        "id": "2",
+        "name": "Los Baños Bayan Hub",
+        "address": "100 Bayan Hub Road"
+      },
+      "expires_at": "2026-10-15T08:57:02.000Z",
+      "acknowledged": false,
+      "closed": false,
+      "blocker": null,
+      "expected_version": 4,
+      "source_token": "aa4fb44f3f19174ed3f357e6ce58c7ddff31ed4e2c5072ca14a5c8b306d5c5b5",
+      "manifest_reference": null,
+      "linked_recovery_reference": null,
+      "actions": {
+        "acknowledge": true
+      }
+    },
+    "history": [
+      {
+        "id": "1",
+        "type": "reported",
+        "actor_role": "seller",
+        "notes": "The actual handover happened without the expected waybill scan.",
+        "recorded_at": "2026-10-14T08:57:01.000Z"
+      },
+      {
+        "id": "2",
+        "type": "confirmed",
+        "actor_role": "logistics",
+        "notes": "The original private evidence and actual known holder were independently checked.",
+        "recorded_at": "2026-10-14T08:57:01.000Z"
+      },
+      {
+        "id": "3",
+        "type": "fulfillment_confirmed",
+        "actor_role": "seller",
+        "notes": "I accepted and packed this original order and confirm the actual omitted readiness step.",
+        "recorded_at": "2026-10-14T08:57:01.000Z"
+      },
+      {
+        "id": "4",
+        "type": "recovery_authorized",
+        "actor_role": "logistics",
+        "notes": "I independently checked this exact physical holder and original receiving route.",
+        "recorded_at": "2026-10-14T08:57:02.000Z"
+      }
+    ]
+  },
+  "request_id": "853c154e-2bab-45d2-9f3f-d281a08911f2"
+}

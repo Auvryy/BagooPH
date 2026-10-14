@@ -1,0 +1,20 @@
+{
+  "data": {
+    "idempotency_key": "96e2e250-1e87-4f98-9661-ffbfaf9b38fc",
+    "action": "handover.report",
+    "resource": "handover-report",
+    "state": "committed",
+    "result": {
+      "issue_id": "1",
+      "reference": "HI-9C9299D8-7DB0-4BCE-A264-845F46FD265C",
+      "state": "pending_review",
+      "version": 1,
+      "held": false
+    },
+    "recorded_at": "2026-10-14T08:57:01.000Z",
+    "expires_at": "2026-10-21T08:57:01.000Z",
+    "retry_expired": false,
+    "replayed": false
+  },
+  "request_id": "97c903c4-8bcb-4281-b59b-157dfbadb64a"
+}

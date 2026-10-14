@@ -10,6 +10,11 @@ Local readiness and actual deployment evidence live in the
 The [sanitized examples](examples/rider-operations/README.md) show exercised success
 shapes and illustrative empty/denied/stale/error responses.
 
+The [handover API](RIDER_HANDOVER_API.md) adds involved reporting, private evidence
+and named-holder acknowledgement over the existing recovery services. These
+methods use the same command journal and error envelope; seller review and hub
+receipt retain their own web authority.
+
 New login/account responses add `operations_api_version: 1` only when existing
 Settings schema, command records, checkpoints and COD accounts are available.
 New tokens receive narrow `rider:operations:read`, `rider:operations:work`,
