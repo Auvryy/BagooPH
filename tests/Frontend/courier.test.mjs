@@ -14,12 +14,15 @@ const bundle = buildSync({
     stdin: {
         contents: `export * from '@/utils/courier';
             export * from '@/utils/codCash';
+            export * from '@/utils/riderCompany';
             export { default as Deliveries } from '@/Pages/Courier/Deliveries';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
             export { default as Messages } from '@/Pages/Courier/Messages';
             export { CourierDutySwitch } from '@/Components/CourierDutyControl';
-            export { CourierSidebarToggle } from '@/Components/CourierSidebar';`,
+            export { CourierSidebarToggle } from '@/Components/CourierSidebar';
+            export { default as CompanyRiderIntake } from '@/Components/CompanyRiderIntake';
+            export { default as CourierCompanyRequests } from '@/Components/CourierCompanyRequests';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx',
     },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -44,6 +47,107 @@ function directionDestinations(html) {
     return [...new Set([...html.matchAll(/href="(https:\/\/www\.google\.com\/maps\/dir\/[^\"]+)"/g)]
         .map((match) => new URL(match[1].replaceAll('&amp;', '&')).searchParams.get('destination')))];
 }
+const companyPage = (data = [], extra = {}) => ({ data, current_page: 1, last_page: 1, total: data.length, prev_page_url: null, next_page_url: null, ...extra });
+const sharedRider = { name: 'Ana Rider', email: 'rider@bagoo.test', phone: '09171234567', city: 'Santa Cruz', province: 'Laguna', vehicle_type: 'motorcycle', approval_status: 'approved' };
+const acceptingCompany = { id: '3', name: 'Bagoo Local Fleet', logo: null, intake_version: 1, areas: [{ city: 'Santa Cruz', province: 'Laguna' }] };
+const joining = (extra = {}) => ({ available: true, can_apply: true, blocked_reason: null,
+    filters: { company_search: '', company_province: '', company_page: 1, request_page: 1 }, provinces: ['Laguna'],
+    companies: companyPage([acceptingCompany]), requests: companyPage(), sharing_summary: sharedRider,
+    request_token: '00000000-0000-4000-8000-000000000003', ...extra });
+
+test('company notes preserve meaningful Unicode and multiline text within normalized boundaries', () => {
+    for (const note of ['', '   ', 'abcde', ' abcde ', "Weekdays\r\nSanta Cruz", "O’Neil's preferred area", 'a'.repeat(500), '𐐀'.repeat(500)]) {
+        assert.equal(ui.companyTextError(note, 5, 500), undefined);
+    }
+    assert.match(ui.companyTextError('abcd', 5, 500), /5–500/);
+    assert.match(ui.companyTextError('0', 5, 500), /5–500/);
+    assert.equal(ui.companyTextError('0', 1, 100), undefined);
+    assert.equal(ui.companyTextError('00000', 5, 500), undefined);
+    assert.match(ui.companyTextError('a'.repeat(501), 5, 500), /500/);
+    assert.match(ui.companyTextError('ﬃ'.repeat(167), 5, 500), /5–500/);
+});
+test('company feedback rejects hidden controls and markup before and after normalization', () => {
+    for (const note of ["\0Valid note", "Valid\t note", "Valid\rnote", "Hidden\u200b note", '<script>text</script>', '＜script＞text＜/script＞', 'javascript: text', 'onload=example', '---', '\u00a0']) {
+        assert.match(ui.companyTextError(note, 5, 500), /plain text/);
+    }
+    assert.equal(ui.companyTextError('Bagoo_%', 1, 100), undefined);
+    assert.equal(ui.companyTextError('a'.repeat(100), 1, 100), undefined);
+    assert.match(ui.companyTextError('a'.repeat(101), 1, 100), /100/);
+});
+test('company area copy uses only recorded localities and never invents coverage', () => {
+    assert.equal(ui.companyAreas([{ city: 'Santa Cruz', province: 'Laguna' }, { city: 'Santa Cruz', province: 'Laguna' }]), 'Santa Cruz, Laguna');
+    assert.equal(ui.companyAreas([{ city: null, province: 'Laguna' }]), 'Laguna');
+    assert.equal(ui.companyAreas([{ city: null, province: null }]), 'Service locality not recorded');
+});
+test('unassigned riders reach company requests in the active Assignment section of Profile', async () => {
+    const html = await renderPage(ui.Profile, 'Profile', {
+        rider: { ...sharedRider, email_verified_at: '2026-10-14T00:00:00Z', account_status: 'active', kyc_status: 'approved' },
+        assignment: { company: null, hub: null, hub_code: null, barangay: null }, vehicle: {},
+        scope: { company: null, hub: null, hubCode: null, isAssigned: false, isOperational: false },
+        isOnline: false, initialTab: 'assignment', companyJoining: joining(),
+    });
+    assert.match(html, /aria-pressed="true" aria-controls="profile-assignment"/);
+    assert.match(html, /<section id="profile-assignment" aria-labelledby="profile-assignment-title">/);
+    assert.match(html, /Bagoo Local Fleet/);
+    assert.match(html, /Request to join/);
+    assert.match(html, /My requests/);
+    assert.match(html, /Service province/);
+    assert.doesNotMatch(html, /Company joined|Accept offer|Apply as buyer/);
+});
+test('a pending company request hides fresh application controls and retains its owned history', async () => {
+    const request = { id: '9', reference: 'RC-TEST', company: { id: '3', name: 'Bagoo Local Fleet' }, status: 'pending', version: 1,
+        note: 'Available weekdays.', shared_profile: sharedRider, sharing_acknowledged: true,
+        submitted_at: '2026-10-14T00:00:00Z', withdrawn_at: null, can_withdraw: true, withdrawal_token: '00000000-0000-4000-8000-000000000009' };
+    const html = await renderPage(ui.CourierCompanyRequests, 'CompanyRequests', { workspace: joining({ can_apply: false,
+        blocked_reason: 'You already have a pending request.', companies: companyPage(), requests: companyPage([request]) }) });
+    assert.match(html, /already have a pending request/);
+    assert.match(html, /Withdraw request/);
+    assert.match(html, /Shared profile/);
+    assert.doesNotMatch(html, /id="rider-company-search"|Request to join/);
+});
+test('an empty company directory and unavailable schema have honest recovery copy', async () => {
+    const empty = await renderPage(ui.CourierCompanyRequests, 'CompanyRequests', { workspace: joining({ companies: companyPage() }) });
+    assert.match(empty, /No companies accepting requests/);
+    assert.match(empty, /No company requests yet/);
+    assert.doesNotMatch(empty, /Request to join/);
+    const unavailable = await renderPage(ui.CourierCompanyRequests, 'CompanyRequests', { workspace: { available: false } });
+    assert.match(unavailable, /Company requests unavailable/);
+    assert.doesNotMatch(unavailable, /Request to join|Submit request/);
+});
+test('company intake starts paused, exposes no fake approval action and is absent for handlers', async () => {
+    const originalRoute = globalThis.route;
+    globalThis.route = (name) => name === 'hub.network' ? '/hub/network' : '/hub/rider-request-intake';
+    try {
+        const html = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace: { available: true, enabled: false,
+            version: 0, history_available: true, has_eligible_hub: true, request_token: '00000000-0000-4000-8000-000000000003', requests: companyPage() } });
+        assert.match(html, /Requests paused/);
+        assert.match(html, /No pending rider requests/);
+        assert.match(html, /type="submit" disabled=""/);
+        assert.doesNotMatch(html, /Approve request|Send offer|Hire rider/);
+        const handler = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace: null });
+        assert.doesNotMatch(handler, /Accept new rider requests/);
+    } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
+});
+test('missing intake history disables settings and missing facility copy prevents implied coverage', async () => {
+    const originalRoute = globalThis.route;
+    globalThis.route = (name) => name === 'hub.network' ? '/hub/network' : '/hub/rider-request-intake';
+    try {
+        const html = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace: { available: true, enabled: true,
+            version: 2, history_available: false, has_eligible_hub: false, request_token: '00000000-0000-4000-8000-000000000003', requests: companyPage() } });
+        assert.match(html, /saved intake decision needs review/);
+        assert.match(html, /needs an eligible facility/);
+        const checkbox = html.match(/<input\b[^>]*type="checkbox"[^>]*>/)?.[0];
+        assert.ok(checkbox);
+        assert.match(checkbox, /disabled=""/);
+        assert.match(checkbox, /checked=""/);
+        assert.match(html, /type="submit" disabled=""/);
+        assert.doesNotMatch(html, />Accepting requests</);
+        const waiting = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace: { available: true, enabled: true,
+            version: 2, history_available: true, has_eligible_hub: false, request_token: '00000000-0000-4000-8000-000000000003', requests: companyPage() } });
+        assert.match(waiting, />Facility needed</);
+        assert.doesNotMatch(waiting, />Accepting requests</);
+    } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
+});
 const pickup = {
     id: 1, trackingNumber: 'BGO-PICKUP', orderNumber: 'BGO-ORDER', status: 'assigned_pickup', itemCount: 2,
     merchant: { name: 'Seller store', address: 'Seller road, Laguna', phone: '09171234567' },

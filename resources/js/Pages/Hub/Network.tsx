@@ -15,6 +15,8 @@ import {
     X,
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import CompanyRiderIntake from '@/Components/CompanyRiderIntake';
+import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 
 interface NetworkScope {
     company_name: string;
@@ -52,13 +54,14 @@ interface Props {
     scope: NetworkScope;
     hubs: HubItem[];
     placementVehicles: { id: number; hub_id: number; plate_number: string; assigned: boolean }[];
+    riderIntake?: Intake | null;
 }
 
 const facilityType = (tier: HubItem['tier']) => (
     tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'
 );
 
-export default function HubNetwork({ scope, hubs, placementVehicles }: Props) {
+export default function HubNetwork({ scope, hubs, placementVehicles, riderIntake }: Props) {
     const placement = useForm({ kind: 'handler', email: '', hub_id: String(scope.active_hub_id ?? ''), current_hub_id: '', vehicle_id: '', barangay: '' });
     const [filterTier, setFilterTier] = useState<'all' | HubItem['tier']>('all');
     const [search, setSearch] = useState('');
@@ -142,6 +145,7 @@ export default function HubNetwork({ scope, hubs, placementVehicles }: Props) {
             <Head title="Facility Network — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <CompanyRiderIntake workspace={riderIntake} />
                 {scope.can_switch_facility && hubs.length > 0 && (
                     <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs" onSubmit={(event) => {
                         event.preventDefault();

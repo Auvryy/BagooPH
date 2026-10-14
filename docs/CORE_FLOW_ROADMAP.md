@@ -4486,3 +4486,82 @@ RC01–RC03, add application routes/tables, change the Flutter app or deploy cod
 Runtime ratings and the last recorded test results remain unchanged. Future
 estimates are planning ranges; selected implementation dates require capacity
 and prerequisite review within the existing November 20 delivery target.
+
+## October 14, 2026 — RC01 company intake and rider requests
+
+Selected [RC01](rider-company-plan/01-company-discovery-and-requests.md) from
+merged `main` at `89c85bf`, on `feat/rider-company-requests`. Approved, unassigned
+riders can now open Profile → Assignment, search eligible companies accepting
+requests, inspect their recorded hub localities and submit one request. Search
+is literal, filters are retained and company/history pages contain 15 records.
+A saved province filter remains readable when the last matching company pauses.
+
+Company owners explicitly open or pause intake from their existing Network
+workspace. Intake starts closed and retains each decision and revision. An
+open preference without an eligible facility says **Facility needed**; it does
+not advertise acceptance. Handlers and Platform Admin cannot act as the owner.
+Owners read only their own pending requests, including the original shared
+profile and a separate indication of current rider eligibility.
+
+The rider confirms sharing name, sign-in email, contact number, locality,
+vehicle type and approval state, with an optional 5–500-character normalized
+note. Private identity/licence/vehicle files, birth date and plate/licence
+numbers are excluded. The server checks raw limits and unsafe text before
+normalization, rejects managed inputs and rechecks current authority under
+ordered locks. A partial unique index enforces one pending request per rider
+across companies. Original submission data and decision/event history are
+immutable; withdrawals require a matching retained receipt.
+
+Owned history survives withdrawal and later profile edits. Identical command
+retries return the original receipt; changed intent or stale revisions conflict.
+Audit failures and eligibility changes during saving roll back the command.
+Approved riders awaiting email verification retain Profile, Privacy and security
+and owned history access; request creation, replay and withdrawal still require
+a currently verified email. A supplied `0` is preserved for validation rather
+than silently becoming an empty note or search.
+
+The UI reuses rider panels, dialogs, 8px controls, blush surfaces and the existing
+Profile navigation. Company controls retain Network's own style. Invalid text
+receives immediate feedback; uncertain saves preserve their intent for checking
+history or retrying. Empty states and current blockers have explicit copy.
+
+| Verification | Evidence |
+|---|---|
+| Final request acceptance | **80 tests / 751 assertions**, all passing in SQLite `:memory:`, including both portal contexts, reload/fresh sign-in, owned reads, sharing, field/page boundaries, stale intake, competing company inputs, exact/changed retries, immutable history and injected rollback failures. |
+| Final request and shared access regression | **317 tests / 4,423 assertions**, zero failures, errors or skips. Includes the final request tests plus courier portal access, shared/guest account access, password updates and private verification documents. |
+| Broader initial implementation regression | **1,960 tests / 61,011 assertions**, zero failures, errors or skips across Logistics, Courier, Auth, identity correction, logistics seeds and courier/subdomain acceptance. This run preceded the final numeric-input/profile-access corrections; those corrections passed the final 317-test run above. |
+| Frontend | **41 courier/company helper and static-rendering tests**, plus **19 hub/account regression tests**, passed. The final `npm run build` passed. Source review retained responsive grouping, labelled controls, focus states and each portal's existing patterns. |
+| Source checks | Scoped Pint passed for the 13 changed PHP files; final service/test changes passed again. Git whitespace and branch-content checks passed. |
+
+**Scoped engineering assessment: company request/intake implementation
+2/10 → 8/10.** Previously riders could read managed assignment details but could
+not request a chosen company. Owned intake, safe sharing, retained requests and
+withdrawal now have local acceptance evidence. This does not raise the overall
+rider/logistics rating or complete mutually accepted company membership.
+
+Rollout requires the additive `2026_10_14_200000_create_rider_company_requests`
+migration. Existing company intake stays closed until its owner enables it;
+existing assignments and seed accounts receive no invented requests or consent.
+No database reset is required. Rollback refuses to discard recorded decisions
+or request history. Development/Azure installation, simultaneous PostgreSQL
+execution and browser/device rendering remain unverified in this delivery.
+
+RC01 stops at pending/withdrawn requests. The existing manual placement form and
+service remain in force; [RC02](rider-company-plan/02-offers-consent-and-placement.md)
+must add offers, rider acceptance and enforce consent across those placement
+paths before the complete joining workflow is ready. Native joining endpoints
+and Flutter acceptance remain [RC03](rider-company-plan/03-native-contract-and-acceptance.md).
+
+Local implementation and review commits:
+
+- `b89647d` — `feat(logistics): retain owned rider company requests`
+- `b5d1c5c` — `feat(portals): add rider requests to Assignment and Network`
+- `f760be8` — `fix(logistics): preserve literal zero in rider request inputs`
+- `65d9db2` — `fix(courier): keep profile access before email verification`
+- `a1bd49f` — `fix(logistics): show when rider intake needs a facility`
+- `18bfc05` — `test(logistics): verify request persistence and record RC01`
+- `dc83c47` — `style(courier): align the sharing control with rider design`
+
+The final evidence commit is reported in the branch handoff. The combined PR
+title/body is a local draft in `.codex/rider-company-requests/PR.md`; it has not
+been saved on GitHub. User publication, merge and deployment are separate steps.
