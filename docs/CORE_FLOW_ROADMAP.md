@@ -4559,6 +4559,8 @@ Local implementation and review commits:
 - `f760be8` — `fix(logistics): preserve literal zero in rider request inputs`
 - `65d9db2` — `fix(courier): keep profile access before email verification`
 - `a1bd49f` — `fix(logistics): show when rider intake needs a facility`
+- `18bfc05` — `test(logistics): verify request persistence and record RC01`
+- `dc83c47` — `style(courier): align the sharing control with rider design`
 
 The final evidence commit is reported in the branch handoff. The combined PR
 title/body is a local draft in `.codex/rider-company-requests/PR.md`; it has not
