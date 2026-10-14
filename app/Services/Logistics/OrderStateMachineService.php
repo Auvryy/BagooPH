@@ -160,6 +160,7 @@ class OrderStateMachineService
             if (in_array($lockedOrder->status, ['cancelled', 'completed', 'returned'], true)) {
                 throw new DomainException('This order is terminal and cannot change parcel custody.');
             }
+            app(HandoverHoldService::class)->assertMovable($lockedDelivery);
 
             $expectedStatus = isset($scanMetadata['expected_status'])
                 ? strtolower(trim((string) $scanMetadata['expected_status']))

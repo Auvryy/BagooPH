@@ -6,10 +6,12 @@ use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HandoverIssue;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Finance\CodMoney;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -76,7 +78,7 @@ class RiderTaskService
     {
         return hash('sha256', json_encode([DeliveryCheckpoint::state($parcel), $parcel->order->status,
             $parcel->order->updated_at?->toISOString(), $parcel->updated_at?->toISOString(),
-            $parcel->checkpoints()->max('id')], JSON_THROW_ON_ERROR));
+            $parcel->checkpoints()->max('id'), HandoverIssue::where('active_delivery_id', $parcel->id)->where('state', 'needs_recovery')->value('version')], JSON_THROW_ON_ERROR));
     }
 
     public function assertVersion(Delivery $parcel, string $version): void
@@ -105,6 +107,8 @@ class RiderTaskService
             'seller' => $parcel->pickup_address, 'buyer' => $parcel->order->shipping_address, default => $hub?->address
         };
         $operational = $this->eligibility->isOperational($actor->courierProfile);
+        $held = app(HandoverHoldService::class)->held($parcel);
+        $operational = $operational && ! $held;
         $assignment = $parcel->checkpoints()->whereNull('source_checkpoint_id')
             ->where('checkpoint_type', $pickup ? 'assigned_pickup' : 'assigned_to_rider')->latest('id')->first();
 
@@ -113,6 +117,7 @@ class RiderTaskService
             'preview' => $preview, 'tracking_number' => $parcel->tracking_number, 'order_number' => $parcel->order->order_number,
             'commercial_status' => $parcel->order->status, 'operational_stage' => $parcel->status,
             'version' => $this->version($parcel), 'observed_at' => RiderApiInput::time(now()),
+            'handover_hold' => $held,
             'custody' => ['kind' => $custody['kind'] ?? 'unknown',
                 'hub_id' => isset($custody['hub_id']) ? (string) $custody['hub_id'] : null,
                 'held_by_me' => ($custody['kind'] ?? null) === 'courier' && ($custody['user_id'] ?? null) === $actor->id],
@@ -128,19 +133,19 @@ class RiderTaskService
             'payment' => $preview || $pickup ? null : ['method' => $parcel->order->payment_method,
                 'cod_due_cents' => $parcel->order->payment_method === 'cod' ? (string) CodMoney::cents($parcel->order->total_amount) : null,
                 'commercial_payment_status' => $parcel->order->payment_status],
-            'actions' => ['claim' => $preview && $this->eligibility->canReceivePickups($actor->courierProfile),
+            'actions' => ['claim' => ! $held && $preview && $this->eligibility->canReceivePickups($actor->courierProfile),
                 'pickup' => Route::has('rider.api.pickup') && ! $preview && $pickup && $operational && in_array($parcel->status, ['assigned', 'assigned_pickup'], true),
                 'depart' => Route::has('rider.api.depart') && ! $pickup && $operational && $parcel->status === 'assigned_to_rider',
                 'deliver' => Route::has('rider.api.deliver') && ! $pickup && $operational && $parcel->status === 'out_for_delivery' && $parcel->order->payment_method === 'cod',
                 'fail' => Route::has('rider.api.fail') && ! $pickup && $operational && $parcel->status === 'out_for_delivery', 'release' => false],
-            'action_denials' => ['release' => 'SHARED_RELEASE_POLICY_UNAVAILABLE',
+            'action_denials' => ['handover' => $held ? 'HANDOVER_HOLD' : null, 'release' => 'SHARED_RELEASE_POLICY_UNAVAILABLE',
                 'deliver' => ! $pickup && $parcel->order->payment_method !== 'cod' ? 'UNSUPPORTED_PAYMENT_OUTCOME' : null],
             'failure_policy' => ! $preview && ! $pickup ? ['attempt_limit' => 3,
                 'recorded_attempts' => DeliveryAttempt::where('delivery_id', $parcel->id)->count(),
                 'reasons' => collect(DeliveryRecoveryService::REASONS)->map(fn ($label, $code) => ['code' => $code, 'label' => $label])->values()->all(),
                 'requires_notes' => true, 'requires_location' => true, 'requires_private_image' => true,
                 'retry_authority' => 'destination_hub', 'return_hub_id' => (string) $parcel->destination_bayan_hub_id] : null,
-            'next_instruction' => match ($stop) {
+            'next_instruction' => $held ? 'This parcel is on a reviewed handover hold. Your company must complete authorized recovery before movement.' : match ($stop) {
                 'seller' => $preview ? 'Claim before collecting this parcel.' : 'Scan the parcel waybill at the seller.',
                 'origin_hub' => 'Bring the parcel to the origin hub. Its handler confirms intake.',
                 'destination_hub' => $parcel->status === 'delivery_failed' ? 'Return the parcel to the destination hub. Its handler records receipt and any retry.' : 'Scan the assigned parcel out of the destination hub.',

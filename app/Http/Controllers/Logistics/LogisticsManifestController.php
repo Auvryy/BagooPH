@@ -8,6 +8,8 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\User;
+use App\Services\Logistics\HandoverHoldService;
+use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\ParcelRecoveryService;
@@ -59,14 +61,24 @@ class LogisticsManifestController extends Controller
             $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
+                'reviewedHold' => app(HandoverHoldService::class)->manifestParcelIds($selected) !== [],
                 'canManage' => $actor->isLogistics() && $company?->id === $selected->logistics_company_id,
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                 'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),
-                'parcels' => $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(fn ($parcel) => [
-                    'id' => $parcel->id, 'tracking_number' => $parcel->tracking_number_snapshot, 'included' => $parcel->included,
-                    'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(),
-                    'receipt_condition' => $parcel->receipt_condition,
-                ]),
+                'parcels' => $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(function ($parcel) use ($actor) {
+                    $receipt = $this->service->correctiveForMember($parcel);
+                    $hold = app(HandoverHoldService::class)->active($parcel->delivery);
+
+                    return ['id' => $parcel->id, 'tracking_number' => $parcel->tracking_number_snapshot, 'included' => $parcel->included,
+                        'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(), 'receipt_condition' => $parcel->receipt_condition,
+                        'corrective_receipt' => $receipt ? ['reference' => $receipt->reference, 'received_at' => $receipt->created_at->toIso8601String()] : null,
+                        'handover_hold' => $hold !== null, 'handover_issue_url' => $hold && app(HandoverIssueService::class)->readable($actor)->whereKey($hold->id)->exists()
+                            ? '/handover-issues/'.$hold->id : null];
+                }),
+                'correctiveReceipts' => $selected->correctiveReceipts()->with('receivedBy')->orderBy('id')->get()->filter(fn ($receipt) => $receipt->supports())
+                    ->map(fn ($receipt) => ['reference' => $receipt->reference, 'tracking_number' => $receipt->tracking_number_snapshot,
+                        'original_member_id' => $receipt->manifest_parcel_id, 'received_at' => $receipt->created_at->toIso8601String(), 'received_by' => $receipt->receivedBy->name,
+                        'original_expected_count' => $receipt->original_expected_count, 'original_received_count' => $receipt->original_received_count])->values(),
                 'discrepancies' => $discrepancies->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'kind' => $event->payload['kind'],
                     'parcel_id' => $event->manifest_parcel_id, 'barcode' => $event->barcode_scanned, 'reason' => $event->reason,
@@ -125,6 +137,7 @@ class LogisticsManifestController extends Controller
     private function summary(LogisticsManifest $manifest): array
     {
         return $manifest->state() + ['type' => $manifest->type, 'included_count' => $manifest->included_count,
+            'receiptCounts' => $this->service->receiptCounts($manifest),
             'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier']),
             'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier']),
             'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driver->name,

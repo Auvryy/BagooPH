@@ -240,6 +240,7 @@ class RestrictedCustodyRecoveryService
         $parcel = Delivery::whereKey($deliveryId)->lockForUpdate()->firstOrFail();
         $parcel->setRelation('order', $order);
         $this->eligibility->lockNetwork($parcel->logistics_company_id, [...$users, $parcel->courier_id, $parcel->assigned_rider_id], [$parcel->origin_bayan_hub_id, $parcel->destination_bayan_hub_id]);
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return $parcel;
     }

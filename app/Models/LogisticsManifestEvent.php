@@ -43,4 +43,9 @@ class LogisticsManifestEvent extends Model
     {
         return $this->hasOne(ParcelRecoveryCase::class, 'observation_event_id');
     }
+
+    public function correctiveReceipt(): HasOne
+    {
+        return $this->hasOne(HandoverManifestReceipt::class, 'manifest_event_id');
+    }
 }

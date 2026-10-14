@@ -17,6 +17,7 @@ use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
 use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -430,6 +431,8 @@ class CourierDeliveryController extends Controller
 
     private function pickupPayload(Delivery $delivery, bool $isAvailable): array
     {
+        $held = app(HandoverHoldService::class)->held($delivery);
+
         return [
             'id' => $delivery->id,
             'trackingNumber' => $delivery->tracking_number,
@@ -444,19 +447,22 @@ class CourierDeliveryController extends Controller
             ],
             'originHub' => $this->hubPayload($delivery->originBayanHub),
             'assignedAt' => $delivery->assigned_at?->toIso8601String(),
-            'nextAction' => $isAvailable
+            'handoverHold' => $held,
+            'nextAction' => $held ? null : ($isAvailable
                 ? 'claim_pickup'
                 : match ($delivery->status) {
                     'assigned', 'assigned_pickup' => 'confirm_pickup',
                     'picked_up' => 'await_origin_hub_scan',
                     default => null,
-                },
+                }),
             'canMessage' => ! $isAvailable && in_array($delivery->status, ['assigned', 'assigned_pickup', 'picked_up'], true),
         ];
     }
 
     private function finalMilePayload(Delivery $delivery): array
     {
+        $held = app(HandoverHoldService::class)->held($delivery);
+
         return [
             'id' => $delivery->id,
             'trackingNumber' => $delivery->tracking_number,
@@ -481,9 +487,10 @@ class CourierDeliveryController extends Controller
             ],
             'destinationHub' => $this->hubPayload($delivery->destinationBayanHub),
             'assignedAt' => $delivery->assigned_at?->toIso8601String(),
-            'nextAction' => $delivery->status === OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER
+            'handoverHold' => $held,
+            'nextAction' => $held ? null : ($delivery->status === OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER
                 ? 'start_delivery'
-                : ($delivery->status === 'delivery_failed' ? 'return_to_hub' : 'complete_delivery'),
+                : ($delivery->status === 'delivery_failed' ? 'return_to_hub' : 'complete_delivery')),
             'failureAttempts' => $delivery->failure_attempts,
             'failureReason' => DeliveryRecoveryService::REASONS[$delivery->failure_reason] ?? $delivery->failure_reason,
             'canMessage' => true,

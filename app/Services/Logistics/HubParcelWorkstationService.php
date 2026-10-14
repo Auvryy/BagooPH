@@ -167,6 +167,13 @@ class HubParcelWorkstationService
         $next = fn (string $step, string $responsible, string $action = 'wait', bool $canAct = false, ?string $path = null, ?string $blocker = null): array => [...$guide, 'next_step' => $step, 'responsible' => $responsible, 'action' => $action, 'can_act' => $canAct,
             'href' => $canAct && $path ? $base.$path.'?hub_id='.$hub->id : null, 'blocker' => $blocker];
 
+        if ($held = app(HandoverHoldService::class)->active($parcel)) {
+            $readable = app(HandoverIssueService::class)->readable($actor)->whereKey($held->id)->exists();
+
+            return [...$guide, 'next_step' => 'Continue supervised handover recovery', 'responsible' => 'Independent reviewer, named holder and receiving hub handler',
+                'blocker' => 'Ordinary parcel actions are paused until the actual recovery receipt.', 'action' => 'recovery',
+                'can_act' => $readable, 'href' => $readable ? '/handover-issues/'.$held->id : null];
+        }
         if (($custody['kind'] ?? 'unknown') === 'unknown') {
             return $next('Review missing custody evidence', 'Company administrator', blocker: 'No retained custody checkpoint establishes the parcel holder. A status or assignment cannot replace a handover.');
         }

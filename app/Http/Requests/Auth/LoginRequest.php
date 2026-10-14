@@ -4,6 +4,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Models\User;
 use App\Services\Finance\CodCashService;
+use App\Services\Logistics\HandoverRecoveryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -61,7 +62,8 @@ class LoginRequest extends FormRequest
         $appDomain = env('APP_DOMAIN', 'bagooph.shop');
         $roleMismatch = null;
 
-        if ($this->is('custody-recovery/sign-in') && app(RestrictedCustodyRecoveryService::class)->ownGrants($user)) {
+        if ($this->is('custody-recovery/sign-in') && (app(RestrictedCustodyRecoveryService::class)->ownGrants($user)
+            || app(HandoverRecoveryService::class)->restrictedOwn($user))) {
             RateLimiter::clear($this->throttleKey());
 
             return;

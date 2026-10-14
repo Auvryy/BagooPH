@@ -469,6 +469,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             : 'bg-white border-slate-200/90 shadow-2xs'
                                     }`}
                                 >
+                                    {item.order.handover_hold && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><p>Handover hold: complete supervised recovery before ordinary order work continues.</p><Link href="/handover-issues" className="font-semibold underline underline-offset-4">Open recovery</Link></div>}
                                     {/* Order Top Bar */}
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2.5 border-b border-slate-100 text-xs">
                                         <div className="flex items-center gap-2 flex-wrap">

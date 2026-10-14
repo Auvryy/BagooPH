@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\HandoverIssue;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\HandoverIssueService;
+use App\Services\Logistics\HandoverRecoveryService;
+use App\Services\Logistics\HubHandoverRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,13 +22,13 @@ class HandoverIssueController extends Controller
 
     public function index(Request $request): Response
     {
-        $filters = $request->validate(['status' => ['sometimes', Rule::in(['open', 'dismissed', 'all'])],
+        $filters = $request->validate(['status' => ['sometimes', Rule::in(['open', 'recovered', 'dismissed', 'all'])],
             'page' => ['sometimes', new AsciiPositiveInteger, 'integer', 'min:1', 'max:1000000']]);
         $status = $filters['status'] ?? 'open';
         $actor = $this->service->actor($request->user());
         $query = $this->service->readable($actor);
         if ($status !== 'all') {
-            $status === 'open' ? $query->whereNotNull('active_delivery_id') : $query->where('state', 'dismissed');
+            $status === 'open' ? $query->whereNotNull('active_delivery_id') : $query->where('state', $status);
         }
         $issues = $query->with(['delivery.order', 'reporter'])->latest('id')->paginate(15)->withQueryString()
             ->through(fn ($issue) => $this->summary($issue));
@@ -46,6 +48,8 @@ class HandoverIssueController extends Controller
             'original' => $issue->source_snapshot, 'current' => $current, 'source_token' => $this->service->sourceToken($current),
             'can_review' => $issue->state === 'pending_review' && $this->service->canReview($request->user(), $issue),
             'evidence_url' => '/handover-issues/'.$issue->id.'/evidence',
+            'recovery' => app(HandoverRecoveryService::class)->detail($request->user(), $issue),
+            'hub_recovery' => app(HubHandoverRecoveryService::class)->detail($request->user(), $issue),
             'events' => $issue->events->map(fn ($event) => ['id' => $event->id, 'type' => $event->event_type,
                 'actor_name' => $event->actor?->name, 'actor_role' => $event->actor_role, 'notes' => $event->notes,
                 'created_at' => $event->created_at->toIso8601String(), 'parcel_snapshot' => $event->parcel_snapshot]),

@@ -91,6 +91,7 @@ Scoped scanner/counter queue completion: October 11, 2026. The scanner now uses 
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. The October 10 recovery batch adds company-authorized intake and actual recovery manifests for recognized unexpected/wrong-hub parcels, retaining the original route and receiving obligation. Unknown parcels, unsupported restricted-resource recovery, deployed acceptance and simultaneous PostgreSQL verification remain separate. |
+| Reviewed missed-handover recovery | Implemented; locally verified | H01 reporting, H02 seller/rider holds and H03 hub/manifest corrective receipts preserve actual custody, original transport evidence, Mother Hub routes and truthful arrival counts. The October 14 H03 review records the green full regression and remaining H04 native, PostgreSQL simultaneous-request, device and deployment boundaries. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
@@ -4222,3 +4223,154 @@ Local implementation commits: `f96adb3 Plan handover reporting and controlled
 recovery`; `c102421 Add private handover reports and independent review`;
 `6bd05a2 Connect handover issue reporting to each staff portal`. The combined PR
 is a local draft; publication and later planned batches remain separate work.
+
+## October 13, 2026 — H02 reviewed holds and seller/rider handover recovery
+
+The `feat/pickup-handover-recovery` branch implements
+[H02](handover-plan/02-pickup-recovery.md) under its
+[writer and receipt contract](handover-plan/02-writer-and-receipt-contract.md).
+An independently confirmed H01 report now holds ordinary parcel movement;
+an unreviewed report does not. Seller fulfillment/cancellation, rider claims
+and outcomes, hub scans, manifests, counter collection and competing recovery
+writers enforce the same hold. Observation, scoped reading and existing cash
+responsibilities remain available. Counter reminder and seven-day expiry
+processing retain their existing calendar rules.
+
+Recovery covers a missing seller readiness record, a missed pickup and a missed
+destination-hub departure. An eligible independent reviewer authorizes a known
+holder and the original receiving hub. Missing seller acceptance, packing and
+readiness require the owning seller's explicit commercial confirmation. The
+holder acknowledges actual possession with the matching waybill; an eligible
+handler then records actual receipt at the designated hub. The hold clears
+only with that receipt. Unknown possession and unsupported sources stay held.
+
+All corrective events use the current server time and retain their original
+source and authorization. Existing checkpoints are preserved; no old readiness,
+assignment or scan is fabricated. Ordinary routing resumes through the required
+Mother Hub after actual receipt. Stock, purchased prices, cash responsibilities
+and buyer-only completion retain their existing rules. Inactive or suspended
+holders get only their own valid recovery acknowledgement and receipt status;
+they do not regain ordinary portal or native access.
+
+Authorizations expire after 24 hours and bind the current parcel, purchased
+items, route, original evidence and account/network authority. Changed sources,
+missing or altered evidence, lost authority, wrong waybills and stale versions
+prevent new corrective work. Withdrawal and expiry keep the hold. Fresh
+authorization can continue a valid acknowledged handover without replaying its
+past movement. Exact retries preserve committed results; competing intents and
+receipt failures leave no partial custody correction. Reporting events and new
+authorization records remain immutable, including after SQLite schema changes.
+
+Seller, rider, hub and admin pages use their existing shells and show only
+permitted recovery actions, required confirmations and field feedback. The
+restricted holder page shows only owned grants. Buyer/public tracking uses a
+general hold explanation without private evidence or authorization details.
+Existing native task flags and movement commands also enforce the hold; this
+branch adds no native reporting/recovery endpoint and changes no Flutter code.
+
+Verification:
+
+- Focused recovery run: **65 tests / 5,149 assertions**, covering supported
+  handovers, both receipt parties, omitted fulfillment, rejected inputs,
+  authority/source/evidence changes, restricted access, expiry/withdrawal,
+  retries, competing receipts, rollback and held writers through web/native
+  services. The route resumes with original commercial and custody evidence.
+- Full Docker backend run: **3,744 tests / 91,971 assertions**, all passing,
+  with no skips. Every test used isolated SQLite `:memory:`; no PostgreSQL
+  development or production database was used for tests.
+- All **229 frontend checks**, the TypeScript/Vite production build, changed
+  PHP style checks, documentation links and whitespace checks passed.
+- The additive local PostgreSQL migration succeeded. Before/after counts remain
+  **9 accounts, 1 shop, 17 products, 17 visible products, 3 orders and 3 parcels**.
+  No reset or reseed was performed. No demo handover reports or grants were
+  created in that database.
+
+**Scoped assessment: missed seller/rider handover recovery 2/10 -> 8.5/10
+locally.** Previously, a reviewed report could identify the problem without
+preventing conflicting work or recording a controlled actual receipt. Staff now
+have an enforced hold, independent authorization and accountable two-party
+recovery. This does not raise overall logistics readiness: H03 hub/manifest
+repair, H04 native integration, simultaneous PostgreSQL requests, rendered
+browser/device interactions and Azure deployment remain outside this evidence.
+Apply ordinary migrations when deploying; no database reset is required.
+
+Local implementation commits: `b14a2bf Define the H02 hold and actual receipt
+contract`; `19ddd9b Enforce reviewed handover holds across shared parcel
+workflows`; `1655891 Recover seller and rider handovers through actual named-hub
+receipts`; `9929d14 Guide each portal through authorized handover recovery`.
+The combined PR title/body remains a local draft; publication and later planned
+batches remain separate work.
+
+## October 14, 2026 — H03 actual hub and corrective manifest recovery
+
+The `feat/hub-handover-recovery` branch implements
+[H03](handover-plan/03-hub-recovery.md) under its
+[writer and receipt contract](handover-plan/03-writer-and-receipt-contract.md).
+It starts from the locally completed H02 branch; publication remains a separate
+user action. Reviewed missed origin intake, correct-facility final-mile handover,
+manifest loading/departure/receipt and failed-delivery return now have an actual
+receipt path. Unknown custody and missing original transport evidence stay held.
+
+Independent company or platform authorization names the known holder and fixes
+the original source, facility and route. The holder acknowledges current
+possession; another eligible assigned handler records actual matching-waybill
+receipt. Restricted holders retain only their own recovery access. Authorization
+does not grant ordinary hub permissions. Acknowledged possession blocks new
+rider work and account closure until an actual later custody receipt; expiry or
+withdrawal cannot manufacture release from that responsibility.
+
+Immutable corrective manifest receipts preserve the original list, original
+member when present, vehicle/driver, source snapshot, before-recovery counts and
+missing or recorded lifecycle timestamps. Unlisted receipts remain separate
+from the original expected count. A held unlisted parcel also holds its selected
+manifest's batch changes. Other unheld expected parcels may still be received.
+Partial arrival cannot imply complete receipt. Reviewed closure requires every
+original included obligation to have actual receipt evidence and every remaining
+discrepancy to have its supporting resolution; it records closure now.
+
+Existing wrong-hub recovery continues only under the exact linked observation
+and case, original guards and real Mother Hub route. Actual corrective receipts
+can also continue frozen reverse transport. Neither path invents loading,
+departure or past receipt scans. Changed evidence, accounts, facilities,
+commercial facts, route or recorded personnel invalidate new corrective work.
+Exact committed retries return their original result; changed submissions,
+stale versions and failed writes cannot leave partial receipt evidence.
+
+Portal guidance uses the existing role shells and separates original records,
+actual corrective receipts, unlisted arrivals and outstanding obligations.
+Stock, purchased prices, COD responsibility and buyer-only completion remain
+separate. Public tracking exposes no private report or authorization evidence.
+H03 changes no Flutter files and adds no native reporting/recovery endpoint;
+[H04](handover-plan/04-native-contract.md) remains a separate integration batch.
+
+Verification:
+
+- Focused recovery run: **54 tests / 4,766 assertions**, all passing. It covers
+  missed load/departure/receipt, restricted and failed-return routes, linked
+  original recovery, partial counts, held writers, authority/source changes,
+  expiry/withdrawal, exact retries, competing submissions, rollback, immutable
+  history, scoped forms and cash/buyer separation.
+- Full Docker backend run: **3,798 tests / 96,737 assertions**, all passing,
+  with no errors or skips. Every test used isolated SQLite `:memory:`; no
+  development or production PostgreSQL database was used for tests.
+- All **236 frontend checks**, the TypeScript/Vite production build and changed
+  PHP style, documentation links and whitespace checks passed. Rendered
+  browser/device testing was not performed.
+- The additive local PostgreSQL migration succeeded. Before/after audits retained
+  **9 accounts, 1 shop, 17 products, 17 visible products, 3 orders and 3 parcels**.
+  The new corrective-receipt table has no demo records. No database reset,
+  reseed or PostgreSQL test was run.
+
+**Scoped assessment: missed hub/manifest handover recovery 2/10 -> 8.5/10
+locally.** Staff can now recover a known physical handover through independent
+authorization and actual receipt while preserving transport history and truthful
+counts. This assessment does not raise overall logistics or native integration
+readiness. Simultaneous PostgreSQL requests, rendered device interactions and
+Azure deployment remain unverified. Deploy with ordinary migrations; no fresh
+database is required.
+
+Local implementation commits: `7d1790b Define the H03 corrective receipt and
+manifest evidence contract`; `8432c9a Recover actual hub and manifest handovers
+without rewriting transport history`; `1efd179 Guide supervised hub recovery
+and show actual manifest receipt counts`. The combined PR title/body remains
+a local draft; user publication and H04 are separate actions.

@@ -5,6 +5,7 @@ namespace App\Services\Logistics;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HandoverManifestReceipt;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
@@ -66,6 +67,15 @@ class LogisticsManifestService
             'direction' => ['required', Rule::in(['outbound', 'return', 'recovery'])],
             'parcel_recovery_case_id' => ['exclude_unless:direction,recovery', ...$this->idRules()],
         ])->validate();
+        if ($input['direction'] === 'recovery') {
+            $case = ParcelRecoveryCase::findOrFail($input['parcel_recovery_case_id']);
+            $parcel = Delivery::findOrFail($case->delivery_id);
+            if (app(HandoverHoldService::class)->requiresReviewedRecovery($parcel)) {
+                return app(HandoverHoldService::class)->runLinkedRecovery($parcel, $actor, $case->observation,
+                    fn () => $this->create($actor, $input, $issuedToken),
+                    [LogisticsFleet::whereKey($input['vehicle_id'])->value('assigned_driver_id')]);
+            }
+        }
         $fingerprint = $this->fingerprint($input);
 
         return DB::transaction(function () use ($actor, $company, $input, $issuedToken, $fingerprint) {
@@ -99,6 +109,7 @@ class LogisticsManifestService
             }
             if ($recovery) {
                 $recovery = ParcelRecoveryCase::whereKey($recovery->id)->lockForUpdate()->firstOrFail();
+                app(HandoverHoldService::class)->assertMovable($recoveryParcel);
                 abort_unless($recovery->logistics_company_id === $company->id, 403);
                 if ($recoveryParcel->current_hub_id !== (int) $input['source_hub_id']
                     || app(ParcelRecoveryService::class)->nextHub($recovery, $recoveryParcel) !== (int) $input['destination_hub_id']) {
@@ -143,15 +154,24 @@ class LogisticsManifestService
             'kind' => ['nullable', Rule::in(['missing', 'extra', 'duplicate', 'damaged', 'wrong_hub'])],
             'source_event_id' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1']];
         $input = Validator::make($input, $rules)->validate() + ['notes' => null, 'barcode' => null, 'parcel_id' => null, 'condition' => null, 'kind' => null, 'source_event_id' => null];
-        if (! in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive', 'close', 'report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true)) {
+        if (! in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive', 'close', 'close-recovery', 'report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true)) {
             throw ValidationException::withMessages(['action' => 'Choose a supported manifest action.']);
         }
         $candidate = in_array($action, ['load', 'receive'], true) ? $this->parcelForBarcode($input['barcode']) : null;
         $fingerprint = $this->fingerprint(['action' => $action, ...$input]);
+        if ($snapshot->direction === 'recovery') {
+            $case = ParcelRecoveryCase::findOrFail($snapshot->parcel_recovery_case_id);
+            $parcel = Delivery::findOrFail($case->delivery_id);
+            if (app(HandoverHoldService::class)->requiresReviewedRecovery($parcel)) {
+                return app(HandoverHoldService::class)->runLinkedRecovery($parcel, $actor, $case->observation,
+                    fn () => $this->command($snapshot, $actor, $action, $input), [$snapshot->driver_id]);
+            }
+        }
 
         return DB::transaction(function () use ($snapshot, $actor, $action, $input, $candidate, $fingerprint) {
             $initialIds = $snapshot->parcels()->orderBy('delivery_id')->pluck('delivery_id')->all();
-            $deliveryIds = collect([...$initialIds, $candidate?->id])->filter()->unique()->sort()->values();
+            $heldManifestIds = app(HandoverHoldService::class)->manifestParcelIds($snapshot);
+            $deliveryIds = collect([...$initialIds, ...$heldManifestIds, $candidate?->id])->filter()->unique()->sort()->values();
             $orderIds = Delivery::whereIn('id', $deliveryIds)->pluck('order_id')->unique()->sort()->values();
             Order::whereIn('id', $orderIds)->orderBy('id')->lockForUpdate()->get();
             $deliveries = Delivery::whereIn('id', $deliveryIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -166,6 +186,9 @@ class LogisticsManifestService
             }
             $actor = User::findOrFail($actor->id);
             $this->authorizeCommand($manifest, $actor, $action);
+            if (app(HandoverHoldService::class)->manifestParcelIds($manifest) !== $heldManifestIds) {
+                throw new DomainException('The reviewed manifest hold changed. Refresh its actual recovery source.');
+            }
             $original = $manifest->events()->where('request_token', $input['request_token'])->first();
             if ($original) {
                 if ($original->actor_id !== $actor->id || ! hash_equals($original->request_fingerprint, $fingerprint)) {
@@ -176,6 +199,17 @@ class LogisticsManifestService
             }
             if ($manifest->version !== (int) $input['version']) {
                 throw new DomainException('The manifest changed. Refresh its current list and state before continuing.');
+            }
+            if (in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch'], true) && $manifest->correctiveReceipts()->exists()) {
+                throw new DomainException('Corrective receipts retain the original list and departure history. Resolve its remaining receipts and use reviewed closure.');
+            }
+            if (! in_array($action, ['report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true)) {
+                foreach ($deliveries as $parcel) {
+                    if ($parcel->id === $candidate?->id || ($action !== 'receive'
+                        && (in_array($parcel->id, $heldManifestIds, true) || $manifest->parcels()->where('delivery_id', $parcel->id)->where('included', true)->exists()))) {
+                        app(HandoverHoldService::class)->assertMovable($parcel);
+                    }
+                }
             }
             $before = $manifest->state();
             $parcel = null;
@@ -261,7 +295,7 @@ class LogisticsManifestService
                     if (! $parcel) {
                         throw ValidationException::withMessages(['barcode' => 'This parcel is not on the arriving manifest. Record the discrepancy separately.']);
                     }
-                    if ($parcel->received_at) {
+                    if ($parcel->received_at || $this->correctiveForMember($parcel)) {
                         throw new DomainException('This parcel already has its original receiving scan.');
                     }
                     $delivery = $deliveries->get($parcel->delivery_id);
@@ -302,9 +336,12 @@ class LogisticsManifestService
                             throw ValidationException::withMessages(['barcode' => 'A missing parcel has no receiving scan. Choose its expected list entry.']);
                         }
                         $parcel = $manifest->parcels()->whereKey($input['parcel_id'])->where('included', true)->whereNull('received_at')->first();
+                        if ($parcel && $this->correctiveForMember($parcel)) {
+                            throw new DomainException('This expected parcel already has its actual corrective receipt.');
+                        }
                     } elseif (in_array($input['kind'], ['damaged', 'duplicate'], true)) {
                         $parcel = $manifest->parcels()->where('tracking_number_snapshot', $input['barcode'])->where('included', true)->first();
-                        if ($parcel && (($input['kind'] === 'duplicate') !== (bool) $parcel->received_at)) {
+                        if ($parcel && (($input['kind'] === 'duplicate') !== (bool) ($parcel->received_at || $this->correctiveForMember($parcel)))) {
                             throw new DomainException('This observation does not match the original parcel receipt.');
                         }
                     } else {
@@ -334,11 +371,12 @@ class LogisticsManifestService
                         throw new DomainException('Only an observed waybill recording error uses a correction scan.');
                     }
                     $parcel = $manifest->parcels()->where('tracking_number_snapshot', $input['barcode'])->where('included', true)->whereNotNull('received_at')->first();
-                    if (! $parcel) {
+                    $corrective = $manifest->correctiveReceipts()->where('tracking_number_snapshot', $input['barcode'])->get()->first(fn ($receipt) => $receipt->supports());
+                    if (! $parcel && ! $corrective) {
                         throw new DomainException('A correction requires the actual correctly identified parcel and its receiving record. Extra parcels remain unresolved until supported handling exists.');
                     }
                     $hubId = $manifest->destination_hub_id;
-                    $payload = ['source_event_id' => $source->id, 'kind' => 'waybill_recording_error'];
+                    $payload = ['source_event_id' => $source->id, 'kind' => 'waybill_recording_error', 'corrective_receipt_id' => $corrective?->id];
                     break;
                 case 'resolve-discrepancy':
                     $this->requireArriving($manifest);
@@ -351,12 +389,26 @@ class LogisticsManifestService
                         if ($source->payload['kind'] !== 'duplicate' && $support?->id <= $source->id) {
                             $support = null;
                         }
+                    } elseif ($parcel && ($corrective = $this->correctiveForMember($parcel))) {
+                        $support = $corrective->manifestEvent;
+                        if ($source->payload['kind'] !== 'duplicate' && $support->id <= $source->id) {
+                            $support = null;
+                        }
                     } elseif (! $parcel) {
                         $correction = $manifest->events()->where('event_type', 'correct-discrepancy')->get()
                             ->first(fn ($event) => ($event->payload['source_event_id'] ?? null) === $source->id);
                         if ($correction) {
                             $parcel = $manifest->parcels()->whereKey($correction->manifest_parcel_id)->whereNotNull('received_at')->first();
                             $support = $parcel ? $correction : null;
+                            if (! $support && isset($correction->payload['corrective_receipt_id'])) {
+                                $corrective = $manifest->correctiveReceipts()->find($correction->payload['corrective_receipt_id']);
+                                $support = $corrective?->supports() ? $correction : null;
+                            }
+                        }
+                        if (! $support) {
+                            $corrective = $manifest->correctiveReceipts()->where('tracking_number_snapshot', $source->barcode_scanned)
+                                ->get()->first(fn ($receipt) => $receipt->supports() && $receipt->manifestEvent->id > $source->id);
+                            $support = $corrective?->manifestEvent;
                         }
                         if (! $support) {
                             $completion = $manifest->events()->where('event_type', 'recovery-completed')->get()
@@ -373,20 +425,31 @@ class LogisticsManifestService
                     $payload = ['source_event_id' => $source->id, 'support_event_id' => $support->id, 'support_reference' => $support->reference];
                     break;
                 case 'close':
-                    $this->requireStatus($manifest, 'received');
-                    if ($manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
-                        throw new DomainException('Every included parcel needs its actual receiving scan before closure.');
+                case 'close-recovery':
+                    if ($action === 'close') {
+                        $this->requireStatus($manifest, 'received');
+                    } else {
+                        $this->requireNotes($input);
+                        if (! in_array($manifest->status, ['draft', 'sealed', 'dispatched', 'received'], true) || ! $manifest->correctiveReceipts()->exists()) {
+                            throw new DomainException('Reviewed closure requires retained corrective receipts on an open original manifest.');
+                        }
                     }
                     if ($this->openDiscrepancies($manifest)->isNotEmpty()) {
                         throw new DomainException('Resolve every recorded discrepancy with supporting evidence before closure.');
                     }
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
+                        if ($corrective = $this->correctiveForMember($member)) {
+                            continue;
+                        }
                         $receipt = $manifest->events()->where('manifest_parcel_id', $member->id)->where('event_type', 'parcel_received')->first();
-                        if (! $receipt || $receipt->actor_id !== $member->received_by_id || $receipt->hub_id !== $manifest->destination_hub_id
+                        if (! $member->received_at || ! $receipt || $receipt->actor_id !== $member->received_by_id || $receipt->hub_id !== $manifest->destination_hub_id
                             || ! DeliveryCheckpoint::where('delivery_id', $member->delivery_id)->where('manifest_number', $manifest->reference)
                                 ->get()->contains(fn ($checkpoint) => ($checkpoint->custody_after['manifest_scan_reference'] ?? null) === $receipt->reference)) {
                             throw new DomainException('The original receiving event and custody checkpoint must support every parcel receipt before closure.');
                         }
+                    }
+                    if ($manifest->correctiveReceipts()->get()->contains(fn ($receipt) => ! $receipt->supports())) {
+                        throw new DomainException('Every corrective receipt must retain its actual authorization and custody evidence.');
                     }
                     $manifest->fill(['status' => 'closed', 'closed_at' => now()]);
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
@@ -422,8 +485,7 @@ class LogisticsManifestService
             return $this->expectedHub($delivery, $delivery->origin_mother_hub_id, 'regional_mother_hub');
         }
         if ($delivery->status === OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL && $source->isMotherHub()) {
-            if (! LogisticsManifestEvent::where('event_type', 'parcel_received')->where('hub_id', $source->id)
-                ->whereHas('parcel', fn ($query) => $query->where('delivery_id', $delivery->id))->exists()) {
+            if (! $this->actualHubReceipt($delivery, $source->id)) {
                 throw new DomainException('The Mother Hub needs its actual manifest receipt before further departure.');
             }
             if ($delivery->current_hub_id === $delivery->origin_mother_hub_id) {
@@ -437,6 +499,33 @@ class LogisticsManifestService
         }
 
         throw new DomainException('The parcel must complete its expected inbound receipt and Mother Hub sorting before departure.');
+    }
+
+    public function correctiveForMember(LogisticsManifestParcel $member): ?HandoverManifestReceipt
+    {
+        return HandoverManifestReceipt::where('manifest_id', $member->manifest_id)->where('manifest_parcel_id', $member->id)
+            ->get()->first(fn ($receipt) => $receipt->supports());
+    }
+
+    public function actualHubReceipt(Delivery $delivery, int $hubId): ?LogisticsManifestEvent
+    {
+        $normal = LogisticsManifestEvent::where('event_type', 'parcel_received')->where('hub_id', $hubId)
+            ->whereHas('parcel', fn ($query) => $query->where('delivery_id', $delivery->id))->first();
+
+        return $normal ?? HandoverManifestReceipt::where('delivery_id', $delivery->id)->where('hub_id', $hubId)
+            ->get()->first(fn ($receipt) => $receipt->supports())?->manifestEvent;
+    }
+
+    public function receiptCounts(LogisticsManifest $manifest): array
+    {
+        $members = $manifest->parcels()->where('included', true)->get();
+        $corrective = $manifest->correctiveReceipts()->get()->filter(fn ($receipt) => $receipt->supports());
+        $normalIds = $members->whereNotNull('received_at')->pluck('id');
+        $correctiveIds = $corrective->whereNotNull('manifest_parcel_id')->pluck('manifest_parcel_id')->intersect($members->pluck('id'))->diff($normalIds);
+
+        return ['expected' => $members->count(), 'normal_received' => $normalIds->count(), 'corrective_expected_received' => $correctiveIds->count(),
+            'unlisted_received' => $corrective->whereNull('manifest_parcel_id')->count(),
+            'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count()];
     }
 
     private function expectedHub(Delivery $delivery, ?int $id, string $tier): int
@@ -496,7 +585,7 @@ class LogisticsManifestService
 
     private function authorizeCommand(LogisticsManifest $manifest, User $actor, string $action): void
     {
-        if (in_array($action, ['remove', 'seal', 'reopen', 'close', 'resolve-discrepancy'], true)) {
+        if (in_array($action, ['remove', 'seal', 'reopen', 'close', 'close-recovery', 'resolve-discrepancy'], true)) {
             if (! $this->eligibility->isCompanyAdministrator($actor, $manifest->logistics_company_id)) {
                 throw new AuthorizationException('Only this company administrator may manage its manifest list and closure.');
             }
@@ -519,7 +608,8 @@ class LogisticsManifestService
 
     private function requireArriving(LogisticsManifest $manifest): void
     {
-        if (! in_array($manifest->status, ['dispatched', 'received'], true)) {
+        if (! in_array($manifest->status, ['dispatched', 'received'], true)
+            && (! in_array($manifest->status, ['draft', 'sealed'], true) || ! $manifest->correctiveReceipts()->get()->contains(fn ($receipt) => $receipt->supports()))) {
             throw new DomainException('Discrepancy handling requires an arriving or received manifest.');
         }
     }

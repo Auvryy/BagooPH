@@ -35,6 +35,7 @@ use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\HandoverIssueController;
+use App\Http\Controllers\Logistics\HandoverRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\ParcelRecoveryController;
@@ -46,12 +47,12 @@ use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
-use App\Http\Controllers\Seller\SellerDisputeController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
@@ -131,6 +132,12 @@ Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handov
     Route::get('/{issue}', [HandoverIssueController::class, 'show'])->whereNumber('issue')->name('show');
     Route::get('/{issue}/evidence', [HandoverIssueController::class, 'evidence'])->whereNumber('issue')->name('evidence');
     Route::post('/{issue}/review', [HandoverIssueController::class, 'review'])->whereNumber('issue')->middleware('throttle:20,1')->name('review');
+    Route::post('/{issue}/confirm-fulfillment', [HandoverRecoveryController::class, 'fulfillment'])->whereNumber('issue')->middleware('throttle:10,1')->name('fulfillment');
+    Route::post('/{issue}/authorize-recovery', [HandoverRecoveryController::class, 'authorize'])->whereNumber('issue')->middleware('throttle:10,1')->name('authorize');
+    Route::post('/{issue}/authorize-hub-recovery', [HandoverRecoveryController::class, 'authorizeHub'])->whereNumber('issue')->middleware('throttle:10,1')->name('authorize-hub');
+    Route::post('/recovery/{recoveryGrant}/acknowledge', [HandoverRecoveryController::class, 'acknowledge'])->whereNumber('recoveryGrant')->middleware('throttle:20,1')->name('acknowledge');
+    Route::post('/recovery/{recoveryGrant}/receive', [HandoverRecoveryController::class, 'receive'])->whereNumber('recoveryGrant')->middleware('throttle:20,1')->name('receive');
+    Route::post('/recovery/{recoveryGrant}/withdraw', [HandoverRecoveryController::class, 'withdraw'])->whereNumber('recoveryGrant')->middleware('throttle:10,1')->name('withdraw');
 });
 
 Route::middleware('auth')->group(function () {
@@ -168,6 +175,7 @@ Route::middleware(['auth', 'verified'])->prefix('custody-recovery')->name('custo
     Route::post('/work/{work}', [RestrictedCustodyRecoveryController::class, 'grant'])->name('grant');
     Route::post('/{grant}/handover', [RestrictedCustodyRecoveryController::class, 'acknowledge'])->name('acknowledge');
     Route::post('/{grant}/receipt', [RestrictedCustodyRecoveryController::class, 'receive'])->name('receive');
+    Route::post('/handover/{recoveryGrant}/acknowledge', [HandoverRecoveryController::class, 'acknowledge'])->whereNumber('recoveryGrant')->middleware('throttle:20,1')->name('handover.acknowledge');
 });
 
 Route::get('/storage/kyc_documents/{path?}', fn () => abort(404))->where('path', '.*');
@@ -300,7 +308,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
-            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy');
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
         Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index']);
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve']);
@@ -670,7 +678,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
-            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
         Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index'])->name('recovery.index');
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve'])->name('recovery.retry');

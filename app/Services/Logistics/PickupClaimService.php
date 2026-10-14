@@ -282,6 +282,7 @@ class PickupClaimService
         $parcel = Delivery::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
         $parcel->setRelation('order', $order);
         $this->eligibility->lockNetwork($parcel->logistics_company_id, [$actor->id, $order->buyer_id], [$parcel->destination_bayan_hub_id]);
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return [$parcel, User::findOrFail($actor->id)];
     }
@@ -297,6 +298,9 @@ class PickupClaimService
 
     public function collectionBlocker(Delivery $parcel, LogisticsHub $hub): ?string
     {
+        if (app(HandoverHoldService::class)->held($parcel)) {
+            return 'Complete the reviewed handover recovery before releasing this parcel.';
+        }
         $claim = $parcel->pickupClaim;
         if (! $claim || ! $this->matchesClaim($parcel, $claim) || $claim->hub_id !== $hub->id || ! $hub->allows_self_pickup) {
             return 'This parcel needs its original staging and claim at an enabled destination counter.';

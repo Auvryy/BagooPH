@@ -29,4 +29,9 @@ class ParcelRecoveryEvent extends Model
     {
         return $this->belongsTo(User::class, 'actor_id');
     }
+
+    public function manifestEvent(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsManifestEvent::class, 'manifest_event_id');
+    }
 }

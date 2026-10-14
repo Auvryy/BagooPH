@@ -66,6 +66,7 @@ class DeliveryReturnService
 
     private function freeze(Delivery $parcel, User $actor, DeliveryCheckpoint $source): DeliveryReturnRoute
     {
+        app(HandoverHoldService::class)->assertMovable($parcel);
         $route = $this->forwardRoute($parcel);
         $hubs = [$route['origin_bayan_hub_id'], $route['origin_mother_hub_id']];
         if ($route['destination_mother_hub_id'] !== $route['origin_mother_hub_id']) {
@@ -137,7 +138,9 @@ class DeliveryReturnService
                     && ($custody['parcel_recovery_reference'] ?? null) === $case->reference
                     && $case->events()->where('event_type', 'completed')->where('manifest_event_id', $scan->id)->exists();
                 $arriving = ($custody['kind'] ?? null) === 'manifest' && ($custody['manifest_id'] ?? null) === $scan->manifest_id;
-                if ($position >= count($route->hub_ids) - 1 || (! $arriving && ! $recovered) || $checkpoint->custody_before !== $custody
+                $corrective = $scan->event_type === 'handover-recovery-received' && $scan->correctiveReceipt?->supports($checkpoint)
+                    && ($custody['kind'] ?? null) === 'hub' && ($custody['hub_id'] ?? null) === $scan->manifest->source_hub_id;
+                if ($position >= count($route->hub_ids) - 1 || (! $arriving && ! $recovered && ! $corrective) || $checkpoint->custody_before !== $custody
                     || $scan->manifest->source_hub_id !== $route->hub_ids[$position]
                     || $scan->manifest->destination_hub_id !== $route->hub_ids[$position + 1]) {
                     throw new DomainException('The reverse receipt does not match its real arriving manifest.');
@@ -295,9 +298,11 @@ class DeliveryReturnService
             $check = $parcel->checkpoints()->where('id', '>', $lastId)->where('id', '<', $beforeId)->where('hub_id', $hubId)
                 ->whereIn('checkpoint_type', ['arrived_at_mother_hub', 'arrived_at_destination_hub'])->orderBy('id')->first();
             $scan = $check ? LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $check->custody_after['manifest_scan_reference'] ?? '')->first() : null;
-            if (! $scan || $scan->event_type !== 'parcel_received' || $scan->manifest->direction !== 'outbound'
+            $normal = $scan?->event_type === 'parcel_received' && $scan->parcel?->delivery_id === $parcel->id && $scan->parcel->route_snapshot === $route;
+            $corrective = $scan?->event_type === 'handover-recovery-received' && $scan->correctiveReceipt?->supports($check)
+                && $scan->correctiveReceipt->delivery_id === $parcel->id && $scan->correctiveReceipt->route_snapshot === $route;
+            if (! $scan || (! $normal && ! $corrective) || $scan->manifest->direction !== 'outbound'
                 || $scan->manifest->source_hub_id !== $hubs[$index] || $scan->manifest->destination_hub_id !== $hubId
-                || $scan->parcel->delivery_id !== $parcel->id || $scan->parcel->route_snapshot !== $route
                 || $scan->hub_id !== $hubId || $scan->actor_id !== $check->scanned_by_id || ! $check->barcode_scanned) {
                 throw new DomainException('The return needs actual retained outbound receipts through its original Mother Hub network.');
             }
@@ -308,8 +313,12 @@ class DeliveryReturnService
     private function transportEvidence(DeliveryCheckpoint $checkpoint, DeliveryReturnRoute $route, string $type): LogisticsManifestEvent
     {
         $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $checkpoint->custody_after['manifest_scan_reference'] ?? '')->first();
-        if (! $scan || $scan->event_type !== $type || $scan->manifest->direction !== 'return'
-            || $scan->parcel->delivery_id !== $route->delivery_id || ($scan->parcel->route_snapshot['return_route_reference'] ?? null) !== $route->reference
+        $normal = $scan?->event_type === $type && $scan->parcel?->delivery_id === $route->delivery_id
+            && ($scan->parcel->route_snapshot['return_route_reference'] ?? null) === $route->reference;
+        $corrective = $type === 'parcel_received' && $scan?->event_type === 'handover-recovery-received'
+            && $scan->correctiveReceipt?->supports($checkpoint) && $scan->correctiveReceipt->delivery_id === $route->delivery_id
+            && ($scan->correctiveReceipt->route_snapshot['return_route_reference'] ?? null) === $route->reference;
+        if (! $scan || (! $normal && ! $corrective) || $scan->manifest->direction !== 'return'
             || $scan->actor_id !== $checkpoint->scanned_by_id || $scan->hub_id !== $checkpoint->hub_id
             || $scan->barcode_scanned !== $checkpoint->barcode_scanned || $scan->manifest->reference !== $checkpoint->manifest_number) {
             throw new DomainException('Each reverse leg requires its actual linked manifest and custody scan.');
@@ -328,6 +337,7 @@ class DeliveryReturnService
         if (! $actor->canAccessPortal()) {
             throw new DomainException('This action requires the current active approved account.');
         }
+        app(HandoverHoldService::class)->assertMovable($parcel);
 
         return [$parcel, $actor];
     }

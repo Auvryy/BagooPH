@@ -14,6 +14,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
@@ -977,6 +978,9 @@ class LogisticsHubWorkstationController extends Controller
         $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
             ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
         $guidance = app(HubParcelWorkstationService::class)->guidance($delivery, $hub, request()->user(), $riders, $base);
+        if (app(HandoverHoldService::class)->held($delivery)) {
+            $prompt = ['action' => 'AWAIT_HANDOVER_RECOVERY', 'prompt' => 'Complete supervised handover recovery before an ordinary scan.', 'next_status' => $delivery->status, 'color' => 'amber'];
+        }
         if ($guidance['action'] === 'counter' && $guidance['href']) {
             $guidance['href'] .= '&search='.rawurlencode($delivery->tracking_number);
         }

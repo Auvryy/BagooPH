@@ -267,6 +267,7 @@ export interface Order {
     can_buy_again?: boolean;
     has_mixed_shops?: boolean;
     can_fulfill?: boolean;
+    handover_hold?: boolean;
     can_accept_and_pack?: boolean;
     can_pack?: boolean;
     can_mark_ready?: boolean;

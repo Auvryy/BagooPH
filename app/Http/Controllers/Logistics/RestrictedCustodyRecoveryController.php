@@ -9,6 +9,7 @@ use App\Models\Delivery;
 use App\Models\LogisticsHub;
 use App\Models\RestrictionAffectedWork;
 use App\Models\User;
+use App\Services\Logistics\HandoverRecoveryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class RestrictedCustodyRecoveryController extends Controller
     public function signIn(LoginRequest $request, RestrictedCustodyRecoveryService $service)
     {
         $request->authenticate();
-        if (! $service->ownGrants($request->user())) {
+        if (! $service->ownGrants($request->user()) && ! app(HandoverRecoveryService::class)->restrictedOwn($request->user())) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -43,7 +44,8 @@ class RestrictedCustodyRecoveryController extends Controller
     {
         abort_unless($request->user()->isCourier(), 403);
 
-        return Inertia::render('CustodyRecovery/Own', ['grants' => $service->ownGrants($request->user()), 'requestToken' => (string) Str::uuid()]);
+        return Inertia::render('CustodyRecovery/Own', ['grants' => $service->ownGrants($request->user()), 'requestToken' => (string) Str::uuid(),
+            'handoverGrants' => app(HandoverRecoveryService::class)->restrictedOwn($request->user())]);
     }
 
     public function receiving(Request $request, RestrictedCustodyRecoveryService $service)

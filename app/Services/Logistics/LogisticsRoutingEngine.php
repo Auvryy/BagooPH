@@ -124,6 +124,7 @@ class LogisticsRoutingEngine
         return DB::transaction(function () use ($delivery, $order, $shop) {
             $order = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
             $parcel = Delivery::whereKey($delivery->id)->where('order_id', $order->id)->lockForUpdate()->firstOrFail();
+            app(HandoverHoldService::class)->assertMovable($parcel);
             $shop = Shop::findOrFail($shop->id);
             if ($parcel->status !== 'unassigned' || $parcel->courier_id || $parcel->assigned_rider_id
                 || $parcel->current_hub_id || $parcel->checkpoints()->exists()) {

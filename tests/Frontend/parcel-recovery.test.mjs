@@ -81,3 +81,35 @@ test('case history stays visible without rendering links to inaccessible manifes
     assert.match(html, /MAN-RETAINED/);
     assert.doesNotMatch(html, /Open the observation manifest|Original receiving manifest|href="null"/);
 });
+
+test('a linked reviewed hold explains its actual receipt gate while preserving the existing case workspace', async () => {
+    const html = await render(Recovery, 'Hub/ParcelRecovery', props({ ...detail, case: recoveryCase, handoverHold: true, handoverIssueUrl: '/handover-issues/7' }));
+    assert.match(html, /reviewed handover hold/);
+    assert.match(html, /known holder acknowledges possession/);
+    assert.match(html, /href="\/handover-issues\/7"/);
+    assert.doesNotMatch(html, /Release hold|Mark delivered/);
+});
+
+test('partial corrective manifest counts keep unlisted receipts separate and prevent premature closure', async () => {
+    const hub = { id: 1, name: 'Origin Bayan Hub', code: 'BH-1', tier: 'local_bayan_hub' };
+    const selected = { id: 3, reference: 'MFT-ORIGINAL', type: 'feeder', direction: 'outbound', status: 'sealed', version: 4, included_count: 2,
+        source: hub, destination: { ...hub, id: 2, name: 'Mother Hub', code: 'MH-1', tier: 'regional_mother_hub' },
+        vehicle_plate: 'BGO-1001', driver_name: 'Juan Santos', dispatched_at: null, received_at: null, canManage: true, canLoad: true, canReceive: true,
+        receiptCounts: { expected: 2, normal_received: 0, corrective_expected_received: 1, unlisted_received: 1, outstanding: 1 },
+        parcels: [{ id: 1, tracking_number: 'BGO-EXPECTED', included: true, status: 'arrived_at_mother_hub', received_at: null,
+            receipt_condition: null, corrective_receipt: { reference: 'HMR-EXPECTED', received_at: '2026-10-14T00:00:00Z' } },
+            { id: 2, tracking_number: 'BGO-AWAITING', included: true, status: 'arrived_at_origin_hub', received_at: null, receipt_condition: null }],
+        correctiveReceipts: [{ reference: 'HMR-EXPECTED', tracking_number: 'BGO-EXPECTED', original_member_id: 1,
+            received_at: '2026-10-14T00:00:00Z', received_by: 'Ana Santos', original_expected_count: 2, original_received_count: 0 },
+            { reference: 'HMR-UNLISTED', tracking_number: 'BGO-UNLISTED', original_member_id: null,
+                received_at: '2026-10-14T00:01:00Z', received_by: 'Ana Santos', original_expected_count: 2, original_received_count: 0 }],
+        discrepancies: [], events: [] };
+    const html = await render(Manifests, 'Hub/Manifests', { manifests: { data: [selected], links: [] }, selectedManifest: selected,
+        canCreate: true, creationToken: 'CREATION', commandToken: 'COMMAND', basePath: '/hub/manifests', hubs: [], vehicles: [] });
+    assert.match(html, /Original expected/);
+    assert.match(html, /Corrective receipts/);
+    assert.match(html, /Still awaiting/);
+    assert.match(html, /Unlisted receipt.*original expected count unchanged/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>Close reviewed recovery/);
+    assert.doesNotMatch(html, /Record departure|Reopen with reason|Remove with reason|All parcels received/);
+});
