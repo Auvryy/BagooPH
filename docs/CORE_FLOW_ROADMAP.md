@@ -91,7 +91,7 @@ Scoped scanner/counter queue completion: October 11, 2026. The scanner now uses 
 | Pickup rider handoff | Implemented; scoped verified | Actual waybill matching and retained root custody checkpoints now prove pickup and original-hub receipt. Claims retain order/parcel locks, current approval/company/hub scope and the seller cancellation boundary. Narrow restricted-courier handover is verified separately below; it does not open routine work. |
 | Facility routing | Implemented | Checkout requires a complete origin Bayan Hub, Mother Hub and destination Bayan Hub route and rejects incomplete routing. Destination province/city and configured barangay coverage must agree; coordinates, repeated barangay names and partial city names cannot override coverage. A selected self-pickup counter must serve the stated destination. |
 | Manifest custody | Implemented; scoped verified | Durable manifests, retained membership/events, actual scans, sealed departure, partial destination receipt and supported discrepancy/closure controls are verified below. The October 10 recovery batch adds company-authorized intake and actual recovery manifests for recognized unexpected/wrong-hub parcels, retaining the original route and receiving obligation. Unknown parcels, unsupported restricted-resource recovery, deployed acceptance and simultaneous PostgreSQL verification remain separate. |
-| Reviewed missed-handover recovery | Implemented; locally verified | H01 reporting, H02 seller/rider holds and H03 hub/manifest corrective receipts preserve actual custody, original transport evidence, Mother Hub routes and truthful arrival counts. The October 14 H03 review records the green full regression and remaining H04 native, PostgreSQL simultaneous-request, device and deployment boundaries. |
+| Reviewed missed-handover recovery | Implemented; locally verified | H01 reporting, H02 seller/rider holds and H03 hub/manifest corrective receipts preserve actual custody, original transport evidence, Mother Hub routes and truthful arrival counts. H04 adds involved native reports, private evidence and named-holder acknowledgement over those services. The October 14 reviews retain separate Flutter/device, PostgreSQL simultaneous-request and deployment boundaries. |
 | Scanned hub custody | Implemented | Waybill scans use separate inspect and confirm steps, enforce expected status, owned facility/company scope, route order, and idempotent duplicate confirmation. |
 | Destination sort and rider assignment | Implemented | Destination sorting and final-mile assignment enforce parcel state, destination facility, logistics-company scope, and assigned-rider ownership. |
 | Failed delivery and RTS | Implemented; scoped verified | Numbered attempts, private original proof, actual destination-hub returns, reviewed retries, the three-attempt loop, frozen reverse manifests, origin staging and owning-seller receipt are verified below. Third failure/refusal cannot become RETURNED through an admin status edit. Unsupported restricted resource/carrier recovery remains open. |
@@ -4374,3 +4374,81 @@ manifest evidence contract`; `8432c9a Recover actual hub and manifest handovers
 without rewriting transport history`; `1efd179 Guide supervised hub recovery
 and show actual manifest receipt counts`. The combined PR title/body remains
 a local draft; user publication and H04 are separate actions.
+
+## October 14, 2026 — H04 native handover contract and integration handoff
+
+The `feat/handover-api-contract` branch starts from published `main` at `5de04eb`
+and implements [H04](handover-plan/04-native-contract.md) under its
+[writer and API boundary](handover-plan/04-writer-and-api-contract.md).
+Five bearer methods expose involved report lists/detail, private evidence,
+missed-scan reporting and the named holder's actual possession acknowledgement.
+They reuse the H01-H03 services. Seller fulfillment, independent company/platform
+review and authorization, and actual eligible hub receipt retain their web roles.
+Inactive/suspended holders keep restricted web recovery; ordinary native access
+is not restored.
+
+New eligible sessions receive a separate handover ability. Current credentials,
+token expiry/revocation, account eligibility and resource authority remain
+enforced. Account/Home advertise the available contract and current capability
+flags; older read tokens cannot write without the new permission. Native JSON
+uses explicit fields and string IDs, bounded integer issue counters, opaque
+source tokens and UTC timestamps. It omits private snapshots, storage paths,
+unrelated buyer contacts and identity documents. Downloads reauthorize and verify
+the saved document hash.
+
+Every write uses the existing actor-scoped command journal and domain request
+token. Original committed replay and owned reconciliation survive a lost
+response; changed requests conflict. Seven-day expired keys remain readable
+without allowing another write. Failed outer commands roll back their domain
+records and remove unused uploaded bytes, including late token revocation.
+Version/source/evidence changes, expired or withdrawn grants, unrelated actors
+and unsupported receiver fields cannot create partial possession evidence.
+Ordinary held movement remains blocked. Duty-off retains owned responsibility;
+only actual authorized hub receipt releases the hold.
+
+The [API guide](api/RIDER_HANDOVER_API.md),
+[executable OpenAPI](api/rider-operations.openapi.json) and
+[exercised fictional examples](api/examples/rider-handover/README.md) provide the
+wire shapes, field/file limits, private download behavior, retry instructions,
+deployment prerequisites and a copy-paste Flutter handoff. Contract verification
+also corrected the older native task schema to include its already implemented
+handover hold and denial fields. Multipart validation stays JSON without an
+Accept header, and numeric unexpected fields keep the typed error map.
+
+Verification:
+
+- Focused run: **95 tests / 3,989 assertions**, all passing, including the three
+  existing executable-contract cases. Real requests exercise omitted seller
+  readiness, native holder acknowledgement, actual hub receipt, required Mother
+  Hub transport, native delivery and buyer-only completion. Manifest correction,
+  missed intake and failed-attempt return preserve their original evidence.
+- Rejection checks include current account/token loss, another role or holder,
+  bounded pagination, minimum/maximum text, all supported document formats,
+  forged/empty evidence and the exact **5,242,880-byte** limit. Stale/expired/
+  withdrawn sources, same/changed retries, replay expiry and injected write
+  failures retain holds, original stock and cash authority without partial writes.
+- **85 schemas** compiled; all **48 actual/sanitized response samples** passed.
+  OpenAPI 3.1 structure, coverage of all **30 operational methods**, changed PHP
+  style, documentation links and whitespace checks passed.
+- Full Docker backend run: **3,890 tests / 100,418 assertions**, all passing,
+  with no errors or skips. Every test used isolated SQLite `:memory:`; no
+  PostgreSQL development or production database was used for tests.
+- H04 adds no migration, reset, reseed, dependency, React page or Flutter change.
+  The runtime follows the locked Laravel **13.32.0** patterns; the repository
+  instruction's Laravel 12 label is older than the executable lock. This branch
+  does not upgrade the framework.
+
+**Scoped assessment: native handover backend 2/10 -> 8.5/10 locally.** Previously
+native movement showed/enforced holds while reporting and recovery required the
+web. Approved involved riders now have a verified API for observations, private
+history/evidence and their authorized acknowledgement, with retained retries.
+This does not certify Flutter implementation, rendered device interactions,
+simultaneous PostgreSQL requests or Azure deployment. Deploy the merged backend
+with the existing H01-H03 migrations, then sign in again for the new permission.
+No fresh database is required.
+
+Local implementation commits: `fadf229 Define the H04 rider handover API and
+retry boundary`; `092c715 Connect native rider handover reports and authorized
+acknowledgements`; `d321011 Document rider handover integration and exercised
+response examples`. The PR title/body remains a local draft; user publication,
+Flutter integration and deployed acceptance are separate actions.
