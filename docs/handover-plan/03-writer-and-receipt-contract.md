@@ -55,11 +55,18 @@ vehicle guessed from an observation cannot become a receipt.
 ## Authority and actual receipt
 
 An eligible independent company administrator authorizes the known holder and
-source. The original driver or an eligible assigned handler may acknowledge
+source. Platform admins retain the existing independent oversight authority,
+including when the company administrator reported the concern. Authorization
+never grants routine hub scanning permission. The original driver or an eligible
+assigned handler may acknowledge
 current physical possession. Another eligible handler records the actual
 matching-waybill receipt at the correct facility. Company authorization does
 not grant scanning permission. Inactive/suspended riders retain only their own
 explicit recovery access; an unapproved or closed holder cannot use it.
+
+An acknowledged holder remains responsible while no later actual custody
+checkpoint records receipt. New rider work and account closure cannot bypass
+that responsibility. Expiry or withdrawal does not invent its physical release.
 
 Authorizations bind commercial/route/source evidence and the current accounts,
 facilities, personnel and recorded transport. They expire after 24 hours.
