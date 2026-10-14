@@ -522,4 +522,16 @@ class RiderCompanyRequestsTest extends TestCase
             ->where('companyJoining.filters.company_province', 'Laguna')->has('companyJoining.companies.data', 0)
             ->has('companyJoining.requests.data', 1));
     }
+
+    public function test_numeric_zero_notes_and_search_keep_their_distinct_meaning(): void
+    {
+        $this->intake();
+        $this->actingAs($this->rider)->postJson('/courier/company-requests', $this->submission(['note' => '0']))
+            ->assertUnprocessable()->assertJsonValidationErrors('note');
+        $this->assertDatabaseCount('rider_company_requests', 0);
+        $this->get('/courier/profile?tab=assignment&company_search=0')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('companyJoining.filters.company_search', '0')->has('companyJoining.companies.data', 0));
+        $this->getJson('/courier/profile?company_province=0')->assertUnprocessable()->assertJsonValidationErrors('company_province');
+        $this->postJson('/courier/company-requests', $this->submission(['note' => '00000']))->assertOk()->assertJsonPath('data.note', '00000');
+    }
 }

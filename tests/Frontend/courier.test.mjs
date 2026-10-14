@@ -60,6 +60,9 @@ test('company notes preserve meaningful Unicode and multiline text within normal
         assert.equal(ui.companyTextError(note, 5, 500), undefined);
     }
     assert.match(ui.companyTextError('abcd', 5, 500), /5–500/);
+    assert.match(ui.companyTextError('0', 5, 500), /5–500/);
+    assert.equal(ui.companyTextError('0', 1, 100), undefined);
+    assert.equal(ui.companyTextError('00000', 5, 500), undefined);
     assert.match(ui.companyTextError('a'.repeat(501), 5, 500), /500/);
     assert.match(ui.companyTextError('ﬃ'.repeat(167), 5, 500), /5–500/);
 });

@@ -382,7 +382,8 @@ class RiderCompanyRequestService
             if ($normalized === false) {
                 throw ValidationException::withMessages([$field => 'Use readable plain text.']);
             }
-            $input[$field] = trim($normalized, " \r\n") ?: null;
+            $normalized = trim($normalized, " \r\n");
+            $input[$field] = $normalized === '' ? null : $normalized;
         }
 
         return Validator::make($input, $rules)->validate();
