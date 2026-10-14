@@ -553,4 +553,23 @@ class RiderCompanyRequestsTest extends TestCase
         $this->assertSame('pending', $request->fresh()->status);
         $this->assertDatabaseCount('rider_company_request_events', 1);
     }
+
+    #[DataProvider('portals')]
+    public function test_owned_history_survives_logout_and_a_fresh_login(string $host, string $riderPrefix, string $hubPrefix): void
+    {
+        $this->intake();
+        $this->rider->forceFill(['password' => 'BagooLogin10!'])->save();
+        $base = 'http://'.($riderPrefix === '' ? 'courier.localhost' : 'localhost');
+        $this->actingAs($this->rider)->postJson($base.$riderPrefix.'/company-requests', $this->submission())->assertOk();
+        $request = RiderCompanyRequest::first();
+        $this->post($base.'/logout')->assertRedirect();
+        $this->assertGuest();
+        $this->post($base.'/login', ['email' => $this->rider->email, 'password' => 'BagooLogin10!'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertAuthenticatedAs($this->rider);
+        $this->get($base.$riderPrefix.'/profile?tab=assignment')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('companyJoining.requests.data', 1)->where('companyJoining.requests.data.0.id', (string) $request->id)
+            ->where('companyJoining.requests.data.0.status', 'pending')->where('companyJoining.can_apply', false));
+        $this->assertDatabaseCount('rider_company_requests', 1);
+        $this->assertDatabaseCount('rider_company_request_events', 1);
+    }
 }
