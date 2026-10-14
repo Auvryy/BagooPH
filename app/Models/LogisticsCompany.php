@@ -31,6 +31,8 @@ class LogisticsCompany extends Model
     protected $casts = [
         'accreditation_details' => 'array',
         'is_active' => 'boolean',
+        'rider_intake_enabled' => 'boolean',
+        'rider_intake_version' => 'integer',
     ];
 
     public function attributesToArray(): array
@@ -79,6 +81,11 @@ class LogisticsCompany extends Model
     public function couriers(): HasMany
     {
         return $this->hasMany(CourierProfile::class);
+    }
+
+    public function riderIntakeEvents(): HasMany
+    {
+        return $this->hasMany(RiderCompanyIntakeEvent::class);
     }
 
     public function deliveries(): HasMany

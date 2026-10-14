@@ -23,6 +23,7 @@ use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\Logistics\WaybillScanInputService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -390,6 +391,7 @@ class LogisticsHubWorkstationController extends Controller
             });
 
         return Inertia::render('Hub/Network', [
+            'riderIntake' => app(RiderCompanyRequestService::class)->companyWorkspace($user, $request->query()),
             'scope' => [
                 'company_name' => $company?->name ?? 'Logistics Company',
                 'company_code' => $company?->code,

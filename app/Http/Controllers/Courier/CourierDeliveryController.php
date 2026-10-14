@@ -20,6 +20,7 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\Logistics\WaybillScanInputService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\ProfileInputService;
@@ -337,6 +338,7 @@ class CourierDeliveryController extends Controller
 
     public function profile(Request $request): Response
     {
+        $tab = $request->validate(['tab' => ['sometimes', 'in:information,edit,privacy,assignment,vehicle']])['tab'] ?? null;
         $user = $request->user()->load([
             'courierProfile.company',
             'courierProfile.hub',
@@ -346,7 +348,8 @@ class CourierDeliveryController extends Controller
 
         return Inertia::render('Courier/Profile', [
             ...app(AccountSettingsService::class)->presentation($user),
-            'initialTab' => $request->is('account/settings') ? 'edit' : 'information',
+            'initialTab' => $request->is('account/settings') ? 'edit' : ($tab ?? 'information'),
+            'companyJoining' => app(RiderCompanyRequestService::class)->riderWorkspace($user, $request->query()),
             'rider' => [
                 'name' => $user->name,
                 'email' => $user->email,
