@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Building2, Eye, EyeOff, IdCard, MapPin, PencilLine, Save, ShieldCheck, Truck, UserRound } from 'lucide-react';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
@@ -9,6 +9,8 @@ import CourierLayout from '@/Layouts/CourierLayout';
 import { courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
+import CourierCompanyRequests from '@/Components/CourierCompanyRequests';
+import type { CompanyJoining } from '@/types/riderCompany';
 
 interface Props {
     rider: { name: string; email: string; email_verified_at: string | null; phone: string | null; account_status: string; kyc_status: string };
@@ -16,7 +18,8 @@ interface Props {
     vehicle: { type: string | null; model: string | null; plate_number: string | null; fleet_status: string | null; license_number: string | null; registration_status: string | null };
     scope?: CourierScope;
     isOnline: boolean;
-    initialTab?: 'information' | 'edit';
+    initialTab?: 'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle';
+    companyJoining?: CompanyJoining;
 }
 
 const readable = (value?: string | null) => value?.replaceAll('_', ' ') || 'Not provided';
@@ -25,9 +28,10 @@ function ManagedDetails({ items }: { items: Array<[string, string | null]> }) {
     return <dl className="mt-5 grid gap-x-6 sm:grid-cols-2">{items.map(([label, value]) => <div key={label} className="border-b border-slate-100/80 py-4"><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-2 break-words text-sm font-medium leading-relaxed text-slate-900">{value || 'Not provided'}</dd></div>)}</dl>;
 }
 
-export default function CourierProfile({ rider, assignment, vehicle, scope, isOnline, initialTab = 'information' }: Props) {
+export default function CourierProfile({ rider, assignment, vehicle, scope, isOnline, initialTab = 'information', companyJoining }: Props) {
     const { auth } = usePage<PageProps>().props;
     const [tab, setTab] = useState<'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle'>(initialTab);
+    useEffect(() => setTab(initialTab), [initialTab]);
     const [visible, setVisible] = useState<Record<string, boolean>>({});
     const [contactResult, setContactResult] = useState('');
     const [passwordResult, setPasswordResult] = useState('');
@@ -139,7 +143,7 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                         </form>
                     </CourierPanel>
                     </section>
-                    <section id="profile-assignment" aria-labelledby="profile-assignment-title" hidden={tab !== 'assignment'}><CourierPanel className="p-4 sm:p-6"><h2 id="profile-assignment-title" className="text-lg font-semibold">Working assignment</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Your logistics team manages this assignment. Contact them if any details need correcting.</p><ManagedDetails items={[["Company", assignment.company || 'Not assigned'], ["Bayan Hub", assignment.hub || 'Not assigned'], ["Hub code", assignment.hub_code], ["Barangay", assignment.barangay]]} /><p className="mt-5 rounded-[8px] bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">Going off duty stops new work. Keep handling assigned parcels through their pickup, hub intake, or final-mile delivery.</p></CourierPanel></section>
+                    <section id="profile-assignment" aria-labelledby="profile-assignment-title" hidden={tab !== 'assignment'}><CourierPanel className="p-4 sm:p-6"><h2 id="profile-assignment-title" className="text-lg font-semibold">Working assignment</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Your logistics team manages this assignment. Contact them if any details need correcting.</p><ManagedDetails items={[["Company", assignment.company || 'Not assigned'], ["Bayan Hub", assignment.hub || 'Not assigned'], ["Hub code", assignment.hub_code], ["Barangay", assignment.barangay]]} /><p className="mt-5 rounded-[8px] bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">Going off duty stops new work. Keep handling assigned parcels through their pickup, hub intake, or final-mile delivery.</p></CourierPanel><CourierCompanyRequests workspace={companyJoining} /></section>
                     <section id="profile-vehicle" aria-labelledby="profile-vehicle-title" hidden={tab !== 'vehicle'}><CourierPanel className="p-4 sm:p-6"><h2 id="profile-vehicle-title" className="text-lg font-semibold">Managed vehicle and credentials</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">These are your stored records. Your logistics team handles vehicle and credential updates.</p><ManagedDetails items={[["Vehicle type", vehicle.type], ["Model", vehicle.model], ["Plate number", vehicle.plate_number], ["Fleet status", readable(vehicle.fleet_status)], ["License number", vehicle.license_number], ["Registration status", readable(vehicle.registration_status)]]} /></CourierPanel></section>
                     </div>
                 </div>
