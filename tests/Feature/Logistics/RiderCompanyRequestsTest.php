@@ -534,4 +534,23 @@ class RiderCompanyRequestsTest extends TestCase
         $this->getJson('/courier/profile?company_province=0')->assertUnprocessable()->assertJsonValidationErrors('company_province');
         $this->postJson('/courier/company-requests', $this->submission(['note' => '00000']))->assertOk()->assertJsonPath('data.note', '00000');
     }
+
+    #[DataProvider('portals')]
+    public function test_approved_unverified_riders_keep_profile_and_history_access_but_cannot_act(string $host, string $riderPrefix, string $hubPrefix): void
+    {
+        $this->intake();
+        $body = $this->submission();
+        $this->service->submit($this->rider, $body);
+        $request = RiderCompanyRequest::first();
+        $this->rider->forceFill(['email_verified_at' => null])->save();
+        $base = 'http://'.($riderPrefix === '' ? 'courier.localhost' : 'localhost').$riderPrefix;
+        $this->actingAs($this->rider)->get($base.'/profile?tab=privacy')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('initialTab', 'privacy')->where('rider.email_verified_at', null)->where('companyJoining.can_apply', false)
+            ->has('companyJoining.requests.data', 1)->where('companyJoining.requests.data.0.can_withdraw', false)
+            ->where('companyJoining.blocked_reason', 'Verify your sign-in email in Privacy and security before managing company requests.'));
+        $this->postJson($base.'/company-requests', $body)->assertForbidden();
+        $this->postJson($base.'/company-requests/'.$request->id.'/withdraw', ['expected_version' => 1, 'request_token' => (string) Str::uuid()])->assertForbidden();
+        $this->assertSame('pending', $request->fresh()->status);
+        $this->assertDatabaseCount('rider_company_request_events', 1);
+    }
 }

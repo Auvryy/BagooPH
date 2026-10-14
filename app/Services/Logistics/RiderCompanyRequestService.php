@@ -32,13 +32,15 @@ class RiderCompanyRequestService
 
     public function riderWorkspace(User $actor, array $query = []): array
     {
-        $rider = $this->rider($actor);
+        $rider = $this->rider($actor, false);
         if (! $this->available()) {
             return ['available' => false];
         }
         $filters = $this->filters($query);
         $profile = $rider->courierProfile;
-        $reason = $this->applicationBlocker($rider, $profile);
+        $reason = $rider->email_verified_at === null
+            ? 'Verify your sign-in email in Privacy and security before managing company requests.'
+            : $this->applicationBlocker($rider, $profile);
         $pending = RiderCompanyRequest::where('rider_id', $rider->id)->where('status', 'pending')->exists();
         $reason ??= $pending ? 'You already have a pending request. You can withdraw it before choosing another company.' : null;
         $directory = $this->directory();
@@ -67,7 +69,8 @@ class RiderCompanyRequestService
             ->through(fn (LogisticsCompany $company) => $this->companySummary($company));
         $history = $this->paginate(RiderCompanyRequest::where('rider_id', $rider->id)->with('events')->orderByDesc('id'),
             'request_page', $filters['request_page'], $links)->through(fn ($request) => [
-                ...$this->present($request), 'can_withdraw' => $request->status === 'pending', 'withdrawal_token' => (string) Str::uuid(),
+                ...$this->present($request), 'can_withdraw' => $request->status === 'pending' && $rider->email_verified_at !== null,
+                'withdrawal_token' => (string) Str::uuid(),
             ]);
 
         return ['available' => true, 'can_apply' => $reason === null, 'blocked_reason' => $reason,
@@ -285,10 +288,10 @@ class RiderCompanyRequestService
             ->where('after_version', $company->rider_intake_version)->where('after_enabled', $company->rider_intake_enabled)->exists();
     }
 
-    private function rider(User $actor): User
+    private function rider(User $actor, bool $requireVerifiedEmail = true): User
     {
         $rider = User::find($actor->id);
-        abort_unless($rider?->isEligibleCourier() && $rider->email_verified_at !== null, 403);
+        abort_unless($rider?->isEligibleCourier() && (! $requireVerifiedEmail || $rider->email_verified_at !== null), 403);
 
         return $rider;
     }
