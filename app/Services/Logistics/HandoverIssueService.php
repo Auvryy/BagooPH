@@ -9,6 +9,7 @@ use App\Models\HandoverIssue;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
@@ -56,7 +57,11 @@ class HandoverIssueService
                 $parcel->where(fn (Builder $pickup) => $pickup->where('courier_id', $actor->id)->where('origin_bayan_hub_id', $profile->assigned_hub_id)
                     ->whereRaw("deliveries.status IN ('assigned_pickup', 'picked_up')"))
                     ->orWhere(fn (Builder $lastMile) => $lastMile->where('assigned_rider_id', $actor->id)->where('destination_bayan_hub_id', $profile->assigned_hub_id)
-                        ->whereRaw("deliveries.status IN ('assigned_to_rider', 'out_for_delivery', 'delivery_failed')"));
+                        ->whereRaw("deliveries.status IN ('assigned_to_rider', 'out_for_delivery', 'delivery_failed')"))
+                    ->orWhereIn('id', LogisticsManifestParcel::where('included', true)->whereColumn('active_delivery_id', 'delivery_id')
+                        ->whereHas('manifest', fn (Builder $manifest) => $manifest->where('driver_id', $actor->id)
+                            ->where('logistics_company_id', $profile->logistics_company_id)->where('source_hub_id', $profile->assigned_hub_id)
+                            ->whereIn('status', ['draft', 'sealed', 'dispatched']))->select('delivery_id'));
             });
         }
         $companyIds = LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id');
@@ -64,7 +69,13 @@ class HandoverIssueService
 
         return $query->where(fn (Builder $parcel) => $parcel->whereIn('logistics_company_id', $companyIds)
             ->orWhere(fn (Builder $handled) => $handled->whereIn('current_hub_id', $hubIds)
-                ->whereHas('currentHub', fn (Builder $hub) => $hub->whereColumn('logistics_hubs.logistics_company_id', 'deliveries.logistics_company_id'))));
+                ->whereHas('currentHub', fn (Builder $hub) => $hub->whereColumn('logistics_hubs.logistics_company_id', 'deliveries.logistics_company_id')))
+            ->orWhere(fn (Builder $inbound) => $inbound->where('status', 'picked_up')->whereIn('origin_bayan_hub_id', $hubIds)
+                ->whereIn('logistics_company_id', HubHandler::eligible()->where('user_id', $actor->id)->select('logistics_company_id')))
+            ->orWhereIn('id', LogisticsManifestParcel::where('included', true)->whereColumn('active_delivery_id', 'delivery_id')
+                ->whereHas('manifest', fn (Builder $manifest) => $manifest->whereColumn('logistics_manifests.logistics_company_id', 'deliveries.logistics_company_id')
+                    ->whereIn('status', ['draft', 'sealed', 'dispatched'])
+                    ->where(fn (Builder $facility) => $facility->whereIn('source_hub_id', $hubIds)->orWhereIn('destination_hub_id', $hubIds)))->select('delivery_id')));
     }
 
     public function readable(User $user): Builder
@@ -83,6 +94,7 @@ class HandoverIssueService
             if ($actor->isLogistics()) {
                 $issue->orWhereIn('logistics_company_id', LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id'));
                 $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->whereIn('hub_id', HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id')));
+                $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->where('holder_id', $actor->id));
             }
         });
     }
@@ -107,7 +119,7 @@ class HandoverIssueService
             'courier' => 'Rider: '.(User::whereKey($custody['user_id'] ?? 0)->value('name') ?? 'Recorded rider'),
             'seller' => 'Seller',
             'buyer' => 'Buyer receipt recorded',
-            'transport' => 'In recorded hub transport',
+            'transport', 'manifest' => 'In recorded hub transport',
             default => 'Custody not established',
         };
 

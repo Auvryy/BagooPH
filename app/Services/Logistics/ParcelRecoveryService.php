@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HandoverRecoveryGrant;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
@@ -139,6 +140,10 @@ class ParcelRecoveryService
         if (! $delivery) {
             throw new DomainException('Recovery needs a recognized same-company waybill with recorded transport custody.');
         }
+        if (app(HandoverHoldService::class)->requiresReviewedRecovery($delivery)) {
+            return app(HandoverHoldService::class)->runLinkedRecovery($delivery, $actor, $observation,
+                fn () => $this->authorize($actor, $observation, $input), authorizationOnly: true);
+        }
 
         return DB::transaction(function () use ($actor, $observation, $input, $delivery) {
             $parcel = $this->lockParcel($delivery->id);
@@ -175,6 +180,11 @@ class ParcelRecoveryService
 
     public function intake(User $actor, ParcelRecoveryCase $snapshot, array $input): ParcelRecoveryCase
     {
+        $delivery = Delivery::findOrFail($snapshot->delivery_id);
+        if (app(HandoverHoldService::class)->requiresReviewedRecovery($delivery)) {
+            return app(HandoverHoldService::class)->runLinkedRecovery($delivery, $actor, $snapshot->observation,
+                fn () => $this->intake($actor, $snapshot, $input));
+        }
         $input = Validator::make($this->inputs->normalize($input), ['version' => ['required', new AsciiPositiveInteger, 'integer', 'min:1', 'max:2147483647'],
             'request_token' => ['required', 'uuid'], 'barcode' => $this->inputs->barcodeRules(), 'notes' => ['required', 'string', new ApplicationText('notes', 5, 1000)]])->validate();
 
@@ -229,6 +239,11 @@ class ParcelRecoveryService
 
     public function withdraw(User $actor, ParcelRecoveryCase $snapshot, array $input): ParcelRecoveryCase
     {
+        $delivery = Delivery::findOrFail($snapshot->delivery_id);
+        if (app(HandoverHoldService::class)->requiresReviewedRecovery($delivery)) {
+            return app(HandoverHoldService::class)->runLinkedRecovery($delivery, $actor, $snapshot->observation,
+                fn () => $this->withdraw($actor, $snapshot, $input));
+        }
         $this->administrator($actor, $snapshot->logistics_company_id);
         $input = Validator::make($this->inputs->normalize($input), ['version' => ['required', new AsciiPositiveInteger, 'integer', 'min:1', 'max:2147483647'],
             'request_token' => ['required', 'uuid'], 'notes' => ['required', 'string', new ApplicationText('notes', 5, 1000)]])->validate();
@@ -315,6 +330,36 @@ class ParcelRecoveryService
         if ($case->leg_index === count($case->hub_ids) - 1) {
             $this->complete($case, $parcel, $actor, $hub, $event->reason);
         }
+    }
+
+    public function receiveCorrective(LogisticsManifest $manifest, Delivery $parcel, User $actor, LogisticsManifestEvent $scan): DeliveryCheckpoint
+    {
+        app(HandoverHoldService::class)->assertMovable($parcel);
+        $case = ParcelRecoveryCase::whereKey($manifest->parcel_recovery_case_id)->lockForUpdate()->firstOrFail();
+        $this->assertOriginal($case, $parcel);
+        if (! in_array($case->state, ['held', 'in_transit'], true) || $case->leg_index !== $manifest->recovery_leg_index
+            || $manifest->source_hub_id !== ($case->hub_ids[$case->leg_index] ?? null)
+            || $manifest->destination_hub_id !== ($case->hub_ids[$case->leg_index + 1] ?? null)
+            || $scan->event_type !== 'handover-recovery-received' || $scan->manifest_id !== $manifest->id
+            || $scan->actor_id !== $actor->id || $scan->hub_id !== $manifest->destination_hub_id
+            || $scan->barcode_scanned !== $parcel->tracking_number) {
+            throw new DomainException('The corrective receipt must match the original next physical recovery leg.');
+        }
+        $before = DeliveryCheckpoint::state($parcel);
+        $custody = DeliveryCheckpoint::lastCustody($parcel);
+        $case->fill(['state' => 'held', 'leg_index' => $case->leg_index + 1, 'version' => $case->version + 1])->save();
+        $hub = $manifest->destinationHub;
+        $parcel->fill(['status' => self::HELD, 'current_hub_id' => $hub->id])->save();
+        $event = $this->event($case, $actor, 'transfer_received', $before, DeliveryCheckpoint::state($parcel),
+            $scan->reason, $hub->id, $scan->barcode_scanned, $scan);
+        $checkpoint = $this->checkpoint($case, $parcel, $actor, $hub, $event, 'parcel_recovery_received', $before, $custody,
+            ['kind' => 'hub', 'hub_id' => $hub->id, 'manifest_scan_reference' => $scan->reference, 'parcel_recovery_reference' => $case->reference,
+                'handover_recovery_reference' => HandoverRecoveryGrant::findOrFail($scan->payload['handover_recovery_grant_id'])->reference], $manifest);
+        if ($case->leg_index === count($case->hub_ids) - 1) {
+            $this->complete($case, $parcel, $actor, $hub, $event->reason);
+        }
+
+        return $checkpoint;
     }
 
     public function assertOriginal(ParcelRecoveryCase $case, Delivery $parcel): void
@@ -445,9 +490,9 @@ class ParcelRecoveryService
     }
 
     private function checkpoint(ParcelRecoveryCase $case, Delivery $parcel, User $actor, LogisticsHub $hub, ParcelRecoveryEvent $event, string $type,
-        array $before, array $custodyBefore, array $custodyAfter, ?LogisticsManifest $manifest = null): void
+        array $before, array $custodyBefore, array $custodyAfter, ?LogisticsManifest $manifest = null): DeliveryCheckpoint
     {
-        DeliveryCheckpoint::record(delivery: $parcel, type: $type, notes: $event->reason, actor: $actor, hub: $hub,
+        return DeliveryCheckpoint::record(delivery: $parcel, type: $type, notes: $event->reason, actor: $actor, hub: $hub,
             manifestNumber: $manifest?->reference, barcodeScanned: $event->barcode_scanned,
             evidence: ['source_state' => $before, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custodyBefore,
                 'custody_after' => $custodyAfter + ['parcel_recovery_event_reference' => $event->reference]]);

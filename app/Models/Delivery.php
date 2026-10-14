@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Builders\DeliveryBuilder;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\HandoverHoldService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -129,7 +130,7 @@ class Delivery extends Model
     {
         $placeholders = implode(',', array_fill(0, count(self::RIDER_ACTIVE_STATUSES), '?'));
 
-        return self::query()
+        return app(HandoverHoldService::class)->pendingAcknowledged($riderId, $exceptDeliveryId)->isNotEmpty() || self::query()
             ->where(function ($query) use ($riderId) {
                 $query->where('courier_id', $riderId)
                     ->orWhere('assigned_rider_id', $riderId);

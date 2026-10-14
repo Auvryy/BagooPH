@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -152,6 +153,12 @@ class AccountClosureService
         $add = function (string $code, string $message, string $next, array $ids = []) use (&$blockers): void {
             $blockers[] = ['code' => $code, 'message' => $message, 'next' => $next, 'ids' => $ids];
         };
+        $acknowledged = app(HandoverHoldService::class)->pendingAcknowledged($subject->id);
+        if ($acknowledged->isNotEmpty()) {
+            $add('acknowledged_handover', 'This account acknowledged physical parcels that still need actual receipt.',
+                'The authorized receiving handler must record the actual handover before this account can close.',
+                $acknowledged->pluck('delivery_id')->unique()->values()->all());
+        }
         if (! UserRole::tryFrom($subject->role) || ! in_array($subject->status, ['active', 'inactive', 'suspended', 'pending_approval'], true)) {
             $add('unknown_account', 'The account has an unsupported role or activity state.', 'Platform Admin must review the original account records.');
         }

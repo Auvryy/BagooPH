@@ -300,11 +300,19 @@ class HandoverRecoveryService
 
     public function acknowledge(User $user, HandoverRecoveryGrant $grant, array $input): HandoverIssueEvent
     {
+        if (in_array($grant->mode, HubHandoverRecoveryService::MODES, true)) {
+            return app(HubHandoverRecoveryService::class)->acknowledge($user, $grant, $input);
+        }
+
         return $this->command($user, $grant, $input, false);
     }
 
     public function receive(User $user, HandoverRecoveryGrant $grant, array $input): HandoverIssueEvent
     {
+        if (in_array($grant->mode, HubHandoverRecoveryService::MODES, true)) {
+            return app(HubHandoverRecoveryService::class)->receive($user, $grant, $input);
+        }
+
         return $this->command($user, $grant, $input, true);
     }
 
@@ -380,6 +388,9 @@ class HandoverRecoveryService
 
     public function withdraw(User $user, HandoverRecoveryGrant $grant, array $input): HandoverIssueEvent
     {
+        if (in_array($grant->mode, HubHandoverRecoveryService::MODES, true)) {
+            return app(HubHandoverRecoveryService::class)->withdraw($user, $grant, $input);
+        }
         $data = $this->input($input);
         $fingerprint = $this->issues->sourceToken(['grant' => $grant->id, 'action' => 'recovery_withdrawn', ...$data]);
 
@@ -424,11 +435,14 @@ class HandoverRecoveryService
             'fulfillment_required' => $needsFulfillment,
             'can_confirm_fulfillment' => $needsFulfillment && $actor->isSeller() && $shop?->user_id === $actor->id && app(ShopEligibilityService::class)->isEligible($shop),
             'can_authorize' => $canAuthorize && $mode !== null, 'holder_options' => $holders,
-            'grant' => $grant ? $this->present($grant, $actor, $issue) : null];
+            'grant' => $grant && ! in_array($grant->mode, HubHandoverRecoveryService::MODES, true) ? $this->present($grant, $actor, $issue) : null];
     }
 
     private function present(HandoverRecoveryGrant $grant, User $actor, ?HandoverIssue $issue = null): array
     {
+        if (in_array($grant->mode, HubHandoverRecoveryService::MODES, true)) {
+            return app(HubHandoverRecoveryService::class)->present($grant, $actor);
+        }
         $issue ??= $grant->issue->load('delivery.order');
         $valid = false;
         try {

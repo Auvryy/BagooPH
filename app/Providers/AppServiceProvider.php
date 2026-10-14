@@ -13,6 +13,7 @@ use App\Models\RestrictionDecision;
 use App\Models\ShopReviewDecision;
 use App\Models\User;
 use App\Services\BuyerAccessService;
+use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(HandoverHoldService::class);
     }
 
     /**

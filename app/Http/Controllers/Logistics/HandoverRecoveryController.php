@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HandoverIssue;
 use App\Models\HandoverRecoveryGrant;
 use App\Services\Logistics\HandoverRecoveryService;
+use App\Services\Logistics\HubHandoverRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,11 @@ class HandoverRecoveryController extends Controller
     }
 
     public function authorize(Request $request, HandoverIssue $issue, HandoverRecoveryService $service): JsonResponse|RedirectResponse
+    {
+        return $this->result($request, fn () => $service->authorize($request->user(), $issue, $request->all()));
+    }
+
+    public function authorizeHub(Request $request, HandoverIssue $issue, HubHandoverRecoveryService $service): JsonResponse|RedirectResponse
     {
         return $this->result($request, fn () => $service->authorize($request->user(), $issue, $request->all()));
     }

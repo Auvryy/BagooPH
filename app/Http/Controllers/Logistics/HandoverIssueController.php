@@ -7,6 +7,7 @@ use App\Models\HandoverIssue;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\HandoverRecoveryService;
+use App\Services\Logistics\HubHandoverRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +49,7 @@ class HandoverIssueController extends Controller
             'can_review' => $issue->state === 'pending_review' && $this->service->canReview($request->user(), $issue),
             'evidence_url' => '/handover-issues/'.$issue->id.'/evidence',
             'recovery' => app(HandoverRecoveryService::class)->detail($request->user(), $issue),
+            'hub_recovery' => app(HubHandoverRecoveryService::class)->detail($request->user(), $issue),
             'events' => $issue->events->map(fn ($event) => ['id' => $event->id, 'type' => $event->event_type,
                 'actor_name' => $event->actor?->name, 'actor_role' => $event->actor_role, 'notes' => $event->notes,
                 'created_at' => $event->created_at->toIso8601String(), 'parcel_snapshot' => $event->parcel_snapshot]),

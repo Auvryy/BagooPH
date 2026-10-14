@@ -10,6 +10,8 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Logistics\HandoverHoldService;
+use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\ParcelRecoveryService;
@@ -112,9 +114,14 @@ class ParcelRecoveryController extends Controller
                     ->map(fn ($vehicle) => ['id' => $vehicle->id, 'plate' => $vehicle->plate_number, 'driver' => $vehicle->driver?->name]);
             }
             $parcel = $case?->delivery;
+            $knownParcel = $parcel ?? (isset($proposal['facts']['delivery_id']) ? Delivery::find($proposal['facts']['delivery_id']) : null);
+            $handoverHold = $knownParcel ? app(HandoverHoldService::class)->active($knownParcel) : null;
             $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : ($proposal['facts']['custody_snapshot'] ?? null);
             $detail = $this->summary($selected, $base, in_array($selected->id, $resolved, true), in_array($selected->manifest_id, $readableIds, true)) + [
                 'notes' => $selected->reason, 'blocker' => $blocker,
+                'handoverHold' => $handoverHold !== null,
+                'handoverIssueUrl' => $handoverHold && app(HandoverIssueService::class)->readable($actor)->whereKey($handoverHold->id)->exists()
+                    ? '/handover-issues/'.$handoverHold->id : null,
                 'canAuthorize' => $canAuthorize && ! $case && $proposal !== null, 'canIntake' => (bool) $canIntake,
                 'canWithdraw' => $canAuthorize && $case?->state === 'authorized',
                 'sourceToken' => $canAuthorize ? ($proposal['source_token'] ?? null) : null,

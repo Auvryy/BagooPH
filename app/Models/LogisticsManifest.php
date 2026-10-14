@@ -67,6 +67,11 @@ class LogisticsManifest extends Model
         return $this->belongsTo(ParcelRecoveryCase::class, 'parcel_recovery_case_id');
     }
 
+    public function correctiveReceipts(): HasMany
+    {
+        return $this->hasMany(HandoverManifestReceipt::class, 'manifest_id');
+    }
+
     public function state(): array
     {
         return $this->only(['id', 'reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'direction', 'status', 'version', 'sealed_at', 'dispatched_at', 'received_at', 'closed_at', 'dispatcher_id', 'receiver_id']);

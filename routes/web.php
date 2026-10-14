@@ -134,6 +134,7 @@ Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handov
     Route::post('/{issue}/review', [HandoverIssueController::class, 'review'])->whereNumber('issue')->middleware('throttle:20,1')->name('review');
     Route::post('/{issue}/confirm-fulfillment', [HandoverRecoveryController::class, 'fulfillment'])->whereNumber('issue')->middleware('throttle:10,1')->name('fulfillment');
     Route::post('/{issue}/authorize-recovery', [HandoverRecoveryController::class, 'authorize'])->whereNumber('issue')->middleware('throttle:10,1')->name('authorize');
+    Route::post('/{issue}/authorize-hub-recovery', [HandoverRecoveryController::class, 'authorizeHub'])->whereNumber('issue')->middleware('throttle:10,1')->name('authorize-hub');
     Route::post('/recovery/{recoveryGrant}/acknowledge', [HandoverRecoveryController::class, 'acknowledge'])->whereNumber('recoveryGrant')->middleware('throttle:20,1')->name('acknowledge');
     Route::post('/recovery/{recoveryGrant}/receive', [HandoverRecoveryController::class, 'receive'])->whereNumber('recoveryGrant')->middleware('throttle:20,1')->name('receive');
     Route::post('/recovery/{recoveryGrant}/withdraw', [HandoverRecoveryController::class, 'withdraw'])->whereNumber('recoveryGrant')->middleware('throttle:10,1')->name('withdraw');
@@ -307,7 +308,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
-            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy');
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
         Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index']);
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve']);
@@ -677,7 +678,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
-            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
+            ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');
         Route::get('/delivery-recovery', [DeliveryRecoveryController::class, 'index'])->name('recovery.index');
         Route::post('/delivery-recovery/{delivery}/retry', [DeliveryRecoveryController::class, 'approve'])->name('recovery.retry');
