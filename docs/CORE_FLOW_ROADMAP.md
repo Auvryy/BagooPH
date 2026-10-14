@@ -4452,3 +4452,37 @@ retry boundary`; `092c715 Connect native rider handover reports and authorized
 acknowledgements`; `d321011 Document rider handover integration and exercised
 response examples`. The PR title/body remains a local draft; user publication,
 Flutter integration and deployed acceptance are separate actions.
+
+## October 14, 2026 — Rider company onboarding plan
+
+Planning inspection used merged `main` at `77fb96e`. The current courier signup
+contains no company picker and prohibits managed company/hub inputs. Three
+required private uploads are government ID, driver's licence and vehicle OR/CR,
+with real JPG/JPEG, PNG, WEBP or PDF content and a 5 MB limit per file. The
+[registration service](../app/Services/AccountRegistrationService.php) and
+[document rule](../app/Rules/RegistrationDocument.php) enforce those requirements.
+
+The [rider Assignment section](../resources/js/Pages/Courier/Profile.tsx) displays
+managed company/hub data. The [company Network form](../resources/js/Pages/Hub/Network.tsx)
+places an approved account by email and asks for its current hub. The
+[shared placement service](../app/Services/Logistics/LogisticsPlacementService.php)
+enforces owning-company, approved-rider, hub, vehicle, stale-placement and active
+parcel/manifest guards. It does not require a rider-originated request or rider
+acceptance for first company association. Company choice, offers and consent
+are a proposed extension of that authority, not existing application features.
+
+The [rider company plan](rider-company-plan/README.md) separates three deliveries:
+RC01 discovery/intake/requests, RC02 company offers and atomic rider-accepted
+placement with a scoped roster, and RC03 native integration/acceptance handoff.
+RC01 intentionally stops before consent enforcement; RC02 must cover the old
+manual form, direct services and both portals before mutual onboarding is complete.
+The plan preserves fixed roles, Platform Admin KYC, private documents, original
+assignments, deliberate duty and existing custody/cash responsibilities. Legacy
+records receive no invented consent. Employment contracts, payroll, recruitment
+chat and company-transfer/offboarding writers remain outside these batches.
+
+This delivery adds planning documents and routing only. It does not implement
+RC01–RC03, add application routes/tables, change the Flutter app or deploy code.
+Runtime ratings and the last recorded test results remain unchanged. Future
+estimates are planning ranges; selected implementation dates require capacity
+and prerequisite review within the existing November 20 delivery target.
