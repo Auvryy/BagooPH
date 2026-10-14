@@ -3,15 +3,18 @@ import WaybillCamera from '@/Components/WaybillCamera';
 import { IssueError, issueDate, issueInput, issuePrimary, issueSurface, type IssueDetail, type RecoveryGrant } from '@/Components/HandoverUI';
 import { AuthRequestError, AuthRequestScope, authRequest } from '@/utils/authRequests';
 import { refreshPage } from '@/utils/accountRequests';
+import { Link } from '@inertiajs/react';
+import type { HubRecoveryMode } from '@/Components/HandoverUI';
 
 interface ActionProps {
     url: string; title: string; description: string; button: string;
     metadata: { expected_version: number; source_token: string };
     confirmations: Array<{ name: string; label: string }>;
     barcode?: boolean; holders?: Array<{ id: number; name: string; status: string }>;
+    hubSource?: { mode: HubRecoveryMode; reference_id: number | null };
 }
 
-export function RecoveryActionForm({ url, title, description, button, metadata, confirmations, barcode = false, holders }: ActionProps) {
+export function RecoveryActionForm({ url, title, description, button, metadata, confirmations, barcode = false, holders, hubSource }: ActionProps) {
     const id = useId();
     const [waybill, setWaybill] = useState('');
     const [notes, setNotes] = useState('');
@@ -34,7 +37,8 @@ export function RecoveryActionForm({ url, title, description, button, metadata, 
         setBusy(true); setErrors({});
         try {
             await authRequest(url, { expected_version: metadata.expected_version, source_token: metadata.source_token, notes, request_token: token.current, ...checked,
-                ...(barcode ? { barcode: waybill } : {}), ...(holders ? { holder_id: holder } : {}) }, request.signal);
+                ...(barcode ? { barcode: waybill } : {}), ...(holders ? { holder_id: holder } : {}),
+                ...(hubSource ? { mode: hubSource.mode, reference_id: hubSource.reference_id } : {}) }, request.signal);
             if (scope.current.current(request)) await refreshPage();
         } catch (error) {
             if (scope.current.current(request)) {
@@ -69,6 +73,7 @@ export function RecoveryActionForm({ url, title, description, button, metadata, 
                 <span>{item.label}</span>
             </label><IssueError message={errors[item.name]} /></div>)}
         </fieldset>
+        {['mode', 'reference_id', 'source_token', 'expected_version'].map(field => <IssueError key={field} message={errors[field]} />)}
         <IssueError message={errors.request} /><button type="submit" disabled={busy || (holders !== undefined && holders.length === 0)} className={issuePrimary}>{busy ? 'Saving recovery…' : button}</button>
     </form>;
 }
@@ -79,8 +84,13 @@ export function RecoveryGrantSummary({ grant }: { grant: RecoveryGrant }) {
         <p>Named holder: <span className="font-semibold">{grant.holder_name}</span></p>
         <p>Receiving hub: <span className="font-semibold">{grant.hub.name}</span>{grant.hub.address ? ` · ${grant.hub.address}` : ''}</p>
         <p>Authorization ends {issueDate(grant.expires_at)} · Manila time</p>
+        {grant.manifest_reference && <p>Original manifest: <span className="font-semibold">{grant.manifest_reference}</span></p>}
+        {grant.linked_recovery_reference && <p>Original physical recovery: <span className="font-semibold">{grant.linked_recovery_reference}</span></p>}
         {grant.blocker && !grant.closed && <p role="status" className="rounded-[8px] border border-amber-300 bg-amber-50 p-3 text-amber-950">{grant.blocker}</p>}
-        {grant.acknowledged && !grant.closed && <p className="font-semibold">Current possession acknowledged. The named hub must still scan its actual receipt.</p>}
+        {grant.acknowledged && !grant.closed && <p className="font-semibold">{grant.mode === 'hub_existing'
+            ? 'Current possession acknowledged. Continue the original recovery route until the correct hub records actual receipt.'
+            : 'Current possession acknowledged. The named hub must still scan its actual receipt.'}</p>}
+        {grant.continuation_url && <Link href={grant.continuation_url} className="inline-flex min-h-11 items-center rounded-[8px] border border-slate-300 px-3 py-2 font-semibold text-[#E00D42]">Continue original recovery</Link>}
     </div>;
 }
 
@@ -100,7 +110,7 @@ export default function HandoverRecoveryPanel({ issue }: { issue: IssueDetail })
         {recovery.can_authorize && <RecoveryActionForm url={`/handover-issues/${issue.id}/authorize-recovery`} title="Authorize supervised recovery" button="Authorize recovery" metadata={metadata} holders={recovery.holder_options}
             description="Choose the known physical holder from the evidence. The existing assignment and route fix the receiving hub. A different eligible person must review; unknown possession stays unresolved."
             confirmations={[{ name: 'holder_verified', label: 'I independently verified the named holder and current physical parcel.' }, { name: 'evidence_reviewed', label: 'I reviewed the original supporting document and current parcel facts.' }]} />}
-        {!recovery.mode && !recovery.fulfillment_required && <p className="text-sm leading-relaxed text-slate-600">This source needs a separate supervised review. Current recovery covers seller/pickup mistakes and an assigned rider missing departure from the destination hub.</p>}
+        {!recovery.mode && !recovery.fulfillment_required && !issue.hub_recovery?.grant && !issue.hub_recovery?.options.length && <p className="text-sm leading-relaxed text-slate-600">This source needs a separate supervised review. Unknown possession or missing original transport evidence stays unresolved.</p>}
         {grant && <RecoveryGrantSummary grant={grant} />}
         {grant?.can_acknowledge && <RecoveryActionForm url={`/handover-issues/recovery/${grant.id}/acknowledge`} title="Confirm my current possession" button="Acknowledge possession" metadata={grant} barcode
             description="Scan the waybill on the parcel you physically hold now. This records the current fact, keeps the hold and requires its return to the named hub."

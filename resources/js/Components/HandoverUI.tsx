@@ -23,15 +23,24 @@ export interface IssueDetail extends IssueSummary {
     version: number; reported_holder: string; reported_location: string; notes: string;
     original: ParcelSnapshot; current: ParcelSnapshot; source_token: string; can_review: boolean; evidence_url: string;
     recovery: RecoveryDetail;
+    hub_recovery?: HubRecoveryDetail;
     events: Array<{ id: number; type: keyof typeof issueEvent; actor_name: string; actor_role: string; notes: string; created_at: string; parcel_snapshot: ParcelSnapshot }>;
 }
 
+export type HubRecoveryMode = 'hub_intake' | 'hub_manifest' | 'hub_failed_return' | 'hub_existing';
 export interface RecoveryGrant {
     id: number; reference: string; holder_name: string; holder_id: number;
-    hub: { id: number; name: string; address: string }; expires_at: string; mode: 'pickup' | 'departure';
+    hub: { id: number; name: string; address: string }; expires_at: string; mode: 'pickup' | 'departure' | HubRecoveryMode;
     acknowledged: boolean; closed: boolean; blocker: string | null;
     can_acknowledge: boolean; can_receive: boolean; can_withdraw: boolean;
     expected_version: number; source_token: string; order_number: string; tracking_number: string;
+    withdraw_source_token?: string; manifest_reference?: string | null;
+    linked_recovery_reference?: string | null; continuation_url?: string | null;
+}
+export interface HubRecoveryDetail {
+    options: Array<{ key: string; mode: HubRecoveryMode; reference_id: number | null; label: string; source_token: string;
+        holder_options: Array<{ id: number; name: string; status: string }> }>;
+    grant: RecoveryGrant | null;
 }
 export interface RecoveryDetail {
     held: boolean; source_token: string; mode: 'pickup' | 'departure' | null;
@@ -43,7 +52,8 @@ export const issueKind = { missed_ready: 'Readiness step missed', missed_scan: '
 export const issueState = { pending_review: 'Awaiting review', needs_recovery: 'Needs recovery', dismissed: 'Dismissed', recovered: 'Recovered' };
 export const issueEvent = { reported: 'Report submitted', confirmed: 'Concern confirmed', dismissed: 'Report dismissed',
     fulfillment_confirmed: 'Seller fulfillment confirmed now', recovery_authorized: 'Recovery authorized',
-    holder_acknowledged: 'Holder confirmed current possession', recovery_received: 'Actual hub receipt recorded', recovery_withdrawn: 'Authorization withdrawn' };
+    holder_acknowledged: 'Holder confirmed current possession', recovery_received: 'Actual hub receipt recorded', recovery_withdrawn: 'Authorization withdrawn',
+    linked_recovery_progress: 'Original physical recovery continued' };
 export const issueDate = (date: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(date));
 const stage = (value: string) => value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase());
 

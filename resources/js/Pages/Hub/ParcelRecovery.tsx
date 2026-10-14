@@ -18,6 +18,7 @@ interface RecoveryCase {
 interface Detail extends Observation {
     notes: string; blocker: string | null; canAuthorize: boolean; canIntake: boolean; canWithdraw: boolean;
     sourceToken: string | null; custody: string; expectedHub: string | null; case: RecoveryCase | null;
+    handoverHold?: boolean; handoverIssueUrl?: string | null;
     route: Array<{ id: number; name: string; code: string; tier: string }>;
 }
 interface Props {
@@ -102,6 +103,10 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {selected.manifestUrl && <Link href={selected.manifestUrl} className="mt-4 inline-block text-sm font-semibold text-[#E00D42]">Open the observation manifest</Link>}
                             {selected.route.length > 0 && <div className="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-3"><h3 className="text-sm font-semibold text-slate-800">Authorized recovery route</h3><ol className="mt-2 flex flex-wrap items-center gap-2">{selected.route.map((hub, index) => <li key={hub.id} className="flex items-center gap-2 text-sm text-slate-700">{index > 0 && <ArrowRight className="h-4 w-4 text-slate-400" />}<span>{hub.name}<span className="ml-1 text-xs text-slate-500">({hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'})</span></span></li>)}</ol></div>}
                             {selected.blocker && <div role="alert" className="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" /><p>{selected.blocker}</p></div>}
+                            {selected.handoverHold && <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
+                                <p>This parcel has a reviewed handover hold. Only its specifically authorized original recovery can continue, after the known holder acknowledges possession. The hold ends at the correct receiving hub.</p>
+                                {selected.handoverIssueUrl && <Link href={selected.handoverIssueUrl} className="mt-2 inline-block font-semibold text-[#E00D42]">Review handover authorization</Link>}
+                            </div>}
                         </section>
                         {(selected.canAuthorize || selected.canIntake || selected.canWithdraw) && <section className="rounded-lg border border-slate-300 bg-white p-5">
                             <h2 className="font-semibold text-slate-900">Next action</h2>

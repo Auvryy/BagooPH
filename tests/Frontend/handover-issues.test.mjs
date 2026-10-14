@@ -156,3 +156,54 @@ test('held final-mile parcel points to recovery without offering delivery or fai
     assert.match(html, /Open handover recovery/);
     assert.doesNotMatch(html, />Start delivery<|>Record delivery<|>Report failed attempt</);
 });
+
+const hubGrant = { ...grant, mode: 'hub_manifest', manifest_reference: 'MFT-ORIGINAL', withdraw_source_token: 'WITHDRAW-CURRENT',
+    linked_recovery_reference: null, continuation_url: null };
+
+test('hub source selection requires an explicit choice before it offers holder authorization', async () => {
+    const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
+        hub_recovery: { grant: null, options: [{ key: 'source-9', mode: 'hub_manifest', reference_id: 9, label: 'Corrective receipt: MFT-ORIGINAL',
+            source_token: 'CURRENT', holder_options: [{ id: 1, name: 'Juan Santos', status: 'active' }] }] } } }, 'logistics');
+    assert.match(html, /Choose the supported original source/);
+    assert.match(html, /MFT-ORIGINAL/);
+    assert.match(html, /Unlisted receipt|unlisted receipt/);
+    assert.doesNotMatch(html, /Authorize actual hub recovery|Acknowledge possession|Receive recovery parcel/);
+});
+
+test('hub holder acknowledgement preserves original scans and requires current physical confirmation', async () => {
+    const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
+        hub_recovery: { options: [], grant: { ...hubGrant, can_acknowledge: true } } } }, 'courier');
+    assert.match(html, /Acknowledge possession/);
+    assert.match(html, /does not create an old hub or transport scan/);
+    assert.match(html, /maxLength="255"/);
+    assert.match(html, /minLength="10" maxLength="1000"/);
+    assert.doesNotMatch(html, /Receive recovery parcel|Authorize actual hub recovery/);
+});
+
+test('only the receiving-handler capability renders the corrective receiving action', async () => {
+    const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
+        hub_recovery: { options: [], grant: { ...hubGrant, acknowledged: true, can_receive: true } } } }, 'logistics');
+    assert.match(html, /Receive recovery parcel/);
+    assert.match(html, /Another eligible handler must receive it/);
+    assert.match(html, /I actually received this exact parcel/);
+    assert.doesNotMatch(html, /Acknowledge possession|Authorize actual hub recovery/);
+});
+
+test('linked physical recovery follows its original route without a competing direct receiving action', async () => {
+    const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
+        hub_recovery: { options: [], grant: { ...hubGrant, mode: 'hub_existing', acknowledged: true,
+            linked_recovery_reference: 'PRC-ORIGINAL', continuation_url: '/hub/parcel-recovery/8' } } } }, 'logistics');
+    assert.match(html, /Continue original recovery/);
+    assert.match(html, /href="\/hub\/parcel-recovery\/8"/);
+    assert.match(html, /PRC-ORIGINAL/);
+    assert.doesNotMatch(html, /Receive recovery parcel|Acknowledge possession/);
+});
+
+test('a changed hub grant retains its hold and offers only the permitted withdrawal', async () => {
+    const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
+        hub_recovery: { options: [], grant: { ...hubGrant, source_token: '', blocker: 'Recovery authority changed.', can_withdraw: true } } } }, 'admin');
+    assert.match(html, /Recovery authority changed/);
+    assert.match(html, /Withdraw hub authorization/);
+    assert.match(html, /parcel stays on hold/);
+    assert.doesNotMatch(html, /Receive recovery parcel|Acknowledge possession/);
+});
