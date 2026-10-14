@@ -16,6 +16,8 @@ function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { avai
     const pending = useRef(false);
     const [unconfirmed, setUnconfirmed] = useState(false);
     const form = useForm({ enabled: workspace.enabled, expected_version: workspace.version, request_token: workspace.request_token });
+    const accepting = workspace.enabled && workspace.history_available && workspace.has_eligible_hub;
+    const intakeStatus = accepting ? 'Accepting requests' : workspace.enabled && workspace.history_available ? 'Facility needed' : 'Requests paused';
     useCourierRequestError(pending, (message) => { setUnconfirmed(true); form.setError('enabled', message); });
     const errors = form.errors as Record<string, string>;
     const save = (event: FormEvent) => {
@@ -39,7 +41,7 @@ function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { avai
         });
     };
     return <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-bold text-slate-900">Rider requests</h2><p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600">Let approved, unassigned riders ask to join your company. Each request shares a short profile; it does not place the rider at a facility.</p></div><span className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${workspace.enabled && workspace.history_available ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-50 text-slate-600'}`}>{workspace.enabled && workspace.history_available ? 'Accepting requests' : 'Requests paused'}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-bold text-slate-900">Rider requests</h2><p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600">Let approved, unassigned riders ask to join your company. Each request shares a short profile; it does not place the rider at a facility.</p></div><span className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${accepting ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-50 text-slate-600'}`}>{intakeStatus}</span></div>
         <form onSubmit={save} className="mt-4 space-y-3">
             <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-md border border-slate-300 bg-slate-50 p-3 text-sm"><input type="checkbox" checked={form.data.enabled} disabled={form.processing || unconfirmed || !workspace.history_available} onChange={(event) => { form.setData('enabled', event.target.checked); form.clearErrors(); }} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>Accept new rider requests</span></label>
             <p className="text-xs leading-relaxed text-slate-500">Pausing keeps saved requests and current riders. Your company appears in the rider directory only while intake is open and at least one facility is eligible.</p>

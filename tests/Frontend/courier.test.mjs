@@ -142,6 +142,10 @@ test('missing intake history disables settings and missing facility copy prevent
         assert.match(checkbox, /checked=""/);
         assert.match(html, /type="submit" disabled=""/);
         assert.doesNotMatch(html, />Accepting requests</);
+        const waiting = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace: { available: true, enabled: true,
+            version: 2, history_available: true, has_eligible_hub: false, request_token: '00000000-0000-4000-8000-000000000003', requests: companyPage() } });
+        assert.match(waiting, />Facility needed</);
+        assert.doesNotMatch(waiting, />Accepting requests</);
     } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
 });
 const pickup = {
