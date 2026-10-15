@@ -13,7 +13,7 @@ after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = await build({
     stdin: { contents: `export { default as Notifications } from '@/Pages/Notifications/Index';
         export { default as ApplicationModal, buyerApplicationLabel } from '@/Components/BuyerApplicationModal';
-        export { openNotice } from '@/Components/BuyerNotificationMenu';`,
+        export { openNotice } from '@/Components/NotificationMenu';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -66,7 +66,7 @@ test('an approved but suspended buyer sees a restriction instead of an invitatio
 });
 
 test('complete buyer notifications keep the marketplace shell and highlight unread updates', async () => {
-    const html = await render(ui.Notifications, { available: true, accountUrl: '/pending-approval', filter: 'all', notices: { data: [{
+    const html = await render(ui.Notifications, { portal: 'buyer', available: true, accountUrl: '/pending-approval', filter: 'all', notices: { data: [{
         id: 'owned-notice', type: 'governance-event', data: { title: 'Application approved', body: 'Your review is complete.' },
         read_at: null, created_at: '2026-10-15T00:00:00Z', href: '/buyer/profile?tab=account',
     }], current_page: 1, last_page: 1 } });
@@ -81,7 +81,7 @@ test('complete buyer notifications keep the marketplace shell and highlight unre
 });
 
 test('empty buyer notifications explain the absence of updates inside the buyer shell', async () => {
-    const html = await render(ui.Notifications, { available: true, accountUrl: '/pending-approval', filter: 'unread', notices: { data: [], current_page: 1, last_page: 1 } });
+    const html = await render(ui.Notifications, { portal: 'buyer', available: true, accountUrl: '/pending-approval', filter: 'unread', notices: { data: [], current_page: 1, last_page: 1 } });
     assert.match(html, /Marketplace/);
     assert.match(html, /You have no unread updates/);
 });
@@ -99,7 +99,7 @@ test('opening an update acknowledges it with an Inertia visit instead of navigat
 });
 
 test('ordinary buyer status and notification controls do not force browser reloads', () => {
-    for (const file of ['resources/js/Components/BuyerApplicationModal.tsx', 'resources/js/Components/BuyerNotificationMenu.tsx', 'resources/js/Pages/Notifications/Index.tsx']) {
+    for (const file of ['resources/js/Components/BuyerApplicationModal.tsx', 'resources/js/Components/NotificationMenu.tsx', 'resources/js/Pages/Notifications/Index.tsx']) {
         assert.doesNotMatch(readFileSync(resolve(import.meta.dirname, '../..', file), 'utf8'), /window\.location\.(?:reload|assign)|location\.href\s*=/);
     }
 });
