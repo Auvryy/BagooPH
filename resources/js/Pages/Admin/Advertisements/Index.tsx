@@ -21,7 +21,7 @@ export default function Advertisements({ advertisements, available, displayEnabl
         });
     };
     return <DashboardLayout title="Advertisements" subtitle="Manage marketplace images, destinations and display dates."
-        actions={available && <Link href={`${baseUrl}/create`} className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" />New advertisement</Link>}>
+        actions={available && <div className="flex flex-wrap gap-3"><Link href={`${baseUrl}/performance`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Performance</Link><Link href={`${baseUrl}/create`} className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" />New advertisement</Link></div>}>
         <Head title="Advertisements" />
         <div className="space-y-6">
             {!available && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">Advertisement management needs the pending application migration. Normal marketplace browsing remains available.</p>}

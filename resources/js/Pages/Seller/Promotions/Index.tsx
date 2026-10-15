@@ -9,7 +9,7 @@ export default function Promotions({ promotions, shop, available, canSubmit, bas
     const form = useForm({ search: filters.search ?? '', review: filters.review ?? 'all' });
     const search = (event: FormEvent) => { event.preventDefault(); form.get(baseUrl, { preserveState: true, preserveScroll: true }); };
     return <DashboardLayout title="Promotions" subtitle={`Propose marketplace artwork for ${shop.name}. Platform Admin reviews requests and chooses placement.`}
-        actions={available && canSubmit && <Link href={`${baseUrl}/create`} className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" />New promotion</Link>}>
+        actions={available && <div className="flex flex-wrap gap-3"><Link href={`${baseUrl}/performance`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Performance</Link>{canSubmit && <Link href={`${baseUrl}/create`} className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" />New promotion</Link>}</div>}>
         <Head title="Shop promotions" />
         <div className="space-y-6">
             {!available && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">Promotion requests need the pending application migration before they can be managed.</p>}
