@@ -29,7 +29,7 @@ export interface CompanyJoinRequest {
     id: string;
     reference: string;
     company: { id: string; name: string };
-    status: 'pending' | 'withdrawn';
+    status: 'pending' | 'withdrawn' | 'offered' | 'accepted' | 'rejected' | 'declined' | 'cancelled' | 'expired';
     version: number;
     note: string | null;
     sharing_acknowledged: boolean;
@@ -39,6 +39,41 @@ export interface CompanyJoinRequest {
     can_withdraw?: boolean;
     withdrawal_token?: string;
     rider_eligible?: boolean;
+    effective_status?: CompanyJoinRequest['status'];
+    can_accept?: boolean;
+    offer?: CompanyAssignmentOffer | null;
+    offers?: (CompanyAssignmentOffer & { state: string })[];
+    decisions?: { action: string; reason: string | null; at: string; offer_id: string | null }[];
+    accepted_at?: string | null;
+    decision_token?: string;
+}
+
+export interface CompanyAssignmentOffer {
+    id: string;
+    reference: string;
+    version: number;
+    hub_id: string;
+    vehicle_id: string | null;
+    barangay: string | null;
+    terms: string;
+    terms_hash: string;
+    assignment: { company: string; hub: string; hub_code: string; vehicle: string };
+    issued_at: string;
+    expires_at: string;
+}
+
+export interface CompanyRiderAssignment {
+    id: string;
+    name: string | null;
+    email: string | null;
+    hub_id: string | null;
+    hub: string | null;
+    vehicle_id: string | null;
+    vehicle: string;
+    barangay: string | null;
+    on_duty: boolean;
+    eligible: boolean;
+    provenance: string;
 }
 
 export type CompanyJoining = { available: false } | {
@@ -61,4 +96,8 @@ export type CompanyRiderIntake = { available: false } | {
     has_eligible_hub: boolean;
     request_token: string;
     requests: CompanyRequestPage<CompanyJoinRequest>;
+    offers_available?: boolean;
+    hubs?: { id: string; name: string; tier: string; barangays: string[] }[];
+    vehicles?: { id: string; hub_id: string; plate: string }[];
+    roster?: CompanyRequestPage<CompanyRiderAssignment> | null;
 };

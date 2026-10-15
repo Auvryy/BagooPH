@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Building2, Check, MapPin, Search, Send } from 'lucide-react';
 import { CourierAvatar, CourierBadge, CourierDialog, CourierEmpty, CourierFieldError, CourierPanel, courierButton, courierInput, courierPrimary } from '@/Components/CourierUI';
+import { RiderAssignmentDecision, companyRequestStatus } from '@/Components/CompanyAssignmentOffer';
 import CompanyRequestPagination from '@/Components/CompanyRequestPagination';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 import { courierDate, courierPath } from '@/utils/courier';
@@ -98,7 +99,7 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
     return <div className="mt-5 space-y-5">
         <CourierPanel className="p-4 sm:p-6">
             <h2 className="text-lg font-semibold">Join a company</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose a company accepting rider requests. A request shares your profile for consideration; your working assignment changes only after a separate placement.</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose a company accepting rider requests. A request shares your profile for consideration; your working assignment changes only after you accept a company offer.</p>
             {!workspace.can_apply ? <p role="status" className="mt-4 rounded-[8px] bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">{workspace.blocked_reason}</p> : <>
                 <form onSubmit={filterCompanies} className="mt-5 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -117,13 +118,14 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
             </>}
         </CourierPanel>
         <CourierPanel className="p-4 sm:p-6">
-            <h2 className="text-lg font-semibold">My requests</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">My requests</h2><Link href={historyUrl} className={courierButton}>Refresh requests</Link></div>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">Your submitted details stay with each request. Withdrawing a request keeps its history.</p>
             {workspace.requests.data.length ? <div className="mt-4 space-y-3">{workspace.requests.data.map((request) => <article key={request.id} className="rounded-[8px] bg-slate-50/70 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold">{request.company.name}</h3><p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p></div><CourierBadge tone={request.status === 'pending' ? 'waiting' : 'neutral'}>{request.status === 'pending' ? 'Request submitted' : 'Withdrawn'}</CourierBadge></div>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold">{request.company.name}</h3><p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p></div><CourierBadge tone={request.status === 'pending' ? 'waiting' : 'neutral'}>{companyRequestStatus(request)}</CourierBadge></div>
                 <p className="mt-3 text-sm text-slate-600">Submitted {courierDate(request.submitted_at)}{request.withdrawn_at && <span className="block mt-1">Withdrawn {courierDate(request.withdrawn_at)}</span>}</p>
                 {request.note && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">{request.note}</p>}
                 <details className="mt-3 text-sm"><summary className="cursor-pointer rounded-[8px] py-2 font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">Shared profile</summary><div className="mt-2 rounded-[8px] bg-white p-4"><SharedCompanyProfile profile={request.shared_profile} /></div></details>
+                <RiderAssignmentDecision key={`${request.id}-${request.version}`} request={request} />
                 {request.can_withdraw && <button type="button" disabled={busy} onClick={() => openWithdrawal(request)} className={`${courierButton} mt-3`}>Withdraw request</button>}
             </article>)}</div> : <div className="py-8 text-center"><Building2 className="mx-auto h-7 w-7 text-slate-400" aria-hidden="true" /><p className="mt-3 text-sm font-medium text-slate-600">No company requests yet</p></div>}
             <CompanyRequestPagination page={workspace.requests} label="Request history" courier busy={busy} />
