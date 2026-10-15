@@ -5021,3 +5021,70 @@ Implementation commits:
 The combined PR title/body remains a local draft at
 `.codex/advertisement-management/PR.md`; it has not been saved on GitHub. The
 documentation commit is reported in the branch handoff. No commits were pushed.
+
+### October 15, 2026: owned seller promotions and exact platform review
+
+Implemented the selected **AD03** on `feat/seller-promotion-review`, based on
+`3e70485`, which contains the accepted AD01 + AD02 work. Statistics (AD04) and
+paid advertising remain separate scope.
+
+| Before | Current behavior |
+|---|---|
+| Sellers had ordinary shop branding but no marketplace promotion request. | An eligible seller saves private artwork for its single shop, owned product or published shop-funded offer, then submits the saved revision. |
+| No seller submission, review feedback or withdrawal history. | Immutable submissions and decisions retain approval, changes requested, rejection, replacement and withdrawal. Review state and actual display state appear separately. |
+| No exact seller approval to bind an admin placement. | Platform Admin reviews the submitted artwork, destination, dates, shop name/category and current products/offer terms. Approval alone does not publish or reserve a position. |
+| Changing reviewed shop scope had no promotion approval contract. | A changed reviewed name or category invalidates reuse of the old submission, including after the shop becomes eligible again. Ordinary logo, banner, description and contact edits preserve approval and a valid live promotion. |
+| No seller controls to stop approved promotional content. | The owner may withdraw one request or stop the promotion, ending remaining placements while retaining evidence. Admin archive also resolves open submissions. |
+
+Admin placement and replacement stay within the reviewed requested period and
+existing slot capacity. A replacement links to its original publication without
+rewriting the original dates. Failed replacement restores the previous booking;
+stale seller edits and admin decisions reject without erasing entered values.
+Seller and admin writers share the calendar transaction, source-version check
+and idempotent action evidence. New drafts supersede pending requests while an
+earlier approved live revision retains only its original valid conditions.
+
+Root and seller-domain routes recheck current role, original owner, shop and
+target eligibility. Foreign drafts, previews, images, products, vouchers and
+forged publication fields reject server-side. Private image sources stay off
+the response. The existing durable notification pipeline records committed
+submission/decision delivery intents, retries failed delivery and resolves only
+authorized portal links. Current restriction, withdrawal, changed scope and
+unavailable offer checks also apply to fresh public advertisement reads.
+
+Verification:
+
+- **73 advertisement backend cases / 927 assertions**, including 35 new seller
+  review/portal cases, pass in SQLite `:memory:`. The complete selected seller,
+  notification, buyer discovery/voucher/checkout approval, shop review,
+  moderation, closure and shared portal-access regression passes **645 cases /
+  7,842 assertions**, with no failures, errors or skips.
+- Checks cover the seller-to-review-to-placement-to-buyer path, stale/replayed
+  writes, foreign revisions/offers, text and upload rejection, immutable review
+  history, shop category changes, retained approval after branding edits,
+  failed placement rollback, notification outage/retry and missing installation.
+- **289 frontend/deployment checks**, including **23 advertisement checks**,
+  pass. The TypeScript/Vite production build, scoped Pint and Git whitespace
+  checks pass. Interaction harnesses verify stale guards and saved-version
+  rendering; they do not establish browser/device appearance.
+
+**Scoped engineering assessment: seller promotion requests and platform review
+0/10 before (absent) → 8/10 locally verified.** This does not raise whole seller,
+admin or project readiness. PostgreSQL races, deployed migration behavior,
+browser/device appearance and Azure acceptance remain unverified. Marketing
+claims still require responsible manual review; no automatic image-text check,
+traffic promise, billing or statistics is implied.
+
+The migration is additive and retains review evidence. No development or
+production database was reset or migrated; application checks used disposable
+containers and SQLite memory. Use [the management guide](ADVERTISEMENT_MANAGEMENT.md)
+for the seller/admin flow and existing deploy, backup and disable procedures.
+
+Implementation commits:
+
+- `471b8ab` — `feat(advertisements): require owned seller submissions and exact review`
+- `574d597` — `feat(advertisements): add seller requests and admin review screens`
+
+The combined PR title/body remains a local draft at
+`.codex/seller-promotion-review/PR.md`; it has not been saved on GitHub. The
+documentation commit is reported in the branch handoff. No commits were pushed.
