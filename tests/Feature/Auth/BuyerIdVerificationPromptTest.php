@@ -52,9 +52,9 @@ class BuyerIdVerificationPromptTest extends TestCase
         $response->assertRedirect(route('auth.google.registration'));
         $this->assertDatabaseCount('users', 0);
         $nonce = session('registration.google.nonce');
-        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['sex' => 'Female', 'registration_nonce' => $nonce, 'first_name' => 'Google', 'middle_initial' => '', 'last_name' => 'Buyer']);
+        $response = $this->post(route('auth.google.registration.store'), $this->registrationPolicies() + ['sex' => 'Female', 'registration_nonce' => $nonce, 'birthday' => '1995-05-15', 'first_name' => 'Google', 'middle_initial' => '', 'last_name' => 'Buyer']);
 
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('buyer.index', ['application' => 1]));
         $this->assertAuthenticated();
 
         $buyer = User::where('email', 'googlebuyer@example.com')->first();
@@ -115,7 +115,7 @@ class BuyerIdVerificationPromptTest extends TestCase
         $this->assertEquals('none', $buyer->kyc_status);
     }
 
-    public function test_unreviewed_buyer_profile_redirects_to_own_holding(): void
+    public function test_unreviewed_buyer_can_view_own_profile_before_approval(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -125,6 +125,6 @@ class BuyerIdVerificationPromptTest extends TestCase
 
         $response = $this->actingAs($buyer)->get(route('buyer.profile', ['tab' => 'account']));
 
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertOk();
     }
 }

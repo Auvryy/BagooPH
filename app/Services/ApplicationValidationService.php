@@ -61,7 +61,7 @@ class ApplicationValidationService
             'name' => $text('name', 2, 100, true),
             'first_name' => $text('name', 2, 50), 'middle_name' => $text('name', 1, 50), 'last_name' => $text('name', 2, 50),
             'sex' => ['bail', 'required', 'string', Rule::in(['Female', 'Male', 'Other'])],
-            'birthday' => [$worker ? 'required' : 'nullable', new BirthDate($worker)],
+            'birthday' => ['required', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($role))],
             'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id)],
             'phone' => ['bail', $worker ? 'required' : 'nullable', 'string', new PhilippineContact, new UniqueAccountMobile($user?->id)],
             'address' => $text('address', 5, 500, $worker),

@@ -19,9 +19,9 @@ class OrderHistoryController extends Controller
 {
     public function index(Request $request): Response
     {
-        $buyer = app(BuyerAccessService::class)->requireExistingOrders($request->user());
+        $buyer = app(BuyerAccessService::class)->requireOrderHistory($request->user());
 
-        if ($buyer->canAccessPortal()) {
+        if ($buyer->canAccessPortal() || ! $buyer->isKycApproved()) {
             $request->query->set('tab', 'orders');
 
             return app(BuyerProfileController::class)->index($request);
@@ -48,16 +48,17 @@ class OrderHistoryController extends Controller
     {
         $access = app(BuyerAccessService::class);
         $user = $access->current($request->user());
-        $ownedBuyerOrder = $access->canAccessExistingOrders($user) && $order->buyer_id === $user->id;
+        $ownedBuyerOrder = $access->canViewOrderHistory($user) && $order->buyer_id === $user->id;
+        $canFulfillOrder = $ownedBuyerOrder && $access->canAccessExistingOrders($user);
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
         $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier', ...OrderTrackingService::relations()]);
         $tracking = app(OrderTrackingService::class);
-        $canConfirmReceipt = $ownedBuyerOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user);
-        $pickupClaim = $ownedBuyerOrder ? $order->delivery?->pickupClaim?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null;
+        $canConfirmReceipt = $canFulfillOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user);
+        $pickupClaim = $canFulfillOrder ? $order->delivery?->pickupClaim?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null;
         $pickupHub = $ownedBuyerOrder ? $order->delivery?->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null;
-        $pickupCodeAvailable = $ownedBuyerOrder && $tracking->canShowPickupCode($order);
+        $pickupCodeAvailable = $canFulfillOrder && $tracking->canShowPickupCode($order);
         $tracking->attach($order);
 
         return Inertia::render('Buyer/OrderDetail', [
@@ -69,7 +70,7 @@ class OrderHistoryController extends Controller
             'pickupClaim' => $pickupClaim,
             'pickupHub' => $pickupHub,
             'pickupCodeAvailable' => $pickupCodeAvailable,
-            'pickupCodeUrl' => $ownedBuyerOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
+            'pickupCodeUrl' => $canFulfillOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
             'orderNotices' => $ownedBuyerOrder ? $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
                 ->where('data->order_id', $order->id)->latest()->get()
                 ->map(fn ($notice) => app(NotificationCenterService::class)->present($notice, $user)) : [],

@@ -726,7 +726,7 @@ The `buyer.existing-orders` authorization gate enforces an explicit server polic
 | Overall Platform Admin readiness | 5/10 | 5/10 | Restrictions, controlled repair/closure, moderation/audit, overview, notifications, and finance retain their own gates. |
 | End-to-end cross-role flow | 7.5/10 | 7.5/10 | Buyer access improves; custody, recovery, notification, and accounting gaps remain separate. |
 
-Implementation references: [buyer eligibility](../app/Services/BuyerAccessService.php), [route middleware](../app/Http/Middleware/EnsureBuyerAccess.php), [application submission](../app/Services/KycSubmissionService.php), [private documents](../app/Services/VerificationDocumentService.php), [owned orders](../app/Http/Controllers/Buyer/OrderHistoryController.php), [receipt service](../app/Services/Orders/OrderLifecycleService.php), [holding page](../resources/js/Pages/Auth/BuyerApproval.tsx), [order access layout](../resources/js/Layouts/BuyerOrderAccessLayout.tsx), and [B05 acceptance tests](../tests/Feature/Buyer/BuyerAccessAlignmentTest.php).
+Implementation references: [buyer eligibility](../app/Services/BuyerAccessService.php), [route middleware](../app/Http/Middleware/EnsureBuyerAccess.php), [application submission](../app/Services/KycSubmissionService.php), [private documents](../app/Services/VerificationDocumentService.php), [owned orders](../app/Http/Controllers/Buyer/OrderHistoryController.php), [receipt service](../app/Services/Orders/OrderLifecycleService.php), [buyer application modal](../resources/js/Components/BuyerApplicationModal.tsx), [order access layout](../resources/js/Layouts/BuyerOrderAccessLayout.tsx), and [B05 acceptance tests](../tests/Feature/Buyer/BuyerAccessAlignmentTest.php).
 
 Verification:
 
@@ -4565,3 +4565,53 @@ Local implementation and review commits:
 The final evidence commit is reported in the branch handoff. The combined PR
 title/body is a local draft in `.codex/rider-company-requests/PR.md`; it has not
 been saved on GitHub. User publication, merge and deployment are separate steps.
+
+## October 15, 2026 — Buyer registration, personal access and notifications
+
+Scope: `fix/buyer-access-and-notifications`, based on fresh `main` at
+`1327bc1`. This delivery follows the requested buyer policy change: new buyers
+must supply a real birth date proving age 18 or older, including first Google
+signup. Earlier optional-date examples no longer define new buyer registration.
+
+| Before | Current behavior |
+|---|---|
+| Buyer signup allowed a missing birth date or a minor. | Browser, preflight and final password/Google submission require an adult date on the Philippine calendar. The server derives age. Invalid submissions create no account or policy record. |
+| Unreviewed buyers were sent to a separate application page; personal links could redirect or fail. | Sign-in opens the marketplace with a dismissible buyer application dialog. The same dialog provides private application corrections, review feedback and a focused, current status check with a visible result. |
+| Profile, order history and the Bag shared the checkout approval gate. | Buyers can read their own profile, history and Bag before approval, save ordinary contact/photo edits, and change Bag items while active or pending. Empty history says there are no orders yet. Checkout still needs an active approved account. |
+| A single combined name appeared beneath the profile photo. | Settings show recorded first, middle and last names separately, with the middle control narrower. Missing legacy components remain visibly unrecorded; the existing identity correction/application process supplies them. |
+| The bell navigated away and update links did not acknowledge the opened notice. | A bounded recent-updates panel highlights unread notices, acknowledges only displayed owned IDs and keeps newer/undisplayed updates unread. Opening an update saves read state through Inertia; approval opens account/application context with feedback. |
+| The full notification list looked separate from buyer pages. | Buyer notifications reuse the marketplace header, navigation and surfaces. Ordinary status/read updates preserve the application experience without a full browser refresh. |
+
+Restrictions remain independent. Suspended/inactive buyers can read personal
+pages and their Bag but cannot change Bag items or place new orders. Explicit
+history denials, current account state and ownership are checked again on the
+server. Reading an unapproved buyer's own history does not grant receipt
+confirmation or private pickup codes. Existing approved-buyer receipt handling
+and the canonical delivery flow remain unchanged. No role conversion, approval
+bypass, fabricated birthday or historical order ownership change is introduced.
+
+Acceptance evidence:
+
+| Check | Result |
+|---|---|
+| Combined PHP selection | **1,730 tests / 21,357 assertions**, zero failures, errors or skips: Auth, Buyer, Notifications, account/profile updates, admin KYC, identity corrections and account restrictions, using isolated SQLite `:memory:`. |
+| Final application/history assertion | **58 tests / 2,012 assertions** passed after strengthening the owned private-document link assertion. |
+| Frontend | **78 helper/static-rendering checks** passed for buyer access, profile, vouchers, registration validation and account settings. They cover required dates, separate name fields, empty pending-buyer history, notification shell/highlighting and Inertia acknowledgement. |
+| Production build | `npm run build` passed after the final mobile popover positioning and empty-history copy changes. TypeScript and Vite completed successfully. |
+| Formatting and review | Scoped Pint passed for 41 changed PHP files; the final application test passed its follow-up format check. Git whitespace checks passed. |
+
+**Scoped engineering assessment: the requested buyer registration, personal
+access and notification experience improves from 4/10 to 8.5/10.** Required
+adult registration, reachable owned pages, current status feedback and owned
+notification reads now have automated evidence. This assessment does not raise
+overall commerce, delivery or production readiness.
+
+Browser/device interaction, real mail delivery and Azure rollout were not
+tested. Legacy reviewed accounts retain their recorded identity and correction
+path; missing name parts or birth dates are not guessed. No schema migration,
+database reset or reseeding is required by this branch. The dependency lock
+uses Laravel `13.32.0`; the repository instruction's Laravel 12 label is existing
+documentation drift, and no framework upgrade is part of this delivery.
+
+The implementation commits and combined local PR draft are recorded in the
+branch handoff. Publication, merge and deployment remain separate user actions.

@@ -456,14 +456,14 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->middleware('buyer.approved:optional')->name('cart');
 
     Route::middleware('auth')->group(function () {
+        Route::get('/profile', [BuyerProfileController::class, 'index'])->middleware('buyer.approved:account')->name('profile');
+        Route::post('/profile', [BuyerProfileController::class, 'update'])->middleware('buyer.approved:account')->name('profile.update');
         Route::middleware('buyer.approved')->group(function () {
             Route::get('/saved-products', [SavedProductController::class, 'index'])->name('saved-products.index');
             Route::get('/orders/{order}/buy-again', [BuyAgainController::class, 'show'])->whereNumber('order')->name('orders.buy-again');
             Route::post('/orders/{order}/buy-again', [BuyAgainController::class, 'store'])->whereNumber('order')->name('orders.buy-again.store');
             Route::post('/saved-products/{product}', [SavedProductController::class, 'store'])->whereNumber('product')->name('saved-products.store');
             Route::delete('/saved-products/{product}', [SavedProductController::class, 'destroy'])->whereNumber('product')->name('saved-products.destroy');
-            Route::get('/profile', [BuyerProfileController::class, 'index'])->name('profile');
-            Route::post('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
             Route::post('/addresses', [BuyerProfileController::class, 'storeAddress'])->name('addresses.store');
             Route::patch('/addresses/{address}', [BuyerProfileController::class, 'updateAddress'])->name('addresses.update');
             Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->name('addresses.default');
@@ -492,6 +492,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/preview', [NotificationController::class, 'preview'])->name('notifications.preview');
+    Route::patch('/notifications/read-displayed', [NotificationController::class, 'readDisplayed'])->name('notifications.read-displayed');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::get('/governance-history', [GovernanceHistoryController::class, 'index'])->name('governance-history.index');
     Route::get('/governance-history/{source}/{decisionId}', [GovernanceHistoryController::class, 'show'])->whereNumber('decisionId')->name('governance-history.show');

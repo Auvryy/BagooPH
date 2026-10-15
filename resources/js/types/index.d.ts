@@ -37,6 +37,9 @@ export interface User {
     id: number;
     name: string;
     email: string;
+    first_name?: string | null;
+    middle_name?: string | null;
+    last_name?: string | null;
     birthday?: string | null;
     sex?: string | null;
     role: Role;
@@ -320,6 +323,7 @@ export type PageProps<
     savedProductIds?: number[];
     unreadMessagesCount?: number;
     notificationSummary?: { available: boolean; unread: number | null };
+    buyerApplication?: import('@/Components/BuyerApplicationModal').BuyerApplicationData | null;
     flash: {
         success?: string | null;
         error?: string | null;

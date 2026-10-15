@@ -19,6 +19,9 @@ class EnsureBuyerAccess
         $user = $this->access->current($request->user());
         $request->setUserResolver(fn () => $user);
         abort_unless($user->isBuyer(), 403, 'Buyer access is required.');
+        if (in_array($mode, ['account', 'optional'], true) && $this->access->canViewHolding($user)) {
+            return $next($request);
+        }
         if ($user->canAccessPortal()) {
             return $next($request);
         }

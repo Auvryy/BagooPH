@@ -27,7 +27,7 @@ class BuyerProfileController extends Controller
 {
     public function index(Request $request): Response
     {
-        $user = app(BuyerAccessService::class)->requirePortal($request->user());
+        $user = app(BuyerAccessService::class)->requireOrderHistory($request->user());
 
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
 
@@ -52,7 +52,7 @@ class BuyerProfileController extends Controller
         }
 
         $initialTab = $request->query('tab', 'orders');
-        $available = app(CheckoutQuoteService::class)->offers(buyer: $user);
+        $available = $user->canAccessPortal() ? app(CheckoutQuoteService::class)->offers(buyer: $user) : ['offers' => [], 'count' => 0];
         $vouchers = app(VoucherCollectionService::class)->collection($user, $request);
 
         return Inertia::render('Buyer/Profile', [
@@ -65,6 +65,7 @@ class BuyerProfileController extends Controller
             'orderCounts' => $counts,
             'currentOrderStatus' => $status,
             'initialTab' => $initialTab,
+            'canUsePortal' => $user->canAccessPortal(),
             'availableVouchers' => $available['offers'],
             'availableVoucherCount' => $available['count'],
             'voucherCollection' => $vouchers,
@@ -74,7 +75,7 @@ class BuyerProfileController extends Controller
     public function update(Request $request): RedirectResponse
     {
         return app(IdentityCorrectionService::class)->mutateProfile($request, function () use ($request) {
-            $user = app(BuyerAccessService::class)->requirePortal($request->user());
+            $user = app(BuyerAccessService::class)->requireAccount($request->user());
 
             $rules = [
                 'birthday' => ['nullable', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($user->role))],

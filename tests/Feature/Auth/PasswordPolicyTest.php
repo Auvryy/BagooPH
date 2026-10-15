@@ -27,7 +27,7 @@ class PasswordPolicyTest extends TestCase
     {
         $user = User::factory()->create();
         $token = Password::broker()->getRepository()->create($user);
-        $data = ['email' => 'new@bagoo.test', 'name' => 'New Buyer', 'password' => $password, 'password_confirmation' => $password];
+        $data = ['email' => 'new@bagoo.test', 'birthday' => '1995-05-15', 'name' => 'New Buyer', 'password' => $password, 'password_confirmation' => $password];
         $this->post('/register', $data)->assertSessionHasErrors('password');
         $data['email'] = $user->email;
         $data['token'] = $token;
@@ -45,7 +45,7 @@ class PasswordPolicyTest extends TestCase
     #[DataProvider('acceptedPasswords')]
     public function test_compliant_passwords_are_saved_completely_and_authenticate_without_truncation(string $password): void
     {
-        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female', 'name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
+        $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female', 'birthday' => '1995-05-15', 'name' => 'New Buyer', 'email' => 'new@bagoo.test', 'password' => $password, 'password_confirmation' => $password])
             ->assertSessionHasNoErrors();
         $user = User::where('email', 'new@bagoo.test')->sole();
         $this->assertSame('argon2id', password_get_info($user->password)['algoName']);

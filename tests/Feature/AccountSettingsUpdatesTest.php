@@ -114,15 +114,20 @@ class AccountSettingsUpdatesTest extends TestCase
             if ($role === 'seller') {
                 Shop::factory()->create(['user_id' => $user->id]);
             }
-            $this->actingAs($user)->get('/account/settings')->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('Profile/Edit')->where('settingsOnly', true)->where('identityCorrection.subject.id', $user->id)
-                ->missing('orders')->missing('addresses')->missing('wallet')->where('closure', null));
+            $this->actingAs($user)->get('/account/settings')->assertOk()->assertInertia(function (Assert $page) use ($role, $user) {
+                $page->component($role === 'buyer' ? 'Buyer/Profile' : 'Profile/Edit')->where('identityCorrection.subject.id', $user->id);
+                if ($role === 'buyer') {
+                    $page->has('orders')->has('addresses')->has('wallet')->where('canUsePortal', false);
+                } else {
+                    $page->where('settingsOnly', true)->missing('orders')->missing('addresses')->missing('wallet')->where('closure', null);
+                }
+            });
             $this->patchJson('/profile', ['name' => $user->name, 'email' => $user->email])->assertForbidden();
             $this->postJson('/account/emails/send', ['email' => 'contact@bagoo.test', 'current_password' => 'password'])->assertForbidden();
             $this->assertSame('suspended', $user->fresh()->status);
         }
         $pending = User::factory()->buyer()->create(['kyc_status' => 'pending_approval']);
-        $this->actingAs($pending)->get('/account/settings')->assertForbidden();
+        $this->actingAs($pending)->get('/account/settings')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Buyer/Profile')->where('canUsePortal', false));
         $this->get('/account/identity-corrections')->assertConflict();
     }
 }

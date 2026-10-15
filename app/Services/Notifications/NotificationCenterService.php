@@ -100,7 +100,7 @@ class NotificationCenterService
             'parcel-return' => $user->isBuyer() ? 'buyer-order' : 'seller-orders',
             default => null,
         };
-        if ($target === 'buyer-order' && $user->isBuyer() && app(BuyerAccessService::class)->canAccessExistingOrders($user)
+        if ($target === 'buyer-order' && $user->isBuyer() && app(BuyerAccessService::class)->canViewOrderHistory($user)
             && Order::whereKey($data['order_id'] ?? 0)->where('buyer_id', $user->id)->exists()) {
             return '/buyer/orders/'.(int) $data['order_id'];
         }
@@ -115,7 +115,7 @@ class NotificationCenterService
             return '/hub/delivery-recovery';
         }
         if ($target === 'account-status') {
-            return '/pending-approval';
+            return $user->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval';
         }
         if ($target === 'identity-correction' && $user->isKycApproved()) {
             return '/account/settings#identity-correction';

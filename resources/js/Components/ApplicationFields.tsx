@@ -46,7 +46,7 @@ export default function ApplicationFields({ application, values, errors, onChang
         <details className="rounded-[12px] border border-slate-300 bg-white p-3" open={Object.keys(application.errors).length > 0 || Object.keys(errors).some(key => application.fields.some(field => field.key === key || key.startsWith(field.key + '.')))}>
             <summary className="cursor-pointer font-semibold text-slate-900">Correct your application details</summary>
             <p className="my-3 text-xs text-slate-600">Changes need a fresh admin review. Your original sign-in email stays with your account.</p>
-            <p className="mb-3 text-xs text-slate-500">Name parts must match your identity document. First and last names use 2–50 characters; an existing full middle name can use up to 50. The complete name must fit within 100 characters. Sex and a four-digit postal code are optional.</p>
+            <p className="mb-3 text-xs text-slate-500">Name parts must match your identity document. First and last names use 2–50 characters; an existing full middle name can use up to 50. The complete name must fit within 100 characters. Sex is required; a four-digit postal code is optional.</p>
             <div className="grid gap-3 sm:grid-cols-12">
                 {application.fields.map(field => {
                     const value = values[field.key] ?? '';

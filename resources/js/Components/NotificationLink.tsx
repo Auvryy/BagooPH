@@ -1,10 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 import { PageProps } from '@/types';
+import BuyerNotificationMenu from './BuyerNotificationMenu';
 
 export default function NotificationLink() {
     const { auth, notificationSummary } = usePage<PageProps>().props;
     if (!auth.user) return null;
+    if (auth.user.role === 'buyer') return <BuyerNotificationMenu />;
     const count = notificationSummary?.unread ?? 0;
     const label = notificationSummary?.available === false
         ? 'Notifications temporarily unavailable'

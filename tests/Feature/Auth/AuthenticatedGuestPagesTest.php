@@ -155,8 +155,9 @@ class AuthenticatedGuestPagesTest extends TestCase
     public function test_pending_accounts_go_to_their_review_page_and_keep_portal_restrictions(string $role): void
     {
         $user = User::factory()->create(['role' => $role, 'status' => 'pending_approval', 'kyc_status' => 'pending_approval']);
-        $this->actingAs($user)->get('/register')->assertRedirect('/pending-approval');
-        $this->getJson('/auth/session')->assertOk()->assertJsonPath('redirect', '/pending-approval');
+        $destination = $role === 'buyer' ? '/buyer' : '/pending-approval';
+        $this->actingAs($user)->get('/register')->assertRedirect($destination);
+        $this->getJson('/auth/session')->assertOk()->assertJsonPath('redirect', $destination);
         $this->assertFalse($user->fresh()->canAccessPortal());
         $this->assertAuthenticatedAs($user);
     }

@@ -13,7 +13,7 @@ class VoucherCollectionService
 {
     public function collection(User $actor, Request $request): array
     {
-        $buyer = app(BuyerAccessService::class)->requirePortal($actor);
+        $buyer = app(BuyerAccessService::class)->requireAccount($actor);
         $tab = $request->validate(['voucher_tab' => 'nullable|in:available,saved,used,expired'])['voucher_tab'] ?? 'available';
         $queries = [
             'available' => app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer),

@@ -12,7 +12,7 @@ class BirthDateEligibility
 
     public function requiresAdult(mixed $role): bool
     {
-        return in_array($role, [UserRole::SELLER->value, UserRole::COURIER->value, UserRole::LOGISTICS->value, UserRole::ADMIN->value], true);
+        return in_array($role, array_column(UserRole::cases(), 'value'), true);
     }
 
     public function today(): CarbonImmutable

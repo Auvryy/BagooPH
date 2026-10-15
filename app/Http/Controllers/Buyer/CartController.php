@@ -27,7 +27,7 @@ class CartController extends Controller
     private function getCart(Request $request): Cart
     {
         if ($request->user()) {
-            app(BuyerAccessService::class)->requirePortal($request->user());
+            app(BuyerAccessService::class)->requireAccount($request->user());
         }
         $userId = $request->user()?->id;
         $sessionId = $request->session()->getId();
@@ -93,6 +93,9 @@ class CartController extends Controller
 
     public function store(Request $request, CartLineService $lines): RedirectResponse
     {
+        if ($request->user()) {
+            app(BuyerAccessService::class)->requireBagChanges($request->user());
+        }
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:99'],
@@ -113,7 +116,7 @@ class CartController extends Controller
                 throw ValidationException::withMessages(['product_id' => $exception->getMessage()]);
             }
             if ($request->user()) {
-                app(BuyerAccessService::class)->requirePortal($request->user());
+                app(BuyerAccessService::class)->requireBagChanges($request->user());
             }
             if (! $product) {
                 throw ValidationException::withMessages(['product_id' => 'This product is no longer available.']);
@@ -129,6 +132,9 @@ class CartController extends Controller
 
     public function update(Request $request, CartItem $cartItem, InventoryService $inventory): RedirectResponse
     {
+        if ($request->user()) {
+            app(BuyerAccessService::class)->requireBagChanges($request->user());
+        }
         $cart = $this->getCart($request);
 
         // Authorization / IDOR Protection
@@ -155,7 +161,7 @@ class CartController extends Controller
                 throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
             }
             if ($request->user()) {
-                app(BuyerAccessService::class)->requirePortal($request->user());
+                app(BuyerAccessService::class)->requireBagChanges($request->user());
             }
             if (! $product) {
                 throw ValidationException::withMessages(['quantity' => 'This product is no longer available.']);
@@ -195,6 +201,9 @@ class CartController extends Controller
 
     public function destroy(Request $request, CartItem $cartItem): RedirectResponse
     {
+        if ($request->user()) {
+            app(BuyerAccessService::class)->requireBagChanges($request->user());
+        }
         $cart = $this->getCart($request);
 
         // Authorization / IDOR Protection
@@ -205,7 +214,7 @@ class CartController extends Controller
         DB::transaction(function () use ($request, $cart, $cartItem) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             if ($request->user()) {
-                app(BuyerAccessService::class)->requirePortal($request->user(), lock: true);
+                app(BuyerAccessService::class)->requireBagChanges($request->user(), lock: true);
             }
             CartItem::whereKey($cartItem->id)->where('cart_id', $cart->id)->lockForUpdate()->firstOrFail()->delete();
         });

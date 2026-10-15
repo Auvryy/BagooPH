@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifications;
 
 use App\Models\DeliveryCheckpoint;
 use App\Models\NotificationDelivery;
+use App\Models\Order;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,13 +68,16 @@ class LifecycleNotificationTest extends TestCase
         $this->assertSame(1, $order->buyer->notifications()->count());
     }
 
-    public function test_order_link_is_removed_when_current_ownership_or_eligibility_changes(): void
+    public function test_review_changes_keep_owned_history_without_checkout_or_foreign_access(): void
     {
         $order = $this->newFlowOrder('confirmed');
         $buyer = $order->buyer;
         $this->actingAs($buyer)->get('/notifications')->assertInertia(fn ($page) => $page->where('notices.data.0.href', '/buyer/orders/'.$order->id));
         $buyer->update(['kyc_status' => 'rejected']);
-        $this->get('/notifications')->assertInertia(fn ($page) => $page->where('notices.data.0.href', null));
-        $this->getJson('/buyer/orders/'.$order->id)->assertForbidden();
+        $this->get('/notifications')->assertInertia(fn ($page) => $page->where('notices.data.0.href', '/buyer/orders/'.$order->id));
+        $this->get('/buyer/orders/'.$order->id)->assertOk();
+        $this->get('/checkout')->assertRedirect(route('kyc.pending'));
+        $foreign = Order::factory()->create();
+        $this->getJson('/buyer/orders/'.$foreign->id)->assertForbidden();
     }
 }

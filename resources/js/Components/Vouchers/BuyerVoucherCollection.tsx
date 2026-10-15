@@ -10,7 +10,7 @@ export interface BuyerVoucherCollectionData {
     offers: PaginatedData<VoucherOffer>;
 }
 
-export default function BuyerVoucherCollection({ collection }: { collection: BuyerVoucherCollectionData }) {
+export default function BuyerVoucherCollection({ collection, allowSave = true }: { collection: BuyerVoucherCollectionData; allowSave?: boolean }) {
     const titles = { available: 'Available', saved: 'Saved', used: 'Used', expired: 'Expired' };
     return <>
         <div className="border-b border-slate-200 pb-4">
@@ -24,7 +24,7 @@ export default function BuyerVoucherCollection({ collection }: { collection: Buy
                 {title} ({collection.counts[tab as keyof typeof titles]})
             </Link>)}
         </nav>
-        <VoucherOfferList offers={collection.offers.data} allowSave emptyTitle={`No ${collection.tab} vouchers`}
+        <VoucherOfferList offers={collection.offers.data} allowSave={allowSave} emptyTitle={`No ${collection.tab} vouchers`}
             emptyDescription={collection.tab === 'saved' ? 'Save a shop or Bagoo offer to find its terms here.'
                 : collection.tab === 'used' ? 'Offers you actually use at checkout will appear here.'
                 : collection.tab === 'expired' ? 'Expired vouchers you saved or used will appear here.' : 'Shop and Bagoo offers will appear here when available.'} />

@@ -647,7 +647,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     public function test_registration_ignores_injected_status_or_kyc_status_payload(): void
     {
         $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Bypass User',
+            'birthday' => '1995-05-15', 'name' => 'Bypass User',
             'email' => 'bypass@bagoo.test',
             'password' => 'Password1234!',
             'password_confirmation' => 'Password1234!',

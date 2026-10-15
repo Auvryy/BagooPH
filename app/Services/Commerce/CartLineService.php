@@ -17,7 +17,7 @@ class CartLineService
 {
     public function ownedCart(User $actor, ?string $sessionId = null): Cart
     {
-        $buyer = app(BuyerAccessService::class)->requirePortal($actor);
+        $buyer = app(BuyerAccessService::class)->requireAccount($actor);
         $cart = Cart::where('user_id', $buyer->id)->first();
         if ($cart) {
             return $cart;
@@ -25,7 +25,7 @@ class CartLineService
 
         // Serialize first-cart creation without holding a user lock while waiting on an existing Bag.
         return DB::transaction(function () use ($actor, $sessionId) {
-            $buyer = app(BuyerAccessService::class)->requirePortal($actor, lock: true);
+            $buyer = app(BuyerAccessService::class)->requireAccount($actor, lock: true);
 
             return Cart::firstOrCreate(['user_id' => $buyer->id], ['session_id' => $sessionId]);
         });

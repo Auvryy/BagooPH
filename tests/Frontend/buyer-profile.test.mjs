@@ -53,6 +53,25 @@ async function render(props = {}) {
     });
     return result.body;
 }
+
+test('buyer identity shows recorded name components with a smaller middle field and no editable full-name control', async () => {
+    const html = await render({ initialTab: 'account', user: { ...user, first_name: 'Ana', middle_name: 'M.', last_name: 'Santos' } });
+    assert.match(html, /First name/);
+    assert.match(html, /Middle name/);
+    assert.match(html, /Last name/);
+    assert.match(html, /grid-cols-\[1fr_5rem_1fr\]/);
+    assert.match(html, /readonly=""[^>]*value="Ana"/);
+    assert.match(html, /readonly=""[^>]*value="Santos"/);
+    assert.doesNotMatch(html, />Full Name<|value="Ana Santos"/);
+});
+
+test('an unapproved buyer with no purchases sees an honest empty history', async () => {
+    const pending = { ...user, status: 'pending_approval', kyc_status: 'pending_approval' };
+    const html = await render({ auth: { user: pending }, user: pending, canUsePortal: false, ordersCount: 0, orderCounts: Object.fromEntries(Object.keys(counts).map(key => [key, 0])) });
+    assert.match(html, /No orders yet/);
+    assert.match(html, /Your orders will appear here/);
+    assert.doesNotMatch(html, /No orders found in this status|403|Verified Buyer/);
+});
 function nodes(node, predicate) {
     if (!node || typeof node !== 'object') return [];
     const found = predicate(node) ? [node] : [];

@@ -333,7 +333,9 @@ test('date and combined-name boundaries are checked without truncation or blocki
         assert.equal(ui.registrationInputErrors({ ...identity('courier'), birthday }, limits, 1).birthday, undefined, birthday);
     }
     const buyer = { ...identity('buyer'), birthday: '' };
-    assert.equal(ui.registrationInputErrors(buyer, limits, 2).birthday, undefined);
+    assert.match(ui.registrationInputErrors(buyer, limits, 2).birthday, /required/);
+    assert.ok(ui.registrationInputErrors({ ...buyer, birthday: '2008-10-13' }, limits, 2).birthday);
+    assert.equal(ui.registrationInputErrors({ ...buyer, birthday: '2008-10-12' }, limits, 2).birthday, undefined);
     const names = { ...identity('buyer'), first_name: 'A'.repeat(49), middle_initial: '', last_name: 'B'.repeat(50) };
     assert.equal(ui.registrationInputErrors(names, limits, 1).name, undefined);
     assert.ok(ui.registrationInputErrors({ ...names, first_name: 'A'.repeat(50) }, limits, 1).name);
@@ -509,7 +511,8 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
     assert.match(result.body, /verified@bagoo.test/);
     assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
-    const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '', phone: '', city: '', address: '' };
+    const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '2008-10-12', phone: '', city: '', address: '' };
     assert.deepEqual(ui.registrationInputErrors(values, limits, undefined, true), {});
+    assert.ok(ui.registrationInputErrors({ ...values, birthday: '' }, limits, undefined, true).birthday);
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
 });

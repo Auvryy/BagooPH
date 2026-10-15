@@ -40,7 +40,12 @@ class ProfileInputService
     public function validate(Request $request, array $fields, array $additional = []): array
     {
         $user = $request->user();
-        abort_unless($user?->canAccessPortal(), 403, 'An eligible account is required to update its profile.');
+        if ($user?->isBuyer()) {
+            $user = app(BuyerAccessService::class)->requireAccount($user);
+            $request->setUserResolver(fn () => $user);
+        } else {
+            abort_unless($user?->canAccessPortal(), 403, 'An eligible account is required to update its profile.');
+        }
         $request->merge($this->normalize($request->all(), $user));
 
         return $request->validate($this->rules($user, $fields) + $additional);
