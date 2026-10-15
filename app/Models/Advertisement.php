@@ -23,6 +23,16 @@ class Advertisement extends Model
         return $this->belongsTo(User::class, 'created_by_id');
     }
 
+    public function shop(): BelongsTo
+    {
+        return $this->belongsTo(Shop::class);
+    }
+
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(AdvertisementSubmission::class);
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(AdvertisementRevision::class);

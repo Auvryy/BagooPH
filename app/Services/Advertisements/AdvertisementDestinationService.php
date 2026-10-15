@@ -32,7 +32,7 @@ class AdvertisementDestinationService
 
     public function problem(AdvertisementRevision $revision, bool $publishing = false, ?CarbonImmutable $start = null, ?CarbonImmutable $end = null): ?string
     {
-        if ($revision->imported_candidate || ! $revision->starts_at || ! $revision->ends_at || ! $revision->slot) {
+        if ($revision->imported_candidate || ! $revision->starts_at || ! $revision->ends_at) {
             return 'Complete the destination, dates and placement before publishing this artwork.';
         }
         if ($revision->destination_type === 'shop' && ! Shop::eligible()->whereKey($revision->destination_id)->exists()) {

@@ -27,6 +27,9 @@ class AdvertisementReader
         if (! config('advertisements.enabled')) {
             return ['state' => 'unavailable', 'reason' => 'Marketplace advertisement display is currently disabled.'];
         }
+        if (! app(SellerPromotionService::class)->approvedRevision($publication->advertisement, $publication->revision)) {
+            return ['state' => 'unavailable', 'reason' => 'The seller submission no longer has current approval or eligibility.'];
+        }
         if (! $publication->claims_reviewed || ! $publication->revision->asset
             || ! Storage::disk('local')->exists($publication->revision->asset->image_path)) {
             return ['state' => 'unavailable', 'reason' => 'The reviewed artwork is unavailable.'];

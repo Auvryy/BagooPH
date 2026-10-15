@@ -3,10 +3,12 @@
 namespace App\Services\Notifications;
 
 use App\Enums\UserRole;
+use App\Models\Advertisement;
 use App\Models\Order;
 use App\Models\RestrictionAffectedWork;
 use App\Models\RiderCompanyRequest;
 use App\Models\User;
+use App\Services\Advertisements\SellerPromotionService;
 use App\Services\BuyerAccessService;
 use App\Services\ExceptionOversightService;
 use App\Services\Finance\CodCashService;
@@ -102,6 +104,22 @@ class NotificationCenterService
             'parcel-return' => $user->isBuyer() ? 'buyer-order' : 'seller-orders',
             default => null,
         };
+        if (in_array($target, ['promotion-admin', 'promotion-seller'], true)
+            && app(SellerPromotionService::class)->installed()) {
+            $ad = Advertisement::whereKey((int) ($data['advertisement_id'] ?? 0))->whereNotNull('shop_id')->first();
+            if ($ad && $ad->submissions()->whereKey((int) ($data['submission_id'] ?? 0))->exists() && $user->canAccessPortal() && $user->email_verified_at) {
+                $anchor = '#submission-'.(int) $data['submission_id'];
+                if ($target === 'promotion-admin' && $user->isAdmin()) {
+                    return '/admin/advertisements/'.$ad->id.$anchor;
+                }
+                if ($target === 'promotion-seller' && $user->isSeller() && (int) $ad->created_by_id === (int) $user->id
+                    && $ad->shop()->where('user_id', $user->id)->exists()) {
+                    return '/seller/promotions/'.$ad->id.$anchor;
+                }
+            }
+
+            return null;
+        }
         if ($target === 'buyer-order' && $user->isBuyer() && app(BuyerAccessService::class)->canViewOrderHistory($user)
             && Order::whereKey($data['order_id'] ?? 0)->where('buyer_id', $user->id)->exists()) {
             return '/buyer/orders/'.(int) $data['order_id'];
