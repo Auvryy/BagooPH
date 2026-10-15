@@ -55,8 +55,9 @@ class SellerDemoSeederTest extends TestCase
         $this->get('/shop/'.$shop->slug)->assertOk();
         $this->get('/')->assertOk();
         $this->actingAs($seller)->get('/seller/dashboard')->assertOk();
-        $this->get('/seller/shops')->assertInertia(fn (Assert $page) => $page
-            ->where('shop.decision_history.0.source', 'Synthetic demo setup'));
+        $this->get('/seller/shops')->assertRedirect('/seller/settings');
+        $this->get('/seller/settings')->assertInertia(fn (Assert $page) => $page
+            ->where('shopReview.decision_history.0.source', 'Synthetic demo setup'));
         $url = '/shop-verification-documents/'.$shop->id.'/id.png?decision='.$decision->id;
         $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('Cache-Control', 'no-store, private');
         $this->actingAs(User::factory()->seller()->create())->get($url)->assertForbidden();

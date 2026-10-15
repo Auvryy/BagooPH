@@ -24,6 +24,7 @@ const bundle = buildSync({
         export { default as SellerOrders } from '@/Pages/Seller/Orders';
         export { default as Dashboard } from '@/Pages/Seller/Dashboard';
         export { default as Inventory } from '@/Pages/Seller/Products';
+        export { default as SellerSettings } from '@/Pages/Seller/Settings';
         export { newListingStatus, sellerInventoryQuery, sellerVariantStock } from '@/utils/sellerInventory';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -52,6 +53,19 @@ async function render(Component, component, props, role = 'buyer') {
     });
     return result.body;
 }
+
+test('shop settings present real review feedback instead of an unconditional verification badge', async () => {
+    const reviewed = { ...shop, status: 'suspended', eligible: false, review_status: 'rejected',
+        review_feedback: 'Please provide the current permit.', review_issues: [], owner_birthday: '1990-01-01',
+        can_submit: true, documents: {}, decision_history: [], review_token: 'retained-review-token' };
+    const html = await render(ui.SellerSettings, 'Seller/Settings', { shop, shopReview: reviewed, categories: [] }, 'seller');
+    assert.match(html, /Shop approval/);
+    assert.match(html, /Please provide the current permit\./);
+    assert.match(html, /rejected[\s\S]*?suspended/);
+    assert.match(html, /Update submission/);
+    assert.match(html, /Review history/);
+    assert.doesNotMatch(html, /PREFERRED MALL|Auto-dispatch enabled|Active Store|Open dashboard/);
+});
 
 test('an unrated product card displays an honest empty state', () => {
     const html = renderToStaticMarkup(createElement(ui.ProductCard, { product }));

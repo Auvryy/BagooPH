@@ -80,11 +80,31 @@ class SingleShopOwnershipTest extends TestCase
     public function test_sole_shop_is_shared_without_a_picker_on_root_and_seller_hosts(): void
     {
         $shop = Shop::factory()->approved()->create();
-        foreach (['/seller/shops', 'http://seller.localhost/shops'] as $url) {
-            $this->actingAs($shop->user)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('Seller/Shops')->where('shop.id', $shop->id)->where('shop.eligible', true)
+        foreach ([['/seller/shops', '/seller/settings'], ['http://seller.localhost/shops', 'http://seller.localhost/settings']] as [$oldUrl, $settings]) {
+            $this->actingAs($shop->user)->get($oldUrl)->assertRedirect($settings);
+            $this->get($settings)->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->component('Seller/Settings')->where('shop.id', $shop->id)->where('shopReview.eligible', true)
+                ->where('shopReview.review_status', 'approved')->has('shopReview.decision_history', 1)
                 ->where('auth.user.shop.id', $shop->id)->missing('shops')->missing('auth.user.sellerShops'));
         }
+    }
+
+    public function test_settings_retains_review_and_resubmission_feedback_without_opening_new_work(): void
+    {
+        foreach ([null, 'pending_approval', 'rejected'] as $review) {
+            $shop = Shop::factory()->approved()->create();
+            $shop->update(['review_status' => $review, 'review_feedback' => 'Please review the original shop documents.']);
+            $this->actingAs($shop->user)->get('/seller/settings')->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->component('Seller/Settings')->where('shopReview.id', $shop->id)->where('shopReview.eligible', false)
+                ->where('shopReview.can_submit', true)->where('shopReview.review_feedback', 'Please review the original shop documents.')
+                ->has('shopReview.decision_history', 1));
+            $this->get('/seller/dashboard')->assertRedirect('/seller/shops');
+            $this->get('/seller/shops')->assertRedirect('/seller/settings')->assertSessionHas('error', 'Your shop cannot accept new work. Review its approval and activity in Settings.');
+            $this->get('/seller/settings')->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('flash.error', 'Your shop cannot accept new work. Review its approval and activity in Settings.'));
+            $this->post('/seller/products', ['name' => 'Unauthorized product'])->assertRedirect('/seller/shops');
+        }
+        $this->assertDatabaseCount('products', 0);
     }
 
     public function test_missing_shop_is_visible_without_creating_one_from_a_portal_read(): void

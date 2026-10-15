@@ -78,7 +78,7 @@ class ShopEligibilityService
                 $this->lockCategories();
             }
             if (! $this->isEligible($shop)) {
-                throw new HttpResponseException(redirect()->route('seller.shops.index')->with('info', 'Your shop cannot accept new work. Review its approval and activity on the Shop page.'));
+                throw new HttpResponseException(redirect()->route('seller.shops.index')->with('error', 'Your shop cannot accept new work. Review its approval and activity in Settings.'));
             }
         }
 

@@ -43,6 +43,26 @@ class WebSessionTransitionTest extends TestCase
             'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(Request::create('http://localhost')) ?? ''];
     }
 
+    public static function sellerHomes(): array
+    {
+        return [
+            ['http://localhost', '/seller/dashboard', '/seller/shops'],
+            ['http://localhost', '/seller/dashboard', '/seller/orders'],
+            ['http://seller.localhost', '/dashboard', '/shops'],
+            ['http://seller.localhost', '/dashboard', '/reports'],
+        ];
+    }
+
+    #[DataProvider('sellerHomes')]
+    public function test_approved_seller_sign_in_opens_dashboard_instead_of_a_retained_previous_page(string $host, string $target, string $previous): void
+    {
+        $seller = User::factory()->seller()->create();
+        $this->withSession(['url.intended' => $host.$previous])->withHeaders($this->inertiaHeaders())
+            ->post($host.'/login', ['email' => $seller->email, 'password' => 'password'])
+            ->assertStatus(409)->assertHeader('X-Inertia-Location', $target)->assertSessionMissing('url.intended');
+        $this->assertAuthenticatedAs($seller);
+    }
+
     #[DataProvider('portals')]
     public function test_real_login_rotates_session_and_requests_a_fresh_page_on_the_browser_origin(string $role, string $host, string $target): void
     {

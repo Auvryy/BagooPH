@@ -4763,3 +4763,59 @@ The final contract/documentation commit is reported in the branch handoff.
 The combined PR title/body remains a local draft at `.codex/rc03/PR.md`, not a
 saved GitHub description. Stop at this backend handoff; user publication,
 deployment and the separate Flutter implementation require their own evidence.
+
+## October 15, 2026 — Seller Dashboard entry and navigation
+
+Scope: `fix/seller-dashboard-navigation`, from current `main` at `a978e82`.
+
+| Before | Current behavior |
+|---|---|
+| An approved seller could return to an old Shop URL after sign-in. | Seller sign-in opens Dashboard on root and seller-subdomain portals, clearing the retained destination. Other roles retain their existing sign-in behavior. |
+| The sole shop had a separate page with an extra Open dashboard step. | Existing Shop URLs forward to Settings, which contains the actual approval, category, feedback, review history and existing correction/resubmission actions. |
+| Settings displayed unconditional preferred-mall, active-store and auto-dispatch claims. | The shop panel displays its recorded review and activity state. Legacy resubmission remains available; restricted shops cannot open new work. |
+| Financial overview, Seller proceeds and Finances appeared as separate menu entries above and below the work pages. | Dashboard comes first. One Finances entry groups Overview, Payouts and Sales report, with the current child visible and marked. The shop summary opens Settings. |
+
+Overview follows recorded proceeds and payment evidence. Payouts retains the
+order-level release/payment history. Sales report retains completed sales and
+estimated shares, using its existing completion-date filters. These views keep
+their original sources, date bases, ownership, promotional accounting and
+separate shipping rules; this batch changes navigation and explanatory copy.
+
+The Settings panel reuses the existing shop review presentation and submission
+endpoint. Old URL redirects preserve flash feedback, and blocked-work messages
+use the existing visible error channel. Missing shops still show an explicit
+unavailable screen without creating a shop; conflicting ownership still rejects.
+Pending account holding, private evidence authorization, reviewed corrections
+and one-shop/category restrictions remain enforced.
+
+Verification:
+
+- Final focused authentication/shop/finance selection: **93 tests / 2,710
+  assertions**, zero failures, errors or skips, using SQLite `:memory:`.
+- Wider seller, shared portal, shop review, seeded seller and settlement
+  selection: **379 tests / 5,763 assertions**, zero failures, errors or skips.
+  This run preceded the final redirect-message refinement; the final focused
+  selection verifies its rendered feedback. The selections overlap.
+- **48 frontend checks**, the TypeScript/Vite production build, scoped Pint for
+  eight PHP files and Git whitespace checks pass. The frontend checks cover
+  grouped finance navigation and actual shop review feedback in Settings.
+- The first message-retention assertion inspected session data after it had
+  expired for the next request. The corrected acceptance checks the rendered
+  Inertia feedback and exposed the previously invisible informational channel;
+  the final implementation and test above pass.
+
+**Scoped engineering assessment: seller navigation and landing experience
+5/10 → 8.5/10.** One-shop administration and the three financial destinations are
+clearer, with existing approval and money rules retained. Overall seller,
+financial and project ratings are unchanged. Browser/device interaction and
+Azure rollout remain unverified; no migration or database reset is required.
+
+Implementation commits:
+
+- `10c59a5` — `fix(seller): open Dashboard and keep shop reviews in Settings`
+- `abdee6b` — `fix(seller): group finance pages under clear navigation`
+
+The combined PR title/body remains a local draft at
+`.codex/seller-navigation/PR.md`. It has not been saved on GitHub. The final
+documentation commit is reported in the branch handoff; publication and
+deployment remain user actions.

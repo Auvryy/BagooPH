@@ -110,6 +110,12 @@ class AuthenticatedSessionController extends Controller
             : app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {
                 $host = $request->getHost();
 
+                if ($request->user()->isSeller()) {
+                    $request->session()->forget('url.intended');
+
+                    return redirect(str_starts_with($host, 'seller.') ? '/dashboard' : route('seller.dashboard', absolute: false));
+                }
+
                 if (str_starts_with($host, 'courier.')) {
                     return redirect()->intended('/deliveries');
                 }

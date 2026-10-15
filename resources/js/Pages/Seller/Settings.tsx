@@ -2,13 +2,13 @@ import UploadHint from '@/Components/UploadHint';
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { Shop } from '@/types';
+import SellerShopReview, { type ReviewedShop } from '@/Components/SellerShopReview';
+import { Category, Shop } from '@/types';
 import { 
     Store, 
     MapPin, 
     Phone, 
     FileText, 
-    ShieldCheck, 
     Check, 
     ExternalLink,
     Camera,
@@ -18,9 +18,11 @@ import {
 
 interface Props {
     shop: Shop;
+    shopReview: ReviewedShop;
+    categories: Category[];
 }
 
-export default function SellerSettings({ shop }: Props) {
+export default function SellerSettings({ shop, shopReview, categories }: Props) {
     const [fileVersion, setFileVersion] = useState(0);
     const { data, setData, post, processing, recentlySuccessful, errors, setDefaults } = useForm({
         name: shop.name || '',
@@ -95,21 +97,7 @@ export default function SellerSettings({ shop }: Props) {
                     </Link>
                 </div>
                 
-                {/* Store Status Banner */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between font-sans text-xs">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                            <ShieldCheck className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-bold text-slate-900 uppercase">Merchant Verification Status: PREFERRED MALL</p>
-                            <p className="text-slate-500 text-[11px]">Business credentials verified • Auto-dispatch enabled</p>
-                        </div>
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold uppercase text-[10px]">
-                        Active Store
-                    </span>
-                </div>
+                <SellerShopReview shop={shopReview} categories={categories} />
 
                 <form onSubmit={submit} className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-6">
                     

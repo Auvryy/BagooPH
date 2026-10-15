@@ -15,12 +15,15 @@ export default function Overview({ records, totals, filters, mode, error, stateO
         router.get('/financial-oversight', { ...form }, { preserveState: true });
     };
     const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
-    return <DashboardLayout title="Financial oversight" subtitle={mode === 'company' ? 'Review your company’s recorded cash and receipts.' : mode === 'seller' ? 'Follow your product proceeds from confirmation to recorded payment.' : 'Review recorded cash and seller proceeds with their original evidence.'}>
-        <Head title="Financial oversight" />
+    const title = mode === 'seller' ? 'Finances' : 'Financial oversight';
+    return <DashboardLayout title={title} subtitle={mode === 'company' ? 'Review your company’s recorded cash and receipts.' : mode === 'seller' ? 'Follow your product proceeds from confirmation to recorded payment.' : 'Review recorded cash and seller proceeds with their original evidence.'}>
+        <Head title={title} />
         <div className="space-y-5">
             <section className={`${cashSurface} p-5`}>
-                <h2 className="font-semibold">Recorded money and its sources</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Cash cards follow the same money at different stages. Review each stage separately. Product proceeds use the original 90% seller and 10% platform split, with shipping and discounts shown separately.</p>
+                <h2 className="font-semibold">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{mode === 'seller'
+                    ? 'See proceeds awaiting payment and payments backed by recorded receipts. Payouts shows the payment history for each order. Sales report shows completed sales and estimated shares.'
+                    : 'Cash cards follow the same money at different stages. Review each stage separately. Product proceeds use the original 90% seller and 10% platform split, with shipping and discounts shown separately.'}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">Date filters use the original cash collection date in Philippine time. Orders awaiting collection use their order date. Each card links to the records contributing to that total.</p>
             </section>
             {error && <p role="alert" className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{error}</p>}
