@@ -106,7 +106,7 @@ class KycRegistrationTest extends TestCase
     public function test_buyer_registration_without_id_defaults_to_none_and_redirects_to_login(): void
     {
         $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Alex Buyer',
+            'birthday' => '1995-05-15', 'name' => 'Alex Buyer',
             'email' => 'alex.buyer@example.com',
             'phone' => '+63 917 555 6666',
             'address' => '789 Sunrise Ave',
@@ -135,7 +135,7 @@ class KycRegistrationTest extends TestCase
         $idFile = UploadedFile::fake()->image('buyer_id.jpg');
 
         $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Alex Another Buyer',
+            'birthday' => '1995-05-15', 'name' => 'Alex Another Buyer',
             'email' => 'alex.buyer2@example.com',
             'phone' => '+63 917 555 6666',
             'address' => '789 Sunrise Ave',

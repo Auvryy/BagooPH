@@ -123,15 +123,12 @@ class WorkerBirthDateEligibilityTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles('kyc_documents'));
     }
 
-    public function test_buyer_age_is_derived_and_optional_birth_date_never_creates_a_claimed_age(): void
+    public function test_buyer_age_is_derived_from_a_required_adult_birth_date(): void
     {
-        foreach ([['2013-10-04', 13], [null, null], ['2000-10-04', 26]] as $index => [$date, $expected]) {
-            $data = $this->registration('buyer', $date);
-            $data['phone'] = '+63917123456'.$index;
-            $data['age'] = 'client-selected age';
-            $this->post('/register', $data)->assertRedirect(route('login'))->assertSessionHasNoErrors();
-            $this->assertSame($expected, User::where('email', $data['email'])->sole()->age);
-        }
+        $data = $this->registration('buyer', '2000-10-04');
+        $data['age'] = 'client-selected age';
+        $this->post('/register', $data)->assertRedirect(route('login'))->assertSessionHasNoErrors();
+        $this->assertSame(26, User::where('email', $data['email'])->sole()->age);
     }
 
     #[DataProvider('workerRoles')]

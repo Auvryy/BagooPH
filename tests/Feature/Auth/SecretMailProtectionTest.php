@@ -66,7 +66,7 @@ class SecretMailProtectionTest extends TestCase
         config(['mail.default' => 'log']);
         Notification::fake();
         $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Bagoo Mail Applicant', 'email' => 'mail.applicant@bagoo.test', 'role' => 'buyer',
+            'birthday' => '1995-05-15', 'name' => 'Bagoo Mail Applicant', 'email' => 'mail.applicant@bagoo.test', 'role' => 'buyer',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
         ])->assertRedirect(route('login'))->assertSessionHasErrors('email')->assertSessionMissing('status');
         $user = User::where('email', 'mail.applicant@bagoo.test')->firstOrFail();

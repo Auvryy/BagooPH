@@ -378,7 +378,7 @@ class AccountRestrictionTest extends TestCase
     public function test_valid_separate_reactivation_for_every_role_keeps_legacy_missing_date_compatibility(string $role): void
     {
         $actor = User::factory()->admin()->create();
-        $subject = User::factory()->create(['role' => $role, 'status' => 'inactive']);
+        $subject = User::factory()->create(['role' => $role, 'status' => 'inactive', 'birthday' => null]);
         if ($role === 'seller') {
             Shop::factory()->approved()->create(['user_id' => $subject->id]);
         }

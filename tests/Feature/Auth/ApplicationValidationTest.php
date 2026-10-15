@@ -55,7 +55,7 @@ class ApplicationValidationTest extends TestCase
     private function payload(string $role = 'buyer'): array
     {
         $data = $this->registrationPolicies() + ['sex' => 'Female', 'role' => $role, 'name' => 'José Dela Cruz', 'email' => Str::uuid().'@bagoo.test', 'phone' => '09171234567',
-            'birthday' => $role === 'buyer' ? null : '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200',
+            'birthday' => '2000-01-01', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!'];
         if ($role === 'seller') {
             $data += ['shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id];
@@ -75,7 +75,7 @@ class ApplicationValidationTest extends TestCase
 
     private function applicant(string $role = 'seller', array $overrides = []): User
     {
-        $user = User::factory()->pendingKyc()->create(array_replace(['role' => $role, 'name' => 'José Dela Cruz', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200', 'birthday' => $role === 'buyer' ? null : '2000-01-01'], $overrides));
+        $user = User::factory()->pendingKyc()->create(array_replace(['role' => $role, 'name' => 'José Dela Cruz', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'postal_code' => '1200', 'birthday' => '2000-01-01'], $overrides));
         if ($role === 'seller') {
             Shop::factory()->create(['user_id' => $user->id, 'root_category_id' => $this->validMasterCategory()->id, 'name' => 'Bagoo Shop', 'phone' => '+639171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati', 'status' => 'pending']);
         } elseif ($role === 'courier') {

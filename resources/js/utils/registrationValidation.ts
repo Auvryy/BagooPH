@@ -67,8 +67,8 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
         }
     }
     const worker = role !== 'buyer';
-    if (checking(worker ? 1 : 2) && (worker || value('birthday'))) {
-        const error = birthDateError(value('birthday'), limits, worker);
+    if (checking(worker ? 1 : 2)) {
+        const error = value('birthday') ? birthDateError(value('birthday'), limits, true) : 'Date of birth is required. You must be at least 18.';
         if (error) errors.birthday = error;
     }
     const locationStep = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;

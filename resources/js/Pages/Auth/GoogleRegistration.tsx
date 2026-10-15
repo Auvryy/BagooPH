@@ -48,7 +48,7 @@ export default function GoogleRegistration({ identity, registrationNonce, polici
             <fieldset disabled={processing} className="space-y-4">
                 <PersonalNameFields values={data} onChange={(field, value) => setData(field, value)} errors={messages} context="Name on your identity document" />
                 <RegistrationSexField value={data.sex} onChange={value => setData('sex', value)} error={messages.sex} />
-                <BirthDateInput value={data.birthday} maximum={birthDateLimits.past_maximum} adult={false} onChange={value => setData('birthday', value)} error={messages.birthday} />
+                <BirthDateInput value={data.birthday} maximum={birthDateLimits.adult_maximum} onChange={value => setData('birthday', value)} error={messages.birthday} />
                 <div className="space-y-1"><label htmlFor="google-phone" className="text-xs font-semibold text-slate-800">Mobile number (optional)</label>
                     <PhoneInput id="google-phone" value={data.phone} onChange={value => setData('phone', value)} error={messages.phone} />
                 </div>

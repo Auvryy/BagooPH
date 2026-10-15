@@ -441,7 +441,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                             <div className="sm:col-span-7">
                                 <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
-                                    Date of Birth (optional)
+                                    Date of Birth *
                                 </label>
                                 <div className="relative">
                                     <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -449,13 +449,16 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                         id="birthday"
                                         type="date"
                                         name="birthday"
-                                        max={birthDateLimits.past_maximum}
+                                        max={birthDateLimits.adult_maximum}
+                                        required
+                                        aria-describedby="buyer-birthday-help"
                                         value={data.birthday}
                                         className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] outline-hidden transition text-slate-900"
                                         onChange={handleBirthdayChange}
                                     />
                                 </div>
                                 <InputError message={stepErrors.birthday || errors.birthday} className="mt-1" />
+                                <p id="buyer-birthday-help" className="mt-1 text-xs text-slate-500">Use the birth date on your identity document. You must be at least 18.</p>
                             </div>
 
                             <div className="sm:col-span-5">
