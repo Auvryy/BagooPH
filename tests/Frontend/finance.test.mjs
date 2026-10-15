@@ -65,6 +65,20 @@ test('a true zero links to its source filter and retains Philippine currency', a
     assert.match(html, /href="\/financial-oversight\?metric=settled"/);
     assert.match(html, /No records match these filters/);
 });
+test('seller money pages share one finance section with distinct reports and payouts', async () => {
+    const html = await render(Overview, 'Finance/Overview', {
+        records: { data: [], total: 0, current_page: 1, last_page: 1 }, totals: [],
+        error: null, filters: {}, mode: 'seller', stateOptions: [], companies: [], recipients: [],
+        auth: { user: { id: 7, name: 'Ana Seller', role: 'seller' } },
+    });
+    const navigation = html.match(/<nav\b[\s\S]*?<\/nav>/)?.[0] ?? '';
+    assert.equal((navigation.match(/<span>Finances<\/span>/g) ?? []).length, 1);
+    assert.match(navigation, /aria-label="Finances pages"/);
+    assert.match(navigation, /href="\/seller-settlements"[^>]*>Payouts<\/a>/);
+    assert.match(navigation, /href="\/seller\/reports"[^>]*>Sales report<\/a>/);
+    assert.ok(navigation.indexOf('<span>Dashboard</span>') < navigation.indexOf('<span>Products</span>'));
+    assert.doesNotMatch(navigation, /Financial overview|Seller proceeds|<span>Shop<\/span>/);
+});
 test('evidence keeps original and corrected private receipts visible without mutation controls', async () => {
     const base = { reference: 'PAYMENT-ORIGINAL', event_type: 'payment_recorded', amount_cents: 9004, actor_name: 'Ana Santos', actor_role: 'admin', reason: 'The actual seller payment was checked.', created_at: '2026-10-09T00:00:00Z', payment_reference: 'RECEIPT-ORIGINAL', proof_url: '/seller-settlements/7/proof/1', context: { previous_reference: null } };
     const html = await render(Evidence, 'Finance/Evidence', { mode: 'admin', record: {

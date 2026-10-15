@@ -42,8 +42,8 @@ export default function SellerReports({ shop, filters, report, orderItems }: Pro
 
     return (
         <DashboardLayout
-            title="Finances"
-            subtitle={`Completed sales and COD settlement status for ${shop.name}`}
+            title="Sales report"
+            subtitle={`Completed product sales and estimated seller shares for ${shop.name}`}
             actions={
                 <button
                     type="button"
@@ -55,7 +55,7 @@ export default function SellerReports({ shop, filters, report, orderItems }: Pro
                 </button>
             }
         >
-            <Head title="Finances — BagooPH Seller" />
+            <Head title="Sales report — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
                 

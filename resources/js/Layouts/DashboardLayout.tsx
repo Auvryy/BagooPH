@@ -31,6 +31,7 @@ import {
     Building2,
     Banknote,
     AlertTriangle,
+    type LucideIcon,
 } from 'lucide-react';
 
 interface Props {
@@ -38,6 +39,14 @@ interface Props {
     title: string;
     subtitle?: React.ReactNode;
     actions?: React.ReactNode;
+}
+
+interface NavigationItem {
+    name: string;
+    href: string;
+    icon: LucideIcon;
+    current: boolean;
+    children?: { name: string; href: string; current: boolean }[];
 }
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
@@ -73,7 +82,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         };
     }, []);
 
-    const getNavItems = () => {
+    const getNavItems = (): NavigationItem[] => {
         if (role === 'admin') {
             return [
                 { name: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard, current: component === 'Admin/Dashboard' || route().current('admin.dashboard') || url === '/admin/dashboard' || url === '/admin' },
@@ -95,9 +104,6 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
         if (role === 'seller') {
             return [
-                { name: 'Financial overview', href: '/financial-oversight', icon: Banknote, current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
-                { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
-                { name: 'Shop', href: route('seller.shops.index'), icon: Store, current: component === 'Seller/Shops' },
                 { 
                     name: 'Dashboard', 
                     href: route('seller.dashboard'), 
@@ -143,9 +149,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 },
                 { 
                     name: 'Finances', 
-                    href: route('seller.reports'), 
-                    icon: TrendingUp, 
-                    current: component.startsWith('Seller/Reports') || route().current('seller.reports') || url.startsWith('/seller/reports') 
+                    href: '/financial-oversight',
+                    icon: Banknote,
+                    current: component.startsWith('Finance/') || component === 'Seller/Reports',
+                    children: [
+                        { name: 'Overview', href: '/financial-oversight', current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
+                        { name: 'Payouts', href: '/seller-settlements', current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
+                        { name: 'Sales report', href: route('seller.reports'), current: component === 'Seller/Reports' },
+                    ],
                 },
             ];
         }
@@ -249,12 +260,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                 {role === 'seller' && currentShop && (
                     <div className="shrink-0 border-b border-slate-300 bg-slate-50/50 p-3">
-                        <Link href={route('seller.shops.index')} className="flex items-start gap-2 rounded-lg border border-slate-300 bg-white p-3 transition hover:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]">
+                        <Link href={route('seller.settings')} className="flex items-start gap-2 rounded-lg border border-slate-300 bg-white p-3 transition hover:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]">
                             <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
                             <div className="min-w-0">
                                 <p className="truncate text-xs font-bold text-slate-800">{currentShop.name}</p>
                                 <p className="mt-1 text-xs text-slate-600">{currentShop.root_category?.name ?? 'Category needs review'}</p>
-                                <p className="mt-1 text-xs text-slate-500">Shop details and approval</p>
+                                <p className="mt-1 text-xs text-slate-500">Shop settings</p>
                             </div>
                         </Link>
                     </div>
@@ -343,23 +354,34 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 Menu
                             </p>
                             {navItems.map((item) => (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
-                                        item.current 
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold' 
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                        <span>{item.name}</span>
-                                    </div>
-                                    {item.current && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
-                                    )}
-                                </Link>
+                                <div key={item.name}>
+                                    <Link
+                                        href={item.href}
+                                        aria-expanded={item.children ? item.current : undefined}
+                                        aria-current={item.current && !item.children ? 'page' : undefined}
+                                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition group ${
+                                            item.current
+                                                ? 'bg-[#E00D42] text-white shadow-xs font-bold'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2.5">
+                                            <item.icon className={`w-4 h-4 shrink-0 ${item.current ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+                                            <span>{item.name}</span>
+                                        </div>
+                                        {item.children ? (
+                                            <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 transition-transform ${item.current ? '' : '-rotate-90'}`} />
+                                        ) : item.current && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
+                                        )}
+                                    </Link>
+                                    {item.children && item.current && <div role="group" aria-label={`${item.name} pages`} className="ml-5 mt-1 space-y-0.5 border-l border-slate-300 pl-3">
+                                        {item.children.map(child => <Link key={child.name} href={child.href} aria-current={child.current ? 'page' : undefined}
+                                            className={`block rounded-lg px-3 py-2 text-xs transition ${child.current ? 'bg-rose-50 font-semibold text-[#C20836]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
+                                            {child.name}
+                                        </Link>)}
+                                    </div>}
+                                </div>
                             ))}
                         </div>
                     )}
