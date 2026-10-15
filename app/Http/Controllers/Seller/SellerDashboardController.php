@@ -14,9 +14,11 @@ use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\IdentityCorrectionService;
+use App\Services\MasterCategoryService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
 use App\Services\ShopEligibilityService;
+use App\Services\ShopReviewService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -131,12 +133,14 @@ class SellerDashboardController extends Controller
         ]);
     }
 
-    public function settings(Request $request): Response
+    public function settings(Request $request, ShopReviewService $reviews): Response
     {
         $shop = $this->getActiveShop($request, history: true);
 
         return Inertia::render('Seller/Settings', [
             'shop' => $shop,
+            'shopReview' => $reviews->presentation($shop),
+            'categories' => app(MasterCategoryService::class)->choices(),
         ]);
     }
 

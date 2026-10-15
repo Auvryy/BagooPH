@@ -227,7 +227,8 @@ class ShopReviewTest extends TestCase
         $product = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id]);
         $item = OrderItem::factory()->create(['product_id' => $product->id, 'shop_id' => $shop->id]);
         $this->assertFalse(app(ShopEligibilityService::class)->isEligible($shop));
-        $this->actingAs($seller)->get('/seller/shops')->assertInertia(fn (Assert $page) => $page->component('Seller/Shops')->where('shop.review_status', null)->where('shop.can_submit', true));
+        $this->actingAs($seller)->get('/seller/shops')->assertRedirect('/seller/settings');
+        $this->get('/seller/settings')->assertInertia(fn (Assert $page) => $page->component('Seller/Settings')->where('shopReview.review_status', null)->where('shopReview.can_submit', true));
         $data = $shop->only(ShopEligibilityService::DETAILS) + $this->payload($shop) + [
             'business_permit' => UploadedFile::fake()->createWithContent('permit.pdf', "%PDF-1.4\nCurrent legacy shop permit\n%%EOF"),
         ];
