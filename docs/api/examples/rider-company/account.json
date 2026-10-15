@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "2",
+    "settings_api_version": 1,
+    "operations_api_version": 1,
+    "handover_api_version": 1,
+    "name": "Bagoo Rider",
+    "email": "contract-rider@bagoo.test",
+    "company_api_version": 1,
+    "email_verified": true,
+    "role": "courier",
+    "status": "active",
+    "kyc_status": "approved",
+    "kyc_feedback": null,
+    "can_access_portal": true,
+    "access_state": "approved"
+  }
+}

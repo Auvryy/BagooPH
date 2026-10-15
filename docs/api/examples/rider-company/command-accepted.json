@@ -1,0 +1,22 @@
+{
+  "data": {
+    "idempotency_key": "ca1978ae-2a86-4205-861c-92f814684f0b",
+    "action": "company.accepted",
+    "resource": "company-request-1",
+    "state": "committed",
+    "result": {
+      "id": "1",
+      "reference": "RC-01M4Z34TQ0SYP6PB224G4XNSKK",
+      "status": "accepted",
+      "version": 3,
+      "submitted_at": "2026-10-15T06:14:13.123456Z",
+      "withdrawn_at": null,
+      "offer_id": "1"
+    },
+    "recorded_at": "2026-10-15T06:14:13.000Z",
+    "expires_at": "2026-10-22T06:14:13.000Z",
+    "retry_expired": false,
+    "replayed": false
+  },
+  "request_id": "38a44c20-6de0-4ebb-84cd-373c2693fd3e"
+}

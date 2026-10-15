@@ -1,0 +1,36 @@
+{
+  "data": {
+    "company": null,
+    "hub": null,
+    "vehicle": {
+      "id": null,
+      "label": "Personal vehicle"
+    },
+    "barangay": null,
+    "on_duty": false,
+    "provenance": {
+      "kind": "unassigned",
+      "request_id": null,
+      "offer_id": null,
+      "accepted_at": null
+    },
+    "eligibility": {
+      "operational": false
+    },
+    "actions": {
+      "apply": true
+    },
+    "blocked_reason": null,
+    "sharing_summary": {
+      "name": "Bagoo Rider",
+      "email": "contract-rider@bagoo.test",
+      "phone": "+639170000099",
+      "city": "Santa Cruz",
+      "province": "Laguna",
+      "vehicle_type": "Motorcycle",
+      "approval_status": "approved"
+    },
+    "observed_at": "2026-10-15T06:14:13.123Z"
+  },
+  "request_id": "b2302796-c394-434b-a7aa-2d8438c9bb55"
+}

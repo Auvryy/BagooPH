@@ -4693,3 +4693,73 @@ The combined PR title/body remains a local draft at `.codex/rc02/PR.md`; it has
 not been saved on GitHub. User publication, merge and deployment are separate.
 The Flutter project and native joining contract are unchanged; RC03 is the
 next separately authorized delivery.
+
+## October 15, 2026 — RC03 native company joining and backend acceptance
+
+Scope: `feat/rider-company-api-contract`, from reviewed current `main` at
+`cf8df4a`, which includes the merged RC02 web workflow. This completes the
+selected [native contract batch](rider-company-plan/03-native-contract-and-acceptance.md).
+The Flutter repository, user publication and live rollout remain separate.
+
+| Before | Current behavior |
+|---|---|
+| Native riders could read their existing operational placement but could not request a first company association. | Ten bearer methods expose eligible companies, owned applications, exact offer acceptance/decline/withdrawal, saved assignment and separate enrollment reconciliation without requiring a prior company/hub. |
+| Company joining had no native discovery or dedicated permissions. | Account/Home discovery waits for the complete account/enrollment/command baseline. New eligible sign-ins receive explicit company read/write abilities; old, narrow and wildcard tokens gain no authority automatically. |
+| A lost native enrollment response had no owned native recovery path. | The existing actor-scoped journal retains the original committed result/time. Changed intent conflicts, expired retry windows remain readable and company reconciliation cannot expose operational commands. |
+| Native assignment lacked a distinction between original membership evidence and today's readiness. | Saved company/hub/vehicle, off-duty state and current operational eligibility remain separate. Original accepted-offer evidence and existing seeded membership are distinguished without inventing historical consent. |
+
+The native adapter reuses RC01/RC02 services and the protected placement writer;
+company administration remains in web Network. JSON acknowledgement must be
+true and match the current request version, offer and terms hash. Source changes,
+expiry, competing vehicle acceptance and current authority retain their shared
+server-side checks. Native reads are bounded, reject unexpected fields and omit
+private evidence. Owned company notices expose native destinations only with
+explicit company read authority.
+
+Consent, placement, immutable history, decision, notice intents and native command
+result commit together. Final token/credential/account checks can roll back all
+effects. Unique domain races return a conflict when no original command exists,
+rather than a misleading missing-resource result. Enrollment retries the entire
+transaction at most three times for detected deadlocks; it adds no uploads.
+SQLite fault injection verifies rollback and retry orchestration, not actual
+simultaneous PostgreSQL contention. The existing ordered locks and uniqueness
+constraints remain in force.
+
+| Verification | Evidence |
+|---|---|
+| Final shared backend regression | **676 tests / 12,083 assertions**, zero failures, errors or skips in isolated SQLite `:memory:`. Includes native authentication/settings, courier operations, RC01/RC02, resource eligibility, notices, seeded data and both accepted-rider journey variants. |
+| Native boundaries and failures | Approved unassigned discovery, bounded directory/history, all terminal outcomes, strict counters/booleans/text, wrong role/owner/company, old/narrow/wildcard/revoked/expired credentials, changed sources/terms, original replay, seven-day retention, uniqueness races, competing decisions and failures at every linked enrollment writer. Top-level deadlock fault injection verifies a complete retry and the bounded failure path without partial records or duplicate notices. |
+| Real account and parcel sequence | Native application, company web offer, exact native acceptance and deliberate duty precede real pickup, origin Bayan, Mother and destination Bayan custody. Another company's rider cannot claim the parcel. Buyer completion, original cash responsibility and seller settlement stay distinct. Seeded riders retain their original placement and native queue/duty access with no invented acceptance. |
+| Executable wire contract | **108 schemas** compile; **25 published examples and 25 actual captures** validate with counter/consent rejection checks, covering all **10 company methods** and the **40-method** operational contract. The OpenAPI 3.1 document passes schema validation; **48 existing operations/handover response checks** also pass. |
+| Final notice examples | The final test-only capture adds both owned company-request and saved-assignment notice targets; its subsequent focused run passes **1 test / 160 assertions**. This is additional evidence after the 676-case regression, not a second full-suite claim. |
+| Frontend and formatting | **63 existing frontend checks** and the TypeScript/Vite production build pass. Scoped Pint passes for **14 PHP files**; Git whitespace checks pass. No web page, global style or Flutter source was changed. |
+
+The first broad run found an incomplete-deployment sign-in compatibility failure.
+Company discovery now waits for the account baseline too; the final regression
+above includes that passing check. Earlier test-fixture problems were corrected
+and retested rather than counted as successful checks.
+
+**Scoped engineering assessment: native company onboarding backend/contract
+2/10 → 8.5/10.** The backend now exposes the verified web joining rules with
+bounded private reads, explicit authority, retained retries and a tested handoff.
+This does not raise overall project or rendered mobile readiness. Actual
+PostgreSQL migration/contention execution, Azure rollout, live scheduler/notice
+delivery and Flutter/device acceptance remain unverified in this delivery.
+
+The accepted [API and Flutter handoff](api/RIDER_COMPANY_API.md),
+[executable schema](api/rider-operations.openapi.json) and
+[sanitized examples](api/examples/rider-company/README.md) define deployment
+prerequisites, old-token behavior, input limits, states and response recovery.
+RC03 adds no migration: deploy the ordinary backend after RC01/RC02 additive
+migrations, refresh routes/caches and sign in again. No fresh database, reseed,
+role conversion or synthetic legacy consent is required.
+
+Local implementation and acceptance commits:
+
+- `6c6c43e` — `feat(rider-api): add company joining with scoped retries`
+- `9d0607d` — `test(rider-api): verify accepted riders and seeded assignments`
+
+The final contract/documentation commit is reported in the branch handoff.
+The combined PR title/body remains a local draft at `.codex/rc03/PR.md`, not a
+saved GitHub description. Stop at this backend handoff; user publication,
+deployment and the separate Flutter implementation require their own evidence.

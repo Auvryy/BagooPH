@@ -1,0 +1,66 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "01a13e32-6c7a-7016-a7b0-4fc7210dacf1",
+        "type": "governance-event",
+        "title": "The rider accepted the company assignment",
+        "body": "Open the saved request for its current assignment details and next steps.",
+        "recorded_at": "2026-10-15T06:14:13.000Z",
+        "read_at": null,
+        "target": {
+          "kind": "company_request",
+          "id": "1",
+          "href": "/api/v1/rider/company-requests/1"
+        }
+      },
+      {
+        "id": "01a13e32-6c72-7160-935f-8353bc324577",
+        "type": "governance-event",
+        "title": "Your logistics assignment was recorded",
+        "body": "Check your current assignment before taking work. Rider duty remains a separate choice.",
+        "recorded_at": "2026-10-15T06:14:13.000Z",
+        "read_at": null,
+        "target": {
+          "kind": "company_assignment",
+          "id": "2",
+          "href": "/api/v1/rider/company-assignment"
+        }
+      },
+      {
+        "id": "01a13e32-6b9e-7264-906f-50da17effe08",
+        "type": "governance-event",
+        "title": "A company assignment offer is ready",
+        "body": "Open the saved request for its current assignment details and next steps.",
+        "recorded_at": "2026-10-15T06:14:13.000Z",
+        "read_at": null,
+        "target": {
+          "kind": "company_request",
+          "id": "1",
+          "href": "/api/v1/rider/company-requests/1"
+        }
+      },
+      {
+        "id": "01a13e32-6af4-704f-b2f8-2ea3da4c9d8b",
+        "type": "governance-event",
+        "title": "A rider company request was submitted",
+        "body": "Open the saved request for its current assignment details and next steps.",
+        "recorded_at": "2026-10-15T06:14:13.000Z",
+        "read_at": null,
+        "target": {
+          "kind": "company_request",
+          "id": "1",
+          "href": "/api/v1/rider/company-requests/1"
+        }
+      }
+    ],
+    "unread_count": 4,
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 4,
+      "last_page": 1
+    }
+  },
+  "request_id": "b222401e-99da-4901-bd8d-337eab453bc4"
+}

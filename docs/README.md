@@ -58,6 +58,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 - [Native rider settings API](api/RIDER_SETTINGS_API.md) defines versioned bearer access, contact revisions, password reauthentication, additional-email verification and the mobile deployment handoff.
 - [Native rider operations API](api/RIDER_OPERATIONS_API.md) and [backend delivery plan](api/RIDER_NATIVE_PLAN.md) define scoped queues, commands and the operational integration boundaries.
 - [Native rider handover API](api/RIDER_HANDOVER_API.md) defines involved reports, private evidence, known-holder acknowledgement and the Flutter integration handoff.
+- [Native rider company API](api/RIDER_COMPANY_API.md) defines company discovery, owned requests, exact offer acceptance, saved membership and separate enrollment command reconciliation for unassigned approved riders.
 - `SCHEMA.md` is supporting context only. Migrations and models describe the current executable schema; planned data changes belong in the roadmap until implemented.
 
 ## Historical and Original Sources

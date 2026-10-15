@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "1",
+    "name": "Bagoo Company Network",
+    "intake_version": 1,
+    "areas": [
+      {
+        "province": "Laguna",
+        "city": "Santa Cruz"
+      }
+    ],
+    "areas_truncated": false
+  },
+  "request_id": "d9a3e387-2bf2-4d23-a327-b41c4a9ec65c"
+}

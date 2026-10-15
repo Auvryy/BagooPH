@@ -1,0 +1,6 @@
+{
+  "code": "IDEMPOTENCY_CONFLICT",
+  "message": "This key already recorded a different action or payload.",
+  "errors": [],
+  "request_id": "56e19a87-fbf1-4316-9b94-006191425977"
+}

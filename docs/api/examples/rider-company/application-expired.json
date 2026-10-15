@@ -1,0 +1,91 @@
+{
+  "data": {
+    "id": "1",
+    "reference": "RC-01M4Z2XFC8WGRY8XZNNHZTXVP7",
+    "company": {
+      "id": "1",
+      "name": "Bagoo Company Network"
+    },
+    "status": "offered",
+    "version": 2,
+    "submitted_at": "2026-10-15T06:10:12.123456Z",
+    "withdrawn_at": null,
+    "effective_status": "expired",
+    "accepted_at": null,
+    "current_offer_id": "1",
+    "actions": {
+      "accept": false,
+      "decline": false,
+      "withdraw": false
+    },
+    "note": "Available for scheduled work in Santa Cruz.",
+    "sharing_acknowledged": true,
+    "shared_profile": {
+      "name": "Bagoo Rider",
+      "email": "contract-rider@bagoo.test",
+      "phone": "+639170000099",
+      "city": "Santa Cruz",
+      "province": "Laguna",
+      "vehicle_type": "Motorcycle",
+      "approval_status": "approved"
+    },
+    "offer": {
+      "id": "1",
+      "reference": "RO-01M4Z2XFE2F9SNDEXBVQ57203C",
+      "version": 1,
+      "hub_id": "1",
+      "vehicle_id": null,
+      "barangay": "Bagumbayan",
+      "terms": "Report to the recorded Bayan Hub and arrange your daily schedule.",
+      "terms_hash": "5c8aaf63a764d8b117bfcb316826dfb46b2cbf6586c8cf5af57b276df97f8ce0",
+      "assignment": {
+        "company": "Bagoo Company Network",
+        "hub": "Bagoo Bayan Hub",
+        "hub_code": "RC03-BH",
+        "vehicle": "Personal vehicle"
+      },
+      "issued_at": "2026-10-15T06:10:12.123456Z",
+      "expires_at": "2026-10-22T06:10:12.123456Z"
+    },
+    "offers": [
+      {
+        "id": "1",
+        "reference": "RO-01M4Z2XFE2F9SNDEXBVQ57203C",
+        "version": 1,
+        "hub_id": "1",
+        "vehicle_id": null,
+        "barangay": "Bagumbayan",
+        "terms": "Report to the recorded Bayan Hub and arrange your daily schedule.",
+        "terms_hash": "5c8aaf63a764d8b117bfcb316826dfb46b2cbf6586c8cf5af57b276df97f8ce0",
+        "assignment": {
+          "company": "Bagoo Company Network",
+          "hub": "Bagoo Bayan Hub",
+          "hub_code": "RC03-BH",
+          "vehicle": "Personal vehicle"
+        },
+        "issued_at": "2026-10-15T06:10:12.123456Z",
+        "expires_at": "2026-10-22T06:10:12.123456Z",
+        "state": "expired"
+      }
+    ],
+    "decisions": [
+      {
+        "action": "submitted",
+        "reason": null,
+        "at": "2026-10-15T06:10:12.123456Z",
+        "offer_id": null
+      },
+      {
+        "action": "offered",
+        "reason": null,
+        "at": "2026-10-15T06:10:12.123456Z",
+        "offer_id": "1"
+      }
+    ],
+    "history_limits": {
+      "offers_truncated": false,
+      "decisions_truncated": false
+    }
+  },
+  "request_id": "c7f88e05-2620-4642-8784-d6b056296744"
+}
