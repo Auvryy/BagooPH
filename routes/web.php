@@ -492,6 +492,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/preview', [NotificationController::class, 'preview'])->name('notifications.preview');
+    Route::patch('/notifications/read-displayed', [NotificationController::class, 'readDisplayed'])->name('notifications.read-displayed');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::get('/governance-history', [GovernanceHistoryController::class, 'index'])->name('governance-history.index');
     Route::get('/governance-history/{source}/{decisionId}', [GovernanceHistoryController::class, 'show'])->whereNumber('decisionId')->name('governance-history.show');

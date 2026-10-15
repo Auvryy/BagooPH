@@ -1,7 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, Check, ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import BagooLogo from '@/Components/BagooLogo';
+import BuyerLayout from '@/Layouts/BuyerLayout';
+import { openNotice } from '@/Components/BuyerNotificationMenu';
 import { PageProps } from '@/types';
 
 interface Notice {
@@ -23,6 +25,8 @@ const date = (value: string) => new Date(value).toLocaleString('en-PH', { timeZo
 
 export default function Notifications({ available, filter, notices, accountUrl }: Props) {
     const { auth, notificationSummary } = usePage<PageProps>().props;
+    const buyer = auth.user?.role === 'buyer';
+    const Layout = buyer ? BuyerLayout : Fragment;
     const [reading, setReading] = useState<string | null>(null);
     const [error, setError] = useState('');
     const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]';
@@ -37,9 +41,9 @@ export default function Notifications({ available, filter, notices, accountUrl }
     };
 
     return (
-        <div className="min-h-screen bg-[#FFFAFB] font-sans text-slate-900">
+        <Layout><div className={buyer ? 'font-sans text-slate-900' : 'min-h-screen bg-[#FFFAFB] font-sans text-slate-900'}>
             <Head title="Notifications" />
-            <header className="border-b border-slate-300 bg-white">
+            {!buyer && <header className="border-b border-slate-300 bg-white">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
                     <BagooLogo rounded="rounded-[8px]" />
                     <div className="flex items-center gap-3 text-sm">
@@ -47,8 +51,8 @@ export default function Notifications({ available, filter, notices, accountUrl }
                         <Link href={accountUrl} className={button}><ArrowLeft className="h-4 w-4" aria-hidden="true" />My account</Link>
                     </div>
                 </div>
-            </header>
-            <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+            </header>}
+            <section aria-label="All notifications" className="mx-auto max-w-4xl py-6">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div><h1 className="text-2xl font-bold">Notifications</h1><p className="mt-1 text-sm text-slate-600">{notificationSummary?.available ? `${notificationSummary.unread} unread updates` : 'Updates for your Bagoo account'}</p></div>
                     <nav aria-label="Notification filters" className="flex gap-2">
@@ -61,16 +65,16 @@ export default function Notifications({ available, filter, notices, accountUrl }
                 ) : notices?.data.length === 0 ? (
                     <div className="rounded-[8px] bg-white p-8 text-center shadow-sm"><Bell className="mx-auto h-6 w-6 text-slate-500" aria-hidden="true" /><h2 className="mt-3 font-semibold">{filter === 'unread' ? 'You have no unread updates' : 'You have no notifications yet'}</h2><p className="mt-2 text-sm text-slate-600">Your order and account updates will appear here.</p></div>
                 ) : (
-                    <ul className="space-y-3">{notices?.data.map(notice => <li key={notice.id} className="rounded-[8px] bg-white p-4 shadow-sm sm:p-5">
+                    <ul className="space-y-3">{notices?.data.map(notice => <li key={notice.id} className={buyer ? `rounded-2xl border p-4 shadow-sm sm:p-5 ${notice.read_at ? 'border-slate-300 bg-white' : 'border-rose-300 bg-rose-50/60'}` : 'rounded-[8px] bg-white p-4 shadow-sm sm:p-5'}>
                         <div className="flex items-start justify-between gap-4"><h2 className="break-words font-semibold">{!notice.read_at && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#E00D42]" aria-label="Unread" />}{notice.data.title ?? 'Account update'}</h2><time dateTime={notice.created_at} className="shrink-0 text-xs text-slate-500">{date(notice.created_at)}</time></div>
                         {notice.data.order_number && <p className="mt-1 text-xs text-slate-500">Order {notice.data.order_number}</p>}
                         {notice.data.body && <p className="mt-2 text-sm text-slate-700">{notice.data.body}</p>}
                         {notice.data.hub_name && <div className="mt-3 space-y-1 rounded-[8px] border border-slate-300 bg-slate-50 p-3 text-sm"><p className="font-semibold">{notice.data.hub_name}</p><p>{notice.data.hub_address}</p><p>{notice.data.operating_hours}</p>{notice.data.expires_at && <p>Holding period ends {date(notice.data.expires_at)}</p>}</div>}
-                        <div className="mt-3 flex flex-wrap items-center gap-2">{notice.href && <Link href={notice.href} className={`${button} text-[#E00D42]`}>View details</Link>}{!notice.read_at ? <button type="button" disabled={reading !== null} onClick={() => acknowledge(notice.id)} className={`${button} disabled:opacity-50`}><Check className="h-4 w-4" aria-hidden="true" />{reading === notice.id ? 'Saving...' : 'Mark read'}</button> : <span className="text-xs text-slate-500">Read {date(notice.read_at)}</span>}</div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" disabled={reading !== null} onClick={() => { setReading(notice.id); openNotice(notice.id, () => setReading(null)); }} className={`${button} text-[#E00D42] disabled:opacity-50`}>View update</button>{!notice.read_at ? <button type="button" disabled={reading !== null} onClick={() => acknowledge(notice.id)} className={`${button} disabled:opacity-50`}><Check className="h-4 w-4" aria-hidden="true" />{reading === notice.id ? 'Saving...' : 'Mark read'}</button> : <span className="text-xs text-slate-500">Read {date(notice.read_at)}</span>}</div>
                     </li>)}</ul>
                 )}
                 {available && notices && notices.last_page > 1 && <nav aria-label="Notification pages" className="mt-5 flex items-center justify-between gap-3">{notices.prev_page_url ? <Link href={notices.prev_page_url} className={`${button} bg-white`}>Previous</Link> : <span />}<span className="text-sm text-slate-600">Page {notices.current_page} of {notices.last_page}</span>{notices.next_page_url ? <Link href={notices.next_page_url} className={`${button} bg-white`}>Next</Link> : <span />}</nav>}
-            </main>
-        </div>
+            </section>
+        </div></Layout>
     );
 }

@@ -102,7 +102,7 @@ class GovernanceNotificationTest extends TestCase
             $this->assertStringNotContainsString($private, $encoded);
         }
         $this->actingAs($subject)->get('http://localhost/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->has('notices.data', 1)->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', '/pending-approval')
+            ->has('notices.data', 1)->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval')
             ->where('notificationSummary.unread', 1));
     }
 
@@ -168,7 +168,7 @@ class GovernanceNotificationTest extends TestCase
         $this->assertSame('governance:restriction:'.RestrictionDecision::sole()->id, $notice->source_key);
         $this->assertStringNotContainsString('PRIVATE_REVIEW_REASON', json_encode($notice->data));
         $this->actingAs($subject)->get('/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->has('notices.data', 1)->where('notices.data.0.href', '/pending-approval'));
+            ->has('notices.data', 1)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval'));
         $this->getJson('/admin/users')->assertForbidden();
         $this->actingAs($admin)->patchJson('/notifications/'.$notice->id.'/read')->assertNotFound();
     }
@@ -181,12 +181,12 @@ class GovernanceNotificationTest extends TestCase
         $this->post('/admin/kyc/'.$subject->id.'/reject', $payload)->assertSessionHas('success');
         $notice = $subject->notifications()->sole();
         $this->actingAs($subject)->get('/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', '/pending-approval'));
+            ->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval'));
         $firstRead = $this->patchJson('/notifications/'.$notice->id.'/read')->assertOk()->json('read_at');
         $this->travel(1)->hours();
         $this->patchJson('/notifications/'.$notice->id.'/read')->assertJsonPath('read_at', $firstRead);
         $this->get('/checkout')->assertRedirect(route('kyc.pending'));
-        $this->get('/pending-approval')->assertOk();
+        $this->get('/pending-approval')->assertRedirect(route('buyer.index', ['application' => 1]));
     }
 
     public function test_real_identity_correction_notice_links_only_to_owned_history(): void
