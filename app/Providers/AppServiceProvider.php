@@ -59,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-tracking', fn (Request $request) => Limit::perMinute(30)
             ->by(hash('sha256', (string) $request->ip())));
 
+        RateLimiter::for('advertisement-events', fn (Request $request) => Limit::perMinute(60)
+            ->by(hash('sha256', 'advertisement-events|'.$request->ip())));
+
         Vite::prefetch(concurrency: 3);
 
         if (app()->environment('production')) {

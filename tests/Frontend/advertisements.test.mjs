@@ -21,14 +21,16 @@ const bundle = await build({
         export { default as Review } from '@/Pages/Admin/Advertisements/Review';
         export { default as SellerList } from '@/Pages/Seller/Promotions/Index';
         export { default as SellerEditor } from '@/Pages/Seller/Promotions/Edit';
+        export { default as Performance } from '@/Pages/Shared/AdvertisementPerformance';
         export { default as SellerPreview } from '@/Pages/Seller/Promotions/Preview';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
     plugins: [{ name: 'advertisement-interaction-hooks', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, args => ['ad-hooks', 'ad-review-hooks'].includes(args.namespace) ? { path: 'react', external: true }
             : args.importer.endsWith('/BuyerAdvertisements.tsx') ? { path: 'ad-hooks', namespace: 'ad-hooks' }
             : args.importer.endsWith('/Advertisements/Review.tsx') ? { path: 'ad-review-hooks', namespace: 'ad-review-hooks' } : undefined);
-        builder.onLoad({ filter: /.*/, namespace: 'ad-hooks' }, () => ({ contents: `import React from 'react';
-            export const useState = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(initial) : React.useState(initial);` }));
+        builder.onLoad({ filter: /.*/, namespace: 'ad-hooks' }, () => ({ contents: `import React from 'react'; export * from 'react';
+            export const useState = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(initial) : React.useState(initial);
+            export const useRef = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(() => ({ current: initial }))[0] : React.useRef(initial);` }));
         builder.onLoad({ filter: /.*/, namespace: 'ad-review-hooks' }, () => ({ contents: `import React from 'react';
             export const useState = initial => React.useState(() => { const h = globalThis.adReviewState;
                 const i = h ? h.index++ : -1; return h && Object.hasOwn(h.values, i) ? h.values[i] : typeof initial === 'function' ? initial() : initial; });` }));
@@ -256,4 +258,63 @@ test('changed reviewed shop details prevent reuse of a retained approval for pla
     assert.match(html, /Submitted shop: Original Bagoo shop/);
     assert.match(html, /The reviewed shop details changed/);
     assert.match(html.match(/<button\b[^>]*>Publish now<\/button>/)[0], /disabled=""/);
+});
+
+const performanceProps = {
+    available: true, collecting: true, seller: false, baseUrl: '/admin/advertisements',
+    filters: { from: '2026-10-01', to: '2026-10-15', advertisement_id: null, revision_id: null, publication_id: null },
+    dateLimits: { minimum: '2025-10-15', maximum: '2026-10-15' }, totals: { impressions: 0, clicks: 0, click_through_rate: null },
+    options: { advertisements: [], revisions: [], placements: [] }, placements: page([]),
+};
+test('performance distinguishes recorded zero, unavailable rates and unavailable storage', async () => {
+    let html = await render(ui.Performance, performanceProps, 'admin');
+    assert.match(html, /Recorded views/); assert.match(html, /Image clicks/);
+    assert.match(html, /Click-through rate<\/dt><dd[^>]*>—<\/dd>/);
+    assert.match(html, /No placements found/); assert.doesNotMatch(html, /NaN|Infinity|Estimated revenue/);
+    html = await render(ui.Performance, { ...performanceProps, available: false, totals: null, placements: null, failureReference: 'test-report-reference' }, 'admin');
+    assert.match(html, /Reporting unavailable/); assert.match(html, /test-report-reference/); assert.doesNotMatch(html, /Recorded views|<table/);
+});
+test('retained results keep exact revision, placement and period with collection paused', async () => {
+    const placement = { id: 8, advertisement_id: 4, revision_id: 11, revision_number: 2, title: 'Reviewed everyday essentials',
+        owner: 'Seller', creator: 'Shop owner', purpose: 'feature', slot: 'side_1', state: 'ended', starts_at: '2026-10-14T02:00:00Z', ends_at: '2026-10-15T02:00:00Z',
+        impressions: 12, clicks: 3, click_through_rate: 25 };
+    const html = await render(ui.Performance, { ...performanceProps, collecting: false, totals: placement, placements: page([placement]) }, 'admin');
+    for (const text of ['New activity is not being recorded', 'Reviewed everyday essentials', 'Revision 2', 'Side image 1', '#8', '25.00%', 'Manila', 'Shop owner']) assert.ok(html.includes(text), text);
+    assert.match(html, /href="\/admin\/advertisements\/4"/);
+});
+test('seller performance stays in its own portal and filters revision and placement choices to the selected records', async () => {
+    const options = { advertisements: [{ id: 4, title: 'Own campaign' }], revisions: [{ id: 11, advertisement_id: 4, title: 'Owned revision' }, { id: 12, advertisement_id: 9, title: 'Different campaign revision' }],
+        placements: [{ id: 8, advertisement_id: 4, revision_id: 11, title: 'Owned placement' }, { id: 9, advertisement_id: 4, revision_id: 12, title: 'Other revision placement' }] };
+    const html = await render(ui.Performance, { ...performanceProps, seller: true, baseUrl: '/seller/promotions', options,
+        filters: { ...performanceProps.filters, advertisement_id: 4, revision_id: 11 } }, 'seller');
+    assert.match(html, /Promotion performance/); assert.match(html, /href="\/seller\/promotions"/);
+    assert.match(html, /Owned revision/); assert.match(html, /Owned placement/);
+    assert.doesNotMatch(html, /Different campaign revision|Other revision placement|\/admin\/advertisements/);
+    assert.match(html, /type="date"[^>]*min="2025-10-15"[^>]*max="2026-10-15"/);
+    assert.match(html, /up to 90 days/);
+});
+test('carousel controls send no click while an image activation is recorded once without delaying its link', async () => {
+    const previousDoc = globalThis.document;
+    const previousFetch = globalThis.fetch;
+    const requests = [];
+    globalThis.document = { querySelector: () => ({ content: 'test-csrf' }), cookie: '' };
+    globalThis.fetch = async (url, request) => { requests.push({ url, request }); return { ok: true }; };
+    try {
+        const measured = banners.slice(0, 3).map(item => ({ ...item, measurement: { token: `test-token-${item.id}`, revision_id: item.id, endpoint: '/advertisement-events' } }));
+        const draw = interactions({ banners: measured });
+        let tree = draw();
+        nodes(tree, node => node.props['aria-label'] === 'Next advertisement')[0].props.onClick();
+        assert.equal(requests.length, 0);
+        tree = draw();
+        const picture = nodes(tree, node => node.props.href === measured[1].href && typeof node.props.onClick === 'function')[0];
+        assert.equal(picture.props.onClick(), undefined);
+        picture.props.onClick();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(requests.length, 1);
+        assert.deepEqual(JSON.parse(requests[0].request.body), { token: 'test-token-2', type: 'click' });
+        assert.equal(picture.props.href, '/advertisement/collection-2?publication=2');
+    } finally {
+        if (previousDoc === undefined) delete globalThis.document; else globalThis.document = previousDoc;
+        globalThis.fetch = previousFetch;
+    }
 });

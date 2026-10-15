@@ -5088,3 +5088,89 @@ Implementation commits:
 The combined PR title/body remains a local draft at
 `.codex/seller-promotion-review/PR.md`; it has not been saved on GitHub. The
 documentation commit is reported in the branch handoff. No commits were pushed.
+
+### October 16, 2026: recorded advertisement performance and combined acceptance
+
+Implemented the selected **AD04** on `feat/advertisement-reporting`, based on
+`c262473`, which contains the accepted seller-review delivery. AD01–AD04 feature
+implementation is now present in this checkout: platform authoring, buyer
+display/destinations, seller review and modest reporting. No further coding
+batch is named in the advertisement plan. Publishing, deployed acceptance and
+the runtime limits below remain distinct from local implementation completion.
+
+| Before AD04 | Current behavior |
+|---|---|
+| No recorded advertisement performance. | Platform Admin and original sellers can inspect recorded views, clicks and click-through rate by exact revision, placement and inclusive Manila date window. |
+| A response or hidden slide had no measurement contract. | A selected image needs to load and remain half visible for one uninterrupted second in a visible tab. Failed images, private previews and hidden slides do not earn views. |
+| No bounded click or replay handling for measurement. | Deliberate image activation is separate from arrows/dots, and page/revision/type deduplication prevents repeat counts. Navigation does not wait for tracking. |
+| No event retention or honest unavailable state. | Seven-day anonymous raw-event maintenance leaves atomic daily totals and publication/review evidence intact. Missing or failed reporting is distinct from zero, and collection can be disabled independently. |
+
+The new event route accepts only bounded token/type JSON with web CSRF protection
+and a hashed-source rate limit. Encrypted tokens last 30 minutes; event writers
+recheck age and current publication state under the shared calendar boundary.
+The unique page/revision/type hash and daily publication/date key protect replay
+and aggregation. Both the raw record and counter increment commit together, so
+failed storage cannot consume the duplicate key without retaining its count.
+Safe failure references log exception type/code without request payloads or SQL.
+
+Raw rows contain no account identifier, email, legal evidence, raw network
+address, browser fingerprint or event token. Each mounted homepage attempts a
+revision/type once, and a rotated session cookie is preferred over an old page
+CSRF token. Server ownership checks apply to report choices, totals and every
+advertisement/revision/placement filter. Results are paged, preserve original
+publication periods and separately explain an early stop or replacement.
+Zero views produce an unavailable rate rather than division by zero. Counts
+are not unique people, certified traffic, attributed orders or revenue; failed
+delivery and unsupported observation are not reconstructed.
+
+Verification:
+
+- The final selected SQLite `:memory:` regression passes **669 cases / 8,449
+  assertions**, with no failures, errors or skips. It covers advertisement,
+  seller, notification, buyer discovery/voucher/checkout approval, shared access,
+  shop review, moderation and account-closure behavior.
+- Included are **97 advertisement cases / 1,534 assertions**: the retained
+  AD01–AD03 gates, **22 measurement/reporting cases**, and **two combined release
+  journeys**. The journeys exercise a platform collection, shop feature and
+  actual published voucher, future start, expiry, pause, removed target, seller
+  changes requested, resubmission, exact approval/publication and withdrawal.
+  Events are generated only against isolated test fixtures; no production
+  traffic, orders or voucher redemptions are fabricated.
+- Checks cover malformed/tampered/future/expired tokens, exact 2,048-character
+  and 4,096-byte limits, CSRF, rate rejection, current restrictions, replay,
+  mid-write rollback, retained statistics, scheduled pruning, safe error
+  references, foreign IDs, 90-day/year boundaries, pagination and replacement
+  history. Retained totals also block destructive migration rollback.
+- **305 frontend/deployment checks** pass, including **39 advertisement checks**
+  with load/intersection/continuous-time/visibility/error/unmount cases, replay
+  prevention, failed transport, carousel versus image activation, rotated CSRF,
+  saved-revision reports, zero/unavailable states and owned filter choices.
+  The final TypeScript/Vite production build, scoped Pint and Git whitespace
+  checks pass.
+
+**Scoped engineering assessments:** recorded advertisement measurement/reporting
+**0/10 before (absent) → 8/10 locally verified**; the combined advertisement
+feature **8/10 before AD04 → 8.5/10 locally verified**. This is not a rating of
+the entire buyer, seller, admin or project. The remaining uncertainty is actual
+browser/device appearance, PostgreSQL contention, deployed migrations and
+scheduler operation, Azure acceptance and owner review of real marketing claims.
+The PostgreSQL design was reviewed for lock ordering, unique conflict handling,
+atomic counters and retention beyond token expiry; SQLite does not prove its
+runtime contention behavior. No browser automation, production deployment or
+development/production database migration/reset was performed.
+
+Use [the management guide](ADVERTISEMENT_MANAGEMENT.md) for deployment, independent
+display/measurement switches, raw-event maintenance and the release demonstration.
+Daily maintenance requires an actually running Laravel scheduler; registered
+jobs alone do not prove that it runs. Paid advertising, auctions, ad balances,
+sales attribution and automated marketing-text verification remain outside the
+four-batch plan.
+
+Implementation commits:
+
+- `76356e6` — `feat(advertisements): retain anonymous activity and scoped performance`
+- `670e537` — `feat(advertisements): measure visible artwork without blocking shopping`
+
+The combined PR title/body remains a local draft at
+`.codex/advertisement-reporting/PR.md`; it has not been saved on GitHub. The
+documentation commit is reported in the branch handoff. No commits were pushed.

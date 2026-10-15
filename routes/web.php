@@ -229,6 +229,7 @@ $registerSellerRoutes = function () {
         Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action']);
         Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
         Route::prefix('promotions')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+            Route::get('/performance', [SellerPromotionController::class, 'report']);
             Route::get('/', [SellerPromotionController::class, 'index']);
             Route::get('/create', [SellerPromotionController::class, 'create']);
             Route::post('/', [SellerPromotionController::class, 'store']);
@@ -391,6 +392,7 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action']);
         Route::prefix('advertisements')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+            Route::get('/performance', [AdminAdvertisementController::class, 'report']);
             Route::get('/', [AdminAdvertisementController::class, 'index']);
             Route::get('/create', [AdminAdvertisementController::class, 'create']);
             Route::post('/', [AdminAdvertisementController::class, 'store']);
@@ -466,6 +468,7 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 Route::get('/', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class)->name('marketplace');
 Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
     Route::get('/advertisement-artwork/{token}', [BuyerAdvertisementController::class, 'artwork'])->whereUuid('token')->name('advertisements.artwork');
+    Route::post('/advertisement-events', [BuyerAdvertisementController::class, 'event'])->middleware('throttle:advertisement-events')->name('advertisements.events');
     Route::get('/advertisement/{slug}', [BuyerAdvertisementController::class, 'visit'])->name('advertisements.visit');
     Route::get('/promotions/{slug}', [BuyerAdvertisementController::class, 'show'])->name('promotions.show');
 });
@@ -623,6 +626,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action'])->name('vouchers.action');
     Route::prefix('promotions')->name('promotions.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+        Route::get('/performance', [SellerPromotionController::class, 'report'])->name('performance');
         Route::get('/', [SellerPromotionController::class, 'index'])->name('index');
         Route::get('/create', [SellerPromotionController::class, 'create'])->name('create');
         Route::post('/', [SellerPromotionController::class, 'store'])->name('store');
@@ -702,6 +706,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action'])->name('vouchers.action');
     Route::prefix('advertisements')->name('advertisements.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+        Route::get('/performance', [AdminAdvertisementController::class, 'report'])->name('performance');
         Route::get('/', [AdminAdvertisementController::class, 'index'])->name('index');
         Route::get('/create', [AdminAdvertisementController::class, 'create'])->name('create');
         Route::post('/', [AdminAdvertisementController::class, 'store'])->name('store');

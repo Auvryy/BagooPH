@@ -146,6 +146,55 @@ Foreign drafts, images, products, offers and publication controls are rejected
 server-side. Stale review forms retain the user's note and choices but require
 a reload before a decision.
 
+## Recorded performance
+
+Open **Performance** from Advertisements or seller Promotions. Platform Admin
+can compare all advertisements; a seller can read only its own shop's results.
+Choose an advertisement, published revision or placement and an inclusive
+**Asia/Manila** date window of at most 90 days within the last year. Results are
+paged by placement and retain the original title, revision, position and period,
+including earlier replacements. Open the matching management page to review,
+pause or replace content; reporting does not automatically change ranking or
+spend money.
+
+**Recorded views** require the selected image to load and stay at least half
+visible for one continuous second while the tab is visible. Hidden carousel
+slides, failed images, private previews and unrendered response records do not
+earn views. **Image clicks** count deliberate activation of the image link,
+including keyboard activation, once for the page and revision. Arrows and dots
+only navigate the carousel. Rerenders do not create another event for an already
+counted revision on that page.
+
+Click-through rate is recorded clicks divided by recorded views. Without views,
+the rate is unavailable. A click may occur before the qualifying viewing second,
+so the ratio is not a percentage of unique visitors and need not stay below
+100%. Zero recorded events and unavailable reporting are distinct states. No
+activity is reconstructed for earlier dates, disabled collection, unsupported
+visibility observation or delivery failures.
+
+These are modest first-party activity counts, not certified measurements,
+attributed sales or billing. Navigation continues when event delivery fails.
+Short-lived encrypted event tokens expire after 30 minutes; the server checks
+the exact publication, current eligibility and duplicate key again when saving.
+The endpoint accepts bounded JSON, retains CSRF protection and limits requests
+to 60 per minute per hashed network source. It does not accept client-supplied
+totals, identities or arbitrary event fields.
+
+Raw event records contain only the publication, event type, a page/revision
+deduplication hash and server time. They do not contain account IDs, email,
+legal identity, raw network addresses, browser fingerprints or the event token.
+Daily totals are updated atomically with each accepted event. The daily
+`advertisements:prune-events` job removes raw records older than seven days;
+the anonymous daily totals and separate review/publication history remain.
+The existing Laravel scheduler must actually be running, as described in
+[the deployment guide](WEB_AUTH_DEPLOYMENT.md); registered jobs alone do not
+establish that maintenance is running. A delayed job retains raw records longer
+until the next successful run. Operators may run maintenance explicitly:
+
+```sh
+./bagoo.sh artisan advertisements:prune-events
+```
+
 ## Installation and disabling display
 
 After the user publishes and merges the branch, deploy using the existing
@@ -173,10 +222,28 @@ configuration cache to stop public display while retaining records:
 Re-enable the setting and refresh the cache when ready. Current schedules and
 eligibility still apply; old ended placements do not restart. Preserve the
 tables and private files when disabling. The migration refuses to remove
-retained advertisement identities on rollback.
+retained advertisement identities on rollback. The measurement migration also
+refuses to drop tables containing recorded totals.
 
-Statistics are separate AD04 work. Paid placements, advertising balances and
-auctions are outside this feature.
+Set `ADVERTISEMENTS_MEASUREMENT_ENABLED=false` and refresh the configuration
+cache to stop recording while keeping public display and retained reports.
+Disabling public advertisement display also stops new measurement. Missing
+measurement tables leave ordinary display and shopping available, while the
+performance page shows an unavailable state. Re-enabling collection records
+new eligible activity; it does not backfill the disabled period.
+
+Before a release demonstration, prepare accurate artwork for a platform
+collection, a shop/product feature and a real published voucher. Check their
+matching destinations, a future start, exact expiry, pause and unavailable target.
+Also demonstrate seller feedback, resubmission, exact review, publication and
+withdrawal. Use separate test data for verification; never manufacture production
+traffic or publish unsupported sale claims. Actual browser/device appearance,
+PostgreSQL concurrency and the deployed installation need their own release
+acceptance; automated SQLite and component checks establish only their recorded
+scope.
+
+Paid placements, advertising balances, auctions, sales attribution and automated
+marketing-text verification are outside this feature.
 Current implementation evidence and verification limits belong in
 [the roadmap](CORE_FLOW_ROADMAP.md); the original scope is in
 [the advertisement plan](advertisement-plan/README.md).

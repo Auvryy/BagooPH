@@ -44,7 +44,7 @@ class AdvertisementReader
         return ['state' => $future ? 'scheduled' : 'live', 'reason' => null];
     }
 
-    public function homepage(): array
+    public function homepage(bool $measure = true): array
     {
         if (! config('advertisements.enabled') || ! app(AdvertisementManager::class)->installed()) {
             return [];
@@ -55,12 +55,17 @@ class AdvertisementReader
             ->where(fn ($query) => $query->whereNull('superseded_at')->orWhere('superseded_at', '>', $now))
             ->whereHas('advertisement', fn ($query) => $query->whereNull('archived_at'))->orderBy('slot')->orderBy('id')->get();
         $banners = [];
+        $page = $measure ? bin2hex(random_bytes(16)) : null;
         foreach ($publications as $publication) {
             if (isset($banners[$publication->slot]) || ! in_array($publication->slot, AdvertisementInput::SLOTS, true)
                 || $this->state($publication)['state'] !== 'live') {
                 continue;
             }
-            $banners[$publication->slot] = $this->banner($publication);
+            $banner = $this->banner($publication);
+            if ($page && ($measurement = app(AdvertisementMeasurementService::class)->issue($publication, $page))) {
+                $banner['measurement'] = $measurement;
+            }
+            $banners[$publication->slot] = $banner;
         }
 
         return array_values($banners);

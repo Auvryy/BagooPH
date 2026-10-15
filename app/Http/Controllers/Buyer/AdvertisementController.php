@@ -4,13 +4,30 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Services\Advertisements\AdvertisementDestinationService;
+use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Advertisements\AdvertisementReader;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AdvertisementController extends Controller
 {
+    public function event(Request $request, AdvertisementMeasurementService $measurement)
+    {
+        abort_unless($request->isJson(), 415);
+        abort_if(strlen($request->getContent()) > 4096, 413);
+        try {
+            $measurement->record($request->json()->all());
+        } catch (QueryException $error) {
+            $id = $measurement->unavailable($error);
+
+            return response()->json(['message' => 'Advertisement reporting is temporarily unavailable.', 'request_id' => $id], 503)->header('X-Request-ID', $id);
+        }
+
+        return response()->noContent();
+    }
+
     public function visit(Request $request, string $slug, AdvertisementReader $reader, AdvertisementDestinationService $destinations)
     {
         $publication = $reader->publication($slug, $this->publicationId($request));

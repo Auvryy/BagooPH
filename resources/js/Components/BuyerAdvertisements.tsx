@@ -1,6 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ComponentPropsWithRef, MouseEvent, ReactElement, ReactNode, cloneElement, useEffect, useRef, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AdvertisementMeasurementData, AdvertisementMeasurementSession } from '@/utils/advertisementMeasurement';
 
 export interface Advertisement {
     id: number;
@@ -12,13 +13,23 @@ export interface Advertisement {
     slot: string;
     placement: 'main' | 'side';
     href: string;
+    measurement?: AdvertisementMeasurementData;
 }
 
-function PictureLink({ href, interactive, children, ...props }: { href: string; interactive: boolean; children: ReactNode; className: string; 'aria-label': string }) {
-    return interactive ? <Link href={href} {...props}>{children}</Link> : <div {...props}>{children}</div>;
+function PictureLink({ href, interactive, children, ...props }: { href: string; interactive: boolean; children: ReactNode; className: string; 'aria-label': string; onClick: () => void; onAuxClick: (event: MouseEvent) => void }) {
+    return interactive ? <Link href={href} {...props}>{children}</Link> : <div className={props.className} aria-label={props['aria-label']}>{children}</div>;
+}
+
+function MeasuredArtwork({ banner, session, interactive, children }: { banner: Advertisement; session: AdvertisementMeasurementSession; interactive: boolean; children: ReactElement<ComponentPropsWithRef<'img'>> }) {
+    const ref = useRef<HTMLImageElement>(null);
+    useEffect(() => {
+        if (interactive && banner.measurement && ref.current) return session.observe(ref.current, banner.measurement);
+    }, [interactive, banner.measurement, session]);
+    return cloneElement(children, { ref });
 }
 
 export default function BuyerAdvertisements({ banners, interactive = true, initialSelectedId }: { banners: Advertisement[]; interactive?: boolean; initialSelectedId?: number }) {
+    const measurement = useRef(new AdvertisementMeasurementSession()).current;
     const [failed, setFailed] = useState<string[]>([]);
     const available = banners.filter((banner) => !failed.includes(banner.image));
     const slides = available.filter((banner) => banner.placement === 'main').slice(0, 3);
@@ -46,10 +57,12 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                 <PictureLink
                     href={current.href}
                     interactive={interactive}
+                    onClick={() => measurement.click(current.measurement)}
+                    onAuxClick={(event) => { if (event.button === 1) measurement.click(current.measurement); }}
                     aria-label={current.title}
                     className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                 >
-                    <img
+                    <MeasuredArtwork banner={current} session={measurement} interactive={interactive}><img
                         src={current.image}
                         alt={current.alt_text}
                         width={current.width}
@@ -57,7 +70,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                         onError={() => failedImage(current.image)}
                         loading="eager"
                         className="block h-auto w-full"
-                    />
+                    /></MeasuredArtwork>
                 </PictureLink>
 
                 <p aria-live="polite" className="sr-only">{current.title}</p>
@@ -106,10 +119,12 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                             key={banner.id}
                             href={banner.href}
                             interactive={interactive}
+                            onClick={() => measurement.click(banner.measurement)}
+                            onAuxClick={(event) => { if (event.button === 1) measurement.click(banner.measurement); }}
                             aria-label={banner.title}
                             className="block min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"
                         >
-                            <img
+                            <MeasuredArtwork banner={banner} session={measurement} interactive={interactive}><img
                                 src={banner.image}
                                 alt={banner.alt_text}
                                 width={banner.width}
@@ -118,7 +133,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 loading="lazy"
                                 decoding="async"
                                 className="block h-auto w-full"
-                            />
+                            /></MeasuredArtwork>
                         </PictureLink>
                     ))}
                 </div>
