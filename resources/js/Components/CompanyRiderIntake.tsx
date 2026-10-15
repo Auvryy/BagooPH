@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import { Users } from 'lucide-react';
+import { CompanyRequestReview, CompanyRiderRoster } from '@/Components/CompanyRiderAssignments';
 import CompanyRequestPagination from '@/Components/CompanyRequestPagination';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
 import { courierDate } from '@/utils/courier';
@@ -9,7 +10,7 @@ import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 export default function CompanyRiderIntake({ workspace }: { workspace?: Intake | null }) {
     if (!workspace) return null;
     if (!workspace.available) return <section className="rounded-lg border border-slate-300 bg-white p-6 text-center"><h2 className="text-base font-bold text-slate-900">Rider requests unavailable</h2><p className="mt-2 text-sm text-slate-600">Please try again later.</p></section>;
-    return <AvailableRiderIntake workspace={workspace} />;
+    return <div className="space-y-5"><AvailableRiderIntake workspace={workspace} /><CompanyRiderRoster workspace={workspace} /></div>;
 }
 
 function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { available: true }> }) {
@@ -52,7 +53,7 @@ function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { avai
             {unconfirmed && <p role="status" className="text-sm text-slate-600">The result is unconfirmed. Refresh the requests or retry this same change.</p>}
         </form>
         <div className="mt-5 border-t border-slate-200 pt-5">
-            <h3 className="text-sm font-bold text-slate-900">Pending requests ({workspace.requests.total})</h3>
+            <h3 className="text-sm font-bold text-slate-900">Requests and offers ({workspace.requests.total})</h3>
             {workspace.requests.data.length ? <div className="mt-3 grid gap-3 xl:grid-cols-2">{workspace.requests.data.map((request) => <article key={request.id} className="min-w-0 rounded-md border border-slate-300 bg-slate-50 p-4">
                 <div className="flex flex-wrap justify-between gap-2"><h4 className="break-words text-sm font-bold text-slate-900">{request.shared_profile.name}</h4><span className="text-xs text-slate-500">Submitted {courierDate(request.submitted_at)}</span></div>
                 <p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p>
@@ -62,7 +63,8 @@ function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { avai
                     ['Vehicle type', request.shared_profile.vehicle_type?.replaceAll('_', ' ')],
                 ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium text-slate-800">{value || 'Not provided'}</dd></div>)}</dl>
                 {request.note && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">{request.note}</p>}
-                {!request.rider_eligible && <p className="mt-3 text-xs font-medium text-amber-800">This rider is no longer eligible for a new placement. The original request is retained.</p>}
+                <CompanyRequestReview key={`${request.id}-${request.version}`} request={request} workspace={workspace} />
+                {['pending', 'offered'].includes(request.effective_status ?? request.status) && !request.rider_eligible && <p className="mt-3 text-xs font-medium text-amber-800">This rider is no longer eligible for a new placement. The original request is retained.</p>}
             </article>)}</div> : <div className="py-8 text-center"><Users className="mx-auto h-7 w-7 text-slate-400" aria-hidden="true" /><p className="mt-3 text-sm font-semibold text-slate-600">No pending rider requests</p><p className="mt-1 text-xs text-slate-500">New requests appear here after a rider submits them.</p></div>}
             <CompanyRequestPagination page={workspace.requests} label="Rider requests" busy={form.processing} />
         </div>

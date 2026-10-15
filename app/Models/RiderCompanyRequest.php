@@ -46,4 +46,14 @@ class RiderCompanyRequest extends Model
     {
         return $this->hasMany(RiderCompanyRequestEvent::class);
     }
+
+    public function currentOffer(): BelongsTo
+    {
+        return $this->belongsTo(RiderCompanyOffer::class, 'current_offer_id');
+    }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(RiderCompanyOffer::class);
+    }
 }

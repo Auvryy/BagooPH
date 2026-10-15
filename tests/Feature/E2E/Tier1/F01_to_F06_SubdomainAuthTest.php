@@ -3,6 +3,7 @@
 namespace Tests\Feature\E2E\Tier1;
 
 use App\Models\Category;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -192,6 +193,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
         $response = $this->portalPost('buyer', '/register', [...$this->registrationPolicies(),
             'name' => 'Test Buyer User',
             'sex' => 'Female',
+            'birthday' => '1995-05-15',
             'email' => 't1_buyer_reg@example.com',
             'password' => 'Secret123456!',
             'password_confirmation' => 'Secret123456!',
@@ -208,6 +210,7 @@ class F01_to_F06_SubdomainAuthTest extends TestCase
             'email' => 't1_buyer_reg@example.com',
             'role' => 'buyer',
         ]);
+        $this->assertSame('1995-05-15', User::where('email', 't1_buyer_reg@example.com')->sole()->birthday->toDateString());
     }
 
     public function test_t1_f04_02_seller_registration_with_permit(): void

@@ -10,6 +10,7 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsPlacementRecord;
+use App\Models\RiderCompanyConsent;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -50,8 +51,9 @@ class LogisticsPlacementService
         ?int $vehicleId = null,
         ?string $barangay = null,
         ?int $expectedHubId = null,
+        ?RiderCompanyConsent $consent = null,
     ): CourierProfile {
-        return DB::transaction(function () use ($actor, $hub, $courier, $vehicleId, $barangay, $expectedHubId) {
+        return DB::transaction(function () use ($actor, $hub, $courier, $vehicleId, $barangay, $expectedHubId, $consent) {
             $previous = CourierProfile::where('user_id', $courier->id)->first();
             $company = $this->lockOwnedNetwork($actor, $hub, $courier, [$previous?->assigned_hub_id]);
             $hub = LogisticsHub::findOrFail($hub->id);
@@ -62,6 +64,10 @@ class LogisticsPlacementService
             if (! $profile || ($profile->logistics_company_id && $profile->logistics_company_id !== $company->id)) {
                 throw new DomainException('This courier is missing a profile or belongs to another logistics company.');
             }
+            $barangay = filled($barangay) ? trim($barangay) : null;
+            $acceptedSource = $profile->logistics_company_id === null
+                ? app(RiderCompanyOfferService::class)->authorizePlacement($consent, $actor, $company, $courier, $hub, $vehicleId, $barangay)
+                : null;
             if ($profile->vehicle_id && ! $vehicleId) {
                 throw new DomainException('Choose the current or another eligible fleet vehicle. Removing a fleet assignment requires separate review.');
             }
@@ -73,7 +79,6 @@ class LogisticsPlacementService
                 || CourierProfile::where('vehicle_id', $vehicleId)->where('user_id', '!=', $courier->id)->exists())) {
                 throw new DomainException('The selected vehicle is not available at this company facility.');
             }
-            $barangay = filled($barangay) ? trim($barangay) : null;
             if ($barangay && (! $hub->isBayanHub() || ($hub->coverage_barangays && ! $hub->coversBarangay($barangay)))) {
                 throw new DomainException('Choose an assigned barangay covered by the selected Bayan Hub.');
             }
@@ -104,7 +109,7 @@ class LogisticsPlacementService
             // A placement changes administrative scope only; the courier explicitly goes on duty later.
             $profile->fill([...$after, 'is_available' => false])->save();
             $this->eligibility->assertCourierScope($profile, $company->id, $hub->id);
-            $this->record($actor, $courier, $company, 'courier', $before, $after);
+            $this->record($actor, $courier, $company, 'courier', $before, $after, $acceptedSource);
 
             return $profile;
         });
@@ -123,11 +128,12 @@ class LogisticsPlacementService
         return $company;
     }
 
-    private function record(User $actor, User $subject, LogisticsCompany $company, string $kind, ?array $before, array $after): void
+    private function record(User $actor, User $subject, LogisticsCompany $company, string $kind, ?array $before, array $after, ?RiderCompanyConsent $consent = null): void
     {
         LogisticsPlacementRecord::create([
             'logistics_company_id' => $company->id, 'actor_id' => $actor->id, 'user_id' => $subject->id,
-            'kind' => $kind, 'before_state' => $before, 'after_state' => $after, 'recorded_at' => now(),
+            'kind' => $kind, 'before_state' => $before, 'after_state' => $after, 'recorded_at' => $consent?->accepted_at ?? now(),
+            'rider_company_consent_id' => $consent?->id,
         ]);
     }
 }

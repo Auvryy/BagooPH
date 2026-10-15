@@ -36,6 +36,8 @@ Other rules:
 
 Platform Admin approves marketplace accounts and logistics companies. An approved Logistics Company Admin manages only its own facilities, eligible handler access, and placement of already platform-approved couriers. Company placement cannot grant KYC approval or reverse suspension. Hub Handler is a facility-scoped responsibility of the `logistics` role, not an extra public registration role. See [ADMIN_FLOW.md](ADMIN_FLOW.md) for review authority, state, and suspension rules.
 
+Network contains the owning company's rider requests, versioned assignment offers and paginated current rider roster. A new rider chooses the company and accepts the exact current offer before placement. Offer expiry and current company, rider, facility and vehicle eligibility remain server decisions. Roster edits start from the saved current facility/vehicle/barangay; operators do not guess prior placement. Existing associations keep their original provenance, and same-company moves cannot substitute for a physical handover or reassign original cash responsibility. Handlers cannot review company applications or offers.
+
 New routing, manifest dispatch, and rider assignment require eligible accounts, company, facilities, personnel, and vehicles where applicable. Suspension blocks new work in the affected scope and sends active parcels/cash to authorized exception handling. Preserve the current custodian and checkpoints until a valid recovery scan; changing a status or assignee is not a custody handoff. Reactivation re-checks every required scope and does not silently restart stale work.
 
 ## 2. Status Model

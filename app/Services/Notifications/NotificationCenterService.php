@@ -5,12 +5,14 @@ namespace App\Services\Notifications;
 use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\RestrictionAffectedWork;
+use App\Models\RiderCompanyRequest;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\ExceptionOversightService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\GovernanceHistoryService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -110,6 +112,17 @@ class NotificationCenterService
         }
         if ($target === 'courier-assignments' && $user->isEligibleCourier()) {
             return '/courier/deliveries';
+        }
+        if ($target === 'courier-profile' && $user->isEligibleCourier()) {
+            return '/courier/profile?tab=assignment';
+        }
+        if ($target === 'rider-company-assignment' && $user->isEligibleCourier()
+            && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->where('rider_id', $user->id)->exists()) {
+            return '/courier/profile?tab=assignment';
+        }
+        if ($target === 'company-rider-requests' && app(LogisticsEligibilityService::class)->isCompanyAdministrator($user)
+            && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->whereHas('company', fn ($company) => $company->where('user_id', $user->id))->exists()) {
+            return '/hub/network';
         }
         if ($target === 'hub-recovery' && $user->isLogistics() && $user->canAccessPortal()) {
             return '/hub/delivery-recovery';

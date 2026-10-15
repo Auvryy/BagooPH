@@ -15,6 +15,7 @@ const bundle = buildSync({
         contents: `export * from '@/utils/courier';
             export * from '@/utils/codCash';
             export * from '@/utils/riderCompany';
+            export * from '@/Components/CompanyAssignmentOffer';
             export { default as Deliveries } from '@/Pages/Courier/Deliveries';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
@@ -536,4 +537,57 @@ test('cash previews reject ambiguous amounts and excess precision', () => {
     for (const value of ['', '-1', '1e2', '10.001', '1,000.00', ' 10', '01', '1000000000']) {
         assert.equal(ui.cashInputCents(value), null, value);
     }
+});
+
+const assignmentOffer = { id: '91', reference: 'RO-RETAINED', version: 2, hub_id: '4', vehicle_id: null, barangay: 'Poblacion',
+    terms: 'Discuss the daily schedule.\nUse the recorded hub.', terms_hash: 'a'.repeat(64),
+    assignment: { company: 'Bagoo Local Fleet', hub: 'Santa Cruz Hub', hub_code: 'SCZ-01', vehicle: 'Personal vehicle' },
+    issued_at: '2026-10-15T04:00:00Z', expires_at: '2026-10-22T04:00:00Z' };
+const offeredRequest = { id: '55', reference: 'RC-RETAINED', company: acceptingCompany, status: 'offered', effective_status: 'offered', version: 3,
+    note: null, sharing_acknowledged: true, shared_profile: sharedRider, submitted_at: '2026-10-14T00:00:00Z', withdrawn_at: null,
+    can_withdraw: true, can_accept: true, offer: assignmentOffer, decision_token: '00000000-0000-4000-8000-000000000009',
+    offers: [{ ...assignmentOffer, id: '90', version: 1, terms: 'Earlier arrangement, retained for review.', state: 'superseded' }, { ...assignmentOffer, state: 'offered' }],
+    decisions: [{ action: 'offered', reason: null, at: assignmentOffer.issued_at, offer_id: '91' }] };
+test('rider assignment shows exact current terms, earlier versions and explicit acceptance controls', async () => {
+    const html = await renderPage(ui.CourierCompanyRequests, 'CompanyRequests', { workspace: joining({ requests: companyPage([offeredRequest]) }) });
+    assert.match(html, /Assignment offer · Version 2/);
+    assert.match(html, /Discuss the daily schedule/);
+    assert.match(html, /Earlier arrangement, retained for review/);
+    assert.match(html, /Personal vehicle/);
+    assert.match(html, /Accept assignment/);
+    assert.match(html, /Decline offer/);
+    assert.match(html, /reserves neither you nor a vehicle/);
+    assert.doesNotMatch(html, /Employment contract|Automatically on duty/);
+});
+test('expiry, changed eligibility and accepted placement show truthful actions and distinct duty', async () => {
+    for (const state of ['expired', 'accepted', 'declined', 'cancelled', 'rejected']) {
+        const request = { ...offeredRequest, status: state, effective_status: state, can_accept: false, can_withdraw: false,
+            accepted_at: state === 'accepted' ? '2026-10-15T05:00:00Z' : null };
+        const html = await renderPage(ui.RiderAssignmentDecision, 'AssignmentDecision', { request });
+        assert.doesNotMatch(html, /<button[^>]*>Accept assignment|<button[^>]*>Decline offer/);
+        if (state === 'accepted') assert.match(html, /Go on duty separately when ready/);
+    }
+    const changed = await renderPage(ui.RiderAssignmentDecision, 'AssignmentDecision', { request: { ...offeredRequest, can_accept: false } });
+    assert.match(changed, /disabled=""[^>]*>Accept assignment/);
+    assert.match(changed, /Ask the company for a new offer/);
+});
+test('company request review shows its offer while roster retains actual placement and legacy provenance', async () => {
+    const originalRoute = globalThis.route;
+    globalThis.route = (name) => name === 'hub.network' ? '/hub/network' : '/hub/rider-request-intake';
+    try {
+        const workspace = { available: true, enabled: true, version: 1, history_available: true, has_eligible_hub: true,
+            request_token: '00000000-0000-4000-8000-000000000003', requests: companyPage([{ ...offeredRequest, rider_eligible: true }]),
+            offers_available: true, hubs: [{ id: '4', name: 'Santa Cruz Hub', tier: 'local_bayan_hub', barangays: ['Poblacion'] }], vehicles: [],
+            roster: companyPage([{ id: '3', name: 'Saved Company Rider', email: 'existing@bagoo.test', hub_id: '4', hub: 'Santa Cruz Hub',
+                vehicle_id: null, vehicle: 'Personal vehicle', barangay: 'Poblacion', on_duty: false, eligible: true, provenance: 'Existing assignment' }]) };
+        const html = await renderPage(ui.CompanyRiderIntake, 'CompanyIntake', { workspace });
+        assert.match(html, /Replace offer/);
+        assert.match(html, /Withdraw offer/);
+        assert.match(html, /Company riders \(1\)/);
+        assert.match(html, /Saved Company Rider/);
+        assert.match(html, /Existing assignment/);
+        assert.match(html, /Off duty/);
+        assert.match(html, /Edit assignment/);
+        assert.doesNotMatch(html, /Current rider facility<|Hire rider|Approve request/);
+    } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
 });

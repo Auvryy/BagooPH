@@ -10,6 +10,8 @@ Lifecycle ownership follows [SYSTEM_FLOW_AND_SPECIFICATIONS.md](SYSTEM_FLOW_AND_
 
 Platform Admin owns marketplace account approval. A logistics company's acceptance or assignment of a rider is an operational placement of an already approved courier; it cannot grant platform KYC approval or undo a suspension.
 
+A first rider-company association requires the rider's own acknowledgement of the current company-issued assignment offer. Company administrators issue, replace or withdraw their own offers; handlers and Platform Admin cannot accept for a rider. The shared placement writer requires the retained consent for a new association, including the older email-based endpoint. Existing assignments retain their original evidence, and legitimate same-company moves preserve active parcel/manifest and cash responsibilities. No company offer, identity approval or placement automatically enables duty.
+
 | Applicant or responsibility | Approval authority | Evidence and scope |
 |---|---|---|
 | Buyer | Active Platform Admin | Identity document and validated account details before transactional access |

@@ -4615,3 +4615,81 @@ documentation drift, and no framework upgrade is part of this delivery.
 
 The implementation commits and combined local PR draft are recorded in the
 branch handoff. Publication, merge and deployment remain separate user actions.
+
+## October 15, 2026 — RC02 accepted company offers and protected placement
+
+Scope: `feat/rider-company-consent-and-placement`, from current `main` at
+`d145375`. This completes the web joining batch after RC01; it does not start
+[RC03](rider-company-plan/03-native-contract-and-acceptance.md).
+
+| Before | Current behavior |
+|---|---|
+| An administrator could associate an unassigned rider through the email placement form without the rider's agreement. | The shared placement writer requires the retained acceptance of an exact current offer for a first company association. Root aliases, subdomains and direct service calls share this boundary. |
+| Requests stopped at pending or withdrawn. | Company offers, replacements, rider acceptance/decline, reasoned rejection/cancellation and server expiry retain the original application, offer versions and decision history. |
+| An operator entered a rider email and guessed the current facility. | Network shows the company's paginated current rider roster with saved facility, vehicle, barangay, duty, eligibility and honest existing/accepted-offer provenance. Same-company edits start from those recorded values. |
+| Rider Assignment could display managed details but offered no consent journey. | Assignment displays exact working arrangements, version, issue/expiry dates, explicit acknowledgement and accept/decline controls, with retained history, field feedback and Inertia refresh/retry paths. |
+
+Offers last seven calendar days and reserve neither a rider nor a vehicle.
+Acceptance rechecks current owner/rider approval, intake, reviewed identity,
+placement, eligible facility, covered barangay and available fleet sources under
+consistent locks. Retained changes to assignment-related fields prevent a
+change-and-restore cycle from reviving old terms. Ordinary contact/photo edits
+do not stale an offer. Source hashes are independent of JSON object key order;
+the PostgreSQL watcher compares the existing JSON coverage column through
+`to_jsonb` rather than assuming it supports ordinary JSON equality.
+
+Consent, fleet/profile placement, immutable placement history, the request
+decision and required notice intents commit together. Identical actor-scoped
+retries return the original offer/time/outcome. Changed intent, stale versions,
+false acknowledgement and competing vehicle acceptance conflict without a
+partial membership. Notice delivery runs after commit and retries independently.
+Owned notices link to the rider's Assignment or the company's Network.
+
+Reads show effective expiry without writing events. The scheduled
+`rider-companies:expire-offers` command records actual reconciliation time with
+a system actor; the next application also reconciles its rider's expired offer.
+Acceptance rejects at the expiry boundary even without a running scheduler.
+
+Existing assignments receive no invented historical request or consent.
+Legitimate same-company moves retain the previous parcel/manifest guards and
+original cash responsibility. New placements leave duty off. KYC, fixed account
+roles, actual scans, buyer-only completion, COD and the 90/10 product split keep
+their separate authority. Transfers, departure and employment/payroll management
+remain outside this workflow.
+
+| Verification | Evidence |
+|---|---|
+| Final focused acceptance | **219 tests / 2,256 assertions**, zero failures, errors or skips in SQLite `:memory:`. Covers both portal contexts, exact saved assignment reads, field boundaries, privacy, permissions, expiry, source cycles, replay, competing intent, database history guards and injected rollback failures. |
+| Canonical journey | Newly accepted pickup and delivery riders deliberately activate duty, use actual waybills and retained hub/manifest scans, deliver to the buyer and keep completion separate from COD reconciliation and seller settlement. A later same-company move preserves the original cash holder and destination responsibility. Included in the focused run. |
+| Shared regression | Initial **2,194 tests / 80,188 assertions** across logistics, courier, finance, notifications, admin, cross-role journeys, seeds and portal isolation: 2,192 passed; two older buyer-policy test scenarios needed correction. The final **68 tests / 458 assertions** pass after giving the signup smoke an adult date and keeping shared-profile closure feedback on a seller with its actual owned shop/order. Deletion blockers, authentication and private-reference checks remain asserted. No buyer runtime policy was changed. |
+| Frontend | **80 helper/static-rendering checks**, all passing across courier/company, hub, account and financial presentation. The final TypeScript/Vite production build passes. Static review preserves each portal's own layout, labelled controls, responsive grouping, readable errors and local rider 8px surfaces. |
+| Formatting and content | Scoped Pint passes for all 21 changed PHP files, including the two compatibility tests and final follow-up checks. Git whitespace checks pass. The local task guide and review artifacts remain ignored. |
+
+The broad run began before the final conflict-response and saved-value checks;
+those final changes pass the 219-case focused selection. The recorded broad run
+is not represented as a fresh zero-failure full-suite run. Both corrected test
+scenarios pass in the subsequent 68-case selection.
+
+**Scoped engineering assessment: mutually accepted first company placement
+2/10 → 8.5/10.** The request, exact offer, rider consent and protected placement
+now form one verified local web journey. Overall rider, logistics and project
+ratings are unchanged. Browser/device interaction, PostgreSQL migration and
+simultaneous concurrency execution, and Azure rollout remain unverified.
+
+Rollout requires the additive
+`2026_10_15_050000_add_rider_company_offers_and_consents` migration after RC01.
+No database reset or reseeding is required. The migration retains existing
+requests, assignments and immutable history; schema rollback deliberately
+requires a reviewed forward repair rather than discarding that provenance.
+
+Local commits:
+
+- `6fd3377` — `feat(logistics): retain assignment offers and rider consent`
+- `57eb9b7` — `feat(logistics): require rider acceptance before first placement`
+- `d2a01e2` — `feat(portals): add assignment offers and saved rider roster`
+
+The final documentation/evidence commit is reported in the branch handoff.
+The combined PR title/body remains a local draft at `.codex/rc02/PR.md`; it has
+not been saved on GitHub. User publication, merge and deployment are separate.
+The Flutter project and native joining contract are unchanged; RC03 is the
+next separately authorized delivery.

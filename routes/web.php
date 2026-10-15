@@ -42,6 +42,7 @@ use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\ParcelRecoveryController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\Logistics\RiderCompanyIntakeController;
+use App\Http\Controllers\Logistics\RiderCompanyOfferController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -275,6 +276,8 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
         Route::post('/messages/read', [CourierDeliveryController::class, 'acknowledgeMessages']);
         Route::get('/profile', [CourierDeliveryController::class, 'profile']);
         Route::post('/company-requests', [RiderCompanyRequestController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/company-requests/{companyRequest}/accept', [RiderCompanyRequestController::class, 'accept'])->middleware('throttle:10,1');
+        Route::post('/company-requests/{companyRequest}/decline', [RiderCompanyRequestController::class, 'decline'])->middleware('throttle:10,1');
         Route::post('/company-requests/{companyRequest}/withdraw', [RiderCompanyRequestController::class, 'withdraw'])->middleware('throttle:10,1');
         Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile']);
         Route::put('/profile/password', [PasswordController::class, 'update']);
@@ -308,6 +311,9 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1');
+        Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1');
+        Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
         Route::get('/manifests', [LogisticsManifestController::class, 'index']);
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
@@ -615,6 +621,8 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
     Route::post('/messages/read', [CourierDeliveryController::class, 'acknowledgeMessages'])->name('messages.read');
     Route::get('/profile', [CourierDeliveryController::class, 'profile'])->name('profile');
     Route::post('/company-requests', [RiderCompanyRequestController::class, 'store'])->middleware('throttle:10,1')->name('company-requests.store');
+    Route::post('/company-requests/{companyRequest}/accept', [RiderCompanyRequestController::class, 'accept'])->middleware('throttle:10,1')->name('company-requests.accept');
+    Route::post('/company-requests/{companyRequest}/decline', [RiderCompanyRequestController::class, 'decline'])->middleware('throttle:10,1')->name('company-requests.decline');
     Route::post('/company-requests/{companyRequest}/withdraw', [RiderCompanyRequestController::class, 'withdraw'])->middleware('throttle:10,1')->name('company-requests.withdraw');
     Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
@@ -683,6 +691,9 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1')->name('rider-request-intake');
+        Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1')->name('rider-company-requests.offers');
+        Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1')->name('rider-company-requests.reject');
+        Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1')->name('rider-company-requests.cancel');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
         Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
