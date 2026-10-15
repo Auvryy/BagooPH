@@ -84,8 +84,9 @@ class BuyerCheckoutKycGateTest extends TestCase
 
         $response = $this->actingAs($buyer)->get('/checkout');
         $response->assertRedirect(route('kyc.pending'));
-        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Auth/BuyerApproval')->where('user.kyc_status', 'none'));
+        $this->get(route('kyc.pending'))->assertRedirect(route('buyer.index', ['application' => 1]));
+        $this->get('/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Buyer/Home')->where('buyerApplication.user.kyc_status', 'none'));
 
         $postResponse = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Unverified Buyer',
@@ -141,8 +142,9 @@ class BuyerCheckoutKycGateTest extends TestCase
 
         $response = $this->actingAs($buyer)->get('/checkout');
         $response->assertRedirect(route('kyc.pending'));
-        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Auth/BuyerApproval')->where('user.kyc_status', 'pending_approval'));
+        $this->get(route('kyc.pending'))->assertRedirect(route('buyer.index', ['application' => 1]));
+        $this->get('/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Buyer/Home')->where('buyerApplication.user.kyc_status', 'pending_approval'));
 
         $postResponse = $this->actingAs($buyer)->post('/checkout', [
             'recipient_name' => 'Pending Buyer',

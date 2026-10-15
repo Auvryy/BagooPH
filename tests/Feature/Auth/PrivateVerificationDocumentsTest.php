@@ -162,10 +162,11 @@ class PrivateVerificationDocumentsTest extends TestCase
         $path = $owner->fresh()->id_document_path;
         Storage::disk('local')->assertExists($path);
         Storage::disk('public')->assertMissing($path);
-        $this->get(route('buyer.profile'))->assertRedirect(route('kyc.pending'));
-        $this->get(route('kyc.pending'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Auth/BuyerApproval')
-            ->where('identityDocumentUrl', '/verification-documents/'.$owner->id.'/id.pdf')
+        $this->get(route('buyer.profile'))->assertOk();
+        $this->get(route('kyc.pending'))->assertRedirect(route('buyer.index', ['application' => 1]));
+        $this->get('/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Buyer/Home')
+            ->where('buyerApplication.identity_document_url', '/verification-documents/'.$owner->id.'/id.pdf')
             ->where('auth.user.id_document_path', '/verification-documents/'.$owner->id.'/id.pdf'));
     }
 
@@ -218,7 +219,7 @@ class PrivateVerificationDocumentsTest extends TestCase
     public function test_registration_does_not_store_unvalidated_role_documents(): void
     {
         $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Bagoo Buyer', 'email' => 'documents.buyer@bagoo.test', 'role' => 'buyer',
+            'birthday' => '1995-05-15', 'name' => 'Bagoo Buyer', 'email' => 'documents.buyer@bagoo.test', 'role' => 'buyer',
             'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
             'driver_license' => UploadedFile::fake()->create('ignored.exe', 20, 'application/x-msdownload'),
         ])->assertRedirect();

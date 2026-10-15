@@ -54,15 +54,18 @@ class BuyerAccessAlignmentTest extends TestCase
         $known = $status !== 'unknown' && $kyc !== 'unknown';
         foreach (['http://localhost', 'http://buyer.localhost'] as $host) {
             $this->actingAs($buyer);
-            foreach (['/checkout', '/buyer/checkout', '/buyer/profile', '/messages', '/buyer/messages', '/cart', '/buyer/cart', '/buyer/disputes'] as $path) {
+            foreach (['/checkout', '/buyer/checkout', '/messages', '/buyer/messages', '/buyer/disputes'] as $path) {
                 $response = $this->get($host.$path);
                 $known ? $response->assertRedirect(route('kyc.pending')) : $response->assertForbidden();
             }
-            foreach (['/checkout', '/buyer/profile', '/buyer/addresses', '/buyer/reviews', '/buyer/vouchers/apply', '/buyer/support/assistant', '/cart'] as $path) {
+            foreach (['/checkout', '/buyer/addresses', '/buyer/reviews', '/buyer/vouchers/apply', '/buyer/support/assistant'] as $path) {
                 $response = $this->post($host.$path, ['name' => 'Unauthorized Change']);
                 $known ? $response->assertRedirect(route('kyc.pending')) : $response->assertForbidden();
             }
-            $this->get($host.'/profile')->assertForbidden();
+            foreach (['/profile', '/buyer/profile', '/cart', '/buyer/cart'] as $personalPath) {
+                $response = $this->get($host.$personalPath);
+                $known ? $response->assertOk() : $response->assertForbidden();
+            }
             $this->post($host.'/buyer/disputes', ['reason' => 'Unavailable action'])->assertStatus(405)->assertSessionMissing('success');
             $this->patch($host.'/profile', ['name' => 'Changed Buyer', 'email' => 'changed@bagoo.test'])->assertForbidden();
             $this->get($host.'/chat/messages/999')->assertForbidden();
@@ -92,7 +95,7 @@ class BuyerAccessAlignmentTest extends TestCase
     {
         $buyer = User::factory()->create(['status' => $status, 'kyc_status' => $kyc, 'password' => 'Password1234']);
         $response = $this->withSession(['url.intended' => '/checkout'])->post('/login', ['email' => $buyer->email, 'password' => 'Password1234']);
-        $response->assertRedirect(in_array($kyc, ['approved', 'verified']) && $status === 'active' ? '/checkout' : route($destination));
+        $response->assertRedirect(in_array($kyc, ['approved', 'verified']) && $status === 'active' ? '/checkout' : ($destination === 'kyc.pending' ? route('buyer.index', ['application' => 1]) : route($destination)));
         if ($destination === 'login') {
             $this->assertGuest();
             $response->assertSessionHasErrors('email');
@@ -118,7 +121,7 @@ class BuyerAccessAlignmentTest extends TestCase
         $provider->shouldReceive('user')->andReturn($remote);
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
         $response = $this->withSession(['url.intended' => '/checkout'])->get('/auth/google/callback');
-        $response->assertRedirect(in_array($kyc, ['approved', 'verified']) && $status === 'active' ? '/checkout' : route($destination));
+        $response->assertRedirect(in_array($kyc, ['approved', 'verified']) && $status === 'active' ? '/checkout' : ($destination === 'kyc.pending' ? route('buyer.index', ['application' => 1]) : route($destination)));
         $destination === 'login' ? $this->assertGuest() : $this->assertAuthenticatedAs($buyer);
         if ($destination !== 'buyer.index') {
             $response->assertSessionMissing('url.intended');
@@ -156,20 +159,22 @@ class BuyerAccessAlignmentTest extends TestCase
         $buyer = User::factory()->create(['name' => 'Original Buyer', 'status' => $status, 'kyc_status' => $kyc, 'birthday' => null]);
         $this->addKycEvidence($buyer);
         $old = $buyer->fresh()->id_document_path;
-        $minorBirthday = now()->timezone('Asia/Manila')->subYears(14)->toDateString();
+        $adultBirthday = now()->timezone('Asia/Manila')->subYears(18)->toDateString();
         foreach (['http://localhost', 'http://buyer.localhost'] as $host) {
-            $this->actingAs($buyer)->get($host.'/pending-approval')->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('Auth/BuyerApproval')->where('application.can_correct', true)->where('user.id', $buyer->id)->missing('user.id_document_path'));
+            $this->actingAs($buyer)->get($host.'/pending-approval')->assertRedirect(route('buyer.index', ['application' => 1]));
+            $this->get($host.'/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/Home')->where('buyerApplication.application.can_correct', true)->where('buyerApplication.user.id', $buyer->id)
+                ->where('buyerApplication.identity_document_url', '/verification-documents/'.$buyer->id.'/id.pdf'));
             $this->get($host.'/verification-documents/'.$buyer->id.'/id.pdf')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         }
         $this->post('/kyc/resubmit', [
-            'name' => 'José Dela Cruz', 'phone' => '09171234567', 'postal_code' => '4030', 'birthday' => $minorBirthday,
+            'name' => 'José Dela Cruz', 'phone' => '09171234567', 'postal_code' => '4030', 'birthday' => $adultBirthday,
             'id_document' => UploadedFile::fake()->createWithContent('buyer-correction.pdf', '%PDF-1.4 corrected buyer evidence'),
         ])->assertSessionHas('success');
         $current = $buyer->fresh();
         $this->assertSame('José Dela Cruz', $current->name);
         $this->assertSame('+639171234567', $current->phone);
-        $this->assertSame($minorBirthday, $current->birthday->toDateString());
+        $this->assertSame($adultBirthday, $current->birthday->toDateString());
         $this->assertSame($status, $current->status);
         $this->assertSame('pending_approval', $current->kyc_status);
         $this->assertSame('buyer', $current->role);
@@ -190,7 +195,7 @@ class BuyerAccessAlignmentTest extends TestCase
         $this->inspectKycEvidence($admin, $buyer);
         $payload = $this->kycPayload($buyer);
         $oldPath = $buyer->id_document_path;
-        $this->actingAs($buyer)->post('/kyc/resubmit', ['name' => 'Corrected Buyer'])->assertSessionHas('success');
+        $this->actingAs($buyer)->post('/kyc/resubmit', ['name' => 'Corrected Buyer', 'birthday' => '1995-05-15'])->assertSessionHas('success');
         $this->actingAs($admin)->post('/admin/kyc/'.$buyer->id.'/approve', $payload)->assertConflict();
         $this->assertDatabaseCount('kyc_decisions', 0);
         $buyer->refresh();
@@ -289,7 +294,7 @@ class BuyerAccessAlignmentTest extends TestCase
         } catch (AuthorizationException) {
             $this->assertSame('delivered', $order->fresh()->status);
         }
-        $this->get('/pending-approval')->assertOk()->assertInertia(fn (Assert $page) => $page->where('canViewOrders', false)->where('application.can_correct', false));
+        $this->get('/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page->where('buyerApplication.application', null));
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseCount('delivery_checkpoints', 0);
     }
@@ -348,8 +353,8 @@ class BuyerAccessAlignmentTest extends TestCase
     {
         $buyer = User::factory()->create(['kyc_status' => 'none']);
 
-        $this->actingAs($buyer)->get('/pending-approval')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Auth/BuyerApproval')->where('user.id', $buyer->id));
+        $this->actingAs($buyer)->get('/pending-approval')->assertRedirect(route('buyer.index', ['application' => 1]));
+        $this->get('/buyer')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Buyer/Home')->where('buyerApplication.user.id', $buyer->id));
     }
 
     public function test_holding_shared_account_data_uses_the_current_application(): void
@@ -361,14 +366,14 @@ class BuyerAccessAlignmentTest extends TestCase
         ]);
 
         foreach (['http://localhost', 'http://buyer.localhost'] as $host) {
-            $this->actingAs($buyer)->get($host.'/pending-approval')->assertOk()
+            $this->actingAs($buyer)->get($host.'/buyer')->assertOk()
                 ->assertInertia(fn (Assert $page) => $page
                     ->where('auth.user.name', 'Current Buyer')
                     ->where('auth.user.status', 'suspended')
                     ->where('auth.user.kyc_status', 'rejected')
                     ->where('auth.user.kyc_feedback', 'Please submit a clearer ID.')
-                    ->where('user.name', 'Current Buyer')
-                    ->where('application.can_correct', true));
+                    ->where('buyerApplication.user.name', 'Current Buyer')
+                    ->where('buyerApplication.application.can_correct', true));
         }
     }
 
@@ -391,16 +396,17 @@ class BuyerAccessAlignmentTest extends TestCase
 
         $this->withSession(['url.intended' => '/checkout'])->post('/login', [
             'email' => $buyer->email, 'password' => 'Password1234',
-        ])->assertRedirect('/pending-approval')->assertSessionMissing('url.intended');
+        ])->assertRedirect(route('buyer.index', ['application' => 1]))->assertSessionMissing('url.intended');
         $this->assertAuthenticatedAs($buyer);
     }
 
-    public function test_unreviewed_buyer_cannot_create_a_bag_through_a_direct_route(): void
+    public function test_unreviewed_buyer_can_open_its_owned_bag_without_checkout_access(): void
     {
         $buyer = User::factory()->create(['kyc_status' => 'pending_approval']);
 
-        $this->actingAs($buyer)->get('/cart')->assertRedirect('/pending-approval');
-        $this->assertDatabaseCount('carts', 0);
+        $this->actingAs($buyer)->get('/cart')->assertOk();
+        $this->assertDatabaseCount('carts', 1);
+        $this->get('/checkout')->assertRedirect(route('kyc.pending'));
     }
 
     public function test_unknown_current_account_state_cannot_complete_an_order_from_a_stale_actor(): void

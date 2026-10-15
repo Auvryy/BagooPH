@@ -33,7 +33,7 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->assertGuest();
         $this->assertDatabaseCount('users', 0);
         $nonce = session('registration.google.nonce');
-        $data = $this->registrationPolicies() + ['registration_nonce' => $nonce, 'first_name' => 'Bagoo', 'last_name' => 'Applicant', 'sex' => 'Female', 'postal_code' => '0123'];
+        $data = $this->registrationPolicies() + ['registration_nonce' => $nonce, 'birthday' => '1995-05-15', 'first_name' => 'Bagoo', 'last_name' => 'Applicant', 'sex' => 'Female', 'postal_code' => '0123'];
         foreach ([null, false, 0, 'false', ['true']] as $value) {
             $this->postJson(route('auth.google.registration.store'), array_replace($data, ['policy_accepted' => $value]))->assertJsonValidationErrors('policy_accepted');
             $this->assertDatabaseCount('account_policy_acceptances', 0);
@@ -42,7 +42,7 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->postJson(route('auth.google.registration.store'), array_replace($data, ['registration_nonce' => 'another-session']))->assertJsonValidationErrors('registration_nonce');
         $this->freezeSecond();
         $this->post(route('auth.google.registration.store'), $data + ['email' => 'attacker@bagoo.test', 'role' => 'admin', 'name' => 'Conflicting Name', 'accepted_at' => '1990-01-01'])
-            ->assertRedirect(route('kyc.pending'))->assertSessionHasNoErrors();
+            ->assertRedirect(route('buyer.index', ['application' => 1]))->assertSessionHasNoErrors();
         $user = User::sole();
         $this->assertAuthenticatedAs($user);
         $this->assertSame('buyer', $user->role);
@@ -80,7 +80,7 @@ class GoogleRegistrationPolicyTest extends TestCase
     {
         $this->provider();
         $this->get(route('auth.google.callback'));
-        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'Bagoo', 'last_name' => 'Applicant', 'sex' => 'Female'];
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'birthday' => '1995-05-15', 'first_name' => 'Bagoo', 'last_name' => 'Applicant', 'sex' => 'Female'];
         $this->partialMock(RegistrationPolicyService::class)->shouldReceive('record')->once()->andThrow(new \RuntimeException('Acceptance storage unavailable.'));
         $this->postJson(route('auth.google.registration.store'), $data)->assertServerError();
         $this->assertGuest();
@@ -120,7 +120,7 @@ class GoogleRegistrationPolicyTest extends TestCase
     {
         $this->provider();
         $this->get(route('auth.google.callback'));
-        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'Ana', 'last_name' => 'Santos'];
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'birthday' => '1995-05-15', 'first_name' => 'Ana', 'last_name' => 'Santos'];
         $this->postJson(route('auth.google.registration.store'), $data)->assertUnprocessable()->assertJsonValidationErrors('sex');
         foreach ([null, '', '   ', 'Unknown', ['Female'], true, 1] as $sex) {
             $this->postJson(route('auth.google.registration.store'), $data + ['sex' => $sex])->assertUnprocessable()->assertJsonValidationErrors('sex');
@@ -136,7 +136,7 @@ class GoogleRegistrationPolicyTest extends TestCase
     {
         $this->provider();
         $this->get(route('auth.google.callback'));
-        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'first_name' => 'María', 'middle_initial' => 'J.', 'last_name' => 'O’Connor'];
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'birthday' => '1995-05-15', 'first_name' => 'María', 'middle_initial' => 'J.', 'last_name' => 'O’Connor'];
         foreach ([['first_name' => 'A'], ['first_name' => 'Ana123'], ['last_name' => str_repeat('A', 51)], ['middle_initial' => 'MM'], ['sex' => 'Unknown'], ['postal_code' => '12345'], ['phone' => '0917ABC4567'], ['address' => '<script>'], ['birthday' => '2000-02-30']] as $invalid) {
             $this->postJson(route('auth.google.registration.store'), array_replace($data, $invalid))->assertJsonValidationErrors(array_keys($invalid));
             $this->assertDatabaseCount('users', 0);

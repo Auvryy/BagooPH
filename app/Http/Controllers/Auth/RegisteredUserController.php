@@ -109,17 +109,8 @@ class RegisteredUserController extends Controller
         if ($user->isBuyer()) {
             $access = app(BuyerAccessService::class);
             abort_unless($access->canViewHolding($user), 403);
-            if ($user->canAccessPortal()) {
-                return redirect()->route('buyer.index');
-            }
 
-            return Inertia::render('Auth/BuyerApproval', [
-                'user' => $user->only(['id', 'name', 'email', 'status', 'kyc_status', 'kyc_feedback', 'kyc_submitted_at', 'kyc_reviewed_at']),
-                'application' => app(ApplicationValidationService::class)->form($user),
-                'identityDocumentUrl' => $access->canManageApplication($user) ? app(VerificationDocumentService::class)->links($user)['id_document_path'] : null,
-                'birthDateLimits' => app(BirthDateEligibility::class)->limits(),
-                'canViewOrders' => $access->canAccessExistingOrders($user),
-            ]);
+            return redirect()->route('buyer.index', $user->canAccessPortal() ? [] : ['application' => 1]);
         }
 
         // If user is already active and approved, redirect to their role dashboard

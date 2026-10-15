@@ -76,6 +76,7 @@ interface Props {
     availableVouchers?: VoucherOffer[];
     availableVoucherCount?: number;
     voucherCollection?: BuyerVoucherCollectionData;
+    canUsePortal?: boolean;
 }
 
 type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
@@ -99,6 +100,7 @@ export default function BuyerProfile({
     availableVouchers = [],
     availableVoucherCount = 0,
     voucherCollection,
+    canUsePortal = true,
 }: Props) {
     const page = usePage<PageProps>();
     const url = page.url;
@@ -635,7 +637,7 @@ export default function BuyerProfile({
                                     <div className="flex min-h-[20rem] flex-1 flex-col rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xs sm:p-12 lg:min-h-0">
                                         <div className="m-auto w-full max-w-md space-y-3">
                                             <Package className="mx-auto h-12 w-12 text-slate-300" aria-hidden="true" />
-                                            <h3 className="text-base font-bold text-slate-800">No orders found in this status</h3>
+                                            <h3 className="text-base font-bold text-slate-800">{ordersCount === 0 ? 'No orders yet' : 'No orders found in this status'}</h3>
                                             <p className="text-xs leading-5 text-slate-500">
                                                 {showingOrderIssues ? 'You have no orders with this issue. Choose another status or return to My Purchases & Orders.' : 'Your orders will appear here. Browse the marketplace to find something for your Bag.'}
                                             </p>
@@ -866,17 +868,11 @@ export default function BuyerProfile({
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block font-bold text-slate-700 mb-1.5 font-sans">Full Name</label>
-                                                <input
-                                                    type="text"
-                                                    value={data.name}
-                                                    readOnly
-                                                    onChange={(e) => setData('name', e.target.value)}
-                                                    className="w-full rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs focus:ring-[#E00D42] focus:border-[#E00D42]"
-                                                    required
-                                                />
-                                                {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-sans">{errors.name}</p>}
-                                                <a href="#identity-correction" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</a>
+                                                <div className="grid grid-cols-[1fr_5rem_1fr] gap-2">
+                                                    {([['first_name', 'First name'], ['middle_name', 'Middle name'], ['last_name', 'Last name']] as const).map(([key, label]) => <label key={key} className="block font-bold text-slate-700">{label}<input type="text" readOnly value={user[key] ?? ''} placeholder="Not recorded" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-xs" /></label>)}
+                                                </div>
+                                                {!user.first_name && !user.last_name && <p className="mt-2 text-xs text-slate-500">Earlier registration recorded: {user.name}. Request a correction to record the separate names.</p>}
+                                                {isKycApproved ? <a href="#identity-correction" className="mt-2 block text-xs font-semibold text-[#C20836] underline">Request an identity correction</a> : <Link href={route('kyc.pending')} className="mt-2 block text-xs font-semibold text-[#C20836] underline">Update application details</Link>}
                                             </div>
 
                                             <div>
@@ -1257,6 +1253,7 @@ export default function BuyerProfile({
                                     <button
                                         type="button"
                                         onClick={() => openAddress()}
+                                        disabled={!canUsePortal}
                                         className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
@@ -1265,6 +1262,7 @@ export default function BuyerProfile({
                                 </div>
 
                                 <div className={addresses.length === 0 ? 'flex min-h-[16rem] flex-1 flex-col gap-4 lg:min-h-0' : 'space-y-4'}>
+                                    {!canUsePortal && <p className="rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs text-slate-600">Address changes become available when your buyer account is active and approved.</p>}
                                     {addressActionError && <p role="alert" className="text-sm text-rose-700">{addressActionError}</p>}
                                     {addressPending !== null && <p role="status" className="text-sm text-slate-600">Updating your address book...</p>}
                                     {addresses.length === 0 && (
@@ -1292,7 +1290,7 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-3">
-                                                    <button type="button" disabled={addressPending !== null} onClick={() => openAddress(addr)} className="text-[11px] font-semibold text-[#C20836] underline">Edit</button>
+                                                    <button type="button" disabled={!canUsePortal || addressPending !== null} onClick={() => openAddress(addr)} className="text-[11px] font-semibold text-[#C20836] underline disabled:opacity-50">Edit</button>
                                                     {addr.is_default ? (
                                                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold">
                                                             DEFAULT ADDRESS
@@ -1301,7 +1299,7 @@ export default function BuyerProfile({
                                                         <button
                                                             type="button"
                                                             onClick={() => setDefaultAddress(addr.id)}
-                                                            disabled={addressPending !== null}
+                                                            disabled={!canUsePortal || addressPending !== null}
                                                             className="text-[11px] font-sans text-slate-500 hover:text-slate-900 underline cursor-pointer"
                                                         >
                                                             Set as Default
@@ -1312,7 +1310,7 @@ export default function BuyerProfile({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDeleteAddress(addr.id)}
-                                                            disabled={addressPending !== null}
+                                                            disabled={!canUsePortal || addressPending !== null}
                                                             className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer"
                                                             title="Delete address"
                                                         >
@@ -1348,7 +1346,7 @@ export default function BuyerProfile({
                         {/* TAB 5: VOUCHERS & PROMOS */}
                         {activeTab === 'vouchers' && (
                             <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Vouchers and promos" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex flex-col gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
-                                {voucherCollection ? <BuyerVoucherCollection collection={voucherCollection} /> : <><div className="border-b border-slate-100 pb-4">
+                                {voucherCollection ? <BuyerVoucherCollection collection={voucherCollection} allowSave={canUsePortal} /> : <><div className="border-b border-slate-100 pb-4">
                                     <h3 className="text-base font-black text-slate-900">Available Offers</h3>
                                     <p className="mt-1 text-xs text-slate-500">Choose an offer at checkout. Eligibility depends on your selected items and delivery method.</p>
                                     {availableVoucherCount > availableVouchers.length && <p className="mt-2 text-xs text-slate-500">

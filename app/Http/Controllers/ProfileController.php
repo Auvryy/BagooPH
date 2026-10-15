@@ -28,12 +28,12 @@ class ProfileController extends Controller
         $user = $request->user()->fresh();
         abort_unless($user && $user->closed_at === null, 403);
         $request->setUserResolver(fn () => $user);
-        if ($user->canAccessPortal()) {
-            if ($user->isBuyer()) {
-                $request->query->set('tab', 'account');
+        if ($user->isBuyer()) {
+            $request->query->set('tab', 'account');
 
-                return app(BuyerProfileController::class)->index($request);
-            }
+            return app(BuyerProfileController::class)->index($request);
+        }
+        if ($user->canAccessPortal()) {
             if ($user->isSeller()) {
                 return app(SellerDashboardController::class)->profile($request);
             }
@@ -57,6 +57,11 @@ class ProfileController extends Controller
     public function edit(Request $request): Response|RedirectResponse
     {
         $user = $request->user()->fresh();
+        if ($user?->isBuyer()) {
+            $request->query->set('tab', 'account');
+
+            return app(BuyerProfileController::class)->index($request);
+        }
         abort_unless($user?->canAccessPortal(), 403);
         $request->setUserResolver(fn () => $user);
         if ($request->user()->isBuyer()) {

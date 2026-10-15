@@ -24,10 +24,9 @@ import {
     ShieldAlert
 } from 'lucide-react';
 import ChatModal from '@/Components/ChatModal';
-import BuyerIdVerificationModal from '@/Components/BuyerIdVerificationModal';
+import BuyerApplicationModal from '@/Components/BuyerApplicationModal';
 import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
-import { buyerShouldSeeIdReminder } from '@/utils/kyc';
 
 interface Props {
     children: React.ReactNode;
@@ -50,7 +49,8 @@ export default function BuyerLayout({
     fullHeight = false,
     topBanner,
 }: Props) {
-    const { auth, cartCount = 0, unreadMessagesCount = 0, flash } = usePage<PageProps>().props;
+    const page = usePage<PageProps>();
+    const { auth, cartCount = 0, unreadMessagesCount = 0, flash, buyerApplication } = page.props;
     const user = auth.user;
 
     const [logoutFeedback, setLogoutFeedback] = useState<string | null>(null);
@@ -126,38 +126,20 @@ export default function BuyerLayout({
         { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
     ]);
 
-    const [idReminderOpen, setIdReminderOpen] = useState(false);
-
+    const [applicationOpen, setApplicationOpen] = useState(false);
+    const applicationKey = buyerApplication ? `bagoo_application_${buyerApplication.user.id}_${buyerApplication.user.status}_${buyerApplication.user.kyc_status}_${buyerApplication.user.kyc_reviewed_at ?? ''}` : null;
     React.useEffect(() => {
-        if (!user || user.role !== 'buyer') {
-            setIdReminderOpen(false);
-            return;
+        if (!buyerApplication || !applicationKey) { setApplicationOpen(false); return; }
+        const requested = new URL(page.url, 'http://localhost').searchParams.get('application') === '1';
+        let dismissed = false;
+        try { dismissed = sessionStorage.getItem(applicationKey) === '1'; } catch { /* Storage may be unavailable in a private session. */ }
+        if (requested || (!buyerApplication.can_use_portal && !dismissed)) setApplicationOpen(true);
+    }, [page.url, applicationKey]);
+    const closeApplication = () => {
+        if (applicationKey) {
+            try { sessionStorage.setItem(applicationKey, '1'); } catch { /* Dismissal still works for this view. */ }
         }
-
-        // The reviewed KYC status is authoritative. An approved buyer should
-        // never see the upload reminder just because the document path is not
-        // included in the current shared profile payload.
-        const needsId = buyerShouldSeeIdReminder(user);
-        if (!needsId) {
-            setIdReminderOpen(false);
-            return;
-        }
-
-        // Check if user dismissed for the current session
-        const isDismissed = typeof window !== 'undefined' && sessionStorage.getItem('bagoo_buyer_id_prompt_dismissed') === '1';
-        if (!isDismissed) {
-            const timer = setTimeout(() => {
-                setIdReminderOpen(true);
-            }, 700);
-            return () => clearTimeout(timer);
-        }
-    }, [user?.id, user?.kyc_status]);
-
-    const handleDismissIdReminder = () => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('bagoo_buyer_id_prompt_dismissed', '1');
-        }
-        setIdReminderOpen(false);
+        setApplicationOpen(false);
     };
 
     React.useEffect(() => {
@@ -490,6 +472,10 @@ export default function BuyerLayout({
                         ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
                         : 'py-6 overflow-x-hidden'
             }`}>
+                {buyerApplication && !buyerApplication.can_use_portal && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-sm">
+                    <p>Checkout is unavailable until your buyer account is active and approved.</p>
+                    <button type="button" onClick={() => setApplicationOpen(true)} className="font-bold text-[#C20836] underline">View application</button>
+                </div>}
                 {auth.user && flash?.success && (
                     <p role="status" className="mb-5 shrink-0 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{flash.success}</p>
                 )}
@@ -540,14 +526,7 @@ export default function BuyerLayout({
             )}
 
             {/* 4.5. BUYER IDENTITY VERIFICATION REMINDER MODAL */}
-            {user && user.role === 'buyer' && (
-                <BuyerIdVerificationModal
-                    isOpen={idReminderOpen}
-                    onClose={() => setIdReminderOpen(false)}
-                    onDismiss={handleDismissIdReminder}
-                    user={user}
-                />
-            )}
+            {buyerApplication && <BuyerApplicationModal data={buyerApplication} open={applicationOpen} onClose={closeApplication} />}
 
             {/* 5. FOOTER */}
             {!hideFooter && (

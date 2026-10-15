@@ -52,6 +52,57 @@ class BuyerAccessService
         return $user;
     }
 
+    public function requireAccount(User $actor, bool $lock = false): User
+    {
+        $user = $this->current($actor, $lock);
+        if (! $this->canViewHolding($user)) {
+            throw new AuthorizationException('This buyer account is not available.');
+        }
+
+        return $user;
+    }
+
+    public function requireBagChanges(User $actor, bool $lock = false): User
+    {
+        $user = $this->requireAccount($actor, $lock);
+        if (! in_array($user->status, ['active', 'pending_approval'], true)) {
+            throw new AuthorizationException('Your account cannot change its Shopping Bag while restricted.');
+        }
+
+        return $user;
+    }
+
+    public function canViewOrderHistory(User $user): bool
+    {
+        return $this->canViewHolding($user)
+            && Gate::forUser($user)->allows('buyer.order-history')
+            && (! $user->isKycApproved() || $this->canAccessExistingOrders($user));
+    }
+
+    public function requireOrderHistory(User $actor): User
+    {
+        $user = $this->requireAccount($actor);
+        abort_unless($this->canViewOrderHistory($user), 403);
+
+        return $user;
+    }
+
+    public function applicationPresentation(?User $user): ?array
+    {
+        if (! $user || ! $this->canViewHolding($user)) {
+            return null;
+        }
+        $canCorrect = $this->canManageApplication($user);
+
+        return [
+            'user' => $user->only(['id', 'name', 'status', 'kyc_status', 'kyc_feedback', 'kyc_reviewed_at']),
+            'can_use_portal' => $user->canAccessPortal(),
+            'application' => $canCorrect ? app(ApplicationValidationService::class)->form($user) : null,
+            'identity_document_url' => $canCorrect ? app(VerificationDocumentService::class)->links($user)['id_document_path'] : null,
+            'birth_date_limits' => app(BirthDateEligibility::class)->limits(),
+        ];
+    }
+
     public function hasExistingOrderEligibility(User $user): bool
     {
         return $user->isBuyer() && $user->isKycApproved()
@@ -101,7 +152,7 @@ class BuyerAccessService
             return redirect()->route('buyer.orders.index');
         }
         if ($this->canViewHolding($user)) {
-            return redirect()->route('kyc.pending');
+            return redirect()->route('buyer.index', ['application' => 1]);
         }
 
         Auth::logout();

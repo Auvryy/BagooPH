@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\Message;
 use App\Models\SavedProduct;
 use App\Models\Shop;
+use App\Services\BuyerAccessService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\VerificationDocumentService;
@@ -115,6 +116,7 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'cartCount' => $cartCount,
+            'buyerApplication' => fn () => app(BuyerAccessService::class)->applicationPresentation($user),
             'savedProductIds' => fn () => $user && $user->isBuyer() && $user->canAccessPortal()
                 ? SavedProduct::where('buyer_id', $user->id)->pluck('product_id') : [],
             'unreadMessagesCount' => $unreadMessagesCount,

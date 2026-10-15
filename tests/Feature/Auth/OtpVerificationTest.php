@@ -251,7 +251,7 @@ class OtpVerificationTest extends TestCase
         ]);
 
         $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
-            'name' => 'Verified Buyer',
+            'birthday' => '1995-05-15', 'name' => 'Verified Buyer',
             'email' => $email,
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
@@ -259,7 +259,7 @@ class OtpVerificationTest extends TestCase
             'otp_token' => $token,
         ]);
 
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('buyer.index', ['application' => 1]));
         $this->assertAuthenticated();
 
         $user = User::where('email', $email)->first();
