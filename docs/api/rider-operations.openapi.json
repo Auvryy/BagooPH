@@ -3,7 +3,7 @@
   "info": {
     "title": "BagooPH Rider operations",
     "version": "1.0.0",
-    "description": "Implemented backend native operations. See RIDER_OPERATIONS_API.md for locked authority, semantic validation, retry/reconciliation and deployment boundaries. Unknown domain enums require a safe client fallback."
+    "description": "Implemented backend native operations. See RIDER_OPERATIONS_API.md for locked authority, semantic validation, retry/reconciliation and deployment boundaries. Unknown domain enums require a safe client fallback. Company joining is defined in RIDER_COMPANY_API.md and uses dedicated abilities with no prior placement requirement."
   },
   "servers": [
     {
@@ -2936,6 +2936,1228 @@
           }
         }
       }
+    },
+    "/rider/companies": {
+      "get": {
+        "operationId": "riderCompanies",
+        "summary": "Eligible companies accepting rider requests",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Plain text; case-insensitive literal name search or exact recorded province."
+          },
+          {
+            "name": "province",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Plain text; case-insensitive literal name search or exact recorded province."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eligible companies accepting rider requests",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/companies/{company}": {
+      "get": {
+        "operationId": "riderCompany",
+        "summary": "Current eligible company and bounded service areas",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "company",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current eligible company and bounded service areas",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-requests": {
+      "get": {
+        "operationId": "riderCompanyRequests",
+        "summary": "Own original applications, newest first",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own original applications, newest first",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyApplicationListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      },
+      "post": {
+        "operationId": "riderCompanyApply",
+        "summary": "Submit one request without changing placement or duty",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:write",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "One retained actor-scoped key per exact intent. Reconcile company-commands before uncertain retries."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submit one request without changing placement or duty",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanySubmitBody"
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-requests/{application}": {
+      "get": {
+        "operationId": "riderCompanyRequest",
+        "summary": "Own terms, current actions and retained history",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "application",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own terms, current actions and retained history",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyApplicationEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-requests/{application}/withdraw": {
+      "post": {
+        "operationId": "riderCompanyWithdraw",
+        "summary": "Record own withdraw through shared enrollment rules",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:write",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "application",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "One retained actor-scoped key per exact intent. Reconcile company-commands before uncertain retries."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record own withdraw through shared enrollment rules",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyDecisionBody"
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-requests/{application}/accept": {
+      "post": {
+        "operationId": "riderCompanyAccept",
+        "summary": "Record own accept through shared enrollment rules",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:write",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "application",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "One retained actor-scoped key per exact intent. Reconcile company-commands before uncertain retries."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record own accept through shared enrollment rules",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyAcceptBody"
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-requests/{application}/decline": {
+      "post": {
+        "operationId": "riderCompanyDecline",
+        "summary": "Record own decline through shared enrollment rules",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:write",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "application",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ID"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "One retained actor-scoped key per exact intent. Reconcile company-commands before uncertain retries."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record own decline through shared enrollment rules",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyDecisionBody"
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-assignment": {
+      "get": {
+        "operationId": "riderCompanyAssignment",
+        "summary": "Saved membership, consent provenance and current readiness",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved membership, consent provenance and current readiness",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyAssignmentEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
+    },
+    "/rider/company-commands/{key}": {
+      "get": {
+        "operationId": "riderCompanyCommand",
+        "summary": "Original owned enrollment result and retained retry window",
+        "security": [
+          {
+            "nativeBearer": []
+          }
+        ],
+        "x-required-token-ability": "rider:company:read",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Optional correlation UUID; invalid input is replaced. Never use as an idempotency key."
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original owned enrollment result and retained retry window",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCommandEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          },
+          "500": {
+            "description": "Unexpected private failure with correlation reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store, private"
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "$ref": "#/components/schemas/UUID"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          }
+        },
+        "description": "Private JSON, including without Accept. Unexpected fields reject. IDs stay strings. Company review remains on the web portal."
+      }
     }
   },
   "components": {
@@ -3236,6 +4458,9 @@
               },
               "handover_reporting": {
                 "type": "boolean"
+              },
+              "company_joining": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -3294,6 +4519,16 @@
             "additionalProperties": false
           },
           "handover_api_version": {
+            "anyOf": [
+              {
+                "const": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_api_version": {
             "anyOf": [
               {
                 "const": 1
@@ -4052,7 +5287,9 @@
                     "enum": [
                       "task",
                       "cash",
-                      "account"
+                      "account",
+                      "company_request",
+                      "company_assignment"
                     ]
                   },
                   "id": {
@@ -6600,6 +7837,1314 @@
             "pattern": "^(?:[1-9][0-9]{0,5}|1000000)$"
           }
         ]
+      },
+      "CompanyUTC": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3,6}Z$"
+      },
+      "CompanyCounter": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9223372036854775807
+      },
+      "CompanyCounterInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          {
+            "$ref": "#/components/schemas/ID"
+          }
+        ],
+        "description": "Positive whole JSON integer or canonical decimal string through signed 64-bit maximum. The server also rejects raw decimal/exponent numeric encodings."
+      },
+      "CompanyArea": {
+        "type": "object",
+        "properties": {
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "province",
+          "city"
+        ],
+        "additionalProperties": false
+      },
+      "Company": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "intake_version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompanyArea"
+            },
+            "maxItems": 50
+          },
+          "areas_truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "intake_version",
+          "areas",
+          "areas_truncated"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Company"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Company"
+                },
+                "maxItems": 50
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "hub_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "vehicle_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "barangay": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 2000
+          },
+          "terms_hash": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "assignment": {
+            "type": "object",
+            "properties": {
+              "company": {
+                "type": "string"
+              },
+              "hub": {
+                "type": "string"
+              },
+              "hub_code": {
+                "type": "string"
+              },
+              "vehicle": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "company",
+              "hub",
+              "hub_code",
+              "vehicle"
+            ],
+            "additionalProperties": false
+          },
+          "issued_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "version",
+          "hub_id",
+          "vehicle_id",
+          "barangay",
+          "terms",
+          "terms_hash",
+          "assignment",
+          "issued_at",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyHistoricalOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "hub_id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "vehicle_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "barangay": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 2000
+          },
+          "terms_hash": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "assignment": {
+            "type": "object",
+            "properties": {
+              "company": {
+                "type": "string"
+              },
+              "hub": {
+                "type": "string"
+              },
+              "hub_code": {
+                "type": "string"
+              },
+              "vehicle": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "company",
+              "hub",
+              "hub_code",
+              "vehicle"
+            ],
+            "additionalProperties": false
+          },
+          "issued_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired",
+              "superseded"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "version",
+          "hub_id",
+          "vehicle_id",
+          "barangay",
+          "terms",
+          "terms_hash",
+          "assignment",
+          "issued_at",
+          "expires_at",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "CompanySharedProfile": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "province": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vehicle_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approval_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "phone",
+          "city",
+          "province",
+          "vehicle_type",
+          "approval_status"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyApplicationSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "company": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ID"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "effective_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "submitted_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyUTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyUTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_offer_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "accept": {
+                "type": "boolean"
+              },
+              "decline": {
+                "type": "boolean"
+              },
+              "withdraw": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accept",
+              "decline",
+              "withdraw"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "company",
+          "status",
+          "effective_status",
+          "version",
+          "submitted_at",
+          "withdrawn_at",
+          "accepted_at",
+          "current_offer_id",
+          "actions"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyApplication": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "company": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ID"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "effective_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "submitted_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyUTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyUTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_offer_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "accept": {
+                "type": "boolean"
+              },
+              "decline": {
+                "type": "boolean"
+              },
+              "withdraw": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "accept",
+              "decline",
+              "withdraw"
+            ],
+            "additionalProperties": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sharing_acknowledged": {
+            "const": true
+          },
+          "shared_profile": {
+            "$ref": "#/components/schemas/CompanySharedProfile"
+          },
+          "offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyOffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompanyHistoricalOffer"
+            },
+            "maxItems": 50
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "submitted",
+                    "pending",
+                    "offered",
+                    "accepted",
+                    "declined",
+                    "withdrawn",
+                    "rejected",
+                    "cancelled",
+                    "expired"
+                  ]
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 5,
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "at": {
+                  "$ref": "#/components/schemas/CompanyUTC"
+                },
+                "offer_id": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ID"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "reason",
+                "at",
+                "offer_id"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 50
+          },
+          "history_limits": {
+            "type": "object",
+            "properties": {
+              "offers_truncated": {
+                "type": "boolean"
+              },
+              "decisions_truncated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "offers_truncated",
+              "decisions_truncated"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "company",
+          "status",
+          "effective_status",
+          "version",
+          "submitted_at",
+          "withdrawn_at",
+          "accepted_at",
+          "current_offer_id",
+          "actions",
+          "note",
+          "sharing_acknowledged",
+          "shared_profile",
+          "offer",
+          "offers",
+          "decisions",
+          "history_limits"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyApplicationEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyApplication"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyApplicationListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CompanyApplicationSummary"
+                },
+                "maxItems": 50
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              }
+            },
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyAssignment": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hub": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vehicle": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "barangay": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "on_duty": {
+            "type": "boolean"
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "unassigned",
+                  "review_required",
+                  "existing_assignment",
+                  "accepted_offer"
+                ]
+              },
+              "request_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "offer_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "accepted_at": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompanyUTC"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "request_id",
+              "offer_id",
+              "accepted_at"
+            ],
+            "additionalProperties": false
+          },
+          "eligibility": {
+            "type": "object",
+            "properties": {
+              "operational": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "operational"
+            ],
+            "additionalProperties": false
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "apply": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "apply"
+            ],
+            "additionalProperties": false
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sharing_summary": {
+            "$ref": "#/components/schemas/CompanySharedProfile"
+          },
+          "observed_at": {
+            "$ref": "#/components/schemas/UTC"
+          }
+        },
+        "required": [
+          "company",
+          "hub",
+          "vehicle",
+          "barangay",
+          "on_duty",
+          "provenance",
+          "eligibility",
+          "actions",
+          "blocked_reason",
+          "sharing_summary",
+          "observed_at"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyAssignmentEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyAssignment"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ID"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "offered",
+              "accepted",
+              "declined",
+              "withdrawn",
+              "rejected",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/CompanyCounter"
+          },
+          "submitted_at": {
+            "$ref": "#/components/schemas/CompanyUTC"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyUTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offer_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "version",
+          "submitted_at",
+          "withdrawn_at",
+          "offer_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyCommand": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "company.submit",
+              "company.accepted",
+              "company.declined",
+              "company.withdrawn"
+            ]
+          },
+          "resource": {
+            "type": "string"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CompanyReceipt"
+          },
+          "recorded_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/UTC"
+          },
+          "retry_expired": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "action",
+          "resource",
+          "state",
+          "result",
+          "recorded_at",
+          "expires_at",
+          "retry_expired",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyCommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyCommand"
+          },
+          "request_id": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "data",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "CompanySubmitBody": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "$ref": "#/components/schemas/CompanyCounterInput"
+          },
+          "intake_version": {
+            "$ref": "#/components/schemas/CompanyCounterInput"
+          },
+          "sharing_acknowledged": {
+            "type": "boolean",
+            "const": true
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500,
+                "description": "Meaningful plain text, NFKC normalized and outer spaces trimmed. Raw and normalized length must fit; hidden controls and markup reject. Blank outer spaces normalize to null."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "company_id",
+          "intake_version",
+          "sharing_acknowledged"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyDecisionBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/CompanyCounterInput"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "CompanyAcceptBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "$ref": "#/components/schemas/CompanyCounterInput"
+          },
+          "offer_id": {
+            "$ref": "#/components/schemas/CompanyCounterInput"
+          },
+          "terms_hash": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "expected_version",
+          "offer_id",
+          "terms_hash",
+          "acknowledged"
+        ],
+        "additionalProperties": false
+      },
+      "RiderAccountDiscoveryEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ID"
+              },
+              "settings_api_version": {
+                "const": 1
+              },
+              "operations_api_version": {
+                "const": 1
+              },
+              "handover_api_version": {
+                "const": 1
+              },
+              "company_api_version": {
+                "const": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "email_verified": {
+                "type": "boolean"
+              },
+              "role": {
+                "const": "courier"
+              },
+              "status": {
+                "type": "string"
+              },
+              "kyc_status": {
+                "type": "string"
+              },
+              "kyc_feedback": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "can_access_portal": {
+                "type": "boolean"
+              },
+              "access_state": {
+                "type": "string",
+                "enum": [
+                  "approved",
+                  "holding"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "email_verified",
+              "role",
+              "status",
+              "kyc_status",
+              "kyc_feedback",
+              "can_access_portal",
+              "access_state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
       }
     },
     "responses": {

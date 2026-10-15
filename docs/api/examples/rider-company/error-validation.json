@@ -1,0 +1,11 @@
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Use a valid whole number for the page. (and 1 more error)",
+  "errors": {
+    "page": [
+      "Use a valid whole number for the page.",
+      "The page field must be an integer."
+    ]
+  },
+  "request_id": "807bf69a-2d73-42bb-82ee-8173fcdf588c"
+}

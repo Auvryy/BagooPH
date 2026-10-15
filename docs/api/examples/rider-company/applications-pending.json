@@ -1,0 +1,33 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "1",
+        "reference": "RC-01M4Z34TQ0SYP6PB224G4XNSKK",
+        "company": {
+          "id": "1",
+          "name": "Bagoo Company Network"
+        },
+        "status": "pending",
+        "version": 1,
+        "submitted_at": "2026-10-15T06:14:13.123456Z",
+        "withdrawn_at": null,
+        "effective_status": "pending",
+        "accepted_at": null,
+        "current_offer_id": null,
+        "actions": {
+          "accept": false,
+          "decline": false,
+          "withdraw": true
+        }
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 1,
+      "last_page": 1
+    }
+  },
+  "request_id": "90ab9935-8637-44fa-9dbf-812b58d8f571"
+}

@@ -1,0 +1,42 @@
+{
+  "data": {
+    "company": {
+      "id": "1",
+      "name": "Bagoo Company Network"
+    },
+    "hub": {
+      "id": "1",
+      "name": "Bagoo Bayan Hub"
+    },
+    "vehicle": {
+      "id": null,
+      "label": "Personal vehicle"
+    },
+    "barangay": "Bagumbayan",
+    "on_duty": false,
+    "provenance": {
+      "kind": "accepted_offer",
+      "request_id": "1",
+      "offer_id": "1",
+      "accepted_at": "2026-10-15T06:14:13.123456Z"
+    },
+    "eligibility": {
+      "operational": true
+    },
+    "actions": {
+      "apply": false
+    },
+    "blocked_reason": "Your current company manages your working assignment. Requests to change companies are not available.",
+    "sharing_summary": {
+      "name": "Bagoo Rider",
+      "email": "contract-rider@bagoo.test",
+      "phone": "+639170000099",
+      "city": "Santa Cruz",
+      "province": "Laguna",
+      "vehicle_type": "Motorcycle",
+      "approval_status": "approved"
+    },
+    "observed_at": "2026-10-15T06:14:13.123Z"
+  },
+  "request_id": "eeac5c80-e0d5-4092-81af-de9501e05b74"
+}

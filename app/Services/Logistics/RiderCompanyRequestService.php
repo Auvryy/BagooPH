@@ -240,7 +240,7 @@ class RiderCompanyRequestService
             'submitted_at' => $request->submitted_at->toISOString(), 'withdrawn_at' => $request->withdrawn_at?->toISOString()];
     }
 
-    private function profileSummary(User $rider, ?CourierProfile $profile): array
+    public function profileSummary(User $rider, ?CourierProfile $profile): array
     {
         return ['name' => $rider->name, 'email' => $rider->email, 'phone' => $rider->phone,
             'city' => $rider->city, 'province' => $rider->province, 'vehicle_type' => $profile?->vehicle_type,
@@ -261,7 +261,7 @@ class RiderCompanyRequestService
             ])->unique(fn ($area) => json_encode($area))->values()->all()];
     }
 
-    private function directory(): Builder
+    public function directory(): Builder
     {
         return LogisticsCompany::eligible()->where('rider_intake_enabled', true)->where('rider_intake_version', '>', 0)
             ->whereHas('user', fn ($owner) => $owner->whereNotNull('email_verified_at'))

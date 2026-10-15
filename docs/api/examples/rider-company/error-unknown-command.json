@@ -1,0 +1,6 @@
+{
+  "code": "COMMAND_UNKNOWN",
+  "message": "No committed result is visible. This does not prove the request failed; refresh before retrying the same intent.",
+  "errors": [],
+  "request_id": "a7087871-645a-45c5-ad40-d18fc8f68dc3"
+}

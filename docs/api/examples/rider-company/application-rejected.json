@@ -1,0 +1,54 @@
+{
+  "data": {
+    "id": "1",
+    "reference": "RC-01M4Z2XEWBR5RY7GFBNREWT28V",
+    "company": {
+      "id": "1",
+      "name": "Bagoo Company Network"
+    },
+    "status": "rejected",
+    "version": 2,
+    "submitted_at": "2026-10-15T06:10:12.123456Z",
+    "withdrawn_at": null,
+    "effective_status": "rejected",
+    "accepted_at": null,
+    "current_offer_id": null,
+    "actions": {
+      "accept": false,
+      "decline": false,
+      "withdraw": false
+    },
+    "note": "Available for scheduled work in Santa Cruz.",
+    "sharing_acknowledged": true,
+    "shared_profile": {
+      "name": "Bagoo Rider",
+      "email": "contract-rider@bagoo.test",
+      "phone": "+639170000099",
+      "city": "Santa Cruz",
+      "province": "Laguna",
+      "vehicle_type": "Motorcycle",
+      "approval_status": "approved"
+    },
+    "offer": null,
+    "offers": [],
+    "decisions": [
+      {
+        "action": "submitted",
+        "reason": null,
+        "at": "2026-10-15T06:10:12.123456Z",
+        "offer_id": null
+      },
+      {
+        "action": "rejected",
+        "reason": "The available work arrangement has changed.",
+        "at": "2026-10-15T06:10:12.123456Z",
+        "offer_id": null
+      }
+    ],
+    "history_limits": {
+      "offers_truncated": false,
+      "decisions_truncated": false
+    }
+  },
+  "request_id": "70b82d7e-6ece-419e-88a0-96fd97b5010c"
+}

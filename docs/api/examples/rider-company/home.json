@@ -1,0 +1,57 @@
+{
+  "data": {
+    "account_id": "2",
+    "operations_api_version": 1,
+    "handover_api_version": 1,
+    "on_duty": false,
+    "observed_at": "2026-10-15T06:14:13.123Z",
+    "company_api_version": 1,
+    "placement": {
+      "company_id": null,
+      "company_name": null,
+      "hub_id": null,
+      "hub_name": null,
+      "barangay": null
+    },
+    "eligibility": {
+      "operational": false,
+      "can_claim": false,
+      "claim_denial": "PLACEMENT_UNAVAILABLE"
+    },
+    "capacity": {
+      "active_pickups": 0,
+      "pickup_limit": 5,
+      "remaining_pickups": 5
+    },
+    "counts": {
+      "available": 0,
+      "pickup": 0,
+      "final_mile": 0
+    },
+    "capabilities": {
+      "home": true,
+      "duty": true,
+      "pickup_claim": true,
+      "parcel_actions": true,
+      "trips": true,
+      "messages": true,
+      "notifications": true,
+      "cash": true,
+      "handover_issues": true,
+      "handover_reporting": true,
+      "company_joining": true,
+      "pre_custody_release": false,
+      "native_restricted_recovery": false,
+      "rider_earnings": false
+    },
+    "limits": {
+      "per_page_max": 50,
+      "poll_interval_seconds": 30,
+      "request_budget_per_minute": 30,
+      "proof_bytes_max": 5242880,
+      "message_characters_max": 1000,
+      "idempotency_days": 7
+    }
+  },
+  "request_id": "f4cba970-e760-426a-817f-c39ac1cfe0da"
+}
