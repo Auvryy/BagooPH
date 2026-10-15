@@ -19,11 +19,14 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\RiderCompanyOfferService;
+use App\Services\Logistics\RiderCompanyRequestService;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -327,7 +330,17 @@ class LogisticsResourceEligibilityTest extends TestCase
         $vehicle = $this->vehicle->replicate();
         $vehicle->fill(['plate_number' => 'B04-002', 'assigned_driver_id' => null])->save();
         $placements = app(LogisticsPlacementService::class);
-        $placed = $placements->placeCourier($this->owner, $this->hub, $courier, $vehicle->id, 'Poblacion III');
+        $this->hub->update(['coverage_barangays' => ['Poblacion III']]);
+        $requests = app(RiderCompanyRequestService::class);
+        $offers = app(RiderCompanyOfferService::class);
+        $requests->changeIntake($this->owner, ['enabled' => true, 'expected_version' => 0, 'request_token' => (string) Str::uuid()]);
+        $request = $requests->submit($courier, ['company_id' => $this->company->id, 'intake_version' => 1,
+            'sharing_acknowledged' => true, 'request_token' => (string) Str::uuid()]);
+        $offered = $offers->issue($this->owner, $request['id'], ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'hub_id' => $this->hub->id, 'vehicle_id' => $vehicle->id, 'barangay' => 'Poblacion III', 'terms' => 'Start at the recorded hub and agree your working hours with the company.']);
+        $offers->riderDecision($courier, $request['id'], 'accepted', ['expected_version' => 2, 'request_token' => (string) Str::uuid(),
+            'offer_id' => $offered['offer']['id'], 'terms_hash' => $offered['offer']['terms_hash'], 'acknowledged' => true]);
+        $placed = $courier->courierProfile->fresh();
         $originalRecord = LogisticsPlacementRecord::firstOrFail()->getAttributes();
         $again = $placements->placeCourier($this->owner, $this->hub, $courier, $vehicle->id, 'Poblacion III');
         $this->assertSame($placed->fresh()->getAttributes(), $again->getAttributes());

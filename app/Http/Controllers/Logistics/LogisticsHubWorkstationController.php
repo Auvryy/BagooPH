@@ -34,6 +34,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class LogisticsHubWorkstationController extends Controller
 {
@@ -436,7 +437,7 @@ class LogisticsHubWorkstationController extends Controller
             'email' => 'required|string|email|max:254',
             'hub_id' => 'required|integer|exists:logistics_hubs,id',
             'vehicle_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_fleet,id',
-            'barangay' => 'exclude_unless:kind,courier|nullable|string|max:100',
+            'barangay' => ['exclude_unless:kind,courier', 'nullable', 'string', new ApplicationText('notes', 1, 255)],
             'current_hub_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_hubs,id',
         ]);
         [$hub] = $this->eligibility->hubContext($request, strict: true);
@@ -457,6 +458,12 @@ class LogisticsHubWorkstationController extends Controller
                     $validated['barangay'] ?? null,
                     isset($validated['current_hub_id']) ? (int) $validated['current_hub_id'] : null);
             }
+        } catch (HttpException $exception) {
+            if ($exception->getStatusCode() !== 409 || $request->wantsJson()) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         } catch (DomainException $exception) {
             if (! $request->wantsJson()) {
                 throw ValidationException::withMessages(['email' => $exception->getMessage()]);

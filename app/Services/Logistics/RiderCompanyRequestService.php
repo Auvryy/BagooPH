@@ -18,10 +18,11 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Normalizer;
 
 class RiderCompanyRequestService
 {
+    use CompanyRequestInput;
+
     public function available(): bool
     {
         return Schema::hasColumn('logistics_companies', 'rider_intake_version')
@@ -41,8 +42,12 @@ class RiderCompanyRequestService
         $reason = $rider->email_verified_at === null
             ? 'Verify your sign-in email in Privacy and security before managing company requests.'
             : $this->applicationBlocker($rider, $profile);
-        $pending = RiderCompanyRequest::where('rider_id', $rider->id)->where('status', 'pending')->exists();
-        $reason ??= $pending ? 'You already have a pending request. You can withdraw it before choosing another company.' : null;
+        $open = RiderCompanyRequest::where('rider_id', $rider->id)->whereIn('status', ['pending', 'offered']);
+        if (app(RiderCompanyOfferService::class)->available()) {
+            $open->where(fn ($query) => $query->where('status', 'pending')->orWhereHas('currentOffer', fn ($offer) => $offer->where('expires_at', '>', now()->format('Y-m-d H:i:s.u'))));
+        }
+        $pending = $open->exists();
+        $reason ??= $pending ? 'You already have an open company request. You can withdraw it before choosing another company.' : null;
         $directory = $this->directory();
         $provinces = LogisticsHub::eligible()->whereIn('logistics_company_id', (clone $directory)->select('logistics_companies.id'))
             ->whereNotNull('province')->where('province', '!=', '')->distinct()->orderBy('province')->pluck('province');
@@ -69,7 +74,7 @@ class RiderCompanyRequestService
             ->through(fn (LogisticsCompany $company) => $this->companySummary($company));
         $history = $this->paginate(RiderCompanyRequest::where('rider_id', $rider->id)->with('events')->orderByDesc('id'),
             'request_page', $filters['request_page'], $links)->through(fn ($request) => [
-                ...$this->present($request), 'can_withdraw' => $request->status === 'pending' && $rider->email_verified_at !== null,
+                ...app(RiderCompanyOfferService::class)->present($request), 'can_withdraw' => ($request->status === 'pending' || ($request->status === 'offered' && $request->currentOffer?->expires_at->greaterThan(now()))) && $rider->email_verified_at !== null,
                 'withdrawal_token' => (string) Str::uuid(),
             ]);
 
@@ -91,15 +96,16 @@ class RiderCompanyRequestService
         Validator::make(['rider_request_page' => $page], ['rider_request_page' => ['required', 'integer', 'min:1', 'max:1000000', $this->number()]])->validate();
         $hubId = $query['hub_id'] ?? null;
         $links = (is_int($hubId) || is_string($hubId)) && preg_match('/\A[1-9][0-9]*\z/', (string) $hubId) ? ['hub_id' => $hubId] : [];
-        $pending = $this->paginate(RiderCompanyRequest::where('logistics_company_id', $company->id)->where('status', 'pending')
+        $pending = $this->paginate(RiderCompanyRequest::where('logistics_company_id', $company->id)
             ->with(['events', 'rider.courierProfile'])->orderByDesc('id'), 'rider_request_page', (int) $page, $links)
-            ->through(fn ($request) => [...$this->present($request), 'rider_eligible' => $request->rider !== null
+            ->through(fn ($request) => [...app(RiderCompanyOfferService::class)->present($request), 'rider_eligible' => $request->rider !== null
                 && $request->rider->isEligibleCourier() && $request->rider->email_verified_at !== null
                 && $this->applicationBlocker($request->rider, $request->rider->courierProfile) === null]);
 
         return ['available' => true, 'enabled' => (bool) $company->rider_intake_enabled, 'version' => $company->rider_intake_version,
             'history_available' => $this->intakeRecorded($company), 'has_eligible_hub' => $company->hubs()->eligible()->exists(),
-            'request_token' => (string) Str::uuid(), 'requests' => $pending];
+            'request_token' => (string) Str::uuid(), 'requests' => $pending,
+            ...app(RiderCompanyOfferService::class)->companyChoices($company, $query, $links)];
     }
 
     public function changeIntake(User $actor, array $input): array
@@ -145,6 +151,7 @@ class RiderCompanyRequestService
         $fingerprint = $this->fingerprint(['action' => 'submitted', 'company_id' => (int) $data['company_id'],
             'intake_version' => (int) $data['intake_version'], 'sharing_acknowledged' => true, 'note' => $data['note'] ?? null]);
         $this->rider($actor);
+        app(RiderCompanyOfferService::class)->expireForRider($actor);
 
         return DB::transaction(function () use ($actor, $data, $fingerprint) {
             $company = $this->lock((int) $data['company_id'], $actor->id);
@@ -157,8 +164,8 @@ class RiderCompanyRequestService
             abort_if($reason = $this->applicationBlocker($rider, $profile), 409, $reason ?? 'Rider application is unavailable.');
             abort_unless($this->directory()->whereKey($company->id)->exists(), 409, 'This company is not currently accepting rider requests.');
             abort_unless($company->rider_intake_version === (int) $data['intake_version'], 409, 'Company intake changed. Refresh the company before applying.');
-            abort_if(RiderCompanyRequest::where('rider_id', $rider->id)->where('status', 'pending')->exists(), 409,
-                'You already have a pending request. Withdraw it before choosing another company.');
+            abort_if(RiderCompanyRequest::where('rider_id', $rider->id)->whereIn('status', ['pending', 'offered'])->exists(), 409,
+                'You already have an open company request. Withdraw it before choosing another company.');
             $request = RiderCompanyRequest::create(['reference' => 'RC-'.Str::ulid(), 'logistics_company_id' => $company->id,
                 'rider_id' => $rider->id, 'request_token' => $data['request_token'], 'submission_fingerprint' => $fingerprint,
                 'intake_version' => $company->rider_intake_version, 'company_snapshot' => ['name' => $company->name],
@@ -174,6 +181,7 @@ class RiderCompanyRequestService
             abort_unless(LogisticsCompany::whereKey($company->id)->value('rider_intake_version') === (int) $data['intake_version'], 409,
                 'Company intake changed while saving the request.');
             $this->present($request);
+            app(RiderCompanyOfferService::class)->notice($request->events()->where('request_version', 1)->firstOrFail());
 
             return [...$result, 'replayed' => false];
         });
@@ -181,63 +189,48 @@ class RiderCompanyRequestService
 
     public function withdraw(User $actor, mixed $requestId, array $input): array
     {
-        $this->requireAvailable();
-        $data = $this->validate($input, ['expected_version' => ['required', $this->number()], 'request_token' => $this->token()]);
-        Validator::make(['request_id' => $requestId], ['request_id' => ['required', $this->number()]])->validate();
-        $rider = $this->rider($actor);
-        $source = RiderCompanyRequest::whereKey($requestId)->where('rider_id', $rider->id)->firstOrFail();
-        $fingerprint = $this->fingerprint(['action' => 'withdrawn', 'request_id' => (int) $requestId, 'expected_version' => (int) $data['expected_version']]);
-
-        return DB::transaction(function () use ($rider, $source, $data, $fingerprint) {
-            $this->lock($source->logistics_company_id, $rider->id);
-            $rider = $this->rider($rider);
-            if ($replay = $this->replay($rider, $data['request_token'], $fingerprint)) {
-                return $replay;
-            }
-            $request = RiderCompanyRequest::whereKey($source->id)->where('rider_id', $rider->id)->lockForUpdate()->firstOrFail();
-            $this->present($request);
-            abort_unless($request->status === 'pending' && $request->version === (int) $data['expected_version'], 409, 'This request changed. Refresh its current status before withdrawing.');
-            $time = now();
-            $request->status = 'withdrawn';
-            $request->version++;
-            $request->withdrawn_at = $time;
-            $result = $this->result($request);
-            RiderCompanyRequestEvent::create(['rider_company_request_id' => $request->id, 'actor_id' => $rider->id,
-                'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'action' => 'withdrawn',
-                'request_version' => $request->version, 'result' => $result, 'recorded_at' => $time]);
-            $request->save();
-            $this->rider($rider);
-            $this->present($request->fresh());
-
-            return [...$result, 'replayed' => false];
-        });
+        return app(RiderCompanyOfferService::class)->riderDecision($actor, $requestId, 'withdrawn', $input);
     }
 
     public function present(RiderCompanyRequest $request): array
     {
         $request->loadMissing('events');
-        $created = $request->events->firstWhere('action', 'submitted');
-        $latest = $request->events->firstWhere('request_version', $request->version);
+        $events = $request->events->sortBy('request_version')->values();
         $original = $this->result($request);
         $original['status'] = 'pending';
         $original['version'] = 1;
         $original['withdrawn_at'] = null;
-        abort_unless($created && $latest && $created->actor_id === $request->rider_id && $created->request_version === 1
-            && $created->request_token === $request->request_token && hash_equals($created->fingerprint, $request->submission_fingerprint)
+        $created = $events->first();
+        $valid = $created && $created->action === 'submitted' && $created->actor_id === $request->rider_id
+            && $created->request_version === 1 && $created->request_token === $request->request_token
+            && hash_equals($created->fingerprint, $request->submission_fingerprint)
             && $created->recorded_at->equalTo($request->submitted_at)
             && Arr::sortRecursive($created->result) === Arr::sortRecursive($original)
-            && $latest->actor_id === $request->rider_id
-            && $latest->action === ($request->status === 'pending' ? 'submitted' : 'withdrawn')
-            && $request->version === ($request->status === 'pending' ? 1 : 2)
-            && $request->events->count() === $request->version
-            && $latest->recorded_at->equalTo($request->withdrawn_at ?? $request->submitted_at)
-            && Arr::sortRecursive($latest->result) === Arr::sortRecursive($this->result($request)),
-            503, 'Recorded request history is temporarily unavailable.');
+            && $events->count() === $request->version;
+        $state = 'pending';
+        $previousTime = $request->submitted_at;
+        foreach ($events->skip(1) as $index => $event) {
+            $allowed = $state === 'pending' ? ['withdrawn', 'rejected', 'offered']
+                : ($state === 'offered' ? ['offered', 'accepted', 'declined', 'withdrawn', 'cancelled', 'expired'] : []);
+            $riderAction = in_array($event->action, ['withdrawn', 'accepted', 'declined'], true);
+            $actorValid = $event->action === 'expired' ? $event->actor_id === null
+                : ($riderAction ? $event->actor_id === $request->rider_id : $event->actor_id !== null);
+            $expected = [...$original, 'version' => $index + 1, 'status' => $event->action,
+                'withdrawn_at' => $event->action === 'withdrawn' ? $event->recorded_at->toISOString() : null];
+            $valid = $valid && $actorValid && in_array($event->action, $allowed, true)
+                && $event->request_version === $index + 1 && $event->recorded_at->greaterThanOrEqualTo($previousTime)
+                && Arr::sortRecursive($event->result) === Arr::sortRecursive($expected);
+            $previousTime = $event->recorded_at;
+            $state = $event->action;
+        }
+        $valid = $valid && $state === $request->status
+            && Arr::sortRecursive($events->last()?->result ?? []) === Arr::sortRecursive($this->result($request));
+        abort_unless($valid, 503, 'Recorded request history is temporarily unavailable.');
 
         return $this->result($request);
     }
 
-    private function result(RiderCompanyRequest $request): array
+    public function result(RiderCompanyRequest $request): array
     {
         return ['id' => (string) $request->id, 'reference' => $request->reference,
             'company' => ['id' => (string) $request->logistics_company_id, 'name' => $request->company_snapshot['name']],
@@ -278,7 +271,7 @@ class RiderCompanyRequestService
                 ->whereColumn('actor_id', 'logistics_companies.user_id'));
     }
 
-    private function intakeRecorded(LogisticsCompany $company): bool
+    public function intakeRecorded(LogisticsCompany $company): bool
     {
         if ($company->rider_intake_version === 0) {
             return ! $company->rider_intake_enabled;
@@ -288,7 +281,7 @@ class RiderCompanyRequestService
             ->where('after_version', $company->rider_intake_version)->where('after_enabled', $company->rider_intake_enabled)->exists();
     }
 
-    private function rider(User $actor, bool $requireVerifiedEmail = true): User
+    public function rider(User $actor, bool $requireVerifiedEmail = true): User
     {
         $rider = User::find($actor->id);
         abort_unless($rider?->isEligibleCourier() && (! $requireVerifiedEmail || $rider->email_verified_at !== null), 403);
@@ -296,7 +289,7 @@ class RiderCompanyRequestService
         return $rider;
     }
 
-    private function companyOwner(User $actor): bool
+    public function companyOwner(User $actor): bool
     {
         $owner = User::find($actor->id);
 
@@ -304,7 +297,7 @@ class RiderCompanyRequestService
             && app(LogisticsEligibilityService::class)->isCompanyAdministrator($owner);
     }
 
-    private function applicationBlocker(User $rider, ?CourierProfile $profile): ?string
+    public function applicationBlocker(User $rider, ?CourierProfile $profile): ?string
     {
         if ($profile?->logistics_company_id !== null) {
             return 'Your current company manages your working assignment. Requests to change companies are not available.';
@@ -317,7 +310,7 @@ class RiderCompanyRequestService
         return null;
     }
 
-    private function lock(int $companyId, int $actorId): LogisticsCompany
+    public function lock(int $companyId, int $actorId): LogisticsCompany
     {
         $owner = LogisticsCompany::whereKey($companyId)->value('user_id');
         abort_if($owner === null, 404);
@@ -358,58 +351,6 @@ class RiderCompanyRequestService
 
         return ['company_search' => $data['company_search'] ?? '', 'company_province' => $data['company_province'] ?? '',
             'company_page' => (int) ($data['company_page'] ?? 1), 'request_page' => (int) ($data['request_page'] ?? 1)];
-    }
-
-    private function validate(array $input, array $rules, array $text = []): array
-    {
-        $unexpected = array_diff_key($input, $rules);
-        if ($unexpected) {
-            throw ValidationException::withMessages(array_fill_keys(array_keys($unexpected), 'This field cannot be set through company requests.'));
-        }
-        foreach ($text as $field => $maximum) {
-            if (! array_key_exists($field, $input) || $input[$field] === null) {
-                continue;
-            }
-            Validator::make([$field => $input[$field]], [$field => ['bail', 'string', 'max:'.$maximum]])->validate();
-            $value = $input[$field];
-            if (! mb_check_encoding($value, 'UTF-8')) {
-                throw ValidationException::withMessages([$field => 'Use readable plain text.']);
-            }
-            if (preg_match('/\A[ \r\n]*\z/', $value)) {
-                $input[$field] = null;
-
-                continue;
-            }
-            Validator::make([$field => $value], [$field => [new ApplicationText('notes', 1, $maximum)]])->validate();
-            $normalized = Normalizer::normalize($value, Normalizer::FORM_KC);
-            if ($normalized === false) {
-                throw ValidationException::withMessages([$field => 'Use readable plain text.']);
-            }
-            $normalized = trim($normalized, " \r\n");
-            $input[$field] = $normalized === '' ? null : $normalized;
-        }
-
-        return Validator::make($input, $rules)->validate();
-    }
-
-    private function number(bool $zero = false): \Closure
-    {
-        return function ($attribute, $value, $fail) use ($zero) {
-            if ((! is_string($value) && ! is_int($value)) || ! preg_match($zero ? '/\A(?:0|[1-9][0-9]*)\z/' : '/\A[1-9][0-9]*\z/', (string) $value)
-                || filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => $zero ? 0 : 1, 'max_range' => PHP_INT_MAX]]) === false) {
-                $fail('Use a valid whole number for the :attribute.');
-            }
-        };
-    }
-
-    private function token(): array
-    {
-        return ['bail', 'required', 'string', 'uuid', 'regex:/\A[a-f0-9-]{36}\z/'];
-    }
-
-    private function fingerprint(array $data): string
-    {
-        return hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
     }
 
     private function paginate(Builder $query, string $name, int $page, array $filters): LengthAwarePaginator

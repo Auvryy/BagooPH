@@ -70,7 +70,7 @@ class GovernanceNoticeService
                     'Check your product list for its current compliance status. Shop and account eligibility still apply.');
             }
         } elseif ($event instanceof LogisticsPlacementRecord) {
-            $this->send($event, 'placement', [$event->user_id => 'account-status'],
+            $this->send($event, 'placement', [$event->user_id => $event->kind === 'courier' ? 'courier-profile' : 'account-status'],
                 'Your logistics assignment was recorded', 'Check your current assignment before taking work. Rider duty remains a separate choice.');
         } elseif ($event instanceof ExceptionDecision) {
             $kind = null;
