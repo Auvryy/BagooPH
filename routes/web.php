@@ -6,12 +6,14 @@ use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
+use App\Http\Controllers\Admin\AdvertisementController as AdminAdvertisementController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Admin\ProductModerationController;
 use App\Http\Controllers\Admin\VoucherCampaignController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Buyer\AdvertisementController as BuyerAdvertisementController;
 use App\Http\Controllers\Buyer\BuyAgainController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
@@ -50,12 +52,12 @@ use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
+use App\Http\Controllers\Seller\SellerDisputeController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
@@ -65,6 +67,7 @@ use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
+use App\Http\Middleware\AdvertisementResponseHeaders;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -376,6 +379,17 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show']);
         Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action']);
+        Route::prefix('advertisements')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+            Route::get('/', [AdminAdvertisementController::class, 'index']);
+            Route::get('/create', [AdminAdvertisementController::class, 'create']);
+            Route::post('/', [AdminAdvertisementController::class, 'store']);
+            Route::post('/import', [AdminAdvertisementController::class, 'import']);
+            Route::get('/artwork/{asset}', [AdminAdvertisementController::class, 'artwork'])->whereNumber('asset');
+            Route::get('/{advertisement}', [AdminAdvertisementController::class, 'show'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/draft', [AdminAdvertisementController::class, 'update'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/actions', [AdminAdvertisementController::class, 'action'])->whereNumber('advertisement');
+            Route::get('/{advertisement}/preview', [AdminAdvertisementController::class, 'preview'])->whereNumber('advertisement');
+        });
         Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
         Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
@@ -437,7 +451,12 @@ Route::get('/admin', function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
-Route::get('/', [BuyerHomeController::class, 'index'])->name('marketplace');
+Route::get('/', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class)->name('marketplace');
+Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
+    Route::get('/advertisement-artwork/{token}', [BuyerAdvertisementController::class, 'artwork'])->whereUuid('token')->name('advertisements.artwork');
+    Route::get('/advertisement/{slug}', [BuyerAdvertisementController::class, 'visit'])->name('advertisements.visit');
+    Route::get('/promotions/{slug}', [BuyerAdvertisementController::class, 'show'])->name('promotions.show');
+});
 Route::get('/overview', [MarketplaceController::class, 'index'])->name('overview');
 Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 
@@ -660,6 +679,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show'])->name('vouchers.show');
     Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action'])->name('vouchers.action');
+    Route::prefix('advertisements')->name('advertisements.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+        Route::get('/', [AdminAdvertisementController::class, 'index'])->name('index');
+        Route::get('/create', [AdminAdvertisementController::class, 'create'])->name('create');
+        Route::post('/', [AdminAdvertisementController::class, 'store'])->name('store');
+        Route::post('/import', [AdminAdvertisementController::class, 'import'])->name('import');
+        Route::get('/artwork/{asset}', [AdminAdvertisementController::class, 'artwork'])->whereNumber('asset')->name('artwork');
+        Route::get('/{advertisement}', [AdminAdvertisementController::class, 'show'])->whereNumber('advertisement')->name('show');
+        Route::post('/{advertisement}/draft', [AdminAdvertisementController::class, 'update'])->whereNumber('advertisement')->name('update');
+        Route::post('/{advertisement}/actions', [AdminAdvertisementController::class, 'action'])->whereNumber('advertisement')->name('action');
+        Route::get('/{advertisement}/preview', [AdminAdvertisementController::class, 'preview'])->whereNumber('advertisement')->name('preview');
+    });
     Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');
     Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');

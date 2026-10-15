@@ -1,0 +1,21 @@
+.advertisement-preview .buyer-ad-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.advertisement-preview .buyer-ad-supporting {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.advertisement-preview .buyer-ad-supporting[data-count="1"] {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 1024px) {
+    .advertisement-preview .buyer-ad-grid[data-main="true"][data-side="true"] {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .advertisement-preview .buyer-ad-grid[data-main="true"] .buyer-ad-supporting {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

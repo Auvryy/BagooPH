@@ -52,6 +52,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 
 ## Supporting References
 
+- [Managing marketplace advertisements](ADVERTISEMENT_MANAGEMENT.md) explains private drafts, image requirements, previews, schedules, publication history, buyer destinations and the additive deployment/disable workflow.
 - [Essential form validation and verification](FORM_VALIDATION_REVIEW.md) defines the crucial field, boundary, permission, persistence, and recovery review method for changed forms; it does not replace the normative contracts.
 - `ARCHITECTURE.md`, `PROJECT_PLAN.md`, and `MASTER_LOGISTICS_SPECIFICATION.md` explain architecture and context but cannot override normative flow contracts.
 - `VERIFICATION_DOCUMENT_SECURITY.md` explains private document deployment, migration, and secret-mail configuration.

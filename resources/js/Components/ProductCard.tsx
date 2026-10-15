@@ -13,6 +13,7 @@ interface ProductCardProps {
     actionLabel?: string;
     className?: string;
     saveControl?: React.ReactNode;
+    showDeliveryBadge?: boolean;
 }
 
 export default function ProductCard({
@@ -24,6 +25,7 @@ export default function ProductCard({
     actionLabel = 'Add to Bag',
     className = '',
     saveControl,
+    showDeliveryBadge = true,
 }: ProductCardProps) {
     const priceNum = Number(product.price);
     const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
@@ -84,7 +86,7 @@ export default function ProductCard({
                 {/* Interlocking Puzzle Ribbon Badges flush to bottom-left of the image */}
                 <div className="absolute bottom-0 left-0 flex items-center pointer-events-none z-10 drop-shadow-xs">
                     {/* Free Delivery Ribbon (Red background) */}
-                    <div
+                    {showDeliveryBadge && <div
                         className="bg-[#E00D42] text-white h-5 sm:h-5.5 flex items-center gap-1 pl-2 pr-2.5 sm:pr-3 text-[8px] sm:text-[9px] font-sans font-bold uppercase tracking-wider leading-none"
                         style={{
                             clipPath: discountPct
@@ -94,7 +96,7 @@ export default function ProductCard({
                     >
                         <Truck className="w-2.5 h-2.5 text-white shrink-0 stroke-[2.2]" />
                         <span>Free Delivery</span>
-                    </div>
+                    </div>}
 
                     {/* Discount Ribbon (Interlocking puzzle chevron + swallowtail V-notch end) */}
                     {discountPct && (

@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Commerce\BuyerDiscoveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,14 +50,7 @@ class BuyerHomeController extends Controller
             return app(AuthenticatedSessionController::class)->createAdmin();
         }
 
-        // Local advertisement artwork is separate from checkout voucher eligibility.
-        $banners = [
-            ['id' => 1, 'title' => '11.11 Mega Sale', 'image' => '/images/buyer/advertisements/mega-sale.webp'],
-            ['id' => 2, 'title' => '11.11 Collection', 'image' => '/images/buyer/advertisements/collection.webp'],
-            ['id' => 3, 'title' => 'Payday Craze', 'image' => '/images/buyer/advertisements/payday.webp'],
-            ['id' => 4, 'title' => 'Mega Carnival', 'image' => '/images/buyer/advertisements/carnival.webp'],
-            ['id' => 5, 'title' => 'Epic Frenzy', 'image' => '/images/buyer/advertisements/frenzy.webp'],
-        ];
+        $banners = app(AdvertisementReader::class)->homepage();
 
         $categories = app(BuyerDiscoveryService::class)->categories();
 

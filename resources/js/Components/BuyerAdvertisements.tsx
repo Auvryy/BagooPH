@@ -1,20 +1,34 @@
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
+import { Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface Advertisement {
     id: number;
     title: string;
     image: string;
+    alt_text: string;
+    width: number;
+    height: number;
+    slot: string;
+    placement: 'main' | 'side';
+    href: string;
 }
 
-export default function BuyerAdvertisements({ banners }: { banners: Advertisement[] }) {
-    const slides = banners.slice(0, 3);
-    const supportingAds = banners.slice(3);
-    const [selected, setSelected] = useState(0);
+function PictureLink({ href, interactive, children, ...props }: { href: string; interactive: boolean; children: ReactNode; className: string; 'aria-label': string }) {
+    return interactive ? <Link href={href} {...props}>{children}</Link> : <div {...props}>{children}</div>;
+}
+
+export default function BuyerAdvertisements({ banners, interactive = true, initialSelectedId }: { banners: Advertisement[]; interactive?: boolean; initialSelectedId?: number }) {
+    const [failed, setFailed] = useState<string[]>([]);
+    const available = banners.filter((banner) => !failed.includes(banner.image));
+    const slides = available.filter((banner) => banner.placement === 'main').slice(0, 3);
+    const supportingAds = available.filter((banner) => banner.placement === 'side').slice(0, 2);
+    const [selected, setSelected] = useState(() => Math.max(0, slides.findIndex((banner) => banner.id === initialSelectedId)));
     const currentIndex = selected % Math.max(slides.length, 1);
     const current = slides[currentIndex];
 
-    if (!current) return null;
+    if (!current && !supportingAds.length) return null;
+    const failedImage = (image: string) => setFailed((images) => images.includes(image) ? images : [...images, image]);
 
     const move = (direction: number) => {
         setSelected((index) => (index + direction + slides.length) % slides.length);
@@ -23,23 +37,28 @@ export default function BuyerAdvertisements({ banners }: { banners: Advertisemen
     return (
         <section
             aria-label="Bagoo advertisements"
-            className={`grid min-w-0 grid-cols-1 items-start gap-3 ${supportingAds.length ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}
+            data-main={Boolean(current)}
+            data-side={Boolean(supportingAds.length)}
+            className={`buyer-ad-grid grid min-w-0 grid-cols-1 items-start gap-3 ${current && supportingAds.length ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'mx-auto w-full max-w-3xl'}`}
         >
+            {current && (
             <div role="region" aria-roledescription="carousel" aria-label="Featured advertisements" className="relative min-w-0">
-                <a
-                    href="#product-feed"
-                    aria-label={`${current.title}: browse products`}
+                <PictureLink
+                    href={current.href}
+                    interactive={interactive}
+                    aria-label={current.title}
                     className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                 >
                     <img
                         src={current.image}
-                        alt={`Bagoo ${current.title} advertisement`}
-                        width={1880}
-                        height={880}
+                        alt={current.alt_text}
+                        width={current.width}
+                        height={current.height}
+                        onError={() => failedImage(current.image)}
                         loading="eager"
                         className="block h-auto w-full"
                     />
-                </a>
+                </PictureLink>
 
                 <p aria-live="polite" className="sr-only">{current.title}</p>
 
@@ -78,26 +97,29 @@ export default function BuyerAdvertisements({ banners }: { banners: Advertisemen
                     </>
                 )}
             </div>
+            )}
 
             {supportingAds.length > 0 && (
-                <div aria-label="More advertisements" className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-1">
+                <div aria-label="More advertisements" data-count={supportingAds.length} className={`buyer-ad-supporting grid min-w-0 grid-cols-2 gap-3 ${current ? 'lg:grid-cols-1' : supportingAds.length === 1 ? 'mx-auto w-full max-w-md grid-cols-1' : ''}`}>
                     {supportingAds.map((banner) => (
-                        <a
+                        <PictureLink
                             key={banner.id}
-                            href="#product-feed"
-                            aria-label={`${banner.title}: browse products`}
+                            href={banner.href}
+                            interactive={interactive}
+                            aria-label={banner.title}
                             className="block min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"
                         >
                             <img
                                 src={banner.image}
-                                alt={`Bagoo ${banner.title} advertisement`}
-                                width={1880}
-                                height={880}
+                                alt={banner.alt_text}
+                                width={banner.width}
+                                height={banner.height}
+                                onError={() => failedImage(banner.image)}
                                 loading="lazy"
                                 decoding="async"
                                 className="block h-auto w-full"
                             />
-                        </a>
+                        </PictureLink>
                     ))}
                 </div>
             )}

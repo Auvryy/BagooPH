@@ -4932,3 +4932,92 @@ and Azure deployment remain work for selected future batches. No runtime tests
 or production build were run for this documentation-only proposal. The routing
 commit is reported in the planning branch handoff. The PR title/body is a local
 draft at `.codex/advertisement-plan/PR.md`; it has not been saved on GitHub.
+
+### October 15, 2026: managed marketplace advertisements and matching destinations
+
+Implemented the selected **AD01 + AD02** batch on
+`feat/advertisement-management`, based on `7ae1436`. The preceding planning
+entry describes the proposal at that time; this entry records implementation.
+Seller submissions/review (AD03), statistics (AD04) and paid advertising remain
+separate scope.
+
+| Before | Current behavior |
+|---|---|
+| Five fixed local images pointed at the generic product feed. | Eligible managed publications retain their exact internal product, shop, category, collection or offer destination. |
+| No advertisement authoring or publication history. | Current Platform Admin can upload private artwork, retain draft revisions, preview desktop/mobile arrangements, publish/schedule, pause, resume, end and archive with retained decisions. |
+| Artwork did not have a managed publication period or capacity reservation. | Three main and two side positions share a serialized calendar. Overlapping reservations reject, adjacent periods can meet, pauses retain reservations and ending releases them. |
+| A sale image had no linked terms validation. | Offer artwork requires an actual published voucher revision, compatible products and dates, and manual claim review. Changed or exhausted offers are suppressed on fresh reads. |
+| Missing supporting content could enlarge the remaining main image. | The accepted grid keeps image-overlay controls and no caption bars; single, partial, side-only, broken-image and empty cases stay bounded or disappear. |
+
+The additive schema retains advertisement identities, original/optimized assets,
+immutable content and action evidence, exact publication windows and effective
+end decisions. Every writer reloads current authority, checks the submitted
+version and records an idempotent request. Stale editors keep entered values but
+block publication until reload and review. New drafts do not silently replace
+live content; failed uploads or database writes retain the working publication
+and clean only proven unreferenced new files.
+
+Uploads decode real JPEG/PNG/WebP content, enforce the documented 5 MiB and
+dimension/shape limits, retain private originals and deliver metadata-stripped
+WebP renditions through guarded routes. The PHP image now includes WebP support;
+an outdated runtime gets a clear upload error. Local work directories and private
+task guidance are excluded from the Docker build context. The supplied artwork
+importer creates incomplete, unpublished candidates; no sale, discount or
+homepage placement is automatically activated.
+
+Fresh homepage, click and collection/offer reads enforce the saved half-open
+period, current eligibility and offer revision. They do not rely on a scheduler
+or shared presentation cache. An old publication link cannot silently resolve to
+a replacement; unavailable pages give a useful browsing choice and withhold the
+old offer/product details. Previously public optimized images retain historical
+access, while private originals and canceled, never-started artwork stay private.
+Already-open pages need a fresh request to reflect later changes.
+
+Guest and pending-buyer browsing remains available. Ads never claim/apply a
+voucher, mutate the Shopping Bag, reserve stock or bypass checkout approval.
+Linked offers open readable terms, including the real cap and minimum, before
+the existing owned voucher flow. Promotion product cards do not add the legacy
+unconditional delivery badge. Existing seller branding and commerce policies
+retain their original authority.
+
+Verification:
+
+- **38 advertisement backend cases / 497 assertions**, included in a passing
+  **339-case / 4,344-assertion** buyer, voucher, shop-review and portal-access
+  regression using SQLite `:memory:`. No failures, errors or skips.
+- Checks cover private drafts and previews, forged/stale/replayed commands,
+  publication rollback, failed storage cleanup, immutable history, start/end
+  boundaries, reservation conflicts, replacement links, pause/resume/archive,
+  current restrictions, offer changes/exhaustion and a missing installation.
+  Real formats and the exact 5 MiB source boundary pass; corrupt, disguised,
+  unsupported, oversized and incorrectly shaped images reject.
+- **279 frontend/deployment checks** pass. After the final stale-action guard,
+  the **13 advertisement frontend checks** pass again, alongside the final
+  TypeScript/Vite production build. These include actual component rendering
+  and an interaction harness for carousel navigation and failed images.
+- The PHP Docker image rebuild, scoped Pint and Git whitespace checks pass.
+  Desktop/mobile preview widths use local container queries; markup/static
+  checks do not establish rendered browser/device appearance.
+
+**Scoped engineering assessment: advertisement management and destination flow
+2/10 before → 8/10 locally verified.** This measures the managed admin-to-buyer
+feature, not whole buyer/admin/project readiness. PostgreSQL publication races,
+live migration and Azure/browser/device acceptance remain unverified. Marketing
+claims inside artwork still require a responsible manual review; there is no
+automated image-text verification or new buyer-segmentation promise.
+
+Use [the management guide](ADVERTISEMENT_MANAGEMENT.md) for additive deployment,
+private files, draft import and the display disable switch. Normal browsing
+continues without installed or published advertisements. No development or
+production database was reset or migrated during verification; the rebuilt
+image was exercised in disposable application containers with SQLite memory.
+Deployment and publishing verified artwork remain user release actions.
+
+Implementation commits:
+
+- `aafd6a2` — `feat(advertisements): retain private artwork and publication decisions`
+- `01022d5` — `feat(advertisements): connect admin publishing to matching buyer pages`
+
+The combined PR title/body remains a local draft at
+`.codex/advertisement-management/PR.md`; it has not been saved on GitHub. The
+documentation commit is reported in the branch handoff. No commits were pushed.
