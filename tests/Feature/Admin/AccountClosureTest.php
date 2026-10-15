@@ -395,10 +395,14 @@ class AccountClosureTest extends TestCase
         $this->assertDatabaseCount('account_closures', 0);
     }
 
-    public function test_profile_explains_why_referenced_self_deletion_is_unavailable(): void
+    public function test_generic_profile_explains_why_referenced_self_deletion_is_unavailable(): void
     {
-        $subject = User::factory()->create();
-        Order::factory()->create(['buyer_id' => $subject->id, 'status' => 'placed']);
+        // Buyers use their own portal; this case covers the shared profile's retained-work feedback.
+        $subject = User::factory()->seller()->create();
+        $shop = Shop::factory()->approved()->create(['user_id' => $subject->id]);
+        $order = Order::factory()->create(['status' => 'placed']);
+        $product = Product::factory()->create(['shop_id' => $shop->id]);
+        OrderItem::factory()->create(['order_id' => $order->id, 'shop_id' => $shop->id, 'product_id' => $product->id]);
         $this->actingAs($subject)->get('/profile')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Profile/Edit')
             ->where('closure.allowed', false)->where('closure.outcome', 'retained')->has('closure.blockers')->missing('closure.references.0.digest'));
         $this->delete('/profile', ['password' => 'password'])->assertSessionHasErrors('password');

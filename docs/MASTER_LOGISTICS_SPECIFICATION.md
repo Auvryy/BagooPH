@@ -49,7 +49,7 @@ Logistics Company Admins manage their own physical facilities in two tiers:
 
 ### 3. Personnel Onboarding & Role Scoping
 - Hub Handlers: Eligible `logistics` accounts with active assigned-facility access for inbound, sorting, and outbound scans; no additional public staff role.
-- Couriers: Already platform-approved, active riders placed within an eligible company/hub and barangay. Assignments and configured capacity govern new work; automated load balancing is not a baseline requirement.
+- Couriers: Already platform-approved, active riders placed within an eligible company/hub and barangay. A first company association follows the rider's request, the owning company's versioned offer and the rider's explicit acceptance; the saved placement leaves duty off. Existing associations retain their original evidence and same-company placement guards. Assignments and configured capacity govern new work; automated load balancing is not a baseline requirement.
 
 ---
 

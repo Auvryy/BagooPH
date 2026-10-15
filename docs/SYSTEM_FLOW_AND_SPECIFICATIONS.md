@@ -94,6 +94,8 @@ Platform Admin governs marketplace approval, policy, financial audit, and tracea
 
 Platform Admin owns account KYC approval; a company's acceptance or hub placement of an already approved courier is a separate operational decision. Approval does not clear an independent suspension, and inactive/suspended admins cannot use the KYC exemption to retain privileges. [ADMIN_FLOW.md](ADMIN_FLOW.md) defines review authority and suspension recovery across all roles under the validation contract.
 
+The first rider-company association requires a company request, a current versioned assignment offer and the rider's own acknowledged acceptance. Consent, placement and required history commit together, leaving duty off. Offers expire after seven calendar days and reserve no fleet capacity. Existing company associations retain their original provenance; same-company moves preserve custody and cash guards. Company transfer, departure and employment/payroll administration are outside this joining workflow.
+
 Each account's role is fixed at creation. Admin cannot convert an existing account to another role, even before approval or transaction history. Another public role requires a separate registration with its required evidence and approval; orders, shops, custody, cash, and review history stay with their original account. Role conversion and migration are not project features.
 
 Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, complete dispute/refund/exchange processing, and external notification services are outside the core baseline.
