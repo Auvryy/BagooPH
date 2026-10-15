@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
     libpng-dev \
+    libwebp-dev \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
@@ -17,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     gnupg
 
 # Configure and install PHP extensions (including PostgreSQL pdo_pgsql)
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) \
         pdo \
         pdo_pgsql \

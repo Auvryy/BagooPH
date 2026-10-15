@@ -4,3 +4,7 @@ node_modules
 vendor
 public/build
 storage/*.key
+.codex
+.worktrees
+storage
+docs/Task Management.md
