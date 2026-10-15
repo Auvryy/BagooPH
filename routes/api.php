@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderCashController;
+use App\Http\Controllers\Api\RiderCompanyController;
 use App\Http\Controllers\Api\RiderHandoverController;
 use App\Http\Controllers\Api\RiderMessagingController;
 use App\Http\Controllers\Api\RiderNotificationController;
@@ -31,6 +32,20 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
     Route::delete('auth/tokens/current', [RiderAuthController::class, 'logout'])->middleware(EnsureRiderAccountToken::class.':logout');
     Route::get('rider/me', [RiderAuthController::class, 'me'])->middleware(EnsureRiderAccountToken::class);
     Route::prefix('rider')->group(function () {
+        Route::middleware(EnsureRiderAccountToken::class.':company:read')->group(function () {
+            Route::get('companies', [RiderCompanyController::class, 'companies'])->name('rider.api.companies');
+            Route::get('companies/{company}', [RiderCompanyController::class, 'company']);
+            Route::get('company-requests', [RiderCompanyController::class, 'index']);
+            Route::get('company-requests/{application}', [RiderCompanyController::class, 'show']);
+            Route::get('company-assignment', [RiderCompanyController::class, 'assignment']);
+            Route::get('company-commands/{key}', [RiderCompanyController::class, 'command']);
+        });
+        Route::middleware([EnsureRiderAccountToken::class.':company:write', 'throttle:10,1'])->group(function () {
+            Route::post('company-requests', [RiderCompanyController::class, 'submit']);
+            Route::post('company-requests/{application}/withdraw', [RiderCompanyController::class, 'withdraw']);
+            Route::post('company-requests/{application}/accept', [RiderCompanyController::class, 'accept']);
+            Route::post('company-requests/{application}/decline', [RiderCompanyController::class, 'decline']);
+        });
         Route::middleware(EnsureRiderAccountToken::class.':operations:read')->group(function () {
             Route::get('home', [RiderOperationsController::class, 'home']);
             Route::get('pickup-jobs', [RiderOperationsController::class, 'available']);

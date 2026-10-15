@@ -47,6 +47,14 @@ class EnsureRiderAccountToken
             app(RiderAccountService::class)->assertSettingsToken($request, $user, $ability, false, 'Sign in again to enable rider operations.');
             $request->attributes->set('rider_operations_ability', $ability);
         }
+        if (str_starts_with($purpose, 'company:')) {
+            $accounts = app(RiderAccountService::class);
+            abort_unless($accounts->companyEligible($user), 403, 'An approved active rider with a verified sign-in email is required.');
+            abort_unless($accounts->companyAvailable(), 503, 'Company joining is temporarily unavailable.');
+            $ability = 'rider:'.$purpose;
+            $accounts->assertCompanyToken($request, $user, $ability);
+            $request->attributes->set('rider_company_ability', $ability);
+        }
         $token->forceFill(['last_used_at' => now()])->save();
         $request->setUserResolver(fn () => $user->withAccessToken($token));
 

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\RiderCompanyRequest;
 use App\Services\Courier\RiderApiInput;
 use App\Services\Courier\RiderCommandService;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\NotificationCenterService;
+use App\Services\RiderAccountService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -52,6 +54,21 @@ class RiderNotificationController extends Controller
                 $account = app(CodCashService::class)->account($request->user(), RiderApiInput::id((string) $data['cod_account_id']));
                 $target = ['kind' => 'cash', 'id' => (string) $account->id, 'href' => '/api/v1/rider/cash/'.$account->id];
             } catch (ModelNotFoundException|HttpException) {
+            }
+        } elseif (in_array($data['target'] ?? null, ['rider-company-assignment', 'courier-profile'], true)
+            && app(RiderAccountService::class)->companyAvailable()
+            && app(RiderAccountService::class)->companyEligible($request->user())
+            && app(RiderAccountService::class)->hasCompanyAbility($request->user(), 'rider:company:read')) {
+            if ($data['target'] === 'courier-profile') {
+                $target = ['kind' => 'company_assignment', 'id' => (string) $request->user()->id, 'href' => '/api/v1/rider/company-assignment'];
+            } elseif (isset($data['company_request_id']) && is_scalar($data['company_request_id'])) {
+                try {
+                    $id = RiderApiInput::id((string) $data['company_request_id']);
+                    if (RiderCompanyRequest::where('rider_id', $request->user()->id)->whereKey($id)->exists()) {
+                        $target = ['kind' => 'company_request', 'id' => (string) $id, 'href' => '/api/v1/rider/company-requests/'.$id];
+                    }
+                } catch (HttpException) {
+                }
             }
         } elseif (in_array($data['target'] ?? null, ['account-status', 'identity-correction'], true)) {
             $target = ['kind' => 'account', 'id' => (string) $request->user()->id, 'href' => '/api/v1/rider/me'];

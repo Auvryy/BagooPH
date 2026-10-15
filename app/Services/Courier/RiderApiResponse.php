@@ -10,7 +10,7 @@ class RiderApiResponse
 {
     public static function applies(Request $request): bool
     {
-        return preg_match('#\Aapi/v1/rider/(home|duty|pickup-jobs|tasks|commands|trips|conversations|notifications|cash|handover-issues|handover-recoveries)(/|\z)#', $request->path()) === 1;
+        return preg_match('#\Aapi/v1/rider/(home|duty|pickup-jobs|tasks|commands|trips|conversations|notifications|cash|handover-issues|handover-recoveries|companies|company-requests|company-commands|company-assignment)(/|\z)#', $request->path()) === 1;
     }
 
     public static function decorate(Response $response, Request $request): Response

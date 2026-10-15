@@ -18,6 +18,10 @@ class RiderCommandService
         $fingerprint = hash('sha256', json_encode([$action, $resource, $this->sorted($intent)], JSON_THROW_ON_ERROR));
         $actorId = $request->user()->id;
         try {
+            // Enrollment has no uploads. Reconciliation can lock an expired old
+            // company before a different one, so retry its whole transaction on deadlock.
+            $attempts = $request->attributes->has('rider_company_ability') ? 3 : 1;
+
             return DB::transaction(function () use ($request, $action, $resource, $key, $fingerprint, $actorId, $write) {
                 $existing = RiderCommand::where('actor_id', $actorId)->where('idempotency_key', $key)->lockForUpdate()->first();
                 if ($existing) {
@@ -37,13 +41,18 @@ class RiderCommandService
                     ->update(['result' => json_encode($result, JSON_THROW_ON_ERROR), 'recorded_at' => now()]);
 
                 return $this->present(RiderCommand::where('actor_id', $actorId)->where('idempotency_key', $key)->firstOrFail(), false);
-            });
+            }, $attempts);
         } catch (UniqueConstraintViolationException $exception) {
-            // A competing transaction committed the same actor/key while our insert waited.
+            // Replay a competing actor/key commit; other unique domain races remain conflicts.
             return DB::transaction(function () use ($request, $actorId, $key, $fingerprint) {
                 $this->authorize($request);
 
-                return $this->replay(RiderCommand::where('actor_id', $actorId)->where('idempotency_key', $key)->firstOrFail(), $fingerprint);
+                $command = RiderCommand::where('actor_id', $actorId)->where('idempotency_key', $key)->first();
+                if (! $command) {
+                    RiderApiInput::error('OPERATION_CONFLICT', 'Another saved change conflicts with this request. Refresh before trying again.', 409);
+                }
+
+                return $this->replay($command, $fingerprint);
             });
         }
     }
@@ -55,6 +64,8 @@ class RiderCommandService
         if (! $command) {
             RiderApiInput::error('COMMAND_UNKNOWN', 'No committed result is visible. This does not prove the request failed; refresh before retrying the same intent.', 404);
         }
+        // Company-only sessions must not reconcile operational commands, or vice versa.
+        abort_unless(str_starts_with($command->action, 'company.') === $request->attributes->has('rider_company_ability'), 404);
 
         return $this->present($command, false);
     }
@@ -64,6 +75,13 @@ class RiderCommandService
         $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
         app(RiderAccountService::class)->assertAccessible($user);
         abort_unless($user->isEligibleCourier(), 403);
+        if ($ability = $request->attributes->get('rider_company_ability')) {
+            abort_unless(app(RiderAccountService::class)->companyEligible($user), 403);
+            abort_unless(app(RiderAccountService::class)->companyAvailable(), 503);
+            app(RiderAccountService::class)->assertCompanyToken($request, $user, $ability, true);
+
+            return;
+        }
         app(RiderAccountService::class)->assertSettingsToken($request, $user,
             $request->attributes->get('rider_operations_ability'), true, 'Sign in again to enable rider operations.');
     }

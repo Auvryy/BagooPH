@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Logistics\RiderCompanyOfferService;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +16,36 @@ class RiderAccountService
     public const OPERATIONS_ABILITIES = ['rider:operations:read', 'rider:operations:work', 'rider:operations:messages', 'rider:operations:notifications', 'rider:operations:cash'];
 
     public const HANDOVER_ABILITY = 'rider:operations:handover';
+
+    public const COMPANY_ABILITIES = ['rider:company:read', 'rider:company:write'];
+
+    public function companyAvailable(): bool
+    {
+        return $this->settingsAvailable() && app(RiderCompanyOfferService::class)->available() && Schema::hasTable('rider_commands')
+            && Schema::hasTable('notification_deliveries')
+            && Schema::hasColumn('personal_access_tokens', 'credential_fingerprint');
+    }
+
+    public function companyEligible(User $user): bool
+    {
+        return $user->isEligibleCourier() && $user->email_verified_at !== null;
+    }
+
+    public function hasCompanyAbility(User $user, string $ability): bool
+    {
+        $token = $user->currentAccessToken();
+
+        return $token instanceof PersonalAccessToken && in_array($ability, $token->abilities, true);
+    }
+
+    public function assertCompanyToken(Request $request, User $user, string $ability, bool $lock = false): PersonalAccessToken
+    {
+        $token = $this->assertSettingsToken($request, $user, $ability, $lock, 'Sign in again to enable company joining.');
+        abort_unless(in_array($ability, self::COMPANY_ABILITIES, true) && in_array($ability, $token->abilities, true), 403,
+            'Sign in again to enable company joining.');
+
+        return $token;
+    }
 
     public function handoverAvailable(): bool
     {
@@ -80,6 +111,7 @@ class RiderAccountService
         return ['id' => (string) $user->id, ...($this->settingsAvailable() ? ['settings_api_version' => 1] : []),
             ...($this->operationsAvailable() ? ['operations_api_version' => 1] : []),
             ...($this->handoverAvailable() ? ['handover_api_version' => 1] : []), 'name' => $user->name, 'email' => $user->email,
+            ...($this->companyAvailable() ? ['company_api_version' => 1] : []),
             'email_verified' => $user->email_verified_at !== null, 'role' => 'courier',
             'status' => $user->status, 'kyc_status' => $user->kyc_status, 'kyc_feedback' => $user->kyc_feedback,
             'can_access_portal' => $user->canAccessPortal(), 'access_state' => $user->canAccessPortal() ? 'approved' : 'holding'];
@@ -91,6 +123,7 @@ class RiderAccountService
         $expires = now()->addMinutes(max(1, min(10080, (int) config('rider_auth.token_minutes'))));
         $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout', ...($this->settingsAvailable() ? self::SETTINGS_ABILITIES : []),
             ...($this->operationsAvailable() ? self::OPERATIONS_ABILITIES : []),
+            ...($this->companyAvailable() && $this->companyEligible($user) ? self::COMPANY_ABILITIES : []),
             ...($this->handoverAvailable() && $user->isEligibleCourier() && $user->canAccessPortal() ? [self::HANDOVER_ABILITY] : [])], $expires);
         $issued->accessToken->forceFill(['credential_fingerprint' => hash('sha256', $user->getAuthPassword())])->save();
 
