@@ -1,21 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import BuyerAdvertisements, { Advertisement } from '@/Components/BuyerAdvertisements';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import SavedProductButton from '@/Components/SavedProductButton';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
-    Zap, 
     Truck, 
-    ShieldCheck, 
-    Tag, 
-    TrendingUp, 
-    Globe, 
-    Coins, 
-    Crown, 
     Star, 
-    ChevronLeft, 
     ChevronRight, 
     ShoppingBag, 
     ShoppingCart, 
@@ -44,34 +37,6 @@ import {
     ChevronDown
 } from 'lucide-react';
 
-interface Banner {
-    id: number;
-    title: string;
-    subtitle: string;
-    tag: string;
-    code: string;
-    image: string;
-    cta: string;
-    badge: string;
-}
-
-type BannerTextTone = 'light' | 'dark';
-
-interface QuickService {
-    id: string;
-    name: string;
-    icon: string;
-    tag: string;
-}
-
-interface Voucher {
-    code: string;
-    discount: string;
-    min_spend: number;
-    description: string;
-    expires: string;
-}
-
 interface ActiveShipment {
     order_id: number;
     order_number: string;
@@ -84,12 +49,10 @@ interface ActiveShipment {
 }
 
 interface Props {
-    banners: Banner[];
-    quickServices: QuickService[];
+    banners: Advertisement[];
     categories: (Category & { products_count?: number })[];
     feedProducts: PaginatedData<Product>;
     relatedProducts?: Product[];
-    vouchers: Voucher[];
     activeShipment?: ActiveShipment | null;
     filters: {
         search?: string;
@@ -105,62 +68,18 @@ interface Props {
 
 export default function BuyerHome({
     banners,
-    quickServices,
     categories,
     feedProducts,
     relatedProducts = [],
-    vouchers,
     activeShipment,
     filters,
 }: Props) {
-    const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const [addingProductId, setAddingProductId] = useState<number | null>(null);
     const [addedSuccessId, setAddedSuccessId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState(filters.tab || 'all');
-    const [copiedVoucher, setCopiedVoucher] = useState<string | null>(null);
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
-    const [bannerTextTones, setBannerTextTones] = useState<Record<number, BannerTextTone>>({});
-
-    const detectBannerTextTone = (bannerId: number, image: HTMLImageElement) => {
-        try {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            if (!context) return;
-
-            canvas.width = 32;
-            canvas.height = 18;
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-            const pixels = context.getImageData(0, 0, Math.ceil(canvas.width * 0.65), canvas.height).data;
-            let luminanceTotal = 0;
-            let pixelCount = 0;
-
-            for (let index = 0; index < pixels.length; index += 4) {
-                luminanceTotal += (pixels[index] * 0.2126) + (pixels[index + 1] * 0.7152) + (pixels[index + 2] * 0.0722);
-                pixelCount += 1;
-            }
-
-            const averageLuminance = luminanceTotal / Math.max(pixelCount, 1);
-            setBannerTextTones((current) => ({
-                ...current,
-                [bannerId]: averageLuminance >= 145 ? 'dark' : 'light',
-            }));
-        } catch {
-            setBannerTextTones((current) => ({ ...current, [bannerId]: 'light' }));
-        }
-    };
-
-    // Auto-advance hero carousel
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
-        }, 5000);
-        return () => clearInterval(interval);
-    }, [banners.length]);
-
-
 
     const handleAddToCart = (e: React.MouseEvent, productId: number) => {
         e.preventDefault();
@@ -233,12 +152,6 @@ export default function BuyerHome({
         });
     };
 
-    const copyVoucherCode = (code: string) => {
-        navigator.clipboard.writeText(code);
-        setCopiedVoucher(code);
-        setTimeout(() => setCopiedVoucher(null), 2000);
-    };
-
     const formatPrice = (amount?: number | string | null) => {
         const numeric = Number(amount || 0);
         return new Intl.NumberFormat('en-PH', {
@@ -246,34 +159,6 @@ export default function BuyerHome({
             currency: 'PHP',
             minimumFractionDigits: 2,
         }).format(numeric);
-    };
-
-    const getServiceIcon = (iconName: string) => {
-        switch (iconName) {
-            case 'Truck': return Truck;
-            case 'Zap': return Zap;
-            case 'ShieldCheck': return ShieldCheck;
-            case 'Tag': return Tag;
-            case 'TrendingUp': return TrendingUp;
-            case 'Globe': return Globe;
-            case 'Coins': return Coins;
-            case 'Crown': return Crown;
-            default: return Sparkles;
-        }
-    };
-
-    const getServiceIconColor = (serviceId: string) => {
-        switch (serviceId) {
-            case 'freeship': return 'bg-emerald-500';
-            case 'new': return 'bg-amber-500';
-            case 'mall': return 'bg-[#E00D42]';
-            case 'vouchers': return 'bg-purple-500';
-            case 'top': return 'bg-blue-500';
-            case 'global': return 'bg-cyan-500';
-            case 'cashback': return 'bg-rose-500';
-            case 'vip': return 'bg-yellow-500';
-            default: return 'bg-slate-700';
-        }
     };
 
     const getCategoryIcon = (iconName?: string | null) => {
@@ -354,154 +239,7 @@ export default function BuyerHome({
                     </div>
                 )}
 
-                {/* 2. HERO PROMOTIONAL BANNER CAROUSEL */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-                    
-                    {/* Main Sliding Carousel Banner */}
-                    <div className="lg:col-span-8 relative rounded-2xl overflow-hidden shadow-lg h-[260px] sm:h-[340px] group bg-black">
-                        {banners.map((banner, index) => (
-                            <div
-                                key={banner.id}
-                                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                                    index === currentBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                                }`}
-                            >
-                                <img
-                                    src={banner.image}
-                                    alt={banner.title}
-                                    crossOrigin="anonymous"
-                                    onLoad={(event) => detectBannerTextTone(banner.id, event.currentTarget)}
-                                    className="w-full h-full object-cover"
-                                />
-
-                                {/* Banner Text Content */}
-                                <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-between z-20">
-                                    <div className={`self-start max-w-xl rounded-md border p-4 sm:p-5 backdrop-blur-sm shadow-lg ${
-                                        bannerTextTones[banner.id] === 'dark'
-                                            ? 'bg-white/90 border-white text-slate-950'
-                                            : 'bg-slate-950/75 border-slate-700 text-white'
-                                    }`}>
-                                        <span className="inline-block px-2.5 py-1 rounded bg-[#E00D42] text-white font-sans text-[10px] font-bold uppercase tracking-wider mb-2 shadow-xs">
-                                            {banner.badge}
-                                        </span>
-                                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight max-w-xl text-current">
-                                            {banner.title}
-                                        </h2>
-                                        <p className={`text-xs sm:text-sm font-sans mt-1 uppercase ${
-                                            bannerTextTones[banner.id] === 'dark' ? 'text-slate-700' : 'text-slate-200'
-                                        }`}>
-                                            {banner.subtitle}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 pt-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => copyVoucherCode(banner.code)}
-                                            className="px-5 py-2.5 bg-white hover:bg-[#E00D42] text-slate-900 hover:text-white rounded-lg font-sans text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2"
-                                        >
-                                            {copiedVoucher === banner.code ? (
-                                                <>
-                                                    <Check className="w-4 h-4 text-emerald-600" />
-                                                    <span>VOUCHER COPIED!</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Tag className="w-4 h-4 text-[#E00D42]" />
-                                                    <span>USE CODE: {banner.code}</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Carousel Arrows */}
-                        <button
-                            onClick={() => setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 text-white flex items-center justify-center z-30 transition opacity-0 group-hover:opacity-100"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => setCurrentBannerIndex((prev) => (prev + 1) % banners.length)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 text-white flex items-center justify-center z-30 transition opacity-0 group-hover:opacity-100"
-                        >
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-
-                        {/* Carousel Dots */}
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-30">
-                            {banners.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setCurrentBannerIndex(i)}
-                                    className={`h-2 rounded-full transition-all ${
-                                        i === currentBannerIndex ? 'w-6 bg-[#E00D42]' : 'w-2 bg-white/50'
-                                    }`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Right Secondary Promo Cards */}
-                    <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-                        <div className="p-4 rounded-lg bg-[#0F172A] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
-                            <div>
-                                <span className="text-[10px] font-sans uppercase tracking-wider font-bold bg-[#E00D42] px-2 py-0.5 rounded-xs text-white">
-                                    CURATED COLLECTION
-                                </span>
-                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
-                                    Verified Department Picks
-                                </h3>
-                                <p className="text-[11px] text-slate-300 font-sans">Handcrafted and authentic merchant items.</p>
-                            </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-[#E00D42] transition">
-                                Explore Top Deals <ChevronRight className="w-3.5 h-3.5" />
-                            </span>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-[#111319] border border-slate-800 text-white flex flex-col justify-between shadow-xs relative overflow-hidden h-[120px] sm:h-[165px]">
-                            <div>
-                                <span className="text-[10px] font-sans uppercase tracking-wider font-bold bg-emerald-600 px-2 py-0.5 rounded-xs text-white">
-                                    NEW BUYER PRIVILEGE
-                                </span>
-                                <h3 className="text-base font-black tracking-tight mt-1 text-white">
-                                    Free Shipping ₱0 Min Spend
-                                </h3>
-                                <p className="text-[11px] text-slate-300 font-sans">Valid on your first 3 platform checkouts.</p>
-                            </div>
-                            <span className="text-xs font-bold text-white/90 flex items-center gap-1 hover:text-emerald-400 transition">
-                                Claim Shipping Pass <ChevronRight className="w-3.5 h-3.5" />
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. 8 QUICK-SERVICE ICON ACTIONS */}
-                <div className="bg-white rounded-lg p-4 sm:p-6 shadow-xs border border-slate-200">
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 text-center">
-                        {quickServices.map((service) => {
-                            const IconComponent = getServiceIcon(service.icon);
-                            return (
-                                <button
-                                    key={service.id}
-                                    onClick={() => handleTabChange(service.id === 'new' ? 'new_arrivals' : service.id === 'top' ? 'top_sales' : 'all')}
-                                    className="flex flex-col items-center group focus:outline-hidden"
-                                >
-                                    <div className={`w-12 h-12 rounded-2xl ${getServiceIconColor(service.id)} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 relative`}>
-                                        <IconComponent className="w-6 h-6" />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-800 mt-2 truncate w-full group-hover:text-[#E00D42] transition">
-                                        {service.name}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-sans">{service.tag}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <BuyerAdvertisements banners={banners} />
 
                 {/* 5. "DAILY DISCOVER" & SEARCH PRODUCT FEED */}
                 <div id="product-feed" className="space-y-6 pt-2">

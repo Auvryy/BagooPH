@@ -49,53 +49,15 @@ class BuyerHomeController extends Controller
             return app(AuthenticatedSessionController::class)->createAdmin();
         }
 
-        // 1. Promotional Hero Carousel Banners
+        // Local advertisement artwork is separate from checkout voucher eligibility.
         $banners = [
-            [
-                'id' => 1,
-                'title' => '8.8 MEGA PAYDAY SALE',
-                'subtitle' => 'UP TO 70% OFF ON ALL 14 DEPARTMENTS',
-                'tag' => 'LIMITED TIME ONLY',
-                'code' => 'PAYDAY70',
-                'image' => 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1400&q=80',
-                'cta' => 'Claim Vouchers Now',
-                'badge' => 'PLATFORM MEGA EVENT',
-            ],
-            [
-                'id' => 2,
-                'title' => 'FREE SHIPPING ₱0 MIN SPEND',
-                'subtitle' => 'ZERO COURIER SURCHARGE WITH BAGOO EXPRESS',
-                'tag' => 'NATIONWIDE DISPATCH',
-                'code' => 'FREESHIP',
-                'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=80',
-                'cta' => 'Shop Free Delivery',
-                'badge' => 'DOORSTEP GUARANTEE',
-            ],
-            [
-                'id' => 3,
-                'title' => 'NEW SHOPPER PRIVILEGE: ₱200 OFF',
-                'subtitle' => 'INSTANT CASH DISCOUNT APPLIED AT CHECKOUT',
-                'tag' => 'WELCOME VOUCHER',
-                'code' => 'BAGOO10',
-                'image' => 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1400&q=80',
-                'cta' => 'Claim ₱200 Bonus',
-                'badge' => 'FIRST ORDER EXCLUSIVE',
-            ],
+            ['id' => 1, 'title' => '11.11 Mega Sale', 'image' => '/images/buyer/advertisements/mega-sale.webp'],
+            ['id' => 2, 'title' => '11.11 Collection', 'image' => '/images/buyer/advertisements/collection.webp'],
+            ['id' => 3, 'title' => 'Payday Craze', 'image' => '/images/buyer/advertisements/payday.webp'],
+            ['id' => 4, 'title' => 'Mega Carnival', 'image' => '/images/buyer/advertisements/carnival.webp'],
+            ['id' => 5, 'title' => 'Epic Frenzy', 'image' => '/images/buyer/advertisements/frenzy.webp'],
         ];
 
-        // 2. 8 Quick Service Icon Actions
-        $quickServices = [
-            ['id' => 'freeship', 'name' => 'Free Shipping', 'icon' => 'Truck', 'tag' => '₱0 Min'],
-            ['id' => 'new', 'name' => 'New Arrivals', 'icon' => 'Sparkles', 'tag' => 'Just In'],
-            ['id' => 'mall', 'name' => 'Bagoo Mall', 'icon' => 'ShieldCheck', 'tag' => '100% Authentic'],
-            ['id' => 'vouchers', 'name' => 'Vouchers', 'icon' => 'Tag', 'tag' => 'Claim All'],
-            ['id' => 'top', 'name' => 'Top Rankings', 'icon' => 'TrendingUp', 'tag' => 'Best Seller'],
-            ['id' => 'global', 'name' => 'Global Finds', 'icon' => 'Globe', 'tag' => 'Direct Import'],
-            ['id' => 'cashback', 'name' => '15% Cashback', 'icon' => 'Coins', 'tag' => 'Coins Back'],
-            ['id' => 'vip', 'name' => 'VIP Member', 'icon' => 'Crown', 'tag' => 'Perks'],
-        ];
-
-        // 4. 14 Verified Departments with Visual Data
         $categories = app(BuyerDiscoveryService::class)->categories();
 
         // 5. "Daily Discover" & Search Product Feed
@@ -126,31 +88,6 @@ class BuyerHomeController extends Controller
                 ->get();
         }
 
-        // 6. Active Vouchers in Platform
-        $vouchers = [
-            [
-                'code' => 'BAGOO10',
-                'discount' => '₱200 OFF',
-                'min_spend' => 1000,
-                'description' => 'Min. Spend ₱1,000 across all 14 departments',
-                'expires' => 'Valid today',
-            ],
-            [
-                'code' => 'FREESHIP',
-                'discount' => 'FREE SHIPPING',
-                'min_spend' => 0,
-                'description' => '₱0 Min. Spend on Bagoo Express Standard',
-                'expires' => 'Expiring in 2 days',
-            ],
-            [
-                'code' => 'PAYDAY70',
-                'discount' => '15% CASHBACK',
-                'min_spend' => 500,
-                'description' => 'Capped at 150 Coins for verified buyers',
-                'expires' => 'Payday special',
-            ],
-        ];
-
         // 7. Active in-transit shipment telemetry if logged in
         $activeShipment = null;
         if ($user) {
@@ -176,11 +113,9 @@ class BuyerHomeController extends Controller
 
         return Inertia::render('Buyer/Home', [
             'banners' => $banners,
-            'quickServices' => $quickServices,
             'categories' => $categories,
             'feedProducts' => $feedProducts,
             'relatedProducts' => $relatedProducts,
-            'vouchers' => $vouchers,
             'activeShipment' => $activeShipment,
             'filters' => [...$filters, 'tab' => match ($filters['sort']) {
                 'newest' => 'new_arrivals', 'top_sales', 'top_rated' => $filters['sort'], default => 'all',
