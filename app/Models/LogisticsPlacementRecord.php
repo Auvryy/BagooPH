@@ -11,7 +11,7 @@ class LogisticsPlacementRecord extends Model
 
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
-    protected $fillable = ['logistics_company_id', 'actor_id', 'user_id', 'kind', 'before_state', 'after_state', 'recorded_at'];
+    protected $fillable = ['logistics_company_id', 'actor_id', 'user_id', 'kind', 'before_state', 'after_state', 'recorded_at', 'rider_company_consent_id'];
 
     protected $hidden = ['before_state', 'after_state'];
 
