@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +18,6 @@ class NotificationController extends Controller
     public function preview(Request $request, NotificationCenterService $service): JsonResponse
     {
         $user = $service->current($request->user());
-        abort_unless($user->isBuyer(), 403);
         try {
             $notices = $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
                 ->orderByDesc('created_at')->orderByDesc('id')->limit(6)->get()
@@ -32,7 +33,6 @@ class NotificationController extends Controller
     public function readDisplayed(Request $request, NotificationCenterService $service): JsonResponse
     {
         $user = $service->current($request->user());
-        abort_unless($user->isBuyer(), 403);
         $data = $request->validate(['ids' => ['required', 'array', 'list', 'min:1', 'max:6'], 'ids.*' => ['required', 'uuid', 'distinct']]);
         try {
             $service->acknowledgeDisplayed($user, $data['ids']);
@@ -47,19 +47,45 @@ class NotificationController extends Controller
     {
         $user = $service->current($request->user());
         $filter = $request->validate(['filter' => ['sometimes', 'in:all,unread']])['filter'] ?? 'all';
+        $context = $this->portalContext($user);
         try {
             $notices = $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
                 ->when($filter === 'unread', fn ($query) => $query->whereNull('read_at'))
                 ->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString()
                 ->through(fn ($notice) => $service->present($notice, $user));
 
-            return Inertia::render('Notifications/Index', ['notices' => $notices, 'available' => true, 'filter' => $filter,
-                'accountUrl' => $user->canAccessPortal() ? '/dashboard' : '/pending-approval']);
+            if ($notices->currentPage() > $notices->lastPage()) {
+                return redirect()->to(route('notifications.index', ['filter' => $filter, 'page' => $notices->lastPage()], absolute: false));
+            }
+
+            return Inertia::render('Notifications/Index', [...$context, 'notices' => $notices, 'available' => true, 'filter' => $filter]);
         } catch (QueryException) {
-            return Inertia::render('Notifications/Index', ['notices' => null, 'available' => false, 'filter' => $filter,
-                'accountUrl' => $user->canAccessPortal() ? '/dashboard' : '/pending-approval'])
+            return Inertia::render('Notifications/Index', [...$context, 'notices' => null, 'available' => false, 'filter' => $filter])
                 ->toResponse($request)->setStatusCode(503);
         }
+    }
+
+    private function portalContext(User $user): array
+    {
+        $portal = $user->isBuyer() ? 'buyer' : ($user->canAccessPortal() ? ($user->isCourier() ? 'courier' : 'dashboard') : 'account');
+        $profile = $portal === 'courier' ? $user->courierProfile?->loadMissing(['company', 'hub']) : null;
+        $hub = $profile?->hub;
+        if ($hub?->logistics_company_id !== $profile?->logistics_company_id) {
+            $hub = null;
+        }
+
+        return [
+            'portal' => $portal,
+            'accountUrl' => $user->canAccessPortal() ? '/dashboard' : '/pending-approval',
+            'isOnline' => (bool) $profile?->is_available,
+            'scope' => $profile ? [
+                'company' => $profile->company?->name,
+                'hub' => $hub?->name,
+                'hubCode' => $hub?->code,
+                'isAssigned' => (bool) ($profile->logistics_company_id && $profile->assigned_hub_id),
+                'isOperational' => app(LogisticsEligibilityService::class)->isOperational($profile),
+            ] : null,
+        ];
     }
 
     public function read(Request $request, string $notification, NotificationCenterService $service): JsonResponse|RedirectResponse

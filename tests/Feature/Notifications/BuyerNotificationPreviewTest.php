@@ -87,14 +87,12 @@ class BuyerNotificationPreviewTest extends TestCase
             ->where('flash.success', 'Buyer application approved. Your identity was reviewed. Checkout is available for active approved accounts.'));
     }
 
-    public function test_other_roles_and_closed_accounts_cannot_use_the_buyer_preview(): void
+    public function test_guests_and_closed_accounts_cannot_use_the_preview(): void
     {
         $this->getJson('/notifications/preview')->assertUnauthorized();
-        $seller = User::factory()->seller()->create();
-        $this->actingAs($seller)->getJson('/notifications/preview')->assertForbidden();
-        $this->patchJson('/notifications/read-displayed', ['ids' => [Str::uuid()]])->assertForbidden();
         $buyer = User::factory()->create(['status' => 'inactive', 'closed_at' => now()]);
         $this->actingAs($buyer)->getJson('/notifications/preview')->assertForbidden();
+        $this->actingAs($buyer)->patchJson('/notifications/read-displayed', ['ids' => [Str::uuid()]])->assertForbidden();
     }
 
     public function test_notification_storage_failure_does_not_report_a_successful_preview_or_read(): void
