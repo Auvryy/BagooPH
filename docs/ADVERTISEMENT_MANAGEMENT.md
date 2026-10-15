@@ -96,6 +96,56 @@ indexing. Previously public optimized renditions can remain accessible through
 their historical image URLs. Private originals and never-started, canceled
 placement artwork are not served through the public artwork route.
 
+## Seller requests and platform review
+
+An eligible seller uses **Promotions** in the existing seller portal to save
+artwork, a requested period and its own product, shop or published shop-funded
+voucher. The same upload and text limits apply. The seller does not choose a
+homepage position or publish directly. Ordinary shop logos, banners,
+descriptions and contact details remain owner edits in Settings; changing them
+does not submit a promotion or remove shop approval.
+
+```mermaid
+flowchart LR
+    D[Seller saves private draft] --> S[Submit saved version]
+    S --> R[Platform Admin reviews exact version]
+    R --> F[Request changes or reject with feedback]
+    F --> D
+    R --> A[Approve version]
+    A --> P[Admin selects position and schedule]
+    P --> V[Current time and eligibility checks]
+    V --> B[Buyer sees image and matching destination]
+```
+
+The review records the submitted artwork, destination, dates and the shop's
+reviewed name and category. Platform Admin can inspect the current participating
+products and actual offer terms, then approve, request changes or reject with a
+useful reason. Approval does not create a placement. The seller sees review
+state, feedback and actual display state separately. Submission and decision
+notifications link to the recipient's authorized portal page; failed delivery
+can retry without duplicating or undoing the saved decision.
+
+Changing submitted content creates a new revision. An older pending request is
+marked replaced; an earlier approved live revision continues only under its
+original conditions. A changed reviewed shop name or category needs a new
+submission even when the shop has been approved again. Updated artwork, offer
+terms or requested dates cannot silently inherit an old approval.
+
+Admin can place an approved exact revision within its requested period, or
+replace an existing placement with a recorded position/schedule decision. The
+original placement and its original dates remain in history. Conflicts reject
+without losing the previous reservation. Pause, resume, end and archive retain
+their existing calendar rules; archiving also resolves pending seller requests.
+
+Sellers may withdraw an owned pending or approved request, or stop their entire
+promotion. These actions end its remaining placements and retain past feedback
+and approvals. A new draft and review are needed to restart withdrawn content.
+A currently approved seller whose shop becomes restricted can still read owned
+history and stop its promotion, while new drafts and submissions remain blocked.
+Foreign drafts, images, products, offers and publication controls are rejected
+server-side. Stale review forms retain the user's note and choices but require
+a reload before a decision.
+
 ## Installation and disabling display
 
 After the user publishes and merges the branch, deploy using the existing
@@ -125,8 +175,8 @@ eligibility still apply; old ended placements do not restart. Preserve the
 tables and private files when disabling. The migration refuses to remove
 retained advertisement identities on rollback.
 
-Seller marketplace submissions and statistics are separate AD03 and AD04 work.
-Paid placements, advertising balances and auctions are outside this feature.
+Statistics are separate AD04 work. Paid placements, advertising balances and
+auctions are outside this feature.
 Current implementation evidence and verification limits belong in
 [the roadmap](CORE_FLOW_ROADMAP.md); the original scope is in
 [the advertisement plan](advertisement-plan/README.md).

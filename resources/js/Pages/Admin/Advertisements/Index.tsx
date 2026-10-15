@@ -2,15 +2,15 @@ import { FormEvent, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ImagePlus, Plus } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { AdvertisementSummary, Pagination, dateLabel, slotLabel, stateLabel } from '@/types/advertisements';
+import { AdvertisementSummary, Pagination, dateLabel, slotLabel, stateLabel, reviewLabel } from '@/types/advertisements';
 
 interface Props {
     advertisements: Pagination<AdvertisementSummary>; available: boolean; displayEnabled: boolean; baseUrl: string;
-    filters: { search?: string; state?: string };
+    filters: { search?: string; state?: string; scope?: string; review?: string };
     suppliedArtwork: { key: string; title: string; image: string; imported: boolean }[];
 }
 export default function Advertisements({ advertisements, available, displayEnabled, baseUrl, filters, suppliedArtwork }: Props) {
-    const form = useForm({ search: filters.search ?? '', state: filters.state ?? 'all' });
+    const form = useForm({ search: filters.search ?? '', state: filters.state ?? 'all', scope: filters.scope ?? 'all', review: filters.review ?? 'all' });
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
     const search = (event: FormEvent) => { event.preventDefault(); form.get(baseUrl, { preserveState: true, preserveScroll: true }); };
@@ -32,6 +32,8 @@ export default function Advertisements({ advertisements, available, displayEnabl
                 <label className="text-sm font-semibold">Display state<select value={form.data.state} onChange={(e) => form.setData('state', e.target.value)} className="mt-1 block rounded-lg border-slate-300">
                     {['all', 'draft', 'live', 'scheduled', 'paused', 'ended', 'archived', 'unavailable'].map((state) => <option key={state} value={state}>{stateLabel(state)}</option>)}
                 </select></label>
+                <label className="text-sm font-semibold">Source<select value={form.data.scope} onChange={(e) => form.setData('scope', e.target.value)} className="mt-1 block rounded-lg border-slate-300"><option value="all">All advertisements</option><option value="platform">Platform editorial</option><option value="seller">Seller proposals</option></select></label>
+                <label className="text-sm font-semibold">Seller review<select value={form.data.review} onChange={(e) => form.setData('review', e.target.value)} className="mt-1 block rounded-lg border-slate-300"><option value="all">All review states</option>{['pending', 'approved', 'changes_requested', 'rejected', 'withdrawn', 'superseded', 'not_submitted'].map((state) => <option key={state} value={state}>{reviewLabel(state)}</option>)}</select></label>
                 <button disabled={form.processing} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Apply filters</button>
                 {Object.values(form.errors).map((message) => <p role="alert" key={message} className="text-sm text-red-700">{message}</p>)}
             </form>
@@ -40,6 +42,7 @@ export default function Advertisements({ advertisements, available, displayEnabl
                 <div className="min-w-0 flex-1 space-y-2">
                     <Link href={`${baseUrl}/${ad.id}`} className="font-bold text-slate-900 hover:text-[#E00D42]">{ad.title}</Link>
                     <p className="text-xs font-semibold text-slate-600">{stateLabel(ad.state)}{ad.has_draft ? ' · Unpublished draft' : ''} · {slotLabel(ad.slot)}</p>
+                    {ad.owner_type === 'seller' && <p className="text-xs font-semibold text-slate-600">Seller proposal · {ad.shop_name} · Review: {reviewLabel(ad.review_state)}</p>}
                     <p className="text-xs text-slate-500">{ad.creator} · {ad.target.label ?? 'Choose a destination'}</p>
                     <p className="text-xs text-slate-500">{dateLabel(ad.starts_at)} – {dateLabel(ad.ends_at)} (Manila)</p>
                     {ad.reason && <p className="text-xs text-amber-800">{ad.reason}</p>}

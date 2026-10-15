@@ -3,6 +3,8 @@
 namespace App\Services\Notifications;
 
 use App\Models\AccountClosure;
+use App\Models\AdvertisementReview;
+use App\Models\AdvertisementSubmission;
 use App\Models\CustodyRecoveryGrant;
 use App\Models\CustodyRecoveryReceipt;
 use App\Models\ExceptionDecision;
@@ -25,7 +27,18 @@ class GovernanceNoticeService
 
     public function record(Model $event): void
     {
-        if ($event instanceof VoucherCampaignAction && in_array($event->action, ['suspend', 'reinstate'], true)) {
+        if ($event instanceof AdvertisementSubmission || $event instanceof AdvertisementReview) {
+            $submission = $event instanceof AdvertisementSubmission ? $event : $event->submission;
+            $ad = $submission->advertisement;
+            $adminMessage = $event instanceof AdvertisementSubmission || $event->actor_role === 'seller';
+            $recipients = $adminMessage
+                ? User::where('role', 'admin')->whereNotNull('email_verified_at')->get()->filter(fn ($user) => $user->canAccessPortal())->mapWithKeys(fn ($user) => [$user->id => 'promotion-admin'])->all()
+                : [$ad->created_by_id => 'promotion-seller'];
+            $this->send($event, $event instanceof AdvertisementSubmission ? 'advertisement_submission' : 'advertisement_review', $recipients,
+                $event instanceof AdvertisementSubmission ? 'A seller promotion is waiting for review' : 'A promotion review was updated',
+                'Open the promotion to see its submitted version, review feedback and current display state.',
+                ['advertisement_id' => $ad->id, 'submission_id' => $submission->id]);
+        } elseif ($event instanceof VoucherCampaignAction && in_array($event->action, ['suspend', 'reinstate'], true)) {
             $sellerId = $event->voucher?->shop?->user_id;
             if ($sellerId) {
                 $this->send($event, 'voucher_campaign', [$sellerId => 'seller-vouchers'],

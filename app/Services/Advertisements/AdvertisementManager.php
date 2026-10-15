@@ -10,14 +10,12 @@ use App\Models\User;
 use App\Services\AccountRestrictionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class AdvertisementManager
 {
@@ -60,6 +58,7 @@ class AdvertisementManager
                 return $retry;
             }
             $ad = $advertisement ? Advertisement::whereKey($advertisement->id)->lockForUpdate()->firstOrFail() : null;
+            abort_if($ad?->shop_id, 422, 'Seller artwork is reviewed as submitted. Use its review and placement controls instead of editing its content.');
             abort_if($ad?->archived_at, 422, 'This advertisement is archived. Create a new draft.');
             $this->version($ad, $meta['source_version']);
             $candidate = new AdvertisementRevision($data);
@@ -126,9 +125,12 @@ class AdvertisementManager
             abort_if($ad->archived_at, 422, 'This advertisement is archived. Its original history is retained.');
             $before = $this->snapshot($ad);
             $now = CarbonImmutable::now('UTC')->startOfSecond();
-            if ($data['action'] === 'publish') {
+            if (in_array($data['action'], ['publish', 'reschedule'], true)) {
                 $this->publish($actor, $ad, $data, $now);
             } elseif ($data['action'] === 'archive') {
+                if ($ad->shop_id) {
+                    app(SellerPromotionService::class)->archiveReviews($actor, $ad);
+                }
                 $ad->publications()->whereNull('ended_at')->where('ends_at', '>', $now)->update(['ended_at' => $now]);
                 $ad->archived_at = $now;
             } else {
@@ -140,6 +142,7 @@ class AdvertisementManager
                     $publication->paused_at = $now;
                 } elseif ($data['action'] === 'resume') {
                     abort_unless($publication->paused_at, 409, 'This placement is not paused.');
+                    abort_unless(app(SellerPromotionService::class)->approvedRevision($ad, $publication->revision), 422, 'This seller submission no longer has current approval.');
                     app(AdvertisementDestinationService::class)->assertPublishable($publication->revision, $publication->starts_at, $publication->effectiveEnd());
                     abort_unless(Storage::disk('local')->exists($publication->revision->asset->image_path), 422, 'Replace the missing artwork before resuming.');
                     $publication->paused_at = null;
@@ -158,29 +161,56 @@ class AdvertisementManager
 
     public function snapshot(Advertisement $ad): array
     {
-        return ['version' => $ad->version, 'revision_id' => $ad->latestRevision()->value('advertisement_revisions.id'),
+        $snapshot = ['version' => $ad->version, 'revision_id' => $ad->latestRevision()->value('advertisement_revisions.id'),
             'archived_at' => $ad->archived_at?->toIso8601String(), 'placements' => $ad->publications()->orderBy('id')->get()
-                ->map(fn ($publication) => $publication->only(['id', 'revision_id', 'slot', 'starts_at', 'ends_at', 'paused_at', 'ended_at', 'superseded_at']))->all()];
+                ->map(fn ($publication) => $publication->only(['id', 'revision_id', 'slot', 'starts_at', 'ends_at', 'paused_at', 'ended_at', 'superseded_at', 'replaces_publication_id']))->all()];
+        if ($ad->shop_id && Schema::hasTable('advertisement_submissions')) {
+            $snapshot['submissions'] = $ad->submissions()->with('latestReview')->orderBy('id')->get()->map(fn ($submission) => [
+                'id' => $submission->id, 'revision_id' => $submission->revision_id, 'state' => $submission->state(), 'review_id' => $submission->latestReview?->id,
+            ])->all();
+        }
+
+        return $snapshot;
     }
 
     private function publish(User $actor, Advertisement $ad, array $data, CarbonImmutable $now): void
     {
-        $revision = $ad->latestRevision()->with('asset')->firstOrFail();
-        abort_if(AdvertisementPublication::where('revision_id', $revision->id)->exists(), 409, 'This revision already has a placement. Save a new draft to change its content or schedule.');
-        abort_unless($revision->starts_at && $revision->ends_at && $revision->slot, 422, 'Complete this imported draft before publishing.');
-        $start = ($data['publish_now'] ?? false) ? $now : $revision->starts_at;
-        $end = $revision->ends_at;
+        $seller = (bool) $ad->shop_id;
+        if ($seller) {
+            abort_unless($data['submission_id'] ?? null, 422, 'Choose the exact approved seller submission.');
+            $revision = app(SellerPromotionService::class)->approved($ad, $data['submission_id'])->revision;
+        } else {
+            abort_if($data['action'] === 'reschedule' || array_intersect(array_keys($data), ['submission_id', 'slot', 'starts_at', 'ends_at']), 422, 'Save a new platform draft to change its placement.');
+            $revision = $ad->latestRevision()->with('asset')->firstOrFail();
+        }
+        $replaced = null;
+        if ($data['action'] === 'reschedule') {
+            $replaced = $ad->publications()->where('revision_id', $revision->id)->findOrFail($data['publication_id']);
+            abort_if($replaced->effectiveEnd()->lessThanOrEqualTo($now) || $replaced->effectiveEnd()->lessThanOrEqualTo($replaced->starts_at)
+                || AdvertisementPublication::where('replaces_publication_id', $replaced->id)->exists(), 409, 'This placement changed or ended. Reload before scheduling a replacement.');
+        } else {
+            abort_if(AdvertisementPublication::where('revision_id', $revision->id)->exists(), 409, 'This revision already has a placement. Use its placement controls or save a new draft.');
+        }
+        $slot = $seller ? ($data['slot'] ?? null) : $revision->slot;
+        abort_unless($revision->starts_at && $revision->ends_at && in_array($slot, AdvertisementInput::SLOTS, true), 422, 'Choose a position and complete the requested period before publishing.');
+        $start = ($data['publish_now'] ?? false) ? $now : ($seller && isset($data['starts_at']) ? CarbonImmutable::parse($data['starts_at'], 'UTC') : $revision->starts_at);
+        $end = $seller && isset($data['ends_at']) ? CarbonImmutable::parse($data['ends_at'], 'UTC') : $revision->ends_at;
+        abort_if($seller && ($start->lessThan($revision->starts_at) || $end->greaterThan($revision->ends_at)), 422, 'Place this promotion within its reviewed requested period. Ask the seller for a new revision to extend it.');
         abort_if(! ($data['publish_now'] ?? false) && $start->lessThan($now), 422, 'Choose a future start time to schedule, or use Publish now.');
         abort_unless($end->greaterThan($now) && $end->greaterThan($start), 422, 'Choose an end date and time in the future.');
         app(AdvertisementDestinationService::class)->assertPublishable($revision, $start, $end);
         abort_unless(Storage::disk('local')->exists($revision->asset->image_path), 422, 'The artwork is unavailable. Replace it before publishing.');
+
+        if ($replaced && $replaced->starts_at->greaterThan($now)) {
+            $replaced->update(['ended_at' => $now]);
+        }
 
         // Every publisher owns the same calendar lock before inspecting or changing positions.
         $overlaps = AdvertisementPublication::where('starts_at', '<', $end)->where('ends_at', '>', $start)
             ->orderBy('id')->lockForUpdate()->get()->filter(fn ($publication) => $publication->effectiveEnd()->greaterThan($start)
                 && $publication->effectiveEnd()->greaterThan($publication->starts_at));
         foreach ($overlaps as $publication) {
-            if ((int) $publication->advertisement_id !== (int) $ad->id && $publication->slot === $revision->slot) {
+            if ((int) $publication->advertisement_id !== (int) $ad->id && $publication->slot === $slot) {
                 throw ValidationException::withMessages(['advertisement' => 'That position is already reserved during this period. Choose another position or date. Paused placements keep their reservation until ended.']);
             }
         }
@@ -188,28 +218,13 @@ class AdvertisementManager
             $publication->update(['superseded_at' => $start]);
         }
         $ad->publications()->create(['revision_id' => $revision->id, 'published_by_id' => $actor->id,
-            'slot' => $revision->slot, 'starts_at' => $start, 'ends_at' => $end, 'claims_reviewed' => true]);
+            'slot' => $slot, 'starts_at' => $start, 'ends_at' => $end, 'claims_reviewed' => true,
+            ...($replaced ? ['replaces_publication_id' => $replaced->id] : [])]);
     }
 
     private function write(User $actor, callable $work): Advertisement
     {
-        abort_unless($this->installed(), 503, 'Install the pending advertisement migration before managing promotions.');
-        $paths = [];
-        try {
-            $result = DB::transaction(function () use ($actor, $work, &$paths) {
-                $actor = User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
-                $this->authorize($actor);
-                abort_unless(DB::table('advertisement_schedule_locks')->where('id', 1)->lockForUpdate()->first(), 503, 'The advertisement calendar needs to be installed.');
-
-                return $work($actor, $paths);
-            }, 3);
-            app(AdvertisementAssetService::class)->cleanUnreferenced($paths);
-
-            return $result;
-        } catch (Throwable $exception) {
-            app(AdvertisementAssetService::class)->cleanUnreferenced($paths);
-            throw $exception;
-        }
+        return app(AdvertisementTransaction::class)->run($actor, $this->authorize(...), $work);
     }
 
     private function version(?Advertisement $ad, mixed $version): void

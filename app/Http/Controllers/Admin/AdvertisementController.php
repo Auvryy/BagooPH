@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\HandlesAdvertisementWrites;
 use App\Models\AdvertisementAsset;
 use App\Services\Advertisements\AdvertisementAdminService;
+use App\Services\Advertisements\AdvertisementInput;
 use App\Services\Advertisements\AdvertisementManager;
+use App\Services\Advertisements\PromotionPresentation;
+use App\Services\Advertisements\SellerPromotionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AdvertisementController extends Controller
 {
+    use HandlesAdvertisementWrites;
+
     public function index(Request $request, AdvertisementAdminService $ads)
     {
         return Inertia::render('Admin/Advertisements/Index', [...$ads->listing($request->user(), $request), 'baseUrl' => $this->baseUrl($request)]);
@@ -25,7 +31,12 @@ class AdvertisementController extends Controller
 
     public function show(Request $request, string $advertisement, AdvertisementAdminService $ads)
     {
-        return Inertia::render('Admin/Advertisements/Edit', [...$ads->editor($request->user(), $ads->find($request->user(), (int) $advertisement)),
+        $ad = $ads->find($request->user(), (int) $advertisement);
+        if ($ad->shop_id) {
+            return Inertia::render('Admin/Advertisements/Review', [...app(PromotionPresentation::class)->adminEditor($request->user(), $ad), 'baseUrl' => $this->baseUrl($request)]);
+        }
+
+        return Inertia::render('Admin/Advertisements/Edit', [...$ads->editor($request->user(), $ad),
             'baseUrl' => $this->baseUrl($request)]);
     }
 
@@ -54,10 +65,10 @@ class AdvertisementController extends Controller
 
     public function preview(Request $request, string $advertisement, AdvertisementAdminService $ads)
     {
-        $input = $request->validate(['revision' => 'nullable|integer|min:1|max:2147483647']);
+        $input = $request->validate(['revision' => 'nullable|integer|min:1|max:2147483647', 'slot' => ['nullable', Rule::in(AdvertisementInput::SLOTS)]]);
 
         return Inertia::render('Admin/Advertisements/Preview', [...$ads->preview($request->user(), $ads->find($request->user(), (int) $advertisement),
-            isset($input['revision']) ? (int) $input['revision'] : null), 'baseUrl' => $this->baseUrl($request)]);
+            isset($input['revision']) ? (int) $input['revision'] : null, $input['slot'] ?? null), 'baseUrl' => $this->baseUrl($request)]);
     }
 
     public function artwork(Request $request, string $asset, AdvertisementManager $manager)
@@ -72,19 +83,10 @@ class AdvertisementController extends Controller
         ], 'inline');
     }
 
-    private function write(Request $request, callable $work, string $message)
+    public function review(Request $request, string $advertisement, AdvertisementAdminService $ads, SellerPromotionService $promotions)
     {
-        try {
-            $ad = $work();
-
-            return redirect($this->baseUrl($request).'/'.$ad->id)->with('success', $message);
-        } catch (HttpException $exception) {
-            if (! $request->header('X-Inertia') || ! in_array($exception->getStatusCode(), [409, 422], true)) {
-                throw $exception;
-            }
-
-            return back()->withErrors(['advertisement' => $exception->getMessage()]);
-        }
+        return $this->write($request, fn () => $promotions->decide($request->user(), $ads->find($request->user(), (int) $advertisement), $request->all()),
+            'Review saved for the submitted revision. Homepage placement remains a separate decision.');
     }
 
     private function baseUrl(Request $request): string
