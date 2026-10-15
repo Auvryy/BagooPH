@@ -10,6 +10,16 @@ Design evolves through user feedback; tokens and interaction patterns are delibe
 
 Use Inertia links and visits for same-origin application navigation, and focused requests or partial prop updates for status checks and acknowledgements. Keep useful page state, scroll and feedback while requests finish. A full browser reload is reserved for a real origin, session or asset-version change; ordinary notification reads and form updates should feel continuous. A success message follows the saved server result, and failed updates retain clear retry feedback. New buyer pages and popovers reuse the buyer header, controls and spacing; seller and rider styles remain specific to their own portals.
 
+Every signed-in web role uses the bell for a compact recent-notification preview.
+The floating panel stays within the viewport, scrolls its updates independently
+and keeps its close and “View all notifications” controls available. Acknowledge
+only owned updates rendered in the preview. The complete list keeps the current
+role's header and navigation: marketplace for buyers, the rider shell for couriers,
+and the existing dashboard for sellers, hub staff and admins. Applicants and
+restricted workers keep the account gateway with access to their own updates;
+notifications do not grant operational access. Preserve each portal's typography,
+surfaces and corner treatment, plus visible unread, empty, loading and retry states.
+
 ## 1. Experience Principles
 
 These are BagooPH applications of established design principles, rather than claims that one visual treatment works for everyone.

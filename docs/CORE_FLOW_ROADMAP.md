@@ -5174,3 +5174,72 @@ Implementation commits:
 The combined PR title/body remains a local draft at
 `.codex/advertisement-reporting/PR.md`; it has not been saved on GitHub. The
 documentation commit is reported in the branch handoff. No commits were pushed.
+
+### October 16, 2026: consistent notification previews and portal pages
+
+Implemented on `fix/portal-notifications`, based on merged `main` at `beda044`.
+The buyer notification interaction now applies to every signed-in web role,
+while each portal retains its own layout and appearance.
+
+| Before | Current behavior |
+|---|---|
+| Only buyers could open a compact recent-updates preview. Other bells navigated immediately to the full list. | Buyer, seller, courier, company administrator, hub handler and Platform Admin bells open the same bounded owned preview with a separate “View all notifications” action. |
+| Non-buyer history used an isolated header and dropped the operational navigation. | Buyers keep the marketplace shell; riders keep their sidebar, bottom navigation, account controls and actual duty/assignment; sellers, hub staff and admins keep their existing dashboard shell. |
+| Limited workers used the same isolated history presentation. | Applicants and restricted workers retain the account gateway and their owned updates without a duty switch, operational navigation or new operational permission. Buyers retain their existing marketplace application behavior. |
+| Failed opening could dismiss the buyer preview, and preview reads left an already-open history list stale. | Failed actions retain visible feedback and retry controls. Successful preview reads refresh only the current notification list and summary when that page is open. A depleted later unread page returns to an existing page. |
+
+The shared preview uses the installed accessible popover component for floating
+placement, focus and dismissal. Its width and height are bounded to the viewport;
+the update rows scroll independently of the close and history controls. Buyer
+corners remain larger and rider controls retain explicit 8px corners. Empty and
+unavailable full-page panels center their explanatory content, and notice dates
+stack beneath titles on narrow screens.
+
+Preview loading remains read-only. Only returned owned rows rendered in the
+opened panel are submitted to the existing atomic acknowledgement service, with
+a six-ID request limit. Unseen updates, unsupported notice types and other
+accounts remain unread. Closing, reopening or changing accounts cancels obsolete
+work; repeated taps cannot start duplicate navigation. Current authorization and
+safe destination resolution still run on the server. Session expiry, unavailable
+storage and network failures retain recoverable feedback. Notification sources,
+custody, account approvals and financial authority are unchanged.
+
+Verification:
+
+- **242 backend cases / 4,019 assertions** pass with zero failures, errors or
+  skips in isolated SQLite `:memory:`. This includes **89 notification cases**,
+  shared ordinary/privileged portal access and buyer message-read regressions.
+- The **42 new portal cases / 1,507 assertions** cover each role/persona on root
+  and portal hosts, bounded private previews, only-displayed acknowledgements,
+  original retry times, late unseen updates, atomic foreign-ID rejection,
+  malformed IDs, 15 held-worker states, actual rider duty and company/hub scope,
+  unavailable storage, closed/unsupported accounts and shrinking unread pages.
+- The final combined JavaScript run passes **326 checks**: **317 frontend** and
+  **nine deployment-helper checks**, including **21 new notification checks**.
+  Rendered component markup covers every portal with populated, empty and
+  unavailable lists. Controlled state/effect checks cover preview activation,
+  rendered-only reads, cancellation/reopening, account changes, focused list
+  refresh, restored counts, duplicate taps and session/server/network recovery.
+  These checks do not launch a browser or establish actual device appearance.
+- TypeScript/Vite production build, scoped PHP formatting and Git whitespace
+  checks pass. An earlier deployment-helper run encountered a host Node shared
+  library startup error; its six-case focused retest and the final complete
+  JavaScript rerun pass without a deployment-script change.
+
+**Scoped engineering assessment: web notification consistency 5/10 → 8.5/10
+locally verified.** The improvement is consistent entry, retained portal context
+and recoverable interactions across roles. This does not increase whole-project,
+security, mobile or deployed-readiness scores. Browser/device appearance and
+Azure acceptance remain unverified. No native API or Flutter implementation,
+dependency, schema migration, database reset or production deployment is included.
+Use the existing [deployment and verification workflow](WEB_AUTH_DEPLOYMENT.md)
+after user publication; this delivery adds no migration or reseeding requirement.
+
+Implementation commits:
+
+- `0e458ea` — `fix(notifications): support owned previews across web roles`
+- `260bad3` — `fix(notifications): keep previews and history inside each portal`
+
+The combined PR title/body remains a local draft at
+`.codex/portal-notifications/PR.md`; it has not been saved on GitHub. The
+documentation commit is reported in the branch handoff. No commits were pushed.
