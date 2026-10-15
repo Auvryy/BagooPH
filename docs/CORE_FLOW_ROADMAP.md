@@ -4829,31 +4829,37 @@ product toolbar; the product feed, category navigation and purchasing rules
 are preserved. Unused shortcut and sample-voucher response data are removed.
 
 The advertisement area uses all five supplied Bagoo banner images as local
-assets. Three appear in a manual carousel with labelled previous/next controls
-and selectable indicators; two supporting ads form a swipeable row on phones,
-a two-column row on tablets and a right-hand column on larger screens. Images
-keep their full aspect ratio with no crop or text overlay. Captions and controls
-sit outside the artwork, and there is no automatic rotation. Empty advertisement
-data renders no section; a single advertisement needs no carousel controls.
+assets in one full-width manual carousel. The final presentation follows the
+requested edge-to-edge treatment: the advertisement extends across the viewport,
+while the surrounding buyer navigation and product grid keep their existing
+width. There are no card borders, visible caption bars or supporting ad boxes.
+Previous/next arrows sit over the left and right image edges, with small slide
+indicators near the bottom. The image keeps its full aspect ratio; its title is
+available to screen readers without a visible text panel. There is no automatic
+rotation. Empty advertisement data renders no section; a single advertisement
+needs no carousel controls.
 
 The five original images totalled 12,379,230 bytes. Their optimized WebP assets
 total **767,890 bytes**, a **93.8% reduction**, at 1880 by 880 pixels each. The
 artwork retains its existing promotional text; it does not create campaigns,
-activate discounts or change checkout totals. Advertisements link to the product
-feed, and a separate View vouchers link opens the existing voucher collection
-with a short explanation that current offers and conditions are listed there.
+activate discounts or change checkout totals. Clicking the artwork opens the
+product feed. Vouchers remain available through the existing buyer account
+pages; the advertisement has no separate text footer.
 
 Verification:
 
-- **98 focused buyer backend tests / 2,656 assertions** pass with zero failures,
-  errors or skips, using isolated SQLite `:memory:`. The selection covers buyer
-  discovery/saved products and buyer access alignment.
-- **46 existing frontend checks** pass across commerce, buyer access and buyer
-  vouchers. The final TypeScript/Vite production build, scoped PHP formatting
-  and Git whitespace checks pass.
+- The initial **98 focused buyer backend tests / 2,656 assertions** pass with
+  zero failures, errors or skips, using isolated SQLite `:memory:`. The selection
+  covers buyer discovery/saved products and buyer access alignment. The later
+  framing/control refinement changes only frontend presentation and this record.
+- **46 existing frontend checks** pass again after the framing refinement across
+  commerce, buyer access and buyer vouchers. The final TypeScript/Vite production
+  build and Git whitespace checks pass; the unchanged PHP controller passed
+  scoped formatting in the initial delivery.
 - Server-rendered markup was inspected for guests and signed-in buyers and for
-  empty, single, carousel-only and full advertisement data. The old shortcut
-  labels are absent and the product feed and voucher link remain available.
+  empty, single, three-image and five-image advertisement data. The old shortcut
+  labels are absent, the product feed remains available, all five slide selectors
+  render and the arrows are positioned inside the borderless advertisement.
   All five local image files and their dimensions were checked; a converted
   asset was also visually inspected for retained artwork.
 
@@ -4863,6 +4869,10 @@ destinations and smaller image payload. Overall buyer/project readiness and
 campaign accuracy are not raised by this visual change. Interactive browser,
 device appearance and Azure rollout remain unverified; no migration or database
 reset is required.
+
+The follow-up **framing and control placement assessment is 6/10 → 8/10** for
+the requested full-width, borderless presentation and image-overlay arrows.
+This is a scoped code/markup assessment, not a browser or device appearance claim.
 
 Implementation commit: `894498f` —
 `feat(buyer): refresh homepage ads and remove shortcut tiles`.
