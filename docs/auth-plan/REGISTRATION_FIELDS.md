@@ -10,8 +10,8 @@ for rejection, retry, permissions and persistence checks.
 
 | Entry | Identity and contact | Application details and evidence |
 |---|---|---|
-| Buyer web signup | First name, optional middle initial, last name, required sex, registration email, password/confirmation; optional birthday, mobile and postal code | Address controls and optional private identity document; identity approval still gates purchases |
-| First Google signup | Verified provider email is fixed; required first/last names and sex; optional middle initial, birthday, mobile and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
+| Buyer web signup | First name, optional middle initial, last name, required sex and adult birthday, registration email, password/confirmation; optional mobile and postal code | Address controls and optional private identity document; identity approval still gates checkout |
+| First Google signup | Verified provider email is fixed; required first/last names, sex and adult birthday; optional middle initial, mobile and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
 | Seller web signup | Separated names, required sex, adult birthday, email, password/confirmation, Philippine account mobile; optional postal code | One unique shop name/root category, pickup address, private ID and business permit |
 | Courier web/native signup | Names, required sex, adult birthday, email, mobile, password/confirmation; optional postal code | Application address, vehicle, plate and licence identifiers, private ID, driver’s licence and OR/CR; native submission also needs verified email and device name |
 | Logistics web signup | Separated names, required sex, adult birthday, email, account mobile, password/confirmation; optional postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
@@ -20,8 +20,9 @@ for rejection, retry, permissions and persistence checks.
 Sex and postal code are visible on all four public forms and the first Google
 application. Sex is required; postal code remains optional. Browser
 location selectors guide entry; submitted names do not establish serviceability.
-Worker birthday and approval remain mandatory. Buyer birthday does not acquire
-the worker age requirement.
+All new buyer accounts, including first Google signup, require a real birth date
+and age 18 or older on the Philippine calendar. Worker birthday and approval
+remain mandatory. Browsing, personal pages and the Bag do not grant checkout approval.
 
 On web signup, sex follows the name fields in the first step. Postal code sits
 beside barangay in the address section, with the street address below; these

@@ -8,6 +8,8 @@ This guide defines presentation across BagooPH. `RIDER_UI_DESIGN.md` applies it 
 
 Design evolves through user feedback; tokens and interaction patterns are deliberate shared choices. Read `AGENTS.md` alongside this guide. Keep existing dependencies and components, the BagooPH name, PHP/₱ amounts, and Plus Jakarta Sans. Authentication retains its split-screen layout and restrained surfaces.
 
+Use Inertia links and visits for same-origin application navigation, and focused requests or partial prop updates for status checks and acknowledgements. Keep useful page state, scroll and feedback while requests finish. A full browser reload is reserved for a real origin, session or asset-version change; ordinary notification reads and form updates should feel continuous. A success message follows the saved server result, and failed updates retain clear retry feedback. New buyer pages and popovers reuse the buyer header, controls and spacing; seller and rider styles remain specific to their own portals.
+
 ## 1. Experience Principles
 
 These are BagooPH applications of established design principles, rather than claims that one visual treatment works for everyone.

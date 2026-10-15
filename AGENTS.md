@@ -33,7 +33,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Roles: buyer, seller, courier, logistics/sorting hub, and admin. Pickup and delivery riders are courier phases, not separate account roles unless existing code says otherwise.
 - An account's role is fixed when created. Do not add role-conversion controls or mutate an existing account's role; another role requires a separate account and its documented approval.
 - Keep the original registration/sign-in email while the account exists. Additional contact/recovery emails require current-password confirmation and emailed OTP verification; they never replace the sign-in identity. Personal/shop contact numbers, avatars, branding and future delivery addresses are ordinary owner edits. Reviewed legal identity, birth date, shop name/category/pickup address and private identity/licence/vehicle evidence use the existing correction review inside role settings. Contact/branding edits must preserve shop approval and catalogue eligibility.
-- Registration requires the documented approval authority before portal access.
+- Registration requires the documented approval authority before operational portal access. Buyers may browse, use their own profile/history and view their Bag before approval; active or pending buyers may change Bag items. Checkout still requires an active approved account. New buyer registrations require a real birth date proving age 18 or older.
 - One seller account owns one shop, created at registration with one of the 14 master root categories. Do not add extra-shop creation or seller shop switching. Products stay within that approved root and its active descendants; reviewed scope changes require the existing correction process.
 - Canonical order flow:
   `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> PICKED_UP -> AT_SORTING_CENTER -> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED`.
@@ -61,6 +61,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
 - Avoid gradients and ornamental clutter on authentication screens. Preserve the split-screen login/register layout.
 - Floating navigation menus must be absolute and must not shift layout. Preserve the existing overlap/grace-period pattern.
+- Prefer Inertia navigation and focused updates for ordinary same-origin actions. Preserve useful state and scroll, show saved-result feedback and avoid unnecessary full browser refreshes. Buyer notification previews and full pages retain the buyer portal's own design and navigation.
 - Keep layouts responsive and avoid continuous GPU-heavy effects.
 
 ## Documentation Routing
