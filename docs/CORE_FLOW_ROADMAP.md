@@ -4882,3 +4882,53 @@ Implementation commit: `894498f` —
 The combined PR title/body remains a local draft at
 `.codex/buyer-home-ads/PR.md`; it has not been saved on GitHub. Publication and
 deployment remain user actions.
+
+### October 15, 2026: advertisement management research and proposed deliveries
+
+Prepared [the advertisement management plan](advertisement-plan/README.md) on
+`docs/advertisement-management-plan`, based on `55f22a3`, which includes the
+accepted buyer advertisement grid. This is a documentation proposal, not a new
+advertisement writer, public campaign page or paid-ad capability.
+
+Static integration audit:
+
+| Inspected source | Finding and planned boundary |
+|---|---|
+| [BuyerHomeController](../app/Http/Controllers/Buyer/BuyerHomeController.php) | Supplies five static local artwork references with id/title/image. It does not choose content from saved approval, schedule or placement records. |
+| [BuyerAdvertisements](../resources/js/Components/BuyerAdvertisements.tsx) | Uses three carousel slides and two supporting images; every artwork link currently targets `#product-feed`. The plan keeps the layout and replaces generic links with typed, validated destinations. |
+| [Seller settings](../app/Http/Controllers/Seller/SellerDashboardController.php) and [storefront branding](../app/Http/Controllers/MarketplaceController.php) | Existing owner-scoped logo/banner/description edits remain ordinary branding. A shop banner is not permission to occupy the marketplace homepage. |
+| [VoucherCampaignService](../app/Services/Vouchers/VoucherCampaignService.php) and [buyer collection](../app/Http/Controllers/Buyer/BuyerProfileController.php) | Reuse published offer revisions, funding/eligibility and owned saving/selection rather than creating discounts from an image or duplicating campaign accounting. |
+| [Web routes](../routes/web.php) and inspected models/controllers/migrations | Product, shop, category/search and owned voucher destinations exist. No dedicated advertisement authoring/scheduling resource or public editorial collection/offer-terms destination was identified in this audit; those are proposed work. |
+
+The [official research notes](advertisement-plan/REFERENCES.md) distinguish
+merchant storefront decoration, seller-managed paid shop ads and controlled
+homepage/display inventory. They do not claim access to internal marketplace
+staffing or a universal approval process. Bagoo's proposal assigns marketplace
+editorial ownership to existing Platform Admin, preserves seller branding and
+adds later review of exact seller-submitted revisions.
+
+The four proposed batches are AD01 platform management, AD02 buyer destinations
+and scheduled display, AD03 seller submissions, and AD04 non-billing measurement
+and combined release checks. AD01 + AD02 are the recommended first branch, with
+separate gates; later batches are not automatic authorization. Proposed dated
+windows remain planning assumptions within the November 20 delivery boundary.
+
+The plan includes realistic upload/content limits, position conflicts, read-time
+expiry without scheduler dependence, unavailable targets/assets, truthful offer
+claims, stale/duplicate writes and an additive rollout/disable path. Existing
+11.11/discount/free-shipping artwork needs supported offer terms before future
+managed publication; the plan neither changes today's images nor activates a
+discount. No application code, schema, seed data or operational behavior changed.
+No runtime readiness score is raised by documentation coverage.
+
+Documentation validation checked **431 local file links across ten documents**
+with no missing targets. Batch references/dependencies and whitespace were
+reviewed. The four linked official research sources were consulted; their market,
+date and evidence limits are recorded in the references. Plan commit:
+`801e737` — `docs(advertisements): plan ownership, destinations and delivery`.
+
+UI/backend implementation tests, database concurrency, browser/device acceptance
+and Azure deployment remain work for selected future batches. No runtime tests
+or production build were run for this documentation-only proposal. The routing
+commit is reported in the planning branch handoff. The PR title/body is a local
+draft at `.codex/advertisement-plan/PR.md`; it has not been saved on GitHub.
