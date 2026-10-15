@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -11,6 +12,13 @@ Artisan::command('inspire', function () {
 
 Schedule::command('pickup:process-due')->everyMinute()->withoutOverlapping();
 Schedule::command('notifications:deliver-pending')->everyMinute()->withoutOverlapping();
+
+Artisan::command('advertisements:prune-events', function () {
+    $count = app(AdvertisementMeasurementService::class)->prune();
+    $this->info("Removed {$count} expired advertisement event records; daily totals are retained.");
+})->purpose('Remove anonymous advertisement event records after seven days');
+
+Schedule::command('advertisements:prune-events')->daily()->withoutOverlapping();
 
 Artisan::command('rider-companies:expire-offers {--limit=100}', function () {
     $limit = $this->option('limit');

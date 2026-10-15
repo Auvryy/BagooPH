@@ -3,9 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AdvertisementRevision extends AdvertisementEvidence
 {
+    public function publications(): HasMany
+    {
+        return $this->hasMany(AdvertisementPublication::class, 'revision_id');
+    }
+
     protected $casts = ['product_ids' => 'array', 'starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime',
         'destination_id' => 'integer', 'offer_revision_id' => 'integer', 'imported_candidate' => 'boolean'];
 

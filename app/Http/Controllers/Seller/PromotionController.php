@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\HandlesAdvertisementWrites;
 use App\Models\AdvertisementAsset;
+use App\Services\Advertisements\AdvertisementReportingService;
 use App\Services\Advertisements\PromotionPresentation;
 use App\Services\Advertisements\SellerPromotionService;
 use Illuminate\Http\Request;
@@ -14,6 +15,11 @@ use Inertia\Inertia;
 class PromotionController extends Controller
 {
     use HandlesAdvertisementWrites;
+
+    public function report(Request $request, AdvertisementReportingService $reports)
+    {
+        return Inertia::render('Shared/AdvertisementPerformance', [...$reports->report($request->user(), $request, seller: true), 'baseUrl' => $this->baseUrl($request)]);
+    }
 
     public function index(Request $request, PromotionPresentation $view)
     {

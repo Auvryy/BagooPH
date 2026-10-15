@@ -8,6 +8,7 @@ use App\Models\AdvertisementAsset;
 use App\Services\Advertisements\AdvertisementAdminService;
 use App\Services\Advertisements\AdvertisementInput;
 use App\Services\Advertisements\AdvertisementManager;
+use App\Services\Advertisements\AdvertisementReportingService;
 use App\Services\Advertisements\PromotionPresentation;
 use App\Services\Advertisements\SellerPromotionService;
 use Illuminate\Http\Request;
@@ -18,6 +19,11 @@ use Inertia\Inertia;
 class AdvertisementController extends Controller
 {
     use HandlesAdvertisementWrites;
+
+    public function report(Request $request, AdvertisementReportingService $reports)
+    {
+        return Inertia::render('Shared/AdvertisementPerformance', [...$reports->report($request->user(), $request), 'baseUrl' => $this->baseUrl($request)]);
+    }
 
     public function index(Request $request, AdvertisementAdminService $ads)
     {

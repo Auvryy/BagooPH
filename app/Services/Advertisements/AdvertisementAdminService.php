@@ -71,7 +71,7 @@ class AdvertisementAdminService
         $revision = $ad->revisions()->with('asset')->when($revisionId, fn ($query) => $query->whereKey($revisionId))->latest('id')->firstOrFail();
         $position = $slot ?? $revision->slot ?? 'main_1';
         $ownedPlacements = $ad->publications()->pluck('id');
-        $banners = collect(app(AdvertisementReader::class)->homepage())->reject(fn ($banner) => $banner['slot'] === $position || $ownedPlacements->contains($banner['id']))->values();
+        $banners = collect(app(AdvertisementReader::class)->homepage(measure: false))->reject(fn ($banner) => $banner['slot'] === $position || $ownedPlacements->contains($banner['id']))->values();
         $banners->push(['id' => -$revision->id, 'title' => $revision->title, 'alt_text' => $revision->alt_text,
             'image' => app(AdvertisementReader::class)->imageUrl($revision->asset, true), 'width' => $revision->asset->width, 'height' => $revision->asset->height,
             'slot' => $position, 'placement' => str_starts_with($position, 'main_') ? 'main' : 'side', 'href' => '#advertisement-preview']);
