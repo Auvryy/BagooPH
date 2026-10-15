@@ -10,22 +10,30 @@ import { createInertiaApp } from '@inertiajs/react';
 
 const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-advertisements-'));
-after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.route; delete globalThis.adTestHooks; delete globalThis.adFormData; });
+after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.route; delete globalThis.adTestHooks; delete globalThis.adFormData; delete globalThis.adReviewState; });
 const bundle = await build({
     stdin: { contents: `export { default as Banners } from '@/Components/BuyerAdvertisements';
         export { default as Promotion } from '@/Pages/Buyer/Promotion';
         export { default as Terms } from '@/Components/AdvertisementOfferTerms';
         export { default as AdminList } from '@/Pages/Admin/Advertisements/Index';
         export { default as AdminEditor } from '@/Pages/Admin/Advertisements/Edit';
-        export { default as Preview } from '@/Pages/Admin/Advertisements/Preview';`, resolveDir: root, loader: 'tsx' },
+        export { default as Preview } from '@/Pages/Admin/Advertisements/Preview';
+        export { default as Review } from '@/Pages/Admin/Advertisements/Review';
+        export { default as SellerList } from '@/Pages/Seller/Promotions/Index';
+        export { default as SellerEditor } from '@/Pages/Seller/Promotions/Edit';
+        export { default as SellerPreview } from '@/Pages/Seller/Promotions/Preview';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
     plugins: [{ name: 'advertisement-interaction-hooks', setup(builder) {
-        builder.onResolve({ filter: /^react$/ }, args => args.namespace === 'ad-hooks' ? { path: 'react', external: true }
-            : args.importer.endsWith('/BuyerAdvertisements.tsx') ? { path: 'ad-hooks', namespace: 'ad-hooks' } : undefined);
+        builder.onResolve({ filter: /^react$/ }, args => ['ad-hooks', 'ad-review-hooks'].includes(args.namespace) ? { path: 'react', external: true }
+            : args.importer.endsWith('/BuyerAdvertisements.tsx') ? { path: 'ad-hooks', namespace: 'ad-hooks' }
+            : args.importer.endsWith('/Advertisements/Review.tsx') ? { path: 'ad-review-hooks', namespace: 'ad-review-hooks' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'ad-hooks' }, () => ({ contents: `import React from 'react';
             export const useState = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(initial) : React.useState(initial);` }));
+        builder.onLoad({ filter: /.*/, namespace: 'ad-review-hooks' }, () => ({ contents: `import React from 'react';
+            export const useState = initial => React.useState(() => { const h = globalThis.adReviewState;
+                const i = h ? h.index++ : -1; return h && Object.hasOwn(h.values, i) ? h.values[i] : typeof initial === 'function' ? initial() : initial; });` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => args.namespace === 'ad-forms' ? { path: '@inertiajs/react', external: true }
-            : args.importer.endsWith('/Advertisements/Edit.tsx') ? { path: 'ad-forms', namespace: 'ad-forms' } : undefined);
+            : /\/(?:Advertisements|Promotions)\/Edit\.tsx$/.test(args.importer) ? { path: 'ad-forms', namespace: 'ad-forms' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'ad-forms' }, () => ({ contents: `export * from '@inertiajs/react';
             import { useForm as realForm } from '@inertiajs/react';
             export const useForm = initial => { const form = realForm(initial); return globalThis.adFormData ? { ...form, data: { ...form.data, ...globalThis.adFormData } } : form; };` }));
@@ -159,4 +167,93 @@ test('a stale admin editor retains entered details but requires reload before ap
         assert.match(html.match(/<button\b[^>]*>Publish now<\/button>/)[0], /disabled=""/);
         assert.match(html.match(/<button\b[^>]*>Schedule<\/button>/)[0], /disabled=""/);
     } finally { delete globalThis.adFormData; }
+});
+
+const savedRevision = { id: 11, revision_number: 1, title: 'Reviewed shop artwork', alt_text: 'Actual submitted artwork', summary: 'The original submitted message.', purpose: 'feature',
+    destination_type: 'product', destination_id: 1, product_ids: [], offer_revision_id: null, slot: null, starts_at: '2026-10-15T10:00', ends_at: '2026-10-16T10:00',
+    image: '/private/artwork/11', image_bytes: 40000, width: 1880, height: 880, target: { label: 'Everyday bag', url: '/product/everyday-bag' }, offer: null, imported_candidate: false };
+const submission = { id: 20, revision_id: 11, state: 'pending', submitted_at: '2026-10-15T02:00:00Z', revision: savedRevision, can_review: true, reviews: [] };
+const sellerPromotion = { id: 4, version: 3, title: savedRevision.title, creator: 'Maria Santos', owner_type: 'seller', shop_name: 'Bagoo Crafts', target: savedRevision.target,
+    state: 'draft', review_state: 'pending', has_draft: true, archived: false, draft: savedRevision, submissions: [submission], publications: [], history: page([]), can_submit_revision: false, can_stop: true };
+const sellerOptions = { products: [{ id: 1, name: 'Everyday bag', shop_id: 3 }], shops: [{ id: 3, name: 'Bagoo Crafts' }], categories: [], offers: [] };
+const sellerProps = promotion => ({ promotion, shop: { id: 3, name: 'Bagoo Crafts' }, canSubmit: true, options: sellerOptions, baseUrl: '/seller/promotions' });
+const reviewProps = advertisement => ({ advertisement, slots: ['main_1', 'side_1'], displayEnabled: true, baseUrl: '/admin/advertisements' });
+
+test('seller draft has the real upload limits and owned destinations without publication or position controls', async () => {
+    const html = await render(ui.SellerEditor, sellerProps(null), 'seller');
+    for (const text of ['Private draft', '5 MiB (5,242,880 bytes)', '47:22', 'Your product', 'Your shop offer', 'Requested start (Asia/Manila)', 'Save draft']) assert.ok(html.includes(text), text);
+    assert.match(html, /accept="image\/jpeg,image\/png,image\/webp"/);
+    assert.doesNotMatch(html, /<option value="main_1"|>Publish now<|type="url"/);
+});
+test('seller review and actual display state remain separate and duplicate submission is disabled', async () => {
+    const html = await render(ui.SellerEditor, sellerProps(sellerPromotion), 'seller');
+    assert.match(html, /Review: <strong>Under review<\/strong>/);
+    assert.match(html, /Display: <strong>Not published<\/strong>/);
+    assert.match(html.match(/<button\b[^>]*>Waiting for review<\/button>/)[0], /disabled=""/);
+    assert.match(html, /Withdraw this version/);
+});
+test('a restricted shop can stop its owned promotion while new draft controls are disabled', async () => {
+    const html = await render(ui.SellerEditor, { ...sellerProps(sellerPromotion), canSubmit: false }, 'seller');
+    assert.match(html, /Your shop cannot submit new work/);
+    assert.doesNotMatch(html.match(/<button\b[^>]*>Stop promotion<\/button>/)[0], /disabled=/);
+    assert.match(html, /<fieldset disabled=""/);
+});
+test('seller stale forms keep entered values and block submitting a different saved version', async () => {
+    globalThis.adFormData = { source_version: 2, title: 'My retained seller draft' };
+    try {
+        const html = await render(ui.SellerEditor, sellerProps({ ...sellerPromotion, review_state: 'not_submitted', can_submit_revision: true }), 'seller');
+        assert.match(html, /The saved promotion changed/);
+        assert.match(html, /value="My retained seller draft"/);
+        assert.match(html.match(/<button\b[^>]*>Submit for review<\/button>/)[0], /disabled=""/);
+    } finally { delete globalThis.adFormData; }
+});
+test('admin review displays the exact submitted artwork even when a newer private draft exists', async () => {
+    const ad = { ...sellerPromotion, draft: { ...savedRevision, id: 12, title: 'Unsubmitted replacement', image: '/private/artwork/12' },
+        review_state: 'not_submitted', submissions: [{ ...submission, state: 'approved', can_review: false }] };
+    const html = await render(ui.Review, reviewProps(ad), 'admin');
+    assert.match(html, /<img src="\/private\/artwork\/11"/);
+    assert.doesNotMatch(html, /<img src="\/private\/artwork\/12"/);
+    assert.match(html, /<h3[^>]*>Reviewed shop artwork<\/h3>/);
+    assert.match(html, /Approval does not reserve a position/);
+    assert.match(html, /Homepage placement/);
+    assert.match(html.match(/<button\b[^>]*>Approve version<\/button>/)[0], /disabled=""/);
+});
+test('approval alone does not enable direct publication for a pending seller submission', async () => {
+    const html = await render(ui.Review, reviewProps(sellerPromotion), 'admin');
+    assert.match(html, /Approve version/);
+    assert.doesNotMatch(html, /<h2[^>]*>Homepage placement<\/h2>|>Publish now</);
+    assert.match(html.match(/<button\b[^>]*>Request changes<\/button>/)[0], /disabled=""/);
+});
+test('a stale review keeps the note and blocks approval even if the old confirmation was checked', async () => {
+    globalThis.adReviewState = { index: 0, values: { 0: 2, 6: true, 7: 'My retained review note' } };
+    try {
+        const html = await render(ui.Review, reviewProps(sellerPromotion), 'admin');
+        assert.match(html, /This promotion changed/);
+        assert.match(html, /My retained review note/);
+        assert.match(html, /type="checkbox"[^>]*checked=""/);
+        assert.match(html.match(/<button\b[^>]*>Approve version<\/button>/)[0], /disabled=""/);
+    } finally { delete globalThis.adReviewState; }
+});
+test('seller empty state is centered and explains that branding stays in Settings', async () => {
+    const html = await render(ui.SellerList, { promotions: page([]), shop: { id: 3, name: 'Bagoo Crafts' }, available: true, canSubmit: true, baseUrl: '/seller/promotions', filters: {} }, 'seller');
+    assert.match(html, /items-center justify-center/);
+    assert.match(html, /No promotions found/);
+    assert.match(html, /Shop logo, banner, description and contact edits remain in Settings/);
+});
+test('seller private preview uses the saved rendition and viewport controls without publishing a request', async () => {
+    const html = await render(ui.SellerPreview, { promotionId: 4, revision: savedRevision, baseUrl: '/seller/promotions' }, 'seller');
+    assert.match(html, /width:1140px/);
+    assert.match(html, /Preview width/);
+    assert.match(html, /This preview does not submit or publish/);
+    assert.match(html, /src="\/private\/artwork\/11"/);
+    assert.doesNotMatch(html, /href="\/advertisement\//);
+});
+
+test('changed reviewed shop details prevent reuse of a retained approval for placement', async () => {
+    const ad = { ...sellerPromotion, submissions: [{ ...submission, state: 'approved', can_review: false, context_current: false,
+        shop_scope: { name: 'Original Bagoo shop', root_category_name: 'Pet Supplies' } }] };
+    const html = await render(ui.Review, reviewProps(ad), 'admin');
+    assert.match(html, /Submitted shop: Original Bagoo shop/);
+    assert.match(html, /The reviewed shop details changed/);
+    assert.match(html.match(/<button\b[^>]*>Publish now<\/button>/)[0], /disabled=""/);
 });

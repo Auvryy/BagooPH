@@ -11,7 +11,9 @@ class AdvertisementResponseHeaders
     {
         $response = $next($request);
         $response->headers->set('Cache-Control', 'private, no-store');
-        if (str_starts_with((string) $request->route()?->getActionName(), 'App\\Http\\Controllers\\Admin\\AdvertisementController@')) {
+        $action = (string) $request->route()?->getActionName();
+        if (str_starts_with($action, 'App\\Http\\Controllers\\Admin\\AdvertisementController@')
+            || str_starts_with($action, 'App\\Http\\Controllers\\Seller\\PromotionController@')) {
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         }
 

@@ -50,14 +50,15 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
+use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
-use App\Http\Controllers\Seller\SellerDisputeController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
@@ -227,6 +228,16 @@ $registerSellerRoutes = function () {
         Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action']);
         Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
+        Route::prefix('promotions')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+            Route::get('/', [SellerPromotionController::class, 'index']);
+            Route::get('/create', [SellerPromotionController::class, 'create']);
+            Route::post('/', [SellerPromotionController::class, 'store']);
+            Route::get('/artwork/{asset}', [SellerPromotionController::class, 'artwork'])->whereNumber('asset');
+            Route::get('/{advertisement}', [SellerPromotionController::class, 'show'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/draft', [SellerPromotionController::class, 'update'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/actions', [SellerPromotionController::class, 'action'])->whereNumber('advertisement');
+            Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement');
+        });
         Route::get('/messages', [ChatController::class, 'sellerInbox']);
         Route::post('/messages', [ChatController::class, 'sendMessage']);
         Route::post('/chat/send', [ChatController::class, 'sendMessage']);
@@ -388,6 +399,7 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
             Route::get('/{advertisement}', [AdminAdvertisementController::class, 'show'])->whereNumber('advertisement');
             Route::post('/{advertisement}/draft', [AdminAdvertisementController::class, 'update'])->whereNumber('advertisement');
             Route::post('/{advertisement}/actions', [AdminAdvertisementController::class, 'action'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/review', [AdminAdvertisementController::class, 'review'])->whereNumber('advertisement');
             Route::get('/{advertisement}/preview', [AdminAdvertisementController::class, 'preview'])->whereNumber('advertisement');
         });
         Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
@@ -610,6 +622,16 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show'])->name('vouchers.show');
     Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action'])->name('vouchers.action');
+    Route::prefix('promotions')->name('promotions.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
+        Route::get('/', [SellerPromotionController::class, 'index'])->name('index');
+        Route::get('/create', [SellerPromotionController::class, 'create'])->name('create');
+        Route::post('/', [SellerPromotionController::class, 'store'])->name('store');
+        Route::get('/artwork/{asset}', [SellerPromotionController::class, 'artwork'])->whereNumber('asset')->name('artwork');
+        Route::get('/{advertisement}', [SellerPromotionController::class, 'show'])->whereNumber('advertisement')->name('show');
+        Route::post('/{advertisement}/draft', [SellerPromotionController::class, 'update'])->whereNumber('advertisement')->name('update');
+        Route::post('/{advertisement}/actions', [SellerPromotionController::class, 'action'])->whereNumber('advertisement')->name('action');
+        Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement')->name('preview');
+    });
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
@@ -688,6 +710,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/{advertisement}', [AdminAdvertisementController::class, 'show'])->whereNumber('advertisement')->name('show');
         Route::post('/{advertisement}/draft', [AdminAdvertisementController::class, 'update'])->whereNumber('advertisement')->name('update');
         Route::post('/{advertisement}/actions', [AdminAdvertisementController::class, 'action'])->whereNumber('advertisement')->name('action');
+        Route::post('/{advertisement}/review', [AdminAdvertisementController::class, 'review'])->whereNumber('advertisement')->name('review');
         Route::get('/{advertisement}/preview', [AdminAdvertisementController::class, 'preview'])->whereNumber('advertisement')->name('preview');
     });
     Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');

@@ -131,6 +131,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Tag, 
                     current: component.startsWith('Seller/Voucher') || route().current('seller.vouchers.*') || url.startsWith('/seller/vouchers') 
                 },
+                { name: 'Promotions', href: route('seller.promotions.index'), icon: ImagePlus, current: component.startsWith('Seller/Promotions/') },
                 { 
                     name: 'Messages', 
                     href: route('seller.messages.index'), 

@@ -14,10 +14,12 @@ export interface Draft {
 export interface Publication {
     id: number; revision_id: number; slot: string; title: string; state: string; reason: string | null;
     starts_at: string; ends_at: string; effective_end: string;
+    replaces_publication_id?: number | null;
 }
 export interface AdvertisementSummary {
     id: number; version: number; title: string; creator: string; target: Destination; state: string; reason: string | null;
     has_draft: boolean; archived: boolean; slot: string | null; image: string | null; starts_at: string | null; ends_at: string | null;
+    owner_type?: 'platform' | 'seller'; shop_name?: string | null; review_state?: string; current_submission_id?: number | null;
 }
 export interface Pagination<T> {
     data: T[]; current_page: number; last_page: number; total: number;
@@ -36,6 +38,21 @@ export interface Options {
     offers: { id: number; name: string; code: string; shop_id: number | null; starts_at: string; ends_at: string }[];
 }
 export const slotLabel = (slot: string | null) => slot ? `${slot.startsWith('main') ? 'Main slide' : 'Side image'} ${slot.split('_')[1]}` : 'Not selected';
+export interface PromotionSubmission {
+    id: number; revision_id: number; state: string; submitted_at: string; revision: Draft; can_review: boolean;
+    context_current?: boolean; shop_scope?: { shop_id: number; seller_id: number; name: string; root_category_id: number; root_category_name: string | null };
+    eligibility_problem?: string | null; products?: { id: number; name: string; price: string | number; url: string }[];
+    reviews: { id: number; decision: string; actor: string; actor_role: string; reason: string | null; created_at: string }[];
+}
+export interface PromotionDetail extends AdvertisementDetail {
+    can_submit_revision: boolean; can_stop: boolean; submissions: PromotionSubmission[];
+}
+export const reviewLabel = (state: string = 'not_submitted') => (({
+    not_submitted: 'Not submitted', pending: 'Under review', approved: 'Approved', changes_requested: 'Changes requested',
+    rejected: 'Rejected', withdrawn: 'Withdrawn', superseded: 'Replaced',
+} as Record<string, string>)[state] ?? stateLabel(state));
+export const displayLabel = (state: string) => state === 'draft' ? 'Not published' : stateLabel(state);
+export const manilaInput = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600000).toISOString().slice(0, 16);
 export const dateLabel = (value: string | null) => value ? new Intl.DateTimeFormat('en-PH', {
     timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short',
 }).format(new Date(value)) : 'Not scheduled';
