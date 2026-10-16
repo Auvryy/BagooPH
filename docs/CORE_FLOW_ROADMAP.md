@@ -5330,6 +5330,52 @@ stack summary still names Laravel 12. This review uses the installed/locked
 dependencies and does not change either the dependency constraint or lifecycle
 policy.
 
+## October 16, 2026: responsive navigation and search planning
+
+The user reported marketplace pagination showing a second page but no apparent
+screen change on selection, and requested a system-wide plan for faster
+navigation and product search. The screenshot is evidence of the report, not a
+reproduction or a verified root cause. No seed reset or runtime repair was
+performed during this planning review.
+
+Source inspection found:
+
+- The active buyer home and search controllers use `BuyerDiscoveryService`,
+  with 18 and 24 products per page respectively, deterministic ID tie-breaking
+  and last-page recovery. `Buyer/Home` and `Buyer/Search` render paginator URLs
+  with `preserveScroll`; actual request, response IDs and viewport behavior
+  need to be distinguished in the first implementation batch.
+- The existing buyer discovery test covers filtered search pagination. That
+  source coverage does not prove the reported home/paging UI path or Azure
+  deployment works; no application test suite was run for this document change.
+- The shared product card has no enabled page prefetching. The installed
+  Inertia React 2.3.27/core implementation supports it. Header search currently
+  submits a route and initializes its input from the URL; responsive typing,
+  late-response handling and history synchronization need explicit acceptance.
+- Product detail responses include owned Bag quantities/offers, and shared
+  Inertia props include account/hub data and feedback. The middleware retains
+  private/no-store headers. A cache must isolate this context separately from
+  HTTP caching.
+- `ChatController::getMessages` changes unread state during a read. Therefore
+  indiscriminate GET/link prefetching is unsafe; activity, session feedback and
+  operational secrets require explicit exclusions or a verified read redesign.
+
+The [performance plan](performance-plan/README.md) proposes five bounded
+deliveries: PF01 working product pagination, responsive search and the initial
+shared policy; PF02 buyer/seller navigation; PF03 courier web/logistics; PF04
+admin; PF05 performance measurement and combined acceptance. Each plan keeps
+portal style, current authorization, mutation freshness, meaningful failure
+feedback and independent acceptance gates. Bounded idle preparation targets one
+likely next page rather than an entire catalogue. Current operational queues,
+private evidence, secret codes, acknowledgements and financial decisions are not
+treated as cacheable authority.
+
+**Status: planning only.** Documentation/source-reference checks are recorded in
+the branch handoff. The reported pagination behavior remains unresolved until
+PF01 is selected and verified. No runtime speed, whole-system readiness or
+before/after feature rating is raised by this documentation delivery. Browser,
+Azure, Flutter, PostgreSQL concurrency and production load checks were not run.
+
 ## October 16, 2026: verified architecture, stack and presentation documentation
 
 Implemented on `docs/verified-architecture-stack`, from merged `main` at
