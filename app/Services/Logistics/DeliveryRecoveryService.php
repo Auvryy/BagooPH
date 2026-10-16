@@ -146,7 +146,9 @@ class DeliveryRecoveryService
             $existing = DeliveryRecoveryEvent::where('delivery_id', $parcel->id)->where('request_token', $input['request_token'])->first();
             if ($existing) {
                 $fingerprint = $this->fingerprint([$actor->id, $existing->delivery_attempt_id, $input['notes'], $retryAt->toIso8601String()]);
-                if ($existing->event_type !== 'retry_approved' || $existing->actor_id !== $actor->id || ! hash_equals($existing->request_fingerprint, $fingerprint)) {
+                if ($existing->event_type !== 'retry_approved' || $existing->actor_id !== $actor->id || ! $existing->attempt
+                    || ($input['attempt_reference'] ?? null) !== $existing->attempt->reference
+                    || ! hash_equals($existing->request_fingerprint, $fingerprint)) {
                     throw new DomainException('This retry request was already used with different details.');
                 }
 
