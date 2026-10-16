@@ -33,6 +33,8 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 Audit baseline: September 24, 2026. Later scoped reviews below update the relevant areas; they do not certify every role.
 
+The audit and quality table below retain that historical baseline; later dated entries supersede only their named areas. They are not a fresh whole-system rating. Current software versions and request/deployment architecture are verified in [TECH_STACK.md](TECH_STACK.md) and [ARCHITECTURE.md](ARCHITECTURE.md); use [the presentation guide](TECH_STACK_PRESENTATION.md) for an explanation of the existing choices.
+
 Scoped rider lifecycle lockdown review: October 3, 2026. This review updates entry-point, portal-access, tracking-privacy, and delivery-evidence controls; it is not a fresh audit of every role.
 
 Scoped account/resource restriction review: October 5, 2026, B06+B07. This updates governance decisions, independent activity, and retained work; overall phase and cross-role ratings remain unchanged.
@@ -109,7 +111,7 @@ Scoped scanner/counter queue completion: October 11, 2026. The scanner now uses 
 
 These scores measure the approved core flow, not deferred enterprise features. Documentation changes do not raise the current implementation score until the corresponding controls are implemented and tested.
 
-| Role or flow | Current implementation | Target after required phases | Main improvement required |
+| Role or flow | Baseline implementation | Target after required phases | Main improvement required |
 |---|---:|---:|---|
 | Buyer | 7/10 | 10/10 | Private tracking, secure self-pickup, notifications, and COD-aware completion/settlement visibility |
 | Seller | 8/10 | 10/10 | RTS receipt, settlement states, archival history, and notifications |
@@ -5327,3 +5329,70 @@ The executable dependency currently requires Laravel `^13.17`; the `AGENTS.md`
 stack summary still names Laravel 12. This review uses the installed/locked
 dependencies and does not change either the dependency constraint or lifecycle
 policy.
+
+## October 16, 2026: verified architecture, stack and presentation documentation
+
+Implemented on `docs/verified-architecture-stack`, from merged `main` at
+`6d2ff6a`. This is a documentation review; application and deployment behaviour
+are unchanged. [The review record](DOCUMENTATION_REVIEW.md) explains the scope,
+corrections, source evidence and verification limits.
+
+The reference stack now identifies Laravel 13.32.0, React 18.3.1, TypeScript
+5.9.3, Inertia's version-2 adapters, Tailwind 3.4.19 and Vite 6.4.3 from the lock
+files. A read-only local runtime probe confirms PHP 8.4.24 and the installed
+Laravel/Inertia/Sanctum versions; twelve inspected frontend package installations
+match their locks. Compose defines PHP-FPM, Nginx and PostgreSQL 16. Allowed
+ranges, resolved packages, container tags and live server state are distinguished.
+The earlier dated notes about the Laravel-12 instruction mismatch remain
+historical; the current instruction and reference files now name Laravel 13.
+
+[TECH_STACK.md](TECH_STACK.md) explains each technology and optional supporting
+integration. [ARCHITECTURE.md](ARCHITECTURE.md) maps the shared Laravel services,
+React/Inertia web pages, bearer-token JSON API, transactions, storage and actual
+background/deployment boundaries. [TECH_STACK_PRESENTATION.md](TECH_STACK_PRESENTATION.md)
+provides a plain-language opening, six-part outline, practical rationale,
+request example and questions about REST-style interfaces, authentication,
+container hosting, persistence and verification.
+
+Root setup/context, duplicate agent references, test guidance, physical-logistics
+routing and deployment references now point to those sources. Old credentials,
+one-click demo claims, separate courier-role labels, role conversion, simulator
+routes and automatic delivery-time payout/fixed-rider-fee claims are removed
+from current overviews. The native account guide now matches the required-sex
+validator and options controller; registration postal code remains optional and
+four digits when supplied. Historical/source material and intended branch plans
+retain their separate authority.
+
+Verification:
+
+- All Markdown documents in the tracked inventory plus new guides are scanned
+  for stack/architecture drift. Repository-wide local-link/heading and changed
+  source-reference checks pass; changed Markdown code fences are balanced.
+- Twenty locked PHP/frontend package versions are checked, with the local
+  runtime and twelve frontend installations above. Composer manifest/lock
+  validation passes. An initial Git ownership warning was avoided for the final
+  check using process-scoped safe-directory settings, with no global Git change.
+- Laravel's isolated route listing contains **733 application route registrations**;
+  all **seven endpoint examples** in the architecture match method/path pairs.
+  No operational HTTP requests are made, and retired simulator paths are absent.
+- A guarded isolated SQLite `:memory:` migration inspection produces **98 tables**.
+  [SCHEMA.md](SCHEMA.md) inventories every table exactly once and verifies selected
+  columns in ten core tables. Actual current variants, identity fields, custody
+  sources, COD and settlement records replace the old partial schema claims.
+- All **nine demo account addresses** and the documented seeded password match
+  the current seeders. Helper command references match `bagoo.sh`; a fresh-clone
+  setup was not executed. Git whitespace and documentation-only change checks pass.
+
+**Scoped documentation assessment: 4/10 before -> 8.5/10 after.** Current stack,
+request boundaries, source-backed data context and presentation explanations are
+clearer and traceable. This is a documentation assessment, not a higher runtime,
+security, role or project-readiness rating.
+
+No application source, dependency, route, migration, seed record or server
+configuration is changed. Functional suites and the asset build were not rerun
+for unchanged runtime code. No development/production database read/reset,
+PostgreSQL test, Azure connection/deployment, real provider/mail call, visible
+browser, screenshot or external Flutter-repository inspection was performed.
+Mermaid structure was checked without browser rendering. Live environment,
+background processes, HTTPS/firewall/backups, mail delivery and native device
+behaviour retain their separate acceptance requirements.
