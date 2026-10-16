@@ -5,7 +5,7 @@
 *Platform Design, Entity Hierarchy & Highway Network Delimitation*
 
 > **Source:** Master Architecture Technical Specification & Teacher Brainstorming Notes (September 2026).
-> Operational behavior is authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Canonical statuses and role ownership are authoritative in `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`. Validation and failure behavior are authoritative in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`. Current implementation status belongs only in `docs/CORE_FLOW_ROADMAP.md`. This document describes architecture and future scope.
+> Operational behavior is authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`. Canonical statuses and role ownership are authoritative in `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`. Validation and failure behavior are authoritative in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`. Current implementation status belongs only in `docs/CORE_FLOW_ROADMAP.md`. This document describes the physical logistics architecture and future scope. For the implemented software architecture and verified dependency versions, use [ARCHITECTURE.md](ARCHITECTURE.md) and [TECH_STACK.md](TECH_STACK.md).
 
 ---
 

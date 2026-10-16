@@ -8,7 +8,7 @@ BagooPH ("Bag & Go") is a practical ecommerce project for a small, supported Phi
 
 The core project covers account review, product discovery, Shopping Bag, validated multi-shop checkout, seller preparation, authenticated road/hub custody, delivery or self-pickup, failure recovery, basic in-app notifications, buyer confirmation, COD reconciliation, and seller settlement. A small set of demo accounts, products, facilities, and route examples is enough to prove these flows.
 
-Use the existing Laravel, React/TypeScript, Inertia, PostgreSQL, and Docker setup. Keep authorization, validation, stock, custody, and money decisions on the server even for a small demonstration. Avoid adding infrastructure or services merely to imitate a large commercial platform.
+Use the existing Laravel 13, React 18/TypeScript, Inertia 2, PostgreSQL 16 and Docker setup. [TECH_STACK.md](TECH_STACK.md) records exact locked versions and [ARCHITECTURE.md](ARCHITECTURE.md) explains the shared web/native backend. Keep authorization, validation, stock, custody, and money decisions on the server even for a small demonstration. Avoid adding infrastructure or services merely to imitate a large commercial platform.
 
 Delivery is land-only on supported contiguous roads. Boats, ports, RORO, sea crossings, and air freight are excluded. Unsupported destinations must fail route/serviceability validation; they cannot skip the Mother Hub or acquire an invented transport leg.
 
@@ -22,7 +22,7 @@ Delivery is land-only on supported contiguous roads. Boats, ports, RORO, sea cro
 | Logistics | Platform Admin reviews the company application; company and facility responsibilities stay scoped to that network |
 | Admin | Controlled existing admin access; no public registration and no inactive/suspended privilege bypass |
 
-Pending/rejected applicants may sign in to their own holding/resubmission screen. Email verification, document upload, company placement, and going on duty cannot substitute for platform approval. Active status and approval are separate gates. Suspension preserves affected orders, custody, and cash through the narrow recovery rules in [ADMIN_FLOW.md](ADMIN_FLOW.md).
+Pending/rejected buyers may sign in to the marketplace with their own application context and permitted personal pages/history. Non-buyer applicants use their own holding/resubmission context. Email verification, document upload, company placement, and going on duty cannot substitute for platform approval. Active status and approval are separate gates. Suspension preserves affected orders, custody, and cash through the narrow recovery rules in [ADMIN_FLOW.md](ADMIN_FLOW.md).
 
 Pickup and delivery are phases of `courier`. Logistics Company Admin and Hub Handler are responsibilities within `logistics`; do not introduce extra public roles or conflate a company application with a rider application.
 

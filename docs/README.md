@@ -16,6 +16,13 @@ Planning starts **October 4, 2026**, with expected completion around **November 
 
 Prioritize the existing core baseline and keep optional additions deferred. Calendar targets do not waive approval, custody, recovery, notification, financial, or test requirements. If work cannot fit, report the capacity or prerequisite gap and obtain a scope decision; do not silently extend the deadline or mark unfinished work complete. Current evidence and schedule risks belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).
 
+## Architecture and Technology
+
+- [Verified technology stack](TECH_STACK.md) records the resolved dependency versions, container/runtime targets, supporting libraries, external boundaries and source evidence. Use it for current technology claims.
+- [Architecture](ARCHITECTURE.md) explains the Laravel monolith, React/Inertia request path, native JSON API, shared domain services, persistence and deployment boundaries.
+- [Technology presentation](TECH_STACK_PRESENTATION.md) provides a short explanation, choice rationale, concrete examples and questions to prepare for.
+- [Documentation review](DOCUMENTATION_REVIEW.md) records the scope, corrections and verification limits of the October 16 source-based review.
+
 ## Normative Product Contracts
 
 | Question | Authoritative document |

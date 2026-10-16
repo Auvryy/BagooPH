@@ -23,7 +23,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 
 ## Stack and Architecture
 
-- Laravel 12, PHP, PostgreSQL, React, TypeScript, Inertia.js, Tailwind CSS, Vite, and Docker Compose.
+- Laravel 13, PHP (Docker PHP-FPM 8.4), PostgreSQL 16, React 18, TypeScript 5, Inertia.js 2, Tailwind CSS 3, Vite 6, and Docker Compose. Exact locked versions and source evidence: `docs/TECH_STACK.md`.
 - Keep business rules in backend services/models; controllers should coordinate requests and responses.
 - Use authorization and validation server-side. Never trust prices, totals, ownership, roles, stock, or status transitions from the client.
 - Prefer existing components, enums, services, patterns, and dependencies. Do not add external or paid services unless explicitly requested.
@@ -69,6 +69,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 Read only the documentation relevant to the task:
 
 - Documentation authority and routing overview: `docs/README.md`
+- Architecture, verified stack and presentation: `docs/ARCHITECTURE.md`, `docs/TECH_STACK.md`, and `docs/TECH_STACK_PRESENTATION.md`
 - System lifecycle or cross-role logic: `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`
 - Input validation, authorization, idempotency, concurrency, failure recovery, and adversarial tests: `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`
 - Forms, authentication, registration, and saved-value checks: `docs/FORM_VALIDATION_REVIEW.md`. Treat its valid, invalid, boundary, permission, and recovery checks as crucial acceptance work for affected forms.

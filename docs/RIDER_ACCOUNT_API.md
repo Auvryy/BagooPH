@@ -2,7 +2,10 @@
 
 This is the implemented local contract for Flutter account access. It uses the
 same users, courier profiles, application validation, private document storage
-and registration service as the web application. It adds no parcel operations.
+and registration service as the web application. This document covers account
+access; [operational routes](api/RIDER_OPERATIONS_API.md) are documented separately.
+See [architecture](ARCHITECTURE.md) and [the verified web stack](TECH_STACK.md) for
+the shared backend and the separate client boundary.
 
 ## Routes under `/api/v1`
 
@@ -20,8 +23,8 @@ The application requires a personal name, `birthday`, `email`, Philippine `phone
 `address`, `city`, `vehicle_type`, `plate_number`, `license_number`, password/confirmation,
 `otp_token`, `device_name` and private `id_document`, `driver_license`,
 `or_cr_document` uploads. The shared validator governs optional province,
-municipality, barangay, sex and postal code. New courier applications require
-the licence identifier on both web and native paths. Sex is optional and uses
+municipality, barangay and postal code; sex is required. New courier applications require
+the licence identifier on both web and native paths. Sex is required and uses
 `Female`, `Male` or `Other`; optional postal code is exactly four ASCII digits
 stored as a string. Images/PDF use the 5 MB-per-file policy (5,242,880 bytes),
 matching content and extension. Images must decode within 10,000 pixels per
@@ -84,7 +87,7 @@ never automatically tick consent to make an old client pass. The backend records
 its own time and source atomically with the account. Existing account login does
 not require invented historical acknowledgement.
 
-Options expose `sex_options`, `sex_required = false`, `postal_code_length = 4`
+Options expose `sex_options`, `sex_required = true`, `postal_code_length = 4`
 and `postal_code_required = false`; show the controls in the initial native
 application, not only later correction. Plate input is at most eight characters
 including one optional separator, with supported vehicle-specific formats.

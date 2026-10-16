@@ -104,8 +104,8 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Notifications use an event idempotency key. A committed business event produces at most one notification per recipient and event type.
 - A notification failure does not roll back a committed order, scan, custody, or money event; it enters a retry path.
 - Terminal orders cannot re-enter active fulfillment. `CANCELLED`, `COMPLETED`, and `RETURNED` reject further operational transitions.
-- Every status-changing route, including public tracking, admin tools, bulk actions, and development simulators, must call the same lifecycle and authorization services. Alternate controllers cannot implement weaker rules.
-- Production disables simulator/reset routes and seeded shortcuts. Public tracking is read-only unless an authenticated role action delegates to the canonical lifecycle service.
+- Every permitted status-changing route, including scoped admin tools and bulk actions, must call the same lifecycle and authorization services. Alternate controllers cannot implement weaker rules.
+- Simulator/reset HTTP mutations are unavailable in every environment. Public tracking is read-only; authenticated operational actions use their own authorized routes and canonical services. Synthetic demo setup never grants an operational shortcut.
 - The system never invents proof images, sample disputes, sample messages, successful scans, or financial entries in a live operational path.
 
 ## 4. Buyer Flow Debug Contract

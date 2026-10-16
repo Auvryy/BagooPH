@@ -2,6 +2,10 @@
 
 Use this guide when local sign-in works but the deployed HTTPS login or logout does not. Inspect the running environment and generated URLs before changing account credentials or approval rules.
 
+For the application and container boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md)
+and [TECH_STACK.md](TECH_STACK.md). This guide describes operator actions; source
+configuration and a local check do not establish the live server state.
+
 ## Production configuration
 
 Keep these values in the server's private `.env`, replacing the domain placeholder with the deployed Bagoo domain:
@@ -40,9 +44,11 @@ Reload the login page before retrying. Check successful login, wrong-password fe
 Deploy the voucher funding migration with the ordinary migration step; do not
 reset the database. It retains order totals, original voucher links, usage counts
 and recorded seller payments. Earlier campaigns are archived because their payer
-and spending budget were not recorded. New seller offers remain drafts until
-reviewed campaign publication is available. Do not reactivate an older offer by
-changing database flags or inventing funding/redemption history.
+and spending budget were not recorded. New offers should be created as properly
+funded drafts and published through the current seller/platform campaign
+workspaces when eligible; see [voucher rollout](voucher-plan/ROLLOUT.md). Do not
+reactivate an older offer by changing database flags or inventing
+funding/redemption history.
 
 ## Build memory on small servers
 
@@ -91,7 +97,9 @@ server's Docker version, firewall rules or Internet reachability.
 
 ## Notification scheduling
 
-The existing Laravel scheduler needs an actual invocation every minute, or a managed `schedule:work` process. It runs both pickup holding checks and `notifications:deliver-pending`; immediate notification delivery happens after the business transaction commits. `schedule:list` shows registered schedules but does not prove that a scheduler process is running.
+The existing Laravel scheduler needs an actual invocation every minute, or a managed `schedule:work` process. `routes/console.php` registers pickup holding checks, `notifications:deliver-pending` and rider-company offer expiry every minute, plus advertisement raw-event cleanup daily. Immediate notification delivery happens after the business transaction commits. `schedule:list` shows registered schedules but does not prove that a scheduler process is running.
+
+Compose starts only the app, web and database services. A scheduler or queue worker needs separate operator configuration; the database queue setting alone does not start a worker. Verify the actual environment without copying private credentials into logs or documentation.
 
 ## Products exist but the catalogue is empty
 
