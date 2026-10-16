@@ -68,6 +68,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const [actionError, setActionError] = useState('');
     const writePending = useRef(false);
     const saved = (page: any) => !page.props.flash?.error;
+    const copySequence = useRef(0);
 
     const [returnSelection, setReturnOrder] = useState<any | null>(null);
     const [returnBarcode, setReturnBarcode] = useState('');
@@ -97,6 +98,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const selectedOrderForWaybill = waybillItem?.order.can_print_waybill ? waybillItem : null;
     const qrItem = currentOrderSelection(items, qrSelection);
     const selectedOrderForQr = qrItem?.order.can_print_waybill ? qrItem : null;
+    const activeQrOrder = useRef<number | null>(null);
+    activeQrOrder.current = selectedOrderForQr?.order_id ?? null;
     const selectedOrderForDetails = currentOrderSelection(items, detailSelection);
     const packItem = currentOrderSelection(items, packSelection);
     const orderToAcceptAndPack = packItem && (packItem.order.can_accept_and_pack || packItem.order.can_pack) ? packItem : null;
@@ -254,10 +257,23 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         });
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        setCopiedTracking(text);
-        setTimeout(() => setCopiedTracking(null), 2000);
+    const copyToClipboard = async (text: string): Promise<boolean> => {
+        const sequence = ++copySequence.current;
+        const qrOrderId = activeQrOrder.current;
+        const isCurrent = () => sequence === copySequence.current && activeQrOrder.current === qrOrderId;
+        setActionError(''); setCopiedTracking(null);
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+            await navigator.clipboard.writeText(text);
+            if (!isCurrent()) return false;
+            setCopiedTracking(text);
+            setTimeout(() => { if (sequence === copySequence.current) setCopiedTracking(null); }, 2000);
+            return true;
+        } catch {
+            if (!isCurrent()) return false;
+            setActionError('The tracking code could not be copied. Select and copy the displayed code instead.');
+            return false;
+        }
     };
 
     const toggleSelectOrder = (orderId: number) => {
@@ -395,7 +411,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
                             >
                                 <Truck className="w-3.5 h-3.5" />
-                                <span>Dispatch Selected ({selectedOrderIds.length})</span>
+                                <span>Mark ready ({selectedOrderIds.length})</span>
                             </button>
                         )}
                     </div>
@@ -1172,6 +1188,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             </p>
                         </div>
 
+                        {actionError && <p role="alert" className="text-xs text-rose-700">{actionError}</p>}
+
                         {/* Large Scannable QR Code */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl inline-block mx-auto shadow-inner">
                             <QRCodeSVG
@@ -1185,7 +1203,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                         </div>
 
                         <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-                            Visiting couriers can scan this QR code directly from your screen with their mobile camera to log instant pickup handover.
+                            The assigned pickup rider can scan this code to identify the parcel. Scanning alone does not confirm collection; complete the authorized pickup check before handing it over.
                         </p>
 
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs font-sans">
@@ -1200,10 +1218,10 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             </a>
                             <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
+                                    const orderId = selectedOrderForQr.order_id;
                                     const trk = selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number;
-                                    copyToClipboard(trk);
-                                    setSelectedOrderForQr(null);
+                                    if (await copyToClipboard(trk) && activeQrOrder.current === orderId) setSelectedOrderForQr(null);
                                 }}
                                 className="py-2.5 px-3 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                             >

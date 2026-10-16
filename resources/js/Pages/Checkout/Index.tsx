@@ -1,5 +1,6 @@
 import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import PhoneInput from '@/Components/PhoneInput';
@@ -210,19 +211,10 @@ export default function CheckoutIndex({
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const orderPending = useRef(false);
+    const errorSummaryRef = useRef<HTMLDivElement>(null);
     const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
     const [validationError, setValidationError] = useState('');
-
-    useEffect(() => {
-        if (showConfirmModal) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [showConfirmModal]);
 
     const quoteInput = {
         item_ids: data.item_ids,
@@ -249,6 +241,7 @@ export default function CheckoutIndex({
     const quotedItems = new Map(quote.items.map(item => [item.id, item]));
     const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
+    const selectedPickupHub = pickupHubs.find(hub => String(hub.id) === String(data.pickup_hub_id));
     const appliedVouchers = pricing.current ? quote.vouchers ?? (quote.voucher ? [quote.voucher] : []) : [];
     const finalShippingFee = quote.shipping_fee - quote.shipping_discount;
     const grandTotal = quote.total;
@@ -341,16 +334,21 @@ export default function CheckoutIndex({
             return;
         }
 
+        setHasConfirmedAgreement(false);
         setShowConfirmModal(true);
     };
 
     const submitFinalOrder = () => {
+        if (orderPending.current || processing) return;
         if (!pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
+        orderPending.current = true;
         post(route('checkout.store'), {
-            onFinish: () => setShowConfirmModal(false),
+            preserveScroll: true,
+            onError: () => requestAnimationFrame(() => errorSummaryRef.current?.focus()),
+            onFinish: () => { orderPending.current = false; setShowConfirmModal(false); },
         });
     };
 
@@ -401,7 +399,7 @@ export default function CheckoutIndex({
                     </div>
                 )}
                 {Object.keys(errors).length > 0 && (
-                    <div role="alert" className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-sans space-y-2">
+                    <div ref={errorSummaryRef} role="alert" tabIndex={-1} className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-sans space-y-2">
                         <p className="font-semibold">Please check your checkout details.</p>
                         <ul className="list-disc pl-4 space-y-1">
                             {Array.from(new Set(Object.values(errors))).map(error => <li key={error}>{error}</li>)}
@@ -430,16 +428,17 @@ export default function CheckoutIndex({
                             </div>
 
                             {/* Fulfillment Method Selector Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <legend className="sr-only">Delivery method</legend>
                                 {/* Option 1: Doorstep Delivery */}
-                                <div 
-                                    onClick={() => setData('delivery_type', 'doorstep')}
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                <label
+                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'doorstep'
                                             ? 'border-[#E00D42] bg-red-50/20 shadow-xs'
                                             : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}
                                 >
+                                    <input type="radio" name="delivery_type" value="doorstep" checked={data.delivery_type === 'doorstep'} onChange={() => setData('delivery_type', 'doorstep')} className="sr-only" />
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2.5">
                                             <div className={`p-2 rounded-lg ${data.delivery_type === 'doorstep' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -457,17 +456,17 @@ export default function CheckoutIndex({
                                     <p className="text-[10px] text-slate-400 mt-2 font-sans">
                                         Shipping is calculated separately for each shop.
                                     </p>
-                                </div>
+                                </label>
 
                                 {/* Option 2: Free Bayan Hub Self-Pickup */}
-                                <div 
-                                    onClick={() => setData('delivery_type', 'hub_self_pickup')}
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                <label
+                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'hub_self_pickup'
                                             ? 'border-[#E00D42] bg-rose-50/30 shadow-xs'
                                             : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}
                                 >
+                                    <input type="radio" name="delivery_type" value="hub_self_pickup" checked={data.delivery_type === 'hub_self_pickup'} onChange={() => setData('delivery_type', 'hub_self_pickup')} className="sr-only" />
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2.5">
                                             <div className={`p-2 rounded-lg ${data.delivery_type === 'hub_self_pickup' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -488,45 +487,35 @@ export default function CheckoutIndex({
                                         </span>
                                     </div>
                                     <p className="text-[10px] text-slate-600 mt-2 font-sans">
-                                        ✓ Zero delivery fees • QR claim code verification
+                                        No delivery fee. Private claim code and identity check at collection.
                                     </p>
-                                </div>
-                            </div>
+                                </label>
+                            </fieldset>
 
                             {/* When Bayan Hub Pickup is selected */}
-                            {data.delivery_type === 'hub_self_pickup' ? (
+                            {data.delivery_type === 'hub_self_pickup' && (
                                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
                                     <div className="flex items-start gap-2.5">
                                         <Building2 className="w-5 h-5 text-[#E00D42] shrink-0 mt-0.5" />
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
                                             <p className="text-[11px] text-slate-600 mt-0.5">
-                                                Your parcel will be sorted and routed directly to the designated municipal station. You will receive an SMS and a claim QR code once staged.
+                                                Choose a hub serving the recipient address below. Your parcel travels through the origin Bayan Hub and Mother Hub network before reaching this station. Check order tracking for collection readiness and private claim-code access.
                                             </p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                                        <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800 mb-1.5">
                                             Designated Bayan Station *
                                         </label>
                                         <select
+                                            id="checkout-pickup-hub"
+                                            aria-invalid={Boolean(errors.pickup_hub_id)}
+                                            aria-describedby={errors.pickup_hub_id ? 'checkout-pickup-hub-error' : undefined}
                                             required
                                             value={data.pickup_hub_id}
-                                            onChange={(e) => {
-                                                const hubId = e.target.value;
-                                                setData('pickup_hub_id', hubId);
-                                                const hub = pickupHubs.find(h => String(h.id) === hubId);
-                                                if (hub) {
-                                                    setData(prev => ({
-                                                        ...prev,
-                                                        pickup_hub_id: hub.id,
-                                                        shipping_address: hub.address,
-                                                        shipping_city: hub.city_municipality,
-                                                        shipping_province: hub.province,
-                                                    }));
-                                                }
-                                            }}
+                                            onChange={(e) => setData('pickup_hub_id', e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
                                         >
                                             <option value="">-- Choose a Local Bayan Hub Station --</option>
@@ -537,7 +526,7 @@ export default function CheckoutIndex({
                                             ))}
                                         </select>
                                         {errors.pickup_hub_id && (
-                                            <p className="text-rose-500 text-[11px] mt-1">{errors.pickup_hub_id}</p>
+                                            <p id="checkout-pickup-hub-error" className="text-rose-700 text-[11px] mt-1">{errors.pickup_hub_id}</p>
                                         )}
                                     </div>
 
@@ -551,7 +540,7 @@ export default function CheckoutIndex({
                                                         <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
                                                         <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
                                                         <p className="text-[10px] text-slate-600 font-sans pt-1">
-                                                            Station Hours: Mon–Sat 8:00 AM – 6:00 PM • Bring valid ID & Order Pickup QR
+                                                            Check the recorded hub hours in order tracking before travelling. Bring identification and your private claim code when collection is ready.
                                                         </p>
                                                     </>
                                                 );
@@ -559,252 +548,268 @@ export default function CheckoutIndex({
                                         </div>
                                     )}
 
-                                    {/* Recipient Details for SMS verification */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200 text-xs">
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                                                <span>Claimant Name</span>
-                                                <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
-                                                    <Lock className="w-3 h-3 text-slate-400" />
-                                                    Verified Real Name
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={data.recipient_name}
-                                                readOnly
-                                                disabled
-                                                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Claimant Mobile (For SMS Pin)</label>
-                                            <PhoneInput
-                                                value={data.recipient_phone}
-                                                onChange={(val) => setData('recipient_phone', val)}
-                                                placeholder="917 123 4567"
-                                                accentColor="primary"
-                                                helperText="Will receive station arrival SMS & PIN"
-                                                required
-                                            />
-                                            {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                /* When Doorstep Delivery is selected */
-                                <div className="space-y-4">
-                                    {/* Saved Address Dropdown Selector */}
-                                    {addresses.length > 0 && (
-                                        <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                                    <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                    <span>Select Saved Delivery Destination</span>
-                                                </label>
-                                                <Link 
-                                                    href={route('buyer.profile', { tab: 'addresses' })} 
-                                                    className="text-[11px] font-semibold text-[#E00D42] hover:underline"
-                                                    target="_blank"
-                                                >
-                                                    Manage Address Book
-                                                </Link>
-                                            </div>
-                                            <select
-                                                value={selectedAddressId}
-                                                onChange={(e) => handleAddressChange(e.target.value)}
-                                                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
-                                            >
-                                                {addresses.map((addr) => (
-                                                    <option key={addr.id} value={String(addr.id)}>
-                                                        {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
-                                                    </option>
-                                                ))}
-                                                <option value="new">+ Enter New / Different Address</option>
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                                                <span>Full Name</span>
-                                                <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
-                                                    <Lock className="w-3 h-3 text-slate-400" />
-                                                    Verified Real Name
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={data.recipient_name}
-                                                readOnly
-                                                disabled
-                                                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
-                                            />
-                                            {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Contact Phone</label>
-                                            <PhoneInput
-                                                value={data.recipient_phone}
-                                                onChange={(val) => setData('recipient_phone', val)}
-                                                placeholder="917 123 4567"
-                                                accentColor="primary"
-                                                helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                                required
-                                            />
-                                            {errors.recipient_phone && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_phone}</p>}
-                                        </div>
-
-                                        <div className="sm:col-span-2">
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No. *</label>
-                                            <input
-                                                type="text"
-                                                value={data.shipping_address}
-                                                onChange={(e) => setData('shipping_address', e.target.value)}
-                                                required
-                                                placeholder="House/Unit No., Street name, Subdivision"
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                            />
-                                            {errors.shipping_address && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_address}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
-                                            <input
-                                                type="text"
-                                                value={data.destination_barangay}
-                                                required
-                                                maxLength={100}
-                                                onChange={(e) => setData('destination_barangay', e.target.value)}
-                                                placeholder="e.g. Brgy. Santisimo Rosario"
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
-                                            <input
-                                                type="text"
-                                                value={data.shipping_city}
-                                                onChange={(e) => setData('shipping_city', e.target.value)}
-                                                required
-                                                placeholder="e.g. San Pablo City"
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                            />
-                                            {errors.shipping_city && <p className="text-rose-500 text-[11px] mt-1">{errors.shipping_city}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Province *</label>
-                                            <input
-                                                type="text"
-                                                value={data.shipping_province}
-                                                required
-                                                maxLength={100}
-                                                onChange={(e) => setData('shipping_province', e.target.value)}
-                                                placeholder="e.g. Laguna"
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block font-semibold text-slate-700 mb-1.5">Postal Code *</label>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                maxLength={4}
-                                                required
-                                                pattern="[0-9]{4}"
-                                                placeholder="e.g. 4000"
-                                                value={data.shipping_postal_code}
-                                                onChange={(e) => setData('shipping_postal_code', e.target.value)}
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                            />
-                                        </div>
-
-                                        {/* Geolocation Pin Coordinates & Landmark Block */}
-                                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                                    <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                    GPS Delivery Geofencing Pin
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleCaptureCurrentLocation}
-                                                    disabled={isLocating}
-                                                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 w-fit"
-                                                >
-                                                    <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                                    <span>{isLocating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
-                                                </button>
-                                            </div>
-
-                                            {gpsStatus && (
-                                                <p className="text-[10px] font-sans text-slate-700 bg-slate-100 px-2 py-1 rounded">
-                                                    {gpsStatus}
-                                                </p>
-                                            )}
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <label className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>
-                                                    <input
-                                                        type="number"
-                                                        step="any"
-                                                        placeholder="e.g. 14.0682"
-                                                        value={data.shipping_latitude}
-                                                        onChange={(e) => setData('shipping_latitude', e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] text-slate-500 font-sans mb-0.5">Longitude</label>
-                                                    <input
-                                                        type="number"
-                                                        step="any"
-                                                        placeholder="e.g. 121.3256"
-                                                        value={data.shipping_longitude}
-                                                        onChange={(e) => setData('shipping_longitude', e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[10px] text-slate-600 font-bold mb-0.5">
-                                                    Delivery Landmark & Visual Cue (Eliminates Failed Attempts)
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
-                                                    value={data.landmark}
-                                                    onChange={(e) => setData('landmark', e.target.value)}
-                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                                                />
-                                                <p className="text-[10px] text-slate-400 mt-0.5">
-                                                    Riders navigate straight to this landmark and geofenced pin within ≤100m for guaranteed delivery.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {selectedAddressId === 'new' && (
-                                            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={data.save_address}
-                                                    onChange={(e) => setData('save_address', e.target.checked)}
-                                                    className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
-                                                />
-                                                <span>Save this verified pin and address to my address book</span>
-                                            </label>
-                                        )}
-                                    </div>
                                 </div>
                             )}
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-bold text-slate-900">Recipient and address</h3>
+                                    {isHubPickup && <p className="text-xs leading-5 text-slate-600">Keep your own address here so we can check that the selected hub serves your area. Collection takes place at the selected hub, and this address is saved only if you choose to save it.</p>}
+                                </div>
+                                {/* Saved Address Dropdown Selector */}
+                                {addresses.length > 0 && (
+                                    <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                                <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                <span>Select Saved Delivery Destination</span>
+                                            </label>
+                                            <Link
+                                                href={route('buyer.profile', { tab: 'addresses' })}
+                                                className="text-[11px] font-semibold text-[#E00D42] hover:underline"
+                                                target="_blank"
+                                            >
+                                                Manage Address Book
+                                            </Link>
+                                        </div>
+                                        <select
+                                            id="checkout-saved-address"
+                                            value={selectedAddressId}
+                                            onChange={(e) => handleAddressChange(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                        >
+                                            {addresses.map((addr) => (
+                                                <option key={addr.id} value={String(addr.id)}>
+                                                    {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
+                                                </option>
+                                            ))}
+                                            <option value="new">+ Enter New / Different Address</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                                    <div>
+                                        <label htmlFor="checkout-recipient-name" className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                            <span>Full Name</span>
+                                            <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
+                                                <Lock className="w-3 h-3 text-slate-400" />
+                                                Verified Real Name
+                                            </span>
+                                        </label>
+                                        <input
+                                            id="checkout-recipient-name"
+                                            type="text"
+                                            value={data.recipient_name}
+                                            readOnly
+                                            disabled
+                                            className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
+                                        />
+                                        {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-phone" className="block font-semibold text-slate-700 mb-1.5">Contact phone *</label>
+                                        <PhoneInput
+                                            id="checkout-phone"
+                                            error={errors.recipient_phone}
+                                            value={data.recipient_phone}
+                                            onChange={(val) => setData('recipient_phone', val)}
+                                            placeholder="917 123 4567"
+                                            accentColor="primary"
+                                            helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="sm:col-span-2">
+                                        <label htmlFor="checkout-shipping_address" className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No. *</label>
+                                        <input
+                                            id="checkout-shipping_address"
+                                            aria-invalid={Boolean(errors.shipping_address)}
+                                            aria-describedby={errors.shipping_address ? 'checkout-shipping_address-error' : undefined}
+                                            type="text"
+                                            maxLength={500}
+                                            minLength={5}
+                                            value={data.shipping_address}
+                                            onChange={(e) => setData('shipping_address', e.target.value)}
+                                            required
+                                            placeholder="House/Unit No., Street name, Subdivision"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        />
+                                        {errors.shipping_address && <p id="checkout-shipping_address-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_address}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-destination_barangay" className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
+                                        <input
+                                            id="checkout-destination_barangay"
+                                            aria-invalid={Boolean(errors.destination_barangay)}
+                                            aria-describedby={errors.destination_barangay ? 'checkout-destination_barangay-error' : undefined}
+                                            type="text"
+                                            minLength={2}
+                                            value={data.destination_barangay}
+                                            required
+                                            maxLength={100}
+                                            onChange={(e) => setData('destination_barangay', e.target.value)}
+                                            placeholder="e.g. Brgy. Santisimo Rosario"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        />
+                                        {errors.destination_barangay && <p id="checkout-destination_barangay-error" className="text-rose-700 text-[11px] mt-1">{errors.destination_barangay}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-shipping_city" className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
+                                        <input
+                                            id="checkout-shipping_city"
+                                            aria-invalid={Boolean(errors.shipping_city)}
+                                            aria-describedby={errors.shipping_city ? 'checkout-shipping_city-error' : undefined}
+                                            type="text"
+                                            maxLength={100}
+                                            minLength={2}
+                                            value={data.shipping_city}
+                                            onChange={(e) => setData('shipping_city', e.target.value)}
+                                            required
+                                            placeholder="e.g. San Pablo City"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        />
+                                        {errors.shipping_city && <p id="checkout-shipping_city-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_city}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-shipping_province" className="block font-semibold text-slate-700 mb-1.5">Province *</label>
+                                        <input
+                                            id="checkout-shipping_province"
+                                            aria-invalid={Boolean(errors.shipping_province)}
+                                            aria-describedby={errors.shipping_province ? 'checkout-shipping_province-error' : undefined}
+                                            type="text"
+                                            minLength={2}
+                                            value={data.shipping_province}
+                                            required
+                                            maxLength={100}
+                                            onChange={(e) => setData('shipping_province', e.target.value)}
+                                            placeholder="e.g. Laguna"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        />
+                                        {errors.shipping_province && <p id="checkout-shipping_province-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_province}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-shipping_postal_code" className="block font-semibold text-slate-700 mb-1.5">Postal Code *</label>
+                                        <input
+                                            id="checkout-shipping_postal_code"
+                                            aria-invalid={Boolean(errors.shipping_postal_code)}
+                                            aria-describedby={errors.shipping_postal_code ? 'checkout-shipping_postal_code-error' : undefined}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={4}
+                                            required
+                                            pattern="[0-9]{4}"
+                                            placeholder="e.g. 4000"
+                                            minLength={4}
+                                            value={data.shipping_postal_code}
+                                            onChange={(e) => setData('shipping_postal_code', e.target.value)}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                        />
+                                        {errors.shipping_postal_code && <p id="checkout-shipping_postal_code-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_postal_code}</p>}
+                                    </div>
+
+                                    {/* Geolocation Pin Coordinates & Landmark Block */}
+                                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                                <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                Delivery location (optional)
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={handleCaptureCurrentLocation}
+                                                disabled={isLocating}
+                                                className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 w-fit"
+                                            >
+                                                <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                                <span>{isLocating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
+                                            </button>
+                                        </div>
+
+                                        {gpsStatus && (
+                                            <p className="text-[10px] font-sans text-slate-700 bg-slate-100 px-2 py-1 rounded">
+                                                {gpsStatus}
+                                            </p>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label htmlFor="checkout-shipping_latitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>
+                                                <input
+                                                    id="checkout-shipping_latitude"
+                                                    aria-invalid={Boolean(errors.shipping_latitude)}
+                                                    aria-describedby={errors.shipping_latitude ? 'checkout-shipping_latitude-error' : undefined}
+                                                    type="number"
+                                                    step="any"
+                                                    min={-90}
+                                                    max={90}
+                                                    placeholder="e.g. 14.0682"
+                                                    value={data.shipping_latitude}
+                                                    onChange={(e) => setData('shipping_latitude', e.target.value)}
+                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
+                                                />
+                                                {errors.shipping_latitude && <p id="checkout-shipping_latitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_latitude}</p>}
+                                            </div>
+                                            <div>
+                                                <label htmlFor="checkout-shipping_longitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Longitude</label>
+                                                <input
+                                                    id="checkout-shipping_longitude"
+                                                    aria-invalid={Boolean(errors.shipping_longitude)}
+                                                    aria-describedby={errors.shipping_longitude ? 'checkout-shipping_longitude-error' : undefined}
+                                                    type="number"
+                                                    step="any"
+                                                    min={-180}
+                                                    max={180}
+                                                    placeholder="e.g. 121.3256"
+                                                    value={data.shipping_longitude}
+                                                    onChange={(e) => setData('shipping_longitude', e.target.value)}
+                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
+                                                />
+                                                {errors.shipping_longitude && <p id="checkout-shipping_longitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_longitude}</p>}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="checkout-landmark" className="block text-[10px] text-slate-600 font-bold mb-0.5">
+                                                Delivery landmark (optional)
+                                            </label>
+                                            <input
+                                                id="checkout-landmark"
+                                                aria-invalid={Boolean(errors.landmark)}
+                                                aria-describedby={errors.landmark ? 'checkout-landmark-error' : undefined}
+                                                type="text"
+                                                placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
+                                                maxLength={255}
+                                                minLength={5}
+                                                value={data.landmark}
+                                                onChange={(e) => setData('landmark', e.target.value)}
+                                                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                                            />
+                                            {errors.landmark && <p id="checkout-landmark-error" className="text-rose-700 text-[11px] mt-1">{errors.landmark}</p>}
+                                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                                Add a useful landmark or location to help the rider find your address. Check the pin before placing your order.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {selectedAddressId === 'new' && (
+                                        <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.save_address}
+                                                onChange={(e) => setData('save_address', e.target.checked)}
+                                                className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                            />
+                                            <span>Save this address to my address book</span>
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {/* 2. Package Items in this Order */}
@@ -892,11 +897,11 @@ export default function CheckoutIndex({
                                         </div>
                                         <p className="text-slate-500 text-[11px] leading-relaxed">
                                             {isHubPickup
-                                                ? 'Feeder transit straight to local municipal station. Package stored in designated bin for collection via QR code.'
-                                                : 'Integrated sorting center routing: Merchant Pickup → Sorting Hub → Assigned Rider → Doorstep Handover.'}
+                                                ? 'Seller → Pickup Rider → Origin Bayan Hub → Mother Hub network → Destination Bayan Hub → Buyer collection.'
+                                                : 'Seller → Pickup Rider → Origin Bayan Hub → Mother Hub network → Destination Bayan Hub → Delivery Rider → Buyer.'}
                                         </p>
                                         <p className="text-slate-400 text-[10px] font-sans">
-                                            {isHubPickup ? 'Estimated Transit to Hub: 1–2 Business Days' : 'Estimated Doorstep Delivery: 2–4 Business Days'}
+                                            Follow recorded parcel updates in My Purchases after ordering.
                                         </p>
                                     </div>
                                 </div>
@@ -933,17 +938,17 @@ export default function CheckoutIndex({
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
                                             <span>Cash on Delivery (COD)</span>
-                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-sans">DOORSTEP CASH</span>
+                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-sans">CASH PAYMENT</span>
                                         </div>
                                         <p className="text-slate-600 text-[11px] leading-relaxed">
-                                            Pay in cash directly to your assigned Bagoo Express rider only after inspecting your parcel at your doorstep. Zero advance online payment required.
+                                            {isHubPickup ? 'Pay the amount due in cash at the destination hub when you collect your parcel. Follow the collection instructions in order tracking.' : 'Pay the amount due in cash to the assigned delivery rider when your parcel is handed over. No advance online payment is required.'}
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2 pt-2 border-t border-slate-200 text-[11px] text-slate-700 font-medium">
                                     <ShieldCheck className="w-4 h-4 text-[#E00D42] shrink-0" />
-                                    <span>Protected by 100% Escrow & Doorstep Inspection Protocol</span>
+                                    <span>Review the final COD amount before confirming your order.</span>
                                 </div>
                             </div>
                         </div>
@@ -990,7 +995,7 @@ export default function CheckoutIndex({
                             </div>}
 
                             {validationError && (
-                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                                <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                                     {validationError}
                                 </div>
                             )}
@@ -1094,9 +1099,9 @@ export default function CheckoutIndex({
                 </form>
 
                 {/* ORDER PLACEMENT CONFIRMATION MODAL */}
-                {showConfirmModal && (
+                <Dialog open={showConfirmModal} onClose={() => { if (!processing) setShowConfirmModal(false); }} className="relative z-50">
                     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
+                        <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
                             
                             {/* Modal Header */}
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1105,13 +1110,15 @@ export default function CheckoutIndex({
                                         <ShoppingBag className="w-4 h-4" />
                                         <span>Final Review Step</span>
                                     </div>
-                                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                                    <DialogTitle as="h3" className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
                                         Confirm & Place Order
-                                    </h3>
+                                    </DialogTitle>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmModal(false)}
+                                    disabled={processing}
+                                    aria-label="Close order review"
                                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                                 >
                                     <X className="w-5 h-5" />
@@ -1125,10 +1132,14 @@ export default function CheckoutIndex({
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
                                     <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
                                         <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                        <span>Delivery Destination</span>
+                                        <span>{isHubPickup ? 'Recipient address' : 'Delivery destination'}</span>
                                     </span>
                                     <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
-                                    <p className="text-slate-600 text-xs">{data.shipping_address}, {data.shipping_city} {data.shipping_postal_code || ''}</p>
+                                    <p className="break-words text-slate-600 text-xs">{[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ')}</p>
+                                    {isHubPickup && selectedPickupHub && <div className="border-t border-slate-300 pt-2">
+                                        <p className="font-bold text-slate-900">Collect at {selectedPickupHub.name} ({selectedPickupHub.code})</p>
+                                        <p className="break-words text-slate-600">{[selectedPickupHub.address, selectedPickupHub.city_municipality, selectedPickupHub.province].filter(Boolean).join(', ')}</p>
+                                    </div>}
                                 </div>
 
                                 {/* Payment Mode & Voucher Summary */}
@@ -1151,9 +1162,9 @@ export default function CheckoutIndex({
                                             <div key={item.id} className="py-2 flex items-center justify-between text-xs">
                                                 <div className="truncate pr-2">
                                                     <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
-                                                    <span className="text-slate-400 text-[11px]">Qty: {item.quantity} × {formatPrice(item.unit_price)}</span>
+                                                    <span className="text-slate-500 text-[11px]">Qty: {quotedItems.get(item.id)?.quantity ?? item.quantity} × {quotePrice(quotedItems.get(item.id)?.unit_price ?? Number(item.product?.price))}</span>
                                                 </div>
-                                                <span className="font-bold text-slate-900 shrink-0">{formatPrice(Number(item.unit_price) * item.quantity)}</span>
+                                                <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -1182,6 +1193,7 @@ export default function CheckoutIndex({
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmModal(false)}
+                                    disabled={processing}
                                     className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
                                 >
                                     Edit Details
@@ -1196,9 +1208,9 @@ export default function CheckoutIndex({
                                 </button>
                             </div>
 
-                        </div>
+                        </DialogPanel>
                     </div>
-                )}
+                </Dialog>
 
                 {pickerSlot !== undefined && <BuyerVoucherPicker
                     title={pickerSlot === null ? 'Bagoo voucher' : `Shop voucher · ${quote.shops.find(shop => shop.shop_id === pickerSlot)?.shop_name ?? 'Shop'}`}

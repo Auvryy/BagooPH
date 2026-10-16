@@ -60,9 +60,23 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
     activeClaim.current = { orderId: order.id, reference: pickupClaim?.reference };
     const [trackingRefreshing, setTrackingRefreshing] = useState(false);
     const [trackingError, setTrackingError] = useState('');
+    const [receiptBusy, setReceiptBusy] = useState(false);
+    const [receiptError, setReceiptError] = useState('');
+    const receiptPending = useRef(false);
+    const activeReceipt = useRef({ orderId: order.id, allowed: canConfirmReceipt });
+    activeReceipt.current = { orderId: order.id, allowed: canConfirmReceipt };
+    const confirmReceipt = () => {
+        if (!activeReceipt.current.allowed || activeReceipt.current.orderId !== order.id || receiptPending.current || refreshPending.current || codePending.current) return;
+        if (!confirm('Confirm that you have received your order in good condition?')) return;
+        receiptPending.current = true; setReceiptBusy(true); setReceiptError('');
+        router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true,
+            onError: errors => setReceiptError(Object.values(errors).join(' ') || 'Receipt confirmation could not be saved. Try again.'),
+            onFinish: () => { receiptPending.current = false; setReceiptBusy(false); },
+        });
+    };
     const refreshPending = useRef(false);
     const refreshTracking = () => {
-        if (refreshPending.current || codePending.current) return;
+        if (refreshPending.current || codePending.current || receiptPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
         router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
             onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
@@ -70,7 +84,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
         });
     };
     const showPickupCode = async () => {
-        if (!pickupCodeUrl || codePending.current || refreshPending.current || !pickupCodeAvailable || !pickupClaim || claimWindow(pickupClaim, Date.now()) !== 'ready' || pickupClaim.code_issued_at || pickupCode) return;
+        if (!pickupCodeUrl || codePending.current || refreshPending.current || receiptPending.current || !pickupCodeAvailable || !pickupClaim || claimWindow(pickupClaim, Date.now()) !== 'ready' || pickupClaim.code_issued_at || pickupCode) return;
         codePending.current = true;
         const requestedClaim = { orderId: order.id, reference: pickupClaim.reference };
         setCodeBusy(true); setCodeError('');
@@ -201,15 +215,12 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                         {canConfirmReceipt && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (confirm('Confirm that you have received your order in good condition?')) {
-                                        router.post(route('buyer.orders.confirm', order.id), {}, { preserveScroll: true });
-                                    }
-                                }}
+                                disabled={receiptBusy || trackingRefreshing || codeBusy}
+                                onClick={confirmReceipt}
                                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <CheckCircle2 className="w-4 h-4" />
-                                <span>Confirm Order Received</span>
+                                <span>{receiptBusy ? 'Confirming receipt…' : 'Confirm Order Received'}</span>
                             </button>
                         )}
                         {canUsePortal && order.status === 'completed' && reviewableItems.length > 0 && (
@@ -232,7 +243,9 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                     </div>
                 </div>
 
-                <OrderTrackingPanel tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy} error={trackingError} />
+                {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
+
+                <OrderTrackingPanel tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
 
                 {/* 2. DISPATCH & COURIER TELEMETRY */}
                 {delivery && (
