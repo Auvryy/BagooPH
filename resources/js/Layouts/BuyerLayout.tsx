@@ -28,6 +28,7 @@ import BuyerApplicationModal from '@/Components/BuyerApplicationModal';
 import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
 import useCatalogueSearch from '@/hooks/useCatalogueSearch';
+import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 
 interface Props {
     children: React.ReactNode;
@@ -165,6 +166,7 @@ export default function BuyerLayout({
     return (
         <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#F8FAFC] text-slate-800 font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
             
+            <CatalogueNavigationNotice />
             {topBanner}
 
             {!hideHeader && (

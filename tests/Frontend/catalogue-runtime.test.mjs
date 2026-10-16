@@ -20,13 +20,15 @@ const page = { version: 'build-one', component: 'Buyer/ProductDetail', props: { 
 test('the runtime bridges cached and fresh visits, cancellation and session boundaries', async t => {
     const original = Object.fromEntries(['prefetch', 'getPrefetching', 'getCached', 'flush', 'resolveComponent', 'visit', 'on'].map(key => [key, router[key]]));
     const descriptors = Object.fromEntries(['window', 'document', 'navigator', 'BroadcastChannel'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-    const events = new Map(), requests = [], visits = [], flushed = [], components = [];
+    const events = new Map(), requests = [], visits = [], flushed = [], components = [], notices = [];
+    let warmGate, prevented = 0;
     const window = Object.assign(new EventTarget(), { location: new URL('https://bagoo.test/') });
     const document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
     let channel;
     class Channel extends EventTarget { constructor() { super(); channel = this; } postMessage(message) { this.lastMessage = message; } }
     for (const [key, value] of Object.entries({ window, document, navigator: { onLine: true, connection: { effectiveType: '4g' } }, BroadcastChannel: Channel })) Object.defineProperty(globalThis, key, { value, configurable: true });
-    const emit = (name, detail) => (events.get(name) ?? []).forEach(callback => callback({ detail }));
+    const emit = (name, detail) => (events.get(name) ?? []).forEach(callback => callback({ detail, preventDefault: () => prevented++ }));
+    window.addEventListener('bagoo:catalogue-error', event => notices.push(event.detail.href));
     router.on = (name, callback) => { events.set(name, [...events.get(name) ?? [], callback]); return () => {}; };
     router.prefetch = (url, options, cache) => {
         let finish;
@@ -40,7 +42,7 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
     const find = (url, options) => requests.findLast(row => !row.cancelled && row.url === url && row.options.headers['X-Bagoo-Catalogue-Context'] === options.headers['X-Bagoo-Catalogue-Context']);
     router.getPrefetching = find; router.getCached = () => null;
     router.flush = (url, options) => flushed.push({ url, options });
-    router.resolveComponent = async component => { components.push(component); };
+    router.resolveComponent = async component => { components.push(component); await warmGate; };
     router.visit = (url, options) => {
         visits.push({ url, options });
         const visit = { url: new URL(url, window.location.origin), method: 'get', headers: options.headers ?? {} };
@@ -90,6 +92,31 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         cancel(); requests.at(-1).complete(); await work; await navigation;
         assert.equal(visits.length, before);
         assert.equal(ui.cataloguePrefetch.allowed(), true);
+    });
+    await t.test('slow page-code loading remains cancellable after the data is fetched', async () => {
+        ui.cataloguePrefetch.clear(); let loaded;
+        warmGate = new Promise(resolve => { loaded = resolve; });
+        const work = ui.cataloguePrefetch.prepare('/product/slow-code'); await tick();
+        requests.at(-1).complete(); await tick();
+        let cancel; const before = visits.length;
+        const navigation = ui.visitCatalogue('/product/slow-code', { onCancelToken: token => { cancel = token.cancel; } });
+        await tick(); assert.equal(visits.length, before);
+        cancel(); loaded(); warmGate = undefined;
+        assert.equal(await work, false); await navigation;
+        assert.equal(visits.length, before);
+    });
+    await t.test('foreground network and unreadable responses provide the intended retry target', async () => {
+        for (const type of ['exception', 'invalid']) {
+            let error;
+            await ui.visitCatalogue(`/product/${type}`, { onError: value => { error = value; } });
+            emit(type, { exception: new Error('Unavailable'), response: { status: 503 } });
+            assert.match(error.navigation, /try again/i);
+            assert.equal(notices.at(-1), `/product/${type}`);
+            visits.at(-1).options.onFinish({});
+        }
+        assert.equal(prevented, 2);
+        emit('exception', { exception: new Error('An unrelated request') });
+        assert.equal(prevented, 2, 'other application errors retain their own handling');
     });
     await t.test('other-tab invalidation, return/focus and mutation events remove retained pages', async () => {
         for (const trigger of [() => channel.dispatchEvent(new Event('message')), () => window.dispatchEvent(new Event('focus')), () => document.dispatchEvent(new Event('visibilitychange')), () => emit('before', { visit: { method: 'post', headers: {}, url: new URL('/cart', window.location.origin) } })]) {

@@ -12,6 +12,7 @@ const transport: CatalogueTransport = {
         let cancel: (() => void) | undefined;
         let cancelled = false;
         let valid = false;
+        let componentReady: Promise<unknown> = Promise.resolve();
         let finish: (valid: boolean) => void;
         const done = new Promise<boolean>(resolve => { finish = resolve; });
         router.prefetch(url, {
@@ -25,7 +26,7 @@ const transport: CatalogueTransport = {
                         && catalogueAccountKey(page) === account
                         && !Object.keys(page.props.errors ?? {}).length
                         && !Object.values(page.props.flash ?? {}).some(Boolean);
-                    if (valid) void router.resolveComponent(page.component).catch(() => {});
+                    if (valid) componentReady = router.resolveComponent(page.component).catch(() => { valid = false; });
                 } catch { valid = false; }
             },
         }, { cacheFor: cataloguePolicy.ttl, cacheTags: ['catalogue'] });
@@ -33,7 +34,8 @@ const transport: CatalogueTransport = {
         queueMicrotask(() => {
             const pending = router.getPrefetching(url, { headers }) ?? router.getCached(url, { headers });
             if (!pending) { finish(false); return; }
-            void pending.response.then(() => {
+            void pending.response.then(async () => {
+                await componentReady;
                 if (!valid || cancelled) router.flush(url, { headers });
                 finish(valid && !cancelled);
             }, () => finish(false));
@@ -47,6 +49,7 @@ let navigation = 0;
 let broadcast: BroadcastChannel | undefined;
 let installed = false;
 let foreground = 0;
+let managedVisit: { href: string; failed: () => void } | undefined;
 
 export async function visitCatalogue(href: string, options: Parameters<typeof router.visit>[1] = {}) {
     const destination = canonicalCatalogueUrl(href, window.location.origin);
@@ -68,11 +71,14 @@ export async function visitCatalogue(href: string, options: Parameters<typeof ro
     if (options.only?.length) cataloguePrefetch.prioritize();
     const ready = options.only?.length ? false : await cataloguePrefetch.ready(href);
     if (cancelled || ticket !== navigation) return;
+    const current = { href, failed: () => options.onError?.({ navigation: 'Could not load this page. Please try again.' }) };
+    managedVisit = current;
+    const release = () => { if (managedVisit === current) managedVisit = undefined; };
     router.visit(href, { ...options, headers: { ...options.headers, ...cataloguePrefetch.headers() }, fresh: !ready,
         onCancelToken: token => { cancelRequest = token.cancel; if (cancelled) token.cancel(); },
         // Cached visits replay callbacks without a new global request/finish event.
-        onFinish: visit => { cataloguePrefetch.setBusy(foreground > 0); options.onFinish?.(visit); },
-        onCancel: () => { cataloguePrefetch.setBusy(foreground > 0); options.onCancel?.(); },
+        onFinish: visit => { release(); cataloguePrefetch.setBusy(foreground > 0); options.onFinish?.(visit); },
+        onCancel: () => { release(); cataloguePrefetch.setBusy(foreground > 0); options.onCancel?.(); },
     });
 }
 
@@ -90,6 +96,7 @@ export function installCatalogueNavigation(initial: CatalogueSnapshot) {
         const visit = event.detail.visit;
         if (visit.prefetch || visit.headers.Purpose === 'prefetch') return;
         navigation++;
+        if (visit.headers['X-Bagoo-Catalogue'] !== '1') managedVisit = undefined;
         if (visit.method !== 'get') invalidateCatalogue();
         else if (!canonicalCatalogueUrl(visit.url.href, window.location.origin) || visit.headers['X-Bagoo-Catalogue'] !== '1') cataloguePrefetch.clear();
         else cataloguePrefetch.prioritize(visit.url.href);
@@ -101,6 +108,16 @@ export function installCatalogueNavigation(initial: CatalogueSnapshot) {
         if (!event.detail.visit.prefetch && event.detail.visit.headers.Purpose !== 'prefetch') { foreground = Math.max(0, foreground - 1); cataloguePrefetch.setBusy(foreground > 0); }
     });
     router.on('navigate', event => cataloguePrefetch.observe(event.detail.page));
+    const failed = (event: { preventDefault: () => void }) => {
+        if (!managedVisit) return;
+        const current = managedVisit; managedVisit = undefined;
+        cataloguePrefetch.clear();
+        current.failed();
+        window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: current.href } }));
+        event.preventDefault();
+    };
+    router.on('exception', failed);
+    router.on('invalid', failed);
     const clear = () => invalidateCatalogue(false);
     window.addEventListener('pagehide', clear);
     window.addEventListener('pageshow', clear);

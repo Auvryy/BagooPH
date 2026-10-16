@@ -8,7 +8,7 @@ import { build as buildBundle } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-interactions-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const build = await buildBundle({
-    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-catalogue-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'catalogue-hooks' }));
@@ -28,7 +28,7 @@ const build = await buildBundle({
                 prepare: url => { globalThis.catalogueHarness.prepared.push(url); return Promise.resolve(true); },
                 prioritize() {}, cancel: url => globalThis.catalogueHarness.cancelled.push(url)
             };
-            export const visitCatalogue = (url, options) => {
+            export const visitCatalogue = (url, options = {}) => {
                 const harness = globalThis.catalogueHarness;
                 harness.visits.push({ url, options });
                 options.onCancelToken?.({ cancel: () => harness.cancelled.push(url) });
@@ -119,4 +119,17 @@ test('touch does not block scrolling and ordinary/modified link activations reta
     const event = { defaultPrevented: false, button: 0, preventDefault: () => prevented++ };
     link.props.onClick({ ...event, ctrlKey: true }); assert.equal(prevented, 0); assert.equal(h.visits.length, 0);
     link.props.onClick(event); assert.equal(prevented, 1); assert.equal(h.visits.length, 1);
+});
+
+test('navigation errors present a visible retry for the failed page and clear on another visit', t => {
+    const h = harness(t, ui.Notice);
+    assert.equal(h.render(), null);
+    h.window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: '/product/bag' } }));
+    const notice = h.render(); assert.equal(notice.props.role, 'alert');
+    const retry = notice.props.children[0].props.children[1];
+    retry.props.onClick(); assert.equal(h.visits.at(-1).url, '/product/bag'); assert.equal(h.render(), null);
+    h.window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: 'https://foreign.test' } }));
+    assert.equal(h.render(), null);
+    h.window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: '/product/bag' } }));
+    h.emit('before', { visit: { headers: {}, method: 'get' } }); assert.equal(h.render(), null);
 });
