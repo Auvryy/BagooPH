@@ -1,71 +1,69 @@
-# Project: BagooPH Multi-Role Data Interconnectedness & Order Lifecycle
+# BagooPH Project Context
 
-## Architecture
-- **Framework**: Laravel 11/12 + Inertia.js 2.0 (React 18, TypeScript, Tailwind CSS, Lucide React).
-- **Database**: PostgreSQL 16 (production/docker) & SQLite (testing/PHPUnit).
-- **User Roles & Actors (6 Actors)**:
-  1. `buyer`: Buyer Registration -> Admin Approval -> Login -> Marketplace shopping, checkout, live tracking, Confirm Order Received -> Completed.
-  2. `seller`: Seller Cockpit (`/seller/orders`), receive order notice, check stock, accept/confirm order, prepare order, pack product, print shipping label, mark ready for pickup, handover to rider, confirm rider pickup (Status: PICKED_UP).
-  3. `courier_pickup`: Rider/Courier (Pickup), accept pickup assignment, collect parcel from seller, scan/confirm parcel, deliver parcel to Sorting Center.
-  4. `courier_delivery`: Rider/Courier (Delivery), receive assignment from Sorting Center, pick up parcel from Sorting Center, out for delivery, deliver parcel to customer (DELIVERED -> Buyer Confirms Receipt -> COMPLETED, or DELIVERY_FAILED -> Reason Recorded -> Reschedule / RETURNED).
-  5. `sorting_center`: Central Logistics Sorting Hub (`/hub`), 8-step intake & routing pipeline, sort by destination area (Area A, Area B, Area C), assign parcel to area rider.
-  6. `admin`: Platform governance (`/admin`), registration approval authority (Buyer, Seller, Courier, Hub), 10% Platform Commission treasury.
+BagooPH is one Laravel backend with React/Inertia web portals and a versioned
+native rider JSON API. This is a supporting overview; use
+[the documentation map](docs/README.md) to select authoritative contracts.
 
-## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | Multi-Role Registration & Admin Approval Gate | Mandatory Admin Approval gate across Buyer, Seller, Courier, and Logistics Hub before login access. | M1 | Official Curriculum PDF |
-| 2 | Canonical 13-Stage Order Lifecycle | Standardize 13 canonical stages (`PLACED` -> `CONFIRMED` -> `PREPARING` -> `READY_FOR_PICKUP` -> `PICKED_UP` -> `AT_SORTING_CENTER` -> `SORTED` -> `ASSIGNED_TO_RIDER` -> `OUT_FOR_DELIVERY` -> `DELIVERED` -> `COMPLETED`, with failure branch `DELIVERY_FAILED` -> `RETURNED`). | M2 | Official Curriculum PDF |
-| 3 | Split Courier Operations (Pickup vs Delivery) | Dedicated Pickup Fleet (Seller -> Sorting Center) and Delivery Fleet (Sorting Center -> Doorstep). | M3 | Official Curriculum PDF |
-| 4 | Sorting Center Area Routing & Rider Dispatch | Destination Area partitioning (Area A, Area B, Area C) and rider assignment engine. | M3 | Official Curriculum PDF |
-| 5 | Buyer "Confirm Order Received" Finalization | Dedicated transaction completion trigger advancing order from `DELIVERED` to `COMPLETED`. | M4 | Official Curriculum PDF |
-| 6 | 10% Flat Platform Commission Treasury | Automatic revenue distribution upon order completion (90% Seller net payout, 10% Platform Commission). | M4 | Curriculum Standards |
+## Architecture and technology
 
-## Interface Contracts
-### Auth & Admin Approval Gate ↔ Portals
-- `User.kyc_status`: `pending_approval`, `approved`, `rejected`
-- Mandatory gate: Registration -> Admin Approval -> Login (Applies to Buyer, Seller, Courier, Hub)
-- `RoleMiddleware`: redirects unapproved accounts to `/pending-approval` holding screen.
+The current web stack is Laravel 13, PHP, React 18, TypeScript 5, Inertia.js 2,
+Tailwind CSS 3, Vite 6 and PostgreSQL 16. Docker Compose defines Nginx, PHP-FPM
+and database services. Azure is the deployment target. Exact locked versions,
+optional integrations and source evidence belong in [TECH_STACK.md](docs/TECH_STACK.md).
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for request and deployment diagrams
+and [the presentation guide](docs/TECH_STACK_PRESENTATION.md) for explanations.
 
-### Canonical 13-Stage Order Lifecycle
-- `OrderStatus`: `placed`, `confirmed`, `preparing`, `ready_for_pickup`, `picked_up`, `at_sorting_center`, `sorted`, `assigned_to_rider`, `out_for_delivery`, `delivered`, `completed`, `delivery_failed`, `returned`
-- `Process Summary`: Buyer orders → Seller prepares → Rider picks up → Sorting Center sorts → Sorting Center assigns Rider → Rider delivers → Buyer confirms → Order completed.
-- `DeliveryStatus`: `unassigned`, `assigned`, `picked_up`, `in_transit`, `out_for_delivery`, `delivered`, `failed`
-- `DeliveryCheckpoint`: `delivery_id`, `checkpoint_type`, `location_name`, `barcode_scanned`, `notes`, `scanned_by_id`, `created_at`
+## Accounts and responsibilities
 
-### Financial Split Ledger
-- `CommissionLedger`:
-  - `gross_amount`: Total order product total
-  - `seller_amount`: `gross_amount * 0.90` (90%)
-  - `platform_commission`: `gross_amount * 0.10` (10%)
-  - `delivery_fee`: `₱60.00` credited to `courier_id`
+`UserRole` stores five roles: `buyer`, `seller`, `courier`, `logistics`, `admin`.
+Pickup/final-mile are courier phases. Logistics Company Admin and Hub Handler
+are company/facility responsibilities within `logistics`.
 
-### Fast-Forward Simulator API
-- `POST /simulator/orders/{order}/advance`: Advances Order + Delivery to next logical status, logs checkpoint, triggers commission split when reaching `delivered`.
-- `POST /simulator/orders/{order}/reset`: Resets Order to `pending` and Delivery to `unassigned`.
+Authentication, approval, activity, ownership, company placement and duty are
+separate checks. Roles remain fixed at account creation. Buyers have permitted
+personal browsing/history before approval, while checkout requires current
+active approval. The approval authority and restricted-account exceptions are
+specified in [ADMIN_FLOW.md](docs/ADMIN_FLOW.md).
 
-## Code Layout
-- `app/Enums/`: `OrderStatus.php`, `DeliveryStatus.php`, `KycStatus.php`
-- `app/Models/`: `User.php`, `CourierProfile.php`, `Shop.php`, `Order.php`, `OrderItem.php`, `Delivery.php`, `DeliveryCheckpoint.php`, `CommissionLedger.php`
-- `app/Http/Controllers/`:
-  - `Auth/RegisteredUserController.php`
-  - `Admin/AdminDashboardController.php`, `Admin/AdminKycController.php`, `Admin/LogisticsHubController.php`
-  - `Buyer/CheckoutController.php`, `Buyer/OrderHistoryController.php`
-  - `Seller/SellerOrderController.php`, `Seller/SellerDashboardController.php`
-  - `Courier/CourierDeliveryController.php`
-  - `Logistics/LogisticsHubWorkstationController.php`
-  - `Simulation/OrderSimulationController.php`
-- `resources/js/Pages/`:
-  - `Auth/`: `Register.tsx`, `SellerRegister.tsx`, `CourierRegister.tsx`, `PendingApproval.tsx`
-  - `Admin/`: `Users.tsx`, `KycQueue.tsx`, `Logistics.tsx`
-  - `Buyer/`: `Orders.tsx`, `OrderDetail.tsx`
-  - `Seller/`: `Orders.tsx`, `Reports.tsx`
-  - `Courier/`: `Deliveries.tsx`, `Earnings.tsx`
-  - `Logistics/`: `HubSorting.tsx`
-- `resources/js/Components/`:
-  - `FastForwardControl.tsx`, `BarcodeScannerModal.tsx`, `WaybillModal.tsx`
-- `tests/Feature/`:
-  - `Auth/`: `KycApprovalGateTest.php`
-  - `Order/`: `OrderDeliveryLifecycleTest.php`, `OrderSimulationTest.php`
-  - `Logistics/`: `LocationCheckpointScanTest.php`
-  - `Commission/`: `FinancialSplitLedgerTest.php`
+## Core flow
+
+```text
+Buyer checkout -> Seller confirms/prepares/marks ready -> Pickup Rider
+-> Origin Bayan Hub -> at least one Mother Hub -> Destination Bayan Hub
+-> Delivery Rider or verified Self-Pickup Counter -> Buyer confirms receipt
+```
+
+Buyer confirmation and platform COD reconciliation are independent prerequisites
+for evidenced seller settlement. The product share is 90% seller and 10%
+platform, with shipping and promotional expenses accounted for separately.
+Recorded delivery does not create an automatic bank transfer or fixed rider fee.
+
+The detailed lifecycle and custody sources are
+[SYSTEM_FLOW_AND_SPECIFICATIONS.md](docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md) and
+[SORTING_CENTER_LOGISTICS_FLOW.md](docs/SORTING_CENTER_LOGISTICS_FLOW.md).
+Simulated advance/reset HTTP routes are unavailable; demonstrations use real
+role-owned actions and recorded history.
+
+## Implementation map
+
+| Area | Existing source |
+|---|---|
+| Routes and access | `bootstrap/app.php`, `routes/web.php`, `routes/auth.php`, `routes/api.php`, `app/Http/Middleware` |
+| Checkout and commercial lifecycle | `app/Services/Orders` |
+| Custody, routing, manifests, counter and recovery | `app/Services/Logistics`, `app/Services/Courier` |
+| Cash and seller payment | `app/Services/Finance/CodCashService.php`, `app/Services/Finance/SellerSettlementService.php` |
+| Account/shop review and corrections | `app/Services/KycDecisionService.php`, `app/Services/IdentityCorrectionService.php`, `app/Services/ShopReviewService.php` |
+| Vouchers and advertisements | `app/Services/Vouchers`, `app/Services/Advertisements` |
+| Durable notices | `app/Services/Notifications`, `routes/console.php` |
+| UI and model | `resources/js`, `app/Models`, `database/migrations` |
+
+## Evidence and scope
+
+[CORE_FLOW_ROADMAP.md](docs/CORE_FLOW_ROADMAP.md) records actual implementation,
+checks, ratings and remaining deployment/device limits. Branch plans describe
+intended deliveries and do not prove a feature is released. Post-delivery
+refunds, wallet payment, live GPS and automated banking remain separate scopes.
+
+[AGENTS.md](AGENTS.md) supplies repository workflow and safety instructions.
+[GETTING_STARTED.md](GETTING_STARTED.md) supplies verified local fixture accounts
+and setup. The separate Flutter repository is not modified by web documentation.

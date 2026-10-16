@@ -1,171 +1,40 @@
-# GEMINI.md - Project Guidelines & Master Context
+# BagooPH Agent Reference
 
-> **CRITICAL INSTRUCTION FOR AI ASSISTANTS:**
-> 1. NEVER EVER COMMIT TO GIT: The assistant must NEVER run `git commit`, `git add`, or commit code autonomously under ANY circumstance. Only the user is allowed to commit. Always leave changes in the working directory and provide a suggested git commit command for the user to execute.
-> 2. This project follows the exact curriculum requirements provided by the instructor. Keep features grounded, clean, and directly aligned with the specifications. Do not add unnecessary third-party services or over-complicated systems.
+[AGENTS.md](AGENTS.md) is the canonical repository instruction file. Read it
+before work, including its local task-management routing, Git permissions,
+database isolation and verification rules. This reference avoids maintaining a
+second conflicting copy of those instructions.
 
----
+## Current architecture
 
-## 1. Unified Brand, Theme & Architectural Design Philosophy
+- Laravel 13/PHP backend, React 18/TypeScript web pages, Inertia.js 2, Tailwind CSS
+  3, Vite 6 and PostgreSQL 16; Docker Compose runs Nginx and PHP-FPM.
+- [TECH_STACK.md](docs/TECH_STACK.md) verifies resolved versions and supporting
+  tools. [ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the monolith, web/API
+  boundaries, services and deployment. [The presentation guide](docs/TECH_STACK_PRESENTATION.md)
+  explains why the choices fit BagooPH.
+- Five stored roles: buyer, seller, courier, logistics and admin. Pickup/delivery
+  are courier phases; company/hub responsibilities stay inside logistics.
+- Keep approval, activity, role, company placement, duty and ownership separate.
+  Buyer personal access and checkout eligibility follow the current buyer guide.
+- Preserve one reviewed shop per seller, the required Mother Hub route, buyer-only
+  completion and separate COD reconciliation/settlement. Use the normative flow
+  documents rather than historical examples.
 
-- **Primary Theme Color:** `#E00D42` (Crimson Red) shared across all users and portals (Buyer, Seller, Courier, and Admin).
-- **Design Aesthetic:** Architectural precision software look - clean slate structural borders, crisp micro-shadows, balanced whitespace, soft readable typography (`#1E293B` body text, `-0.008em` tracking).
-- **Single Typeface:** Use Plus Jakarta Sans across every page, portal, component, chart, email, and data field. Never introduce JetBrains Mono, Inter, `font-mono`, a monospace face, or another display/body font.
-- **Immutable Precision Corner Radius Scale (2px Buttons - No Bubble Slop):**
-  - **Buttons, CTAs & Action Icons:** `rounded-xs` or `rounded-sm` (2px). Precision software look.
-  - **Inputs, Search Bars & Selects:** `rounded-xs` or `rounded-sm` (2px - 3px).
-  - **Badges, Tags & Status Chips:** `rounded-xs` (2px). NEVER use rounded-full pill bubbles.
-  - **Cards, Panels & Data Tables:** `rounded-md` or `rounded-lg` (4px - 6px).
-  - **Modals & Drawers:** `rounded-lg` or `rounded-xl` (6px - 8px max).
-  - **Strict Ban:** Generic AI extremes (`rounded-3xl` or excessive `rounded-full` everywhere).
-- **High-Visibility Structural Borders:**
-  - Always use `border-slate-300` in light mode and `border-slate-700` / `border-slate-800` in dark mode.
-  - Never use faint/invisible borders (`border-slate-100` or `border-black/5`) so users can easily distinguish sections, data tables, and bento cards.
-- **Zero-Shift Overlap Navigation Standard:**
-  - Dropdown menus must be strictly `absolute right-0 top-full -mt-0.5 pt-1 z-50` with a 250ms mouse-leave grace timeout.
-  - Dropdowns must never expand the navbar height or shift elements.
-- **Design Authority:** Refer to `docs/STYLE_GUIDE.md` for full component specifications.
+## Work and documentation
 
----
-
-## 2. User Roles & Core Workflows
-
-The system has 4 primary roles (with logistics kept in mind for future extension):
-
-### 1. Buyer
-* **Registration:** Last name, First name, Middle initial, Sex, Email, Contact No, Birthday, Age (autogen), Address (Dropdown: Province, Municipality, Barangay; Manual: Street, House number), Upload ID.
-* **Approval:** Registration status is `pending_approval` until Admin approves.
-* **Core Functions:** Browse Categories, Search, View product & choose variations (color/size) and quantity, Cart (vouchers/discounts, payment mode, place order), Order status tracking (`to ship`, `in transit`, `out for delivery`), Rate/Feedback, Chat/Messaging, Account Management, Logout.
-
-### 2. Seller
-* **Registration:** Personal details, Business name, Line of business (category), Upload ID, Upload business permit. Requires Admin approval.
-* **Core Functions:** Dashboard overview (stats, charts), Manage inventory (products, variations, prices, vouchers, stock), Order notifications, Prepare orders & print waybills/shipping labels, Hand over to courier, Handle customer feedback, Generate financial & profit reports (date picker: from/to), Chat/Messaging, Account Management, Logout.
-
-### 3. Courier
-* **Registration:** Personal details, Vehicle type, Plate number, Upload OR/CR, Upload Driver's License. Requires Admin approval.
-* **Core Functions:** Delivery dashboard, Accept delivery requests (First-Come, First-Served), Pick up order from seller, Deliver & Complete order, Profit/earnings page, Delivery history, Chat/Messaging, Account Management, Logout.
-
-### 4. Multi-Role Authentication & Navigation Pattern
-* **Unified Smart Login (`/login`):** A single login page for all users. The backend automatically checks `user.role` on authentication and instantly redirects users to their designated interface:
-  * `buyer` -> Marketplace / Buyer Home
-  * `seller` -> `/seller/dashboard`
-  * `courier` -> `/courier/deliveries`
-  * `admin` -> `/admin/dashboard`
-* **Buyer-First Public Interface:** The primary consumer landing page is tailored for buyers with frictionless shopping and registration.
-* **Admin Obfuscation:** Admin controls and login buttons are strictly hidden from the public customer-facing UI (no "Admin Login" button on consumer headers). Accessible directly via `/admin/login` or via auto-redirect from `/login`.
-* **Dedicated Partner Onboarding:**
-  * **Seller Registration (`/seller/register`):** Dedicated merchant portal featuring shop name and business verification.
-  * **Courier Registration (`/courier/register`):** Dedicated driver portal featuring fleet and vehicle onboarding.
-
-### 5. Admin
-* **Core Functions:** Dashboard overview, Manage account registrations (review submitted IDs/permits, approve/disapprove with email), Manage user accounts (activate, suspend, deactivate), Monitor seller compliance (category match, prohibited items), Manage complaints/disputes (review evidence, coordinate), Manage 10% platform commission, Generate reports (sales summary, commission report), Manage platform settings (announcements, policies), Chat/Messaging, Account Management, Logout.
-
----
-
-## 3. Core Tech Stack
-- **Backend:** Laravel 11 / 12 (PHP 8.4)
-- **Frontend:** React + TypeScript + Tailwind CSS (via Inertia.js)
-- **Database:** PostgreSQL 16
-- **Environment:** Docker Compose (Nginx, PHP-FPM, PostgreSQL)
-- **Helper Script:** `./bagoo.sh` (e.g., `./bagoo.sh start`, `./bagoo.sh fresh`)
-
----
-
-## 4. Strict Guardrails (Anti-Hallucination)
-1. **No Paid / External APIs:** Implement address selection, vouchers, waybills, and chat using local database logic.
-2. **Mandatory Admin Approval:** Newly registered users cannot access their portal until approved by Admin.
-3. **Consistent Theme & Styling:** Always use `#E00D42` for primary actions and strictly adhere to the 2px button corner radius (`rounded-xs`/`rounded-sm`) and high-visibility borders (`border-slate-300`) defined in `docs/STYLE_GUIDE.md`.
-4. **No Emojis in Documentation:** Do NOT use emojis in any `.md` or documentation files to maintain a professional, human-engineered codebase.
-5. **Database Seeder & Multi-Role Integrity:** `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles (`buyer@bagoo.ph`, `seller@bagoo.ph`, `courier@bagoo.ph`, `hub@bagoo.ph`, `admin@bagoo.ph` / `sarneandy6@gmail.com`) with raw string password `'password'` (avoiding double-hashing with `'password' => 'hashed'` cast). Never strip these seed accounts.
-6. **Test Database Isolation:** Automated tests must strictly execute on an isolated SQLite in-memory database (`:memory:`) and must never connect to or wipe the main PostgreSQL database.
-7. **Mandatory Verification via Automated Testing:** Whenever features, routes, controllers, or frontend components are modified, always execute the automated test suite (`./bagoo.sh test`) and asset compilation (`./bagoo.sh npm run build`) to guarantee 100% passing status and zero regressions before concluding.
-
----
-
-## 5. Git, Commit Message & Response Protocol
-1. **Local Commits Allowed:** The assistant may run `git add` and `git commit` for completed work. It must never run `git push`; only the user publishes commits.
-2. **Report Commits:** Report every created commit with its short hash and subject. Do not provide redundant commit commands for work already committed.
-3. **Ultra-Minimal Output (Token Conservation):**
-   - Keep summaries to 1-2 concise bullet points.
-   - Do NOT output verbose "what was fixed" explanations.
-   - List changed file paths concisely.
-   - Specify the exact route/URL to verify (e.g. `Where to check: /buyer/search`).
-   - Include total lines changed and estimated tokens.
-4. **Incremental Prompt-Time Commit Breakdown:**
-   - When executing user coding tasks, actively break down changes into discrete, atomic, and well-scoped git commits incrementally during execution.
-   - Commit as each logical step, component, or bugfix is completed rather than holding all changes for one giant commit at the end.
-
----
-
-## 6. Absolute Prohibition of Third-Party Brand Names (Copyright & Trademark Protection)
-1. **Never Mention Big / Popular Brands:** The AI must NEVER mention, reference, compare, or include names of popular commercial brands or platforms anywhere in the project.
-2. **Strict Scope:** This applies to source code, comments, seeders, documentation, and assistant responses.
-3. **100% Original BagooPH Identity:**
-   - Platform Name: **BagooPH** / **Bagoo**
-   - Logistics Fleet: **Bagoo Express**
-   - Currency: Philippine Pesos (`₱` / `PHP`)
-   - Brand Color: `#E00D42` (Crimson)
-   - Shopping Container: **"Bag"** / **"Shopping Bag"** / **"Add to Bag"** (Never "Cart")
-   - All sample products and stores must be 100% original Bagoo-branded assets.
-
----
-
-## 7. Absolute Privacy & Server Credential / IP Address Protection
-1. **Zero IP Address Leaks in Files:** The AI must NEVER write or persist real server IP addresses, Azure hostnames, private keys, or SSH connection credentials into any repository files.
-2. **Placeholders Only:** Always use generic placeholders like `<SERVER_IP>` or `<AZURE_HOST>`.
-
----
-
-## 8. Selective Documentation Activation Rule
-1. **Domain-Triggered Reading:** Whenever the user's prompt mentions a specific domain or user role, actively reference and follow the corresponding documentation section in `docs/` and `GEMINI.md`:
-   - **"Buyer" / "Shopping" / "Bag" ->** Read `docs/BUYER_FLOWCHART.md` & Buyer section in `GEMINI.md`.
-   - **"Seller" / "Merchant" / "Shop" ->** Read `docs/SELLER_FLOW.md` & Bento Matrix dashboard rules.
-   - **"Courier" / "Logistics" / "Sorting Center" ->** Read `docs/COURIER_FLOW.md` & dispatch workflows.
-   - **"Admin" / "Governance" / "Commission" ->** Read `docs/ADMIN_FLOW.md` & 10% commission ledger rules.
-   - **"Style" / "Theme" / "UI" ->** Read `docs/STYLE_GUIDE.md`.
-2. **Concise Progress Logging:** Keep `docs/PROGRESS.md` ultra-concise, focusing on functional outcomes rather than verbose summaries.
-
----
-
-## 9. Authentication, Database Seeding & Password Cast Invariants
-1. **Laravel Hashed Cast Protocol:**
-   - The `User` model defines `'password' => 'hashed'` in its `casts()` method.
-   - In seeders and factories, pass raw password strings (`'password' => 'password'`). Do NOT wrap in `Hash::make()` inside `updateOrCreate()` or `$user->fill()`, as this causes double-hashing.
-2. **Mandatory Multi-Role Seed Baseline:**
-   - `DatabaseSeeder.php` must always seed verified, active accounts for all 5 platform roles with default password `'password'`:
-     - **Buyer:** `buyer@bagoo.ph`
-     - **Seller:** `seller@bagoo.ph` (with active `Shop` and initial category products)
-     - **Courier:** `courier@bagoo.ph` (with active `CourierProfile` and verified vehicle)
-     - **Logistics Hub:** `hub@bagoo.ph` (role `logistics`)
-     - **Platform Admin:** `admin@bagoo.ph` & `sarneandy6@gmail.com`
-
----
-
-## 10. Curriculum Flow Authority & Production Remote Deployment Invariants
-1. **Curriculum Single Source of Truth:**
-   - Refer to `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md` for all 5 roles, the 13 standardized order statuses (`PLACED` through `COMPLETED` / `RETURNED`), and sorting center mechanics.
-   - Do not invent external workflow stages or third-party dependencies.
-2. **Role Approval Authorities:**
-   - Platform Administrator approves registrations for: `Buyer`, `Seller`, and `Logistics / Sorting Center`.
-   - Logistics / Sorting Center approves and manages registrations for: `Courier` fleet riders.
-3. **Remote Production Migration Guard:**
-   - In environments where `APP_ENV=production` (e.g. Azure VM), always execute artisan migration and seed commands with the `--force` flag (`./bagoo.sh migrate --force`, `./bagoo.sh fresh --force`, or `php artisan db:seed --force`) to bypass interactive terminal blocking.
-
----
-
-## 11. Minimalist Split-Screen Authentication & Auth UI Design Standard
-1. **Strictly Zero Gradients:**
-   - Never use CSS gradient classes (`bg-gradient-*`, `from-*`, `via-*`, `to-*`), radial ambient glows, or translucent gradient card borders on authentication screens.
-   - Use pure, solid surfaces: `#FFFFFF` (form/card), `#F8FAFC` (showcase canvas and page background), `#0F172A` (text), and solid role accents (`#E00D42` Buyer/Seller, `#059669` Courier, `#D97706` Admin, `#4F46E5` Hub).
-2. **Zero Clutter & Minimalist Copy Standard:**
-   - Keep forms clean and concise. No verbose marketing paragraphs, live store companion cards, or fee calculation simulators on auth screens.
-   - No artificial pill tags (e.g., "FAST 1-CLICK APPROVAL").
-3. **No Demo Buttons or Telemetry Strips:**
-   - Never include `[DEMO AUTO-FILL]` or `[1-CLICK DEMO FILL]` banners on authentication forms.
-   - Never include 3-box indicator strips ("Live GPS", "Instant Payout", "LTO Verified") on auth views.
-4. **Full-Viewport Split Screen with Dynamic Spatial Swap:**
-   - Wrap auth pages in the `GuestLayout` split-screen shell:
-     - **Login (`formPosition="left"`):** Form anchored on the **LEFT** (`lg:col-span-5`), 3D studio visual showcase on the **RIGHT** (`lg:col-span-7`).
-     - **Register (`formPosition="right"`):** Dynamic spatial swap! 3D studio visual showcase on the **LEFT** (representing verified credentials/ID with official `<BagooLogo />` badge overlay), registration form anchored on the **RIGHT** (`lg:col-span-5`).
-5. **Strictly Zero Emojis:**
-   - Strictly zero emojis in code, comments, docstrings, and UI copy.
+- Work in this repository; preserve unrelated changes. Local staging and
+  descriptive commits are allowed. Only the user pushes.
+- Use isolated SQLite `:memory:` for ordinary tests; never reset the development
+  or production PostgreSQL database for testing.
+- Follow each portal's existing design. The shared identity uses `#E00D42`,
+  Plus Jakarta Sans, Philippine pesos and Shopping Bag wording. The rider's local
+  8px corners and blush surfaces are defined in AGENTS and the rider/style guides.
+- Check actual seeders for demo identities/passwords; use [Getting started](GETTING_STARTED.md)
+  for their documented source defaults. Do not restore retired demo shortcuts,
+  role conversion or simulator routes.
+- Use [docs/README.md](docs/README.md) to route documentation and
+  [CORE_FLOW_ROADMAP.md](docs/CORE_FLOW_ROADMAP.md) for changing implementation
+  evidence. Historical/source documents do not override current contracts.
+- Keep private environment values, real server details and local task-workflow
+  contents out of tracked files. Do not introduce new services through a doc edit.
