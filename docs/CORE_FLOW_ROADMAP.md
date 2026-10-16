@@ -5243,3 +5243,87 @@ Implementation commits:
 The combined PR title/body remains a local draft at
 `.codex/portal-notifications/PR.md`; it has not been saved on GitHub. The
 documentation commit is reported in the branch handoff. No commits were pushed.
+
+### October 16, 2026: connected core-flow acceptance and commerce recovery
+
+Implemented on `fix/core-flow-acceptance`, based on merged `main` at `4b9f610`.
+The review follows one purchase through commercial state, recorded custody,
+counted COD and evidenced seller payment, with separate retry, return and
+counter journeys. It fixes confirmed defects rather than changing the
+documented commercial or financial policy.
+
+| Before | Current behavior and evidence |
+|---|---|
+| The existing delivery journey ended at buyer confirmation; financial gates were exercised separately. | Four connected HTTP cases now begin with the Shopping Bag and a real checkout token, pass through seller fulfillment, both riders, Bayan/Mother manifests, buyer confirmation, counted cash handovers, reconciliation and seller payment. Buyer-first and cash-first orderings run with and without funded offers. |
+| A saved retry approval accepted the same token with a changed failed-attempt reference. | Replay must name the original retained attempt. Stored fingerprints and approvals are unchanged. Two failing reproductions now reject changed references, while an exact original replay remains valid after a second failure. |
+| Exception operations and settlement lacked a joined acceptance gate. | Five connected cases cover retry through payment, original replay after another failure, refused/third-failure returns through the Mother Hub to seller receipt, and secure counter collection with reconciliation before buyer confirmation. Returns never manufacture collection, completion or seller payment. |
+| Self-pickup checkout hid required address fields and replaced part of the buyer address when selecting a hub. | Both delivery methods expose the required recipient address, barangay and postal code. Hub selection stays separate, preserving the recipient snapshot, coordinates and landmark; the server still checks actual hub coverage. |
+| Checkout and receipt confirmation could queue duplicate requests; tracking copy announced success before the clipboard finished. | Synchronous pending guards retain safe retry behavior. Receipt actions recheck the current order and permission. Copy feedback waits for success and cannot close a later order's QR dialog. |
+| Checkout advertised unsupported SMS, fixed counter hours, escrow, GPS guarantees and an incomplete transport chain. | Instructions describe the existing private claim-code flow, actual order tracking, separate collection/payment and the required Mother Hub. Delivery choices use native radio controls; the installed dialog component supplies confirmation semantics. |
+
+The normal reference purchase uses PHP 320.07 of merchandise and PHP 50.00
+shipping. The product split remains PHP 32.01 platform commission and PHP
+288.06 gross seller share. Funded offers separately record PHP 20.00 shop
+expense and PHP 10.00 platform expense, without including shipping in the
+commission basis. A failed payment writer rolls back its evidence, payment and
+funding expenses before the same legitimate request retries successfully.
+
+Verification:
+
+- The completed isolated SQLite `:memory:` run reports **4,318 passed,
+  two failed, 108,898 assertions**. The two failures were old expectations that
+  inactive/suspended buyers could not read their own profile. The policy,
+  controller and access-service sources were unchanged from `4b9f610`; the
+  documented exception and existing account tests require that read access.
+  Correcting only those expectations preserves denied generic writes and all
+  restricted nonbuyer reads. The focused profile/access/settings retest passes
+  **123 cases / 2,524 assertions**, including both corrected cases and the
+  unchanged rejection cases. All 4,320 original case identities are covered by
+  the completed run plus the current profile retest; production source is
+  unchanged between them. This is not a new single all-green full-suite run.
+- The complete run includes **nine new connected cases / 1,711 assertions**:
+  four normal journeys and five exception/replay cases, all passing. Their
+  transactions and custody records come from actual Laravel HTTP requests,
+  with initial account/network eligibility as fixtures. They are not
+  browser-driven tests.
+- All **334 frontend/deployment checks** pass, including eight new actual-page
+  callback/state checks. They cover empty-address self-pickup, retained address
+  and pins, field limits and associated errors, review agreement reset,
+  duplicate submission, receipt validation/retry and stale handlers, and
+  clipboard rejection and delayed selection changes. Existing server rendering
+  and flow checks remain included.
+- The production TypeScript/Vite build, scoped PHP formatting and Git whitespace
+  checks pass. No schema or dependency change is included.
+- The first diagnostic run used an older local PHP container without WebP
+  support required by the existing advertisement code. That incomplete run was
+  stopped after identifying the environment fault. The completed
+  regression uses a disposable container built from the existing Dockerfile, with WebP
+  enabled and dedicated storage/configuration paths. Development and production
+  databases were not used for tests.
+
+These are scoped engineering assessments, not coverage percentages:
+
+| Area | Before | After | Limit |
+|---|---:|---:|---|
+| Connected purchase/exception verification | 6/10 | 8/10 | Joined custody, cash and payment evidence is established locally; runtime/browser deployment is separate. |
+| Buyer/seller checkout and action feedback | 6.5/10 | 8/10 | The self-pickup blocker, misleading copy and pending/error gaps are corrected; rendered device behavior is unverified. |
+| Retry approval replay consistency | 7/10 | 8.5/10 | Changed references reject and original historical retries remain valid; PostgreSQL contention was not exercised. |
+
+The component harness intentionally stubs effects and does not mount a browser
+DOM. It does not prove keyboard traversal, focus restoration, native browser
+validity enforcement or actual phone appearance. Existing buyer layouts render
+domain `flash.error`; the new receipt callback check specifically exercises
+validation feedback. The new reverse-route cases use one shared Mother Hub;
+broader existing routing tests remain part of the complete regression.
+
+No Azure deployment, browser automation, phone/camera/GPS acceptance or
+PostgreSQL concurrency test was performed in this branch. Prior native
+duty/claim deployment evidence does not certify these web changes. Whole-role,
+security and whole-project readiness ratings are unchanged. Buyer-requested
+post-delivery returns/refunds, wallets and ordinary mobile-write activation
+remain separate scopes.
+
+The executable dependency currently requires Laravel `^13.17`; the `AGENTS.md`
+stack summary still names Laravel 12. This review uses the installed/locked
+dependencies and does not change either the dependency constraint or lifecycle
+policy.

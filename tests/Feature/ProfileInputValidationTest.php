@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -147,7 +148,21 @@ class ProfileInputValidationTest extends TestCase
     {
         $user = $this->account($role);
         $user->update(['status' => $status]);
-        $this->actingAs($user)->getJson('/profile')->assertForbidden();
+        $response = $this->actingAs($user)->get('/profile');
+
+        if ($role === 'buyer' && in_array($status, ['inactive', 'suspended'], true)) {
+            $response->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/Profile')
+                ->where('user.id', $user->id)
+                ->where('auth.user.id', $user->id)
+                ->where('initialTab', 'account')
+                ->where('canUsePortal', false)
+            );
+
+            return;
+        }
+
+        $response->assertForbidden();
     }
 
     public static function avatarPortals(): array
