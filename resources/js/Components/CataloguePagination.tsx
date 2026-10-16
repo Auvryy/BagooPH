@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import CatalogueLink from './CatalogueLink';
+import useCatalogueIdle from '@/hooks/useCatalogueIdle';
 import { catalogueHref, paginationLabel, revealCatalogueResults } from '@/utils/catalogueNavigation';
 
 export interface CataloguePage {
@@ -15,6 +17,8 @@ export interface CataloguePage {
 
 export default function CataloguePagination({ page }: { page: CataloguePage }) {
     const current = usePage();
+    const ref = useRef<HTMLDivElement>(null);
+    useCatalogueIdle(ref, page.next_page_url);
     useEffect(() => {
         const url = new URL(window.location.href);
         if (url.searchParams.has('page') && url.searchParams.get('page') !== String(page.current_page)) {
@@ -27,7 +31,7 @@ export default function CataloguePagination({ page }: { page: CataloguePage }) {
     const from = page.total ? (page.current_page - 1) * page.per_page + 1 : 0;
     const to = Math.min(page.current_page * page.per_page, page.total);
     return (
-        <div className="mt-8 space-y-3 font-sans text-xs">
+        <div ref={ref} className="mt-8 space-y-3 font-sans text-xs">
             <p role="status" aria-live="polite" className="text-center text-slate-500">
                 Showing {from}–{to} of {page.total} products · Page {page.current_page} of {Math.max(1, page.last_page)}
             </p>
@@ -38,7 +42,7 @@ export default function CataloguePagination({ page }: { page: CataloguePage }) {
                     const label = paginationLabel(link.label);
                     if (link.active) return <span key={index} aria-current="page" className={`${className} border-[#E00D42] bg-[#E00D42] text-white`}>{label}</span>;
                     if (!href) return <button key={index} type="button" disabled className={`${className} cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400`}>{label}</button>;
-                    return <Link key={index} href={href} preserveScroll preserveState onSuccess={revealCatalogueResults} className={`${className} border-slate-200 bg-white text-slate-800 hover:border-slate-400`}>{label}</Link>;
+                    return <CatalogueLink key={index} href={href} preserveScroll preserveState onSuccess={revealCatalogueResults} className={`${className} border-slate-200 bg-white text-slate-800 hover:border-slate-400`}>{label}</CatalogueLink>;
                 })}
             </nav>}
         </div>
