@@ -316,7 +316,7 @@ export default function SearchPage({
                     </aside>
 
                     {/* RIGHT MAIN SEARCH RESULTS & FEED */}
-                    <div id="catalogue-results" tabIndex={-1} aria-label="Product results" className="lg:col-span-9 space-y-4 scroll-mt-28 outline-none">
+                    <div id="catalogue-results" role="region" tabIndex={-1} aria-label="Product results" className="lg:col-span-9 space-y-4 scroll-mt-28 outline-none">
                         
                         {/* SEARCH CONTROLS HEADER BAR */}
                         <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans text-xs">

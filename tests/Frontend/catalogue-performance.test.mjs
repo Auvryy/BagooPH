@@ -8,7 +8,7 @@ import { buildSync } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-performance-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
-    stdin: { contents: "export * from '@/utils/cataloguePrefetch';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export * from '@/utils/cataloguePrefetch'; export * from '@/utils/catalogueSearch';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false,
 });
 const file = join(temporary, 'performance.mjs');
@@ -149,3 +149,93 @@ test('idle preparation waits for visible settled controls, yields to activity an
     idle.activity(); idle.display(false); idle.display(true); t.mock.timers.tick(3_000); assert.equal(requests, 1);
 });
 
+function searchFixture(t, results = false) {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const prepared = [], visits = [], states = [], cancelled = [];
+    const filters = { search: '', category: 'apparel', sort: 'price_asc', min_price: '0', in_stock: true, page: 2 };
+    const controller = new ui.CatalogueSearch({
+        base: () => '/buyer/search', filters: () => filters, resultsPage: () => results,
+        prepare: url => { let finish; const done = new Promise(resolve => { finish = resolve; }); prepared.push({ url, finish }); return done; },
+        cancelPreparation: url => cancelled.push(url), visit: (url, options) => visits.push({ url, options }), notify: state => states.push(state),
+    });
+    t.after(() => controller.dispose());
+    return { controller, prepared, visits, states, cancelled, filters };
+}
+
+test('typing pauses once before preparation and never navigates away from an unrelated page', t => {
+    const f = searchFixture(t);
+    f.controller.update('Ba'); t.mock.timers.tick(250);
+    assert.equal(f.prepared.length, 0);
+    f.controller.update('Bag'); t.mock.timers.tick(299);
+    assert.equal(f.prepared.length, 0);
+    t.mock.timers.tick(1);
+    assert.equal(f.prepared.length, 1); assert.equal(f.visits.length, 0);
+    assert.equal(f.prepared[0].url, '/buyer/search?category=apparel&in_stock=1&min_price=0&search=Bag&sort=price_asc');
+});
+
+test('Enter flushes the debounce and keeps matching preparation alive for one foreground visit', t => {
+    const f = searchFixture(t);
+    f.controller.update('Bag'); t.mock.timers.tick(300);
+    f.controller.submit('Bag'); t.mock.timers.tick(500);
+    assert.equal(f.prepared.length, 1); assert.equal(f.visits.length, 1); assert.equal(f.cancelled.length, 0);
+    assert.equal(f.visits[0].url, f.prepared[0].url);
+    assert.equal(f.visits[0].options.replace, false);
+});
+
+test('1/2/100/101-character boundaries and literal punctuation retain the existing server contract', t => {
+    const f = searchFixture(t);
+    f.controller.update('B'); t.mock.timers.tick(300); assert.equal(f.prepared.length, 0);
+    f.controller.submit('B'); assert.equal(f.visits.length, 1);
+    f.controller.update('BB'); t.mock.timers.tick(300); assert.equal(f.prepared.length, 1);
+    f.controller.update('B'.repeat(100)); t.mock.timers.tick(300); assert.equal(f.prepared.length, 2);
+    f.controller.update('B'.repeat(101)); t.mock.timers.tick(300); f.controller.submit('B'.repeat(101));
+    assert.equal(f.prepared.length, 2); assert.equal(f.visits.length, 1); assert.equal(f.states.at(-1).status, 'error');
+    assert.equal(f.states.at(-1).invalid, true);
+    f.controller.submit("  O'Bag %_!  ");
+    assert.equal(new URL(f.visits.at(-1).url, 'https://bagoo.test').searchParams.get('search'), "O'Bag %_!");
+});
+
+test('composition does not fetch intermediate text; paste/end composition prepares only the final query', t => {
+    const f = searchFixture(t);
+    f.controller.update('中', true); f.controller.update('中文', true); t.mock.timers.tick(500); f.controller.submit('中文');
+    assert.equal(f.prepared.length, 0); assert.equal(f.visits.length, 0);
+    f.controller.update('中文', false); t.mock.timers.tick(300);
+    assert.equal(f.prepared.length, 1);
+    f.controller.update('Pasted query'); t.mock.timers.tick(300);
+    assert.equal(f.prepared.length, 2);
+});
+
+test('live search replaces typing history with coherent partial props and rejects late replies', t => {
+    const f = searchFixture(t, true);
+    f.controller.update('Bag'); t.mock.timers.tick(300);
+    const old = f.visits[0]; let cancelled = false;
+    old.options.onCancelToken({ cancel: () => { cancelled = true; } });
+    f.controller.update('Hat');
+    assert.equal(cancelled, true); assert.equal(old.options.onBeforeUpdate(), false);
+    old.options.onSuccess(); assert.notEqual(f.states.at(-1).status, 'ready');
+    t.mock.timers.tick(300);
+    const current = f.visits.at(-1);
+    assert.equal(current.options.onBeforeUpdate(), true);
+    assert.equal(current.options.replace, true);
+    assert.deepEqual(current.options.only, ['products', 'relatedProducts', 'filters']);
+    assert.equal(f.prepared.length, 0);
+});
+
+test('clear preserves unrelated filters and resets paging rather than jumping to the homepage', t => {
+    const f = searchFixture(t, true);
+    f.controller.submit('');
+    assert.equal(f.visits.at(-1).url, '/buyer/search?category=apparel&in_stock=1&min_price=0&sort=price_asc');
+    assert.equal(f.visits.at(-1).options.replace, false);
+});
+
+test('foreground failures offer retry and leaving/disposal prevent delayed navigation or stale updates', async t => {
+    const f = searchFixture(t);
+    f.controller.submit('Bag'); f.controller.networkFailure(); assert.equal(f.states.at(-1).status, 'error');
+    f.controller.submit('Bag'); assert.equal(f.visits.length, 2);
+    f.controller.update('Hat'); t.mock.timers.tick(300);
+    const old = f.prepared.at(-1);
+    f.controller.leaving('/buyer/profile'); old.finish(true); await tick();
+    assert.equal(f.states.at(-1).status, 'idle');
+    f.controller.update('Shoes'); f.controller.dispose(); t.mock.timers.tick(300);
+    assert.equal(f.prepared.length, 1);
+});

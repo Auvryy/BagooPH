@@ -1,0 +1,122 @@
+import { after, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { build as buildBundle } from 'esbuild';
+
+const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-interactions-'));
+after(() => rmSync(temporary, { recursive: true, force: true }));
+const build = await buildBundle({
+    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
+    plugins: [{ name: 'controlled-catalogue-interactions', setup(builder) {
+        builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'catalogue-hooks' }));
+        builder.onLoad({ filter: /.*/, namespace: 'catalogue-hooks' }, () => ({ loader: 'js', contents: `
+            export const useState = initial => globalThis.catalogueHarness.state(initial);
+            export const useRef = initial => globalThis.catalogueHarness.ref(initial);
+            export const useEffect = (effect, deps) => globalThis.catalogueHarness.effect(effect, deps);
+        ` }));
+        builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'catalogue-inertia' }));
+        builder.onLoad({ filter: /.*/, namespace: 'catalogue-inertia' }, () => ({ loader: 'js', contents: `
+            export const usePage = () => globalThis.catalogueHarness.page;
+            export const router = { on: (...args) => globalThis.catalogueHarness.on(...args) };
+        ` }));
+        builder.onResolve({ filter: /utils\/catalogueRuntime$/ }, () => ({ path: 'runtime', namespace: 'catalogue-runtime' }));
+        builder.onLoad({ filter: /.*/, namespace: 'catalogue-runtime' }, () => ({ loader: 'js', contents: `
+            export const cataloguePrefetch = {
+                prepare: url => { globalThis.catalogueHarness.prepared.push(url); return Promise.resolve(true); },
+                prioritize() {}, cancel: url => globalThis.catalogueHarness.cancelled.push(url)
+            };
+            export const visitCatalogue = (url, options) => {
+                const harness = globalThis.catalogueHarness;
+                harness.visits.push({ url, options });
+                options.onCancelToken?.({ cancel: () => harness.cancelled.push(url) });
+                return Promise.resolve();
+            };
+        ` }));
+    } }],
+});
+const file = join(temporary, 'interactions.mjs'); writeFileSync(file, build.outputFiles[0].text);
+const ui = await import(pathToFileURL(file).href);
+function harness(t, component = ui.Search, props) {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const original = Object.fromEntries(['window', 'document', 'navigator', 'route'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+    const window = Object.assign(new EventTarget(), { location: new URL('https://bagoo.test/buyer/search?search=Bag') });
+    const document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+    const navigator = { onLine: true };
+    for (const [key, value] of Object.entries({ window, document, navigator, route: () => '/buyer/search' })) Object.defineProperty(globalThis, key, { value, configurable: true });
+    const slots = [], effects = [], listeners = new Map(); let cursor = 0, queued = [];
+    const h = {
+        page: { component: 'Buyer/Search', url: '/buyer/search?search=Bag', props: { filters: { search: 'Bag', category: 'apparel', min_price: '0' } } },
+        prepared: [], visits: [], cancelled: [], window, document, navigator,
+        state(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial; return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
+        ref(initial) { return this.state(() => ({ current: initial }))[0]; },
+        effect(callback, deps) { const index = cursor++; const old = effects[index]; if (!old || !deps || deps.some((value, i) => !Object.is(value, old.deps[i]))) { queued.push(() => { old?.cleanup?.(); effects[index] = { deps, cleanup: callback() }; }); } },
+        on(name, callback) { const list = listeners.get(name) ?? new Set(); list.add(callback); listeners.set(name, list); return () => list.delete(callback); },
+        emit(name, detail) { for (const callback of listeners.get(name) ?? []) callback({ detail, preventDefault() { h.prevented = true; } }); },
+        render() { cursor = 0; queued = []; let result = component(props); const pending = queued; queued = []; pending.forEach(effect => effect()); cursor = 0; return component(props); },
+    };
+    globalThis.catalogueHarness = h;
+    t.after(() => {
+        effects.forEach(effect => effect?.cleanup?.());
+        delete globalThis.catalogueHarness;
+        for (const [key, descriptor] of Object.entries(original)) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+        }
+    });
+    return h;
+}
+
+test('the header input synchronizes with Back/Forward props while preserving current filters', t => {
+    const h = harness(t);
+    let search = h.render(); assert.equal(search.value, 'Bag');
+    search.update('Unsaved draft'); assert.equal(h.render().value, 'Unsaved draft');
+    h.page = { ...h.page, url: '/buyer/search?search=Hat&page=2', props: { filters: { search: 'Hat', category: 'apparel', min_price: '0' } } };
+    search = h.render(); assert.equal(search.value, 'Hat');
+    search.update('Shoes'); t.mock.timers.tick(300);
+    assert.equal(h.visits.at(-1).url, '/buyer/search?category=apparel&min_price=0&search=Shoes');
+    assert.equal(h.visits.at(-1).options.preserveState, true);
+});
+
+test('a pagination or filter visit cancels scheduled typing rather than being replaced by it', t => {
+    const h = harness(t); h.render().update('Hat');
+    h.emit('before', { visit: { method: 'get', headers: {}, url: new URL('https://bagoo.test/buyer/search?search=Bag&page=2') } });
+    t.mock.timers.tick(1_000); assert.equal(h.visits.length, 0);
+});
+
+test('offline typing preserves the query and explicit submit remains the recovery action', t => {
+    const h = harness(t); h.render().update('Hat'); h.navigator.onLine = false;
+    t.mock.timers.tick(300); assert.equal(h.visits.length, 0);
+    let search = h.render(); assert.equal(search.value, 'Hat'); search.submit();
+    assert.equal(h.visits.length, 1);
+    h.emit('exception', { exception: new Error('Offline') });
+    search = h.render(); assert.equal(search.state.status, 'error'); assert.equal(h.prevented, true);
+    assert.equal(search.state.invalid, undefined);
+    h.navigator.onLine = true; search.submit(); assert.equal(h.visits.length, 2);
+});
+
+test('clear uses the empty query immediately and retains category/price without stale input', t => {
+    const h = harness(t); h.render().clear();
+    assert.equal(h.render().value, '');
+    assert.equal(h.visits.at(-1).url, '/buyer/search?category=apparel&min_price=0');
+});
+
+test('mouse/focus preparation respects the intent delay and a quick pass is cancelled', t => {
+    const h = harness(t, ui.Link, { href: '/product/bag', children: 'Everyday bag' });
+    let link = h.render();
+    link.props.onPointerEnter({ pointerType: 'mouse' }); t.mock.timers.tick(149); assert.equal(h.prepared.length, 0);
+    link.props.onPointerLeave({}); t.mock.timers.tick(10); assert.equal(h.prepared.length, 0);
+    link.props.onFocus({}); t.mock.timers.tick(150); assert.deepEqual(h.prepared, ['/product/bag']);
+    link = h.render(); link.props.onBlur({});
+});
+
+test('touch does not block scrolling and ordinary/modified link activations retain their meanings', t => {
+    const h = harness(t, ui.Link, { href: '/product/bag', children: 'Everyday bag' });
+    const link = h.render(); let prevented = 0;
+    link.props.onTouchStart({ preventDefault: () => prevented++ });
+    assert.equal(prevented, 0); assert.equal(h.prepared.length, 1);
+    const event = { defaultPrevented: false, button: 0, preventDefault: () => prevented++ };
+    link.props.onClick({ ...event, ctrlKey: true }); assert.equal(prevented, 0); assert.equal(h.visits.length, 0);
+    link.props.onClick(event); assert.equal(prevented, 1); assert.equal(h.visits.length, 1);
+});

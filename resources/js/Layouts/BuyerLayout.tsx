@@ -27,6 +27,7 @@ import ChatModal from '@/Components/ChatModal';
 import BuyerApplicationModal from '@/Components/BuyerApplicationModal';
 import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
+import useCatalogueSearch from '@/hooks/useCatalogueSearch';
 
 interface Props {
     children: React.ReactNode;
@@ -66,12 +67,8 @@ export default function BuyerLayout({
     }, [auth.user?.id, flash?.success]);
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return new URLSearchParams(window.location.search).get('search') || '';
-        }
-        return '';
-    });
+    const search = useCatalogueSearch();
+    const searchQuery = search.value;
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [authForm, setAuthForm] = useState({
@@ -162,12 +159,7 @@ export default function BuyerLayout({
     const adminUrl = getDomainUrl('admin', '/');
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        const trimmed = searchQuery.trim();
-        if (trimmed) {
-            router.get(route('buyer.search'), { search: trimmed });
-        } else {
-            router.get(route('buyer.search'));
-        }
+        search.submit();
     };
 
     return (
@@ -224,21 +216,24 @@ export default function BuyerLayout({
 
                         {/* Search Bar */}
                         <div className="flex-1 max-w-2xl hidden md:block">
-                            <form onSubmit={handleSearch} className="relative flex items-center h-11">
+                            <form onSubmit={handleSearch} aria-busy={search.state.status === 'loading'} className="relative flex items-center h-11">
                                 <input
                                     type="text"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => search.update(e.target.value, (e.nativeEvent as InputEvent).isComposing)}
+                                    onCompositionStart={search.composing}
+                                    onCompositionEnd={(e) => search.composed(e.currentTarget.value)}
+                                    maxLength={100}
+                                    aria-label="Search products"
+                                    aria-invalid={search.state.invalid || undefined}
                                     placeholder="Search 14 departments, curated gear, or trending brands..."
                                     className="w-full h-11 pl-4 pr-28 bg-slate-50 border border-slate-200 rounded-xs text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
                                 />
                                 {searchQuery && (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                             setSearchQuery('');
-                                             router.get(route('buyer.index'), {}, { preserveState: true });
-                                        }}
+                                        onClick={search.clear}
+                                        aria-label="Clear search"
                                         className="absolute right-24 text-slate-400 hover:text-slate-700 p-1"
                                     >
                                         <X className="w-3.5 h-3.5" />
@@ -249,8 +244,9 @@ export default function BuyerLayout({
                                     className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xs text-xs font-bold transition flex items-center gap-1.5 shadow-xs font-sans cursor-pointer"
                                 >
                                     <Search className="w-3.5 h-3.5" />
-                                    <span>Search</span>
+                                    <span>{search.state.status === 'loading' ? 'Searching…' : 'Search'}</span>
                                 </button>
+                                <p role="status" className={search.state.status === 'error' ? 'absolute top-full mt-1 bg-white text-xs text-red-700' : 'sr-only'}>{search.state.message}</p>
                             </form>
                         </div>
 
@@ -443,20 +439,27 @@ export default function BuyerLayout({
 
                     {/* Mobile Search Bar */}
                     <div className="mt-3 block md:hidden">
-                        <form onSubmit={handleSearch} className="relative flex items-center">
+                        <form onSubmit={handleSearch} aria-busy={search.state.status === 'loading'} className="relative flex items-center">
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => search.update(e.target.value, (e.nativeEvent as InputEvent).isComposing)}
+                                onCompositionStart={search.composing}
+                                onCompositionEnd={(e) => search.composed(e.currentTarget.value)}
+                                maxLength={100}
+                                aria-label="Search products"
+                                aria-invalid={search.state.invalid || undefined}
                                 placeholder="Search products..."
-                                className="w-full pl-3 pr-20 py-2.5 bg-slate-50 border border-slate-200 rounded-xs text-xs"
+                                className="w-full pl-3 pr-32 py-2.5 bg-slate-50 border border-slate-200 rounded-xs text-xs"
                             />
+                            {searchQuery && <button type="button" onClick={search.clear} aria-label="Clear search" className="absolute right-24 p-1 text-slate-400 hover:text-slate-700"><X className="h-3.5 w-3.5" /></button>}
                             <button
                                 type="submit"
                                 className="absolute right-1 top-1 bottom-1 px-3 bg-[#E00D42] text-white rounded-xs text-xs font-bold"
                             >
-                                Search
+                                {search.state.status === 'loading' ? 'Searching…' : 'Search'}
                             </button>
+                            <p role="status" className={search.state.status === 'error' ? 'absolute top-full mt-1 bg-white text-xs text-red-700' : 'sr-only'}>{search.state.message}</p>
                         </form>
                     </div>
                 </div>
@@ -465,7 +468,7 @@ export default function BuyerLayout({
             )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main className={`flex-1 min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${
+            <main aria-busy={search.state.status === 'loading'} className={`flex-1 min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${
                 fullHeight 
                     ? 'py-2 sm:py-3 overflow-hidden' 
                     : hideHeader 

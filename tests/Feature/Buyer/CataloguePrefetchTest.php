@@ -83,4 +83,19 @@ class CataloguePrefetchTest extends TestCase
         $this->actingAs($user)->get('/buyer/search')->assertStatus(409);
     }
 
+    public function test_partial_live_search_keeps_related_results_coherent_without_recomputing_category_counts(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $match = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Everyday Bag']);
+        Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Travel Hat']);
+        $full = $this->withHeader('Purpose', '')->get('/buyer/search?search=Everyday')->assertOk();
+        $this->withHeaders(['Purpose' => '', 'X-Inertia-Partial-Component' => 'Buyer/Search', 'X-Inertia-Partial-Data' => 'products,relatedProducts,filters']);
+        DB::enableQueryLog();
+        $partial = $this->get('/buyer/search?search=Everyday')->assertOk()->assertJsonPath('props.products.data.0.id', $match->id)
+            ->assertJsonPath('props.filters.search', 'Everyday')->assertJsonCount(1, 'props.relatedProducts')->assertJsonMissingPath('props.categories');
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+        $this->assertLessThan(strlen($full->getContent()), strlen($partial->getContent()));
+        $this->assertFalse(collect($queries)->contains(fn ($query) => str_contains($query['query'], 'product_count')));
+    }
 }
