@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import SavedProductButton from '@/Components/SavedProductButton';
+import CataloguePagination from '@/Components/CataloguePagination';
+import { catalogueFilters } from '@/utils/catalogueNavigation';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Search as SearchIcon, 
@@ -45,6 +47,10 @@ export default function SearchPage({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+    useEffect(() => {
+        setMinPrice(filters.min_price || '');
+        setMaxPrice(filters.max_price || '');
+    }, [filters.min_price, filters.max_price]);
 
     const formatPrice = (amount?: number | string | null) => {
         const numeric = Number(amount || 0);
@@ -56,23 +62,7 @@ export default function SearchPage({
     };
 
     const applyFilter = (updates: Record<string, any>) => {
-        const nextFilters: Record<string, any> = {
-            ...filters,
-            ...updates,
-        };
-
-        // Strip empty or default values
-        Object.keys(nextFilters).forEach((key) => {
-            if (
-                nextFilters[key] === '' ||
-                nextFilters[key] === undefined ||
-                nextFilters[key] === null ||
-                nextFilters[key] === 'all' ||
-                nextFilters[key] === false
-            ) {
-                delete nextFilters[key];
-            }
-        });
+        const nextFilters = catalogueFilters(filters, updates);
 
         router.get(route('buyer.search'), nextFilters, {
             preserveState: true,
@@ -326,7 +316,7 @@ export default function SearchPage({
                     </aside>
 
                     {/* RIGHT MAIN SEARCH RESULTS & FEED */}
-                    <div className="lg:col-span-9 space-y-4">
+                    <div id="catalogue-results" role="region" tabIndex={-1} aria-label="Product results" className="lg:col-span-9 space-y-4 scroll-mt-28 outline-none">
                         
                         {/* SEARCH CONTROLS HEADER BAR */}
                         <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans text-xs">
@@ -500,26 +490,7 @@ export default function SearchPage({
                             </div>
                         )}
 
-                        {/* PAGINATION */}
-                        {products.links && products.links.length > 3 && (
-                            <div className="mt-8 flex items-center justify-center gap-1 font-sans text-xs">
-                                {products.links.map((link, idx) => (
-                                    <Link
-                                        key={idx}
-                                        href={link.url || '#'}
-                                        preserveScroll
-                                        className={`px-3.5 py-2 rounded-lg border font-bold uppercase transition ${
-                                            link.active
-                                                ? 'bg-[#E00D42] text-white border-[#E00D42]'
-                                                : link.url
-                                                    ? 'bg-white text-slate-800 border-slate-200 hover:border-slate-400'
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        <CataloguePagination page={products} />
                     </div>
                 </div>
 

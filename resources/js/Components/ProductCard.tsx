@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
+import CatalogueLink from '@/Components/CatalogueLink';
 import { Star, Truck, ShoppingBag, Check, MapPin } from 'lucide-react';
 import { Product } from '@/types';
 import { ratingLabel, recordedRating } from '@/Components/RatingStars';
@@ -60,7 +60,7 @@ export default function ProductCard({
         <article
             className={`group bg-white rounded-lg border border-slate-300 overflow-hidden hover:shadow-xl hover:border-slate-400 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
         >
-            <Link href={targetUrl} className="flex flex-1 flex-col">
+            <CatalogueLink href={targetUrl} className="flex flex-1 flex-col">
             {/* 1. Product Image Container with Discount Badge at bottom of image */}
             <div className="relative aspect-square bg-slate-100 overflow-hidden">
                 {product.featured_image ? (
@@ -158,7 +158,7 @@ export default function ProductCard({
                 </div>
             </div>
 
-            </Link>
+            </CatalogueLink>
             {saveControl && <div className="px-2.5 pb-2.5">{saveControl}</div>}
             {/* Optional Quick Add Action (only rendered if explicitly passed) */}
             {onQuickAdd && (

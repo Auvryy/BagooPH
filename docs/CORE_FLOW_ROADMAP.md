@@ -5442,3 +5442,98 @@ browser, screenshot or external Flutter-repository inspection was performed.
 Mermaid structure was checked without browser rendering. Live environment,
 background processes, HTTPS/firewall/backups, mail delivery and native device
 behaviour retain their separate acceptance requirements.
+
+## October 16, 2026: PF01 buyer pagination and responsive search
+
+Implemented the selected [PF01 plan](performance-plan/01-buyer-pagination-and-search.md)
+on `fix/buyer-pagination-and-search-performance`, from merged `main` at
+`7878629`. This updates buyer catalogue continuity and navigation preparation;
+PF02-PF05 and the other portals' data-prefetch allowlists remain separate work.
+
+### Result and source evidence
+
+| Concern | Before | Implemented result |
+|---|---|---|
+| Product pagination | Home/search used server-origin paginator URLs, preserved the old viewport and represented unavailable links with `#`. | `BuyerDiscoveryService` emits origin-relative paths. Shared `CataloguePagination` displays a range/current page, actual disabled controls, current-origin links, last-page URL correction and focus/scroll to the changed grid. |
+| Filter/history consistency | Some controls were initialized from incoming values without synchronizing later changes; the header cleared by returning to the homepage. | Search and price/tab controls follow returned values and history. Query changes reset paging; clearing search preserves other filters, including minimum zero. The homepage rating option now uses a supported integer threshold. |
+| Typing and submission | Header search waited for submission and had no bounded preparation path. | `CatalogueSearch`/`useCatalogueSearch` debounce 300ms, prepare a settled query off the search page, and update live Search with coherent partial props. Enter submits immediately; one-character explicit searches, 100-character limits, composition, paste, cancellation and late-response guards remain explicit. |
+| Product/page intent | Shared cards and paginator links did not prepare their destinations. | `CatalogueLink` uses 150ms pointer/focus intent and non-blocking touch intent. Visible paging controls can prepare one next page after 1s of inactivity, when connection hints permit it. Page-code preparation remains cancellable before navigation. |
+| Cost and cache identity | No shared catalogue policy governed the proposed speculative reads. | `CataloguePrefetch` wraps the existing Inertia cache: one speculative page-data request, a 10s lifetime, 20 retained entries, exact canonical query/page identity, account/context/version boundaries and normal-request fallback. Existing Vite/static-asset requests are a separate mechanism. |
+| Feedback/recovery | An unsuccessful page click could leave the previous screen without a useful explanation. | Actual catalogue navigation failures have a visible dismissible retry for the requested destination. Search errors distinguish invalid input from transport trouble. Unsupported/background reads cannot consume pending session feedback. |
+
+The reported screenshot's original runtime cause was not reproduced in a
+browser. Server tests establish that the active home/search handlers select
+different product IDs on later pages. This delivery fixes the observed URL,
+control/state and viewport weaknesses, and verifies both rendered page variants;
+it does not invent a missing-seed diagnosis or certify the Azure screenshot.
+
+### Boundaries and freshness
+
+- `HandleInertiaRequests` permits this marked speculative path only for reviewed
+  buyer home/search/product GET handlers and a guest/buyer context. Pending
+  feedback, unsupported actions, worker accounts and disabled configuration
+  require an ordinary visit instead. Session flash is preserved; private/no-store
+  headers remain. An identifying client header is not an authorization token.
+- New preparations stop for hidden/offline/Save-Data/very slow clients and yield
+  to foreground work. Missing connection hints disable idle warming. Failure
+  cooldown, cache/descriptor caps and one-shot idle scheduling prevent loops.
+- Mutations, account/context changes, returning to a page/tab and supported
+  cross-tab signals discard prepared state. Generation checks, cancellation
+  and identical request descriptors prevent late/foreign cached reuse.
+- Product detail responses contain owned Bag quantities/offers; their entire
+  response is scoped accordingly. Checkout, stock, prices, eligibility and
+  voucher decisions still use fresh server validation. Preparation reserves
+  nothing and cannot perform a custody, message-read or financial action.
+- Partial Search responses retain the coherent products/related-products/filter
+  set. Lazy category props skip their count aggregation when not requested;
+  an isolated check verifies a smaller response than the corresponding full
+  search. Controlled transport checks verify matching in-flight/cache reuse,
+  not an independently measured browser-network speed result.
+- The installed Inertia 2 update callback is notification-only. Superseded
+  search responses stop through a known handled cancellation before page
+  application; HTTP and cached response paths handle that cancellation without
+  a failure notice. A false callback result is not treated as cancellation.
+- `config/catalogue.php` and `.env.example` define
+  `CATALOGUE_PREFETCH_ENABLED`. After normal deployment/config refresh and an
+  updated ordinary response, `false` disables speculation while ordinary
+  browsing works. See the [acceptance/configuration guide](performance-plan/ACCEPTANCE.md).
+
+### Verification and assessment
+
+- Selected buyer, notification, advertisement and session/access backend checks:
+  **945 passed, 15,102 assertions**, inside Docker with SQLite `:memory:` and
+  a separate task-local storage directory. No development/production PostgreSQL
+  database was used or reset.
+- Full frontend suite: **362 passed**, including actual home/search page
+  rendering, paging controls, query/history synchronization, typing/composition,
+  quick submits, cancellation, cache expiry/caps, account/hub changes,
+  slow/hidden/offline clients, touch/focus and navigation retry feedback.
+- TypeScript and the production Vite build pass through the existing Docker app.
+  The initial host build could not remove root-owned generated assets. A host
+  backend run hit its 128MB cap, root-owned test fixtures and missing GD; the
+  isolated Docker run with 512MB and the required extensions passed. These
+  failures were environment limits rather than waived assertions.
+- Whitespace, linked documentation, source references and the final handoff are
+  checked separately. The implementation uses the installed stack without a
+  new dependency, migration, external service or seed repair.
+
+**Scoped buyer discovery/navigation assessment: 6/10 before -> 8/10 after.**
+Paging and input state are clearer, likely reads start earlier, background work
+is bounded and failure/retry behavior is explicit. The rating concerns local
+correctness and request handling; it does not imply a measured latency reduction
+on Azure or a higher overall system/security rating.
+
+Local code commits:
+
+- `6a87ccd` — `fix(buyer): make catalogue pagination visible and reliable`.
+- `dadc596` — `perf(buyer): prepare catalogue pages within a bounded cache`.
+- `41c4cd6` — `perf(buyer): keep product search responsive while typing`.
+- `b964790` — `fix(buyer): recover interrupted catalogue navigation`.
+- `bcf60c6` — `fix(buyer): cancel queued superseded search updates`.
+
+The documentation commit's generated hash is reported in the branch handoff.
+The PR title/body remains a local draft until explicitly published. No push,
+merge, Azure deployment, browser/screenshot check, external Flutter change or
+PostgreSQL concurrency check was performed. Device visuals and production
+latency remain the manual/measurement work described in the acceptance guide;
+these local checks do not claim universal instant navigation.

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerAdvertisements, { Advertisement } from '@/Components/BuyerAdvertisements';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import SavedProductButton from '@/Components/SavedProductButton';
+import CataloguePagination from '@/Components/CataloguePagination';
+import { catalogueFilters } from '@/utils/catalogueNavigation';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Truck, 
@@ -80,6 +82,11 @@ export default function BuyerHome({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+    useEffect(() => {
+        setActiveTab(filters.tab || 'all');
+        setMinPrice(filters.min_price || '');
+        setMaxPrice(filters.max_price || '');
+    }, [filters.tab, filters.min_price, filters.max_price]);
 
     const handleAddToCart = (e: React.MouseEvent, productId: number) => {
         e.preventDefault();
@@ -103,23 +110,7 @@ export default function BuyerHome({
     };
 
     const applyFilterChange = (updates: Record<string, any>) => {
-        const nextFilters: Record<string, any> = {
-            ...filters,
-            ...updates,
-        };
-
-        // Clean empty or default values
-        Object.keys(nextFilters).forEach((key) => {
-            if (
-                nextFilters[key] === '' ||
-                nextFilters[key] === undefined ||
-                nextFilters[key] === null ||
-                nextFilters[key] === 'all' ||
-                nextFilters[key] === false
-            ) {
-                delete nextFilters[key];
-            }
-        });
+        const nextFilters = catalogueFilters(filters, updates);
 
         router.get(route('buyer.index'), nextFilters, {
             preserveState: true,
@@ -491,7 +482,7 @@ export default function BuyerHome({
                                     >
                                         <option value="">Any Rating</option>
                                         <option value="4">4★ & above</option>
-                                        <option value="4.5">4.5★ & above</option>
+                                        <option value="5">5★</option>
                                     </select>
                                 </div>
 
@@ -499,6 +490,7 @@ export default function BuyerHome({
                         </div>
                     )}
 
+                    <section id="catalogue-results" tabIndex={-1} aria-label="Product results" className="space-y-6 scroll-mt-28 outline-none">
                     {/* Feed Product Grid */}
                     {feedProducts.data.length === 0 ? (
                         <div className="space-y-6">
@@ -566,26 +558,8 @@ export default function BuyerHome({
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {feedProducts.links && feedProducts.links.length > 3 && (
-                        <div className="mt-8 flex items-center justify-center gap-1 font-sans text-xs">
-                            {feedProducts.links.map((link, idx) => (
-                                <Link
-                                    key={idx}
-                                    href={link.url || '#'}
-                                    preserveScroll
-                                    className={`px-3.5 py-2 rounded-lg border font-bold uppercase transition ${
-                                        link.active
-                                            ? 'bg-[#E00D42] text-white border-[#E00D42]'
-                                            : link.url
-                                                ? 'bg-white text-slate-800 border-slate-200 hover:border-slate-400'
-                                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
-                        </div>
-                    )}
+                    <CataloguePagination page={feedProducts} />
+                    </section>
                 </div>
 
             </div>

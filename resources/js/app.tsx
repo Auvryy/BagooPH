@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { configureRouteOrigin } from './utils/routeOrigin';
+import { installCatalogueNavigation } from './utils/catalogueRuntime';
 
 declare const Ziggy: { url: string; port: number | null };
 
@@ -20,6 +21,7 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.tsx'),
         ),
     setup({ el, App, props }) {
+        installCatalogueNavigation(props.initialPage);
         const root = createRoot(el);
 
         root.render(<App {...props} />);

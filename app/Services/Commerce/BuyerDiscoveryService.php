@@ -115,6 +115,7 @@ class BuyerDiscoveryService
             $page = (clone $products)->paginate($perPage, ['*'], 'page', $page->lastPage());
         }
 
-        return $page->appends(array_filter($filters, fn ($value) => $value !== '' && $value !== 'all' && $value !== false));
+        return $page->withPath(request()->getPathInfo())
+            ->appends(array_filter($filters, fn ($value) => $value !== '' && $value !== 'all' && $value !== false));
     }
 }

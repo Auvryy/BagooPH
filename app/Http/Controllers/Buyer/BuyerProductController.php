@@ -22,7 +22,6 @@ class BuyerProductController extends Controller
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
         $products = $discovery->paginate($discovery->filter($discovery->catalogue(), $filters), $filters);
-        $categories = $discovery->categories();
         $related = $discovery->catalogue()->whereNotIn('products.id', $products->pluck('id'));
         if ($filters['category'] !== 'all') {
             $related->whereIn('category_id', $discovery->categoryIds($filters['category']));
@@ -30,8 +29,8 @@ class BuyerProductController extends Controller
 
         return Inertia::render('Buyer/Search', [
             'products' => $products,
-            'categories' => $categories,
-            'relatedProducts' => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
+            'categories' => fn () => $discovery->categories(),
+            'relatedProducts' => fn () => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
             'filters' => $filters,
         ]);
     }

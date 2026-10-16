@@ -88,6 +88,34 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
         }
     }
 
+    public function test_home_and_search_return_distinct_pages_and_origin_relative_links(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $products = Product::factory()->count(40)->create([
+            'shop_id' => $shop->id, 'name' => 'Everyday Bag', 'price' => '100.00', 'stock' => 2, 'sales_count' => 0,
+        ]);
+        $filters = ['search' => 'Everyday', 'category' => $shop->rootCategory->slug, 'sort' => 'price_asc', 'min_price' => '0', 'max_price' => '100', 'in_stock' => '1'];
+        foreach (['/' => 18, '/buyer' => 18, '/buyer/search' => 24, '/buyer/catalog' => 24, '/products' => 24, '/catalog' => 24] as $path => $size) {
+            $key = $size === 18 ? 'feedProducts' : 'products';
+            $first = $this->get($path.'?'.http_build_query($filters))->assertOk();
+            $first->assertInertia(fn (Assert $page) => $page->has($key.'.data', $size)
+                ->where($key.'.current_page', 1)->where($key.'.total', 40)
+                ->where($key.'.data.0.id', $products->last()->id)
+                ->where($key.'.next_page_url', function ($url) use ($path, $filters) {
+                    parse_str(parse_url($url, PHP_URL_QUERY), $query);
+
+                    return ! str_starts_with($url, 'http') && parse_url($url, PHP_URL_PATH) === $path
+                        && $query['page'] === '2' && array_diff_assoc($filters, $query) === [];
+                }));
+            $this->get($path.'?'.http_build_query([...$filters, 'page' => 2]))->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where($key.'.current_page', 2)
+                    ->where($key.'.data.0.id', $products->reverse()->values()[$size]->id)
+                    ->where($key.'.links.2.active', true));
+            $this->get($path.'?'.http_build_query([...$filters, 'page' => 999]))->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where($key.'.current_page', (int) ceil(40 / $size)));
+        }
+    }
+
     public function test_saves_and_removals_are_owned_retry_safe_and_persist_after_sign_out(): void
     {
         $buyer = User::factory()->create();

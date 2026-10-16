@@ -10,6 +10,10 @@ does not implement prefetching, fix pagination, authorize every delivery, or
 establish an Azure speed improvement. Current findings and later acceptance
 evidence belong in [the roadmap](../CORE_FLOW_ROADMAP.md#october-16-2026-responsive-navigation-and-search-planning).
 
+For the selected PF01 delivery, see [its implementation evidence](../CORE_FLOW_ROADMAP.md#october-16-2026-pf01-buyer-pagination-and-responsive-search)
+and [the deployment/manual acceptance guide](ACCEPTANCE.md). Later role batches
+retain their own selection and acceptance boundaries.
+
 ## Delivery order
 
 | Batch | Outcome | Suggested branch | Dependency |

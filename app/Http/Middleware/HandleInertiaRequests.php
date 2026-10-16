@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Buyer\BuyerHomeController;
+use App\Http\Controllers\Buyer\BuyerProductController;
 use App\Models\Cart;
 use App\Models\Message;
 use App\Models\SavedProduct;
@@ -26,7 +28,22 @@ class HandleInertiaRequests extends Middleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        $response = parent::handle($request, $next);
+        $cataloguePrefetch = $request->prefetch() && $request->header('X-Bagoo-Catalogue') === '1';
+        try {
+            if ($cataloguePrefetch && (! config('catalogue.prefetch_enabled') || ! $request->isMethod('GET')
+                || ! $request->header('X-Inertia') || ($request->user() && ! $request->user()->isBuyer())
+                || ! in_array($request->route()?->getActionName(), [
+                    BuyerHomeController::class.'@index', BuyerProductController::class.'@search', BuyerProductController::class.'@show',
+                ], true) || $request->session()->get('_flash.old', []) || $request->session()->get('_flash.new', []))) {
+                return response()->json(['message' => 'Load this page normally.'], 409)->header('Cache-Control', 'no-store, private');
+            }
+            $response = parent::handle($request, $next);
+        } finally {
+            if ($cataloguePrefetch && $request->hasSession()) {
+                // Background browsing must not consume the next intentional visit's feedback.
+                $request->session()->reflash();
+            }
+        }
 
         if ($request->header('X-Inertia')) {
             foreach (['Location', 'X-Inertia-Location'] as $header) {
@@ -116,6 +133,7 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'cartCount' => $cartCount,
+            'cataloguePrefetchEnabled' => (bool) config('catalogue.prefetch_enabled'),
             'buyerApplication' => fn () => app(BuyerAccessService::class)->applicationPresentation($user),
             'savedProductIds' => fn () => $user && $user->isBuyer() && $user->canAccessPortal()
                 ? SavedProduct::where('buyer_id', $user->id)->pluck('product_id') : [],
