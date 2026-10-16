@@ -81,6 +81,18 @@ protocol. It is not an extra deployed API gateway. React owns rendering and
 interactive state; Laravel owns routing, permitted page data and business rules.
 The browser build has no configured Inertia server-side-rendering service.
 
+Buyer catalogue navigation adds a bounded Inertia prefetch policy for reviewed
+home/search/product GET reads. It retains page responses briefly in the current
+client's memory, isolates account/context/version transitions and yields to
+foreground work. Search can use same-component partial responses; lazy category
+props avoid recomputing unused category totals for those updates. The middleware
+preserves feedback and excludes unsupported or activity-changing speculative
+reads. Page preparation never establishes current checkout or operational
+authority, and private HTTP response headers remain intact. See the
+[performance policy](performance-plan/POLICY.md),
+[acceptance/configuration guide](performance-plan/ACCEPTANCE.md) and
+[current evidence](CORE_FLOW_ROADMAP.md#october-16-2026-pf01-buyer-pagination-and-responsive-search).
+
 ## Versioned native API
 
 `bootstrap/app.php` mounts `routes/api.php` under `/api`. The rider contract uses

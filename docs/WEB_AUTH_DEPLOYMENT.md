@@ -134,6 +134,22 @@ A fresh or unreviewed original demo fixture receives clearly labelled **Syntheti
 
 Current implementation evidence and remaining limits belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).
 
+## Catalogue navigation preparation
+
+PF01 uses the existing Inertia client to prepare selected buyer catalogue pages
+and update settled search queries. Deploy its reviewed code/assets through the
+normal workflow; no schema migration or reseeding is required for this feature.
+Keep the current private/no-store response headers and normal server-side stock,
+price, approval and ownership checks.
+
+`CATALOGUE_PREFETCH_ENABLED=false`, followed by the normal deployment/config-cache
+refresh, disables new speculative data work after the client receives an ordinary
+updated page. Normal links and search still work. Existing Vite asset preparation
+is separate. Use the [PF01 acceptance guide](performance-plan/ACCEPTANCE.md) to
+check page 2, search/history, hover/focus, network recovery, account changes and
+the disable path. Its local build/test evidence does not establish Azure timing
+or a completed browser/device check.
+
 ## Account settings update
 
 After publishing and pulling the settings branch, run the same deployment and verification commands above. Confirm `2026_10_08_000001_create_account_emails_table` is **Ran** before opening settings. It adds the email ownership registry and scoped challenges while retaining original account IDs, email strings and verification. Ambiguous legacy addresses block installation for explicit ownership resolution; do not reset the database or delete accounts to force deployment.
