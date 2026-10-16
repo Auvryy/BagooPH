@@ -1,5 +1,5 @@
 import type { VisitOptions } from '@inertiajs/core';
-import { catalogueUrl, CatalogueFilters } from './catalogueNavigation';
+import { catalogueUrl, CatalogueFilters, SupersededCatalogueVisit } from './catalogueNavigation';
 import { cataloguePolicy } from './cataloguePrefetch';
 
 export type SearchState = { status: 'idle' | 'preparing' | 'ready' | 'loading' | 'error'; message: string; invalid?: boolean };
@@ -82,7 +82,10 @@ export class CatalogueSearch {
             preserveState: true, preserveScroll: live, replace: live,
             ...(live ? { only: ['products', 'relatedProducts', 'filters'] } : {}),
             onCancelToken: token => { if (sequence === this.sequence) this.cancelVisit = token.cancel; else token.cancel(); },
-            onBeforeUpdate: () => sequence === this.sequence && !this.disposed,
+            onBeforeUpdate: () => {
+                // Inertia 2's update callback is notification-only; false does not abort it.
+                if (sequence !== this.sequence || this.disposed) throw new SupersededCatalogueVisit();
+            },
             onSuccess: () => { if (sequence === this.sequence && !this.disposed) this.options.notify({ status: 'ready', message: 'Search results updated.' }); },
             onError: () => this.failed(sequence),
             onFinish: () => { if (sequence === this.sequence) { this.cancelVisit = undefined; this.target = undefined; } },

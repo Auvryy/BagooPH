@@ -9,6 +9,13 @@ export interface CatalogueFilters {
     tab?: string;
 }
 
+export class SupersededCatalogueVisit extends Error {
+    constructor() {
+        super('A newer catalogue request replaced this visit.');
+        this.name = 'SupersededCatalogueVisit';
+    }
+}
+
 export function catalogueFilters(filters: CatalogueFilters, updates: CatalogueFilters = {}): Record<string, string> {
     const next = { ...filters, ...updates };
     const query: Record<string, string> = {};

@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { catalogueAccountKey, canonicalCatalogueUrl, CatalogueEnvironment, CataloguePrefetch, CatalogueSnapshot, CatalogueTransport, preparedCatalogueComponent, cataloguePolicy } from './cataloguePrefetch';
+import { SupersededCatalogueVisit } from './catalogueNavigation';
 
 export function catalogueEnvironment(): CatalogueEnvironment {
     const connection = (navigator as Navigator & { connection?: CatalogueEnvironment['connection'] }).connection;
@@ -116,8 +117,15 @@ export function installCatalogueNavigation(initial: CatalogueSnapshot) {
         window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: current.href } }));
         event.preventDefault();
     };
-    router.on('exception', failed);
+    router.on('exception', event => {
+        if (event.detail.exception instanceof SupersededCatalogueVisit) { event.preventDefault(); return; }
+        failed(event);
+    });
     router.on('invalid', failed);
+    // Cached visits run outside the HTTP request's exception handler.
+    window.addEventListener('unhandledrejection', event => {
+        if (event.reason instanceof SupersededCatalogueVisit) event.preventDefault();
+    });
     const clear = () => invalidateCatalogue(false);
     window.addEventListener('pagehide', clear);
     window.addEventListener('pageshow', clear);

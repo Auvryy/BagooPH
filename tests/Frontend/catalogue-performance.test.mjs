@@ -211,11 +211,12 @@ test('live search replaces typing history with coherent partial props and reject
     const old = f.visits[0]; let cancelled = false;
     old.options.onCancelToken({ cancel: () => { cancelled = true; } });
     f.controller.update('Hat');
-    assert.equal(cancelled, true); assert.equal(old.options.onBeforeUpdate(), false);
+    assert.equal(cancelled, true);
+    assert.throws(() => old.options.onBeforeUpdate(), { name: 'SupersededCatalogueVisit' });
     old.options.onSuccess(); assert.notEqual(f.states.at(-1).status, 'ready');
     t.mock.timers.tick(300);
     const current = f.visits.at(-1);
-    assert.equal(current.options.onBeforeUpdate(), true);
+    assert.doesNotThrow(() => current.options.onBeforeUpdate());
     assert.equal(current.options.replace, true);
     assert.deepEqual(current.options.only, ['products', 'relatedProducts', 'filters']);
     assert.equal(f.prepared.length, 0);

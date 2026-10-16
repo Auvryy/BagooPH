@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { CatalogueSearch, SearchState } from '@/utils/catalogueSearch';
-import { CatalogueFilters } from '@/utils/catalogueNavigation';
+import { CatalogueFilters, SupersededCatalogueVisit } from '@/utils/catalogueNavigation';
 import { cataloguePrefetch, visitCatalogue } from '@/utils/catalogueRuntime';
 import { PageProps } from '@/types';
 
@@ -27,6 +27,7 @@ export default function useCatalogueSearch() {
             if (!event.detail.visit.prefetch && event.detail.visit.headers.Purpose !== 'prefetch') search.leaving(event.detail.visit.url.href);
         });
         const stopException = router.on('exception', event => {
+            if (event.detail.exception instanceof SupersededCatalogueVisit) return;
             if (search.loading) { search.networkFailure(); event.preventDefault(); }
         });
         const suspend = () => { search.leaving('about:blank'); };

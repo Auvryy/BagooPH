@@ -9,7 +9,7 @@ import { router } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-runtime-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const build = buildSync({
-    stdin: { contents: "export * from '@/utils/catalogueRuntime';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export * from '@/utils/catalogueRuntime'; export { SupersededCatalogueVisit } from '@/utils/catalogueNavigation';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false,
 });
 const file = join(temporary, 'runtime.mjs'); writeFileSync(file, build.outputFiles[0].text);
@@ -117,6 +117,19 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         assert.equal(prevented, 2);
         emit('exception', { exception: new Error('An unrelated request') });
         assert.equal(prevented, 2, 'other application errors retain their own handling');
+    });
+    await t.test('superseded updates are intentional cancellations for HTTP and cached response paths', () => {
+        const count = notices.length;
+        emit('exception', { exception: new ui.SupersededCatalogueVisit() });
+        assert.equal(prevented, 3);
+        const rejection = new Event('unhandledrejection', { cancelable: true });
+        Object.defineProperty(rejection, 'reason', { value: new ui.SupersededCatalogueVisit() });
+        window.dispatchEvent(rejection);
+        assert.equal(rejection.defaultPrevented, true);
+        assert.equal(notices.length, count);
+        const other = new Event('unhandledrejection', { cancelable: true });
+        Object.defineProperty(other, 'reason', { value: new Error('Unrelated error') });
+        window.dispatchEvent(other); assert.equal(other.defaultPrevented, false);
     });
     await t.test('other-tab invalidation, return/focus and mutation events remove retained pages', async () => {
         for (const trigger of [() => channel.dispatchEvent(new Event('message')), () => window.dispatchEvent(new Event('focus')), () => document.dispatchEvent(new Event('visibilitychange')), () => emit('before', { visit: { method: 'post', headers: {}, url: new URL('/cart', window.location.origin) } })]) {
