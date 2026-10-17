@@ -10,9 +10,12 @@ use Normalizer;
 
 class WaybillScanInputService
 {
-    public function normalize(array $input): array
+    public function normalize(array $input, bool $allowTrackingUrl = false): array
     {
         if (isset($input['barcode']) && is_string($input['barcode']) && preg_match('/\A[ -~]+\z/', $input['barcode'])) {
+            if ($allowTrackingUrl) {
+                $input['barcode'] = $this->trackingUrlCode(trim($input['barcode'], ' ')) ?? $input['barcode'];
+            }
             $input['barcode'] = strtoupper(trim($input['barcode'], ' '));
         }
         foreach (['action' => 'strtoupper', 'expected_status' => 'strtolower'] as $field => $canonical) {
@@ -27,6 +30,31 @@ class WaybillScanInputService
         }
 
         return $input;
+    }
+
+    private function trackingUrlCode(string $value): ?string
+    {
+        if (strlen($value) > 255) {
+            return null;
+        }
+        $url = parse_url($value);
+        if (! is_array($url) || ! in_array(strtolower($url['scheme'] ?? ''), ['http', 'https'], true)
+            || isset($url['user']) || isset($url['pass'])
+            || isset($url['query']) || isset($url['fragment'])
+            || ! preg_match('~\A/track/([A-Za-z0-9][A-Za-z0-9_-]{0,254})/?\z~', $url['path'] ?? '', $match)) {
+            return null;
+        }
+        foreach ([config('app.url'), request()->getSchemeAndHttpHost()] as $origin) {
+            $current = parse_url((string) $origin);
+            $root = preg_replace('/\A(seller|courier|hub|admin)\./i', '', strtolower($current['host'] ?? ''));
+            $hosts = [$root, ...array_map(fn ($prefix) => $prefix.'.'.$root, ['seller', 'courier', 'hub', 'admin'])];
+            if ($root && in_array(strtolower($url['host'] ?? ''), $hosts, true)
+                && ($url['port'] ?? null) === ($current['port'] ?? null)) {
+                return $match[1];
+            }
+        }
+
+        return null;
     }
 
     public function barcodeRules(bool $required = true): array
