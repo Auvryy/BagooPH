@@ -5537,3 +5537,87 @@ merge, Azure deployment, browser/screenshot check, external Flutter change or
 PostgreSQL concurrency check was performed. Device visuals and production
 latency remain the manual/measurement work described in the acceptance guide;
 these local checks do not claim universal instant navigation.
+
+## October 17, 2026: reliable waybill scans and logistics next steps
+
+Implemented on `fix/logistics-waybill-scanning`, based on the refreshed `main`
+at `d55e4dc`. This addresses the reported need to visit Overview or refresh before
+scanning, confusing QR/barcode recognition and missing next-step controls. The
+original Azure browser failure was not captured in a browser trace; the changes
+address verified source-level failure modes and exercise direct entry through
+the actual components and isolated server routes.
+
+### Before and after
+
+| Area | Before | Implemented behavior |
+|---|---|---|
+| Scanner entry and requests | Requests read the original document token, used named-route URLs, and ignored ordinary validation messages. Repeated clicks and late requests could leave stale parcel actions. | Requests use the current session cookie and current portal path. Direct entry focuses the barcode field. Validation/session failures have useful feedback; an obsolete lookup is cancelled and an unsuccessful new lookup removes the previous confirmation. |
+| Printed code identity | Barcode and QR sat beside each other and encoded different payloads: a parcel code versus a tracking-page URL. Missing tracking used an invented prefix. | Packing and print layouts share separated code zones with quiet margins; both codes carry the actual tracking identifier or existing order alias. The standalone operational QR matches. The separate View tracking link remains available. |
+| Camera recognition | The station had separate camera code and chose the first detected value, including a QR URL rejected by barcode validation. | The shared camera canonicalizes supported old tracking URLs and raw codes. Matching codes deduplicate; different parcel codes require a closer view. Permission/start/stop, unmount and facility changes release streams and discard old callbacks. Unsupported browsers retain manual/handheld entry. |
+| Next action | Already-sorted or rider-assigned parcels could receive a generic rejection before guidance. Most scanner guidance links were hidden. | Owned facility records expose sorting, rider assignment, manifest, counter or recovery navigation as appropriate. Waiting states explain the responsible actor and blocker. Check for updates, View parcel records where scoped, and Scan next parcel provide clear continuation or recovery. |
+| Incoming transport | A scanner result could identify the incoming transfer while its ordinary hub-custody guidance offered no action. | A dispatched, readable manifest with actual included unreceived membership opens that specific manifest at its destination. Its receiver still records the parcel receipt, and company management still closes the manifest. |
+| Queues after handover | The scanner refreshed after confirmation, but an already-open rider work page could retain old props. | Confirmation still refreshes the station. Relevant station and rider web queues also use non-overlapping 15-second refreshes while visible/online, pausing and cancelling an in-flight refresh during a submitted action. |
+
+Sources: [scanner](../resources/js/Pages/Hub/ScanStation.tsx),
+[waybill input/request handling](../resources/js/utils/waybillScan.ts),
+[camera](../resources/js/Components/WaybillCamera.tsx),
+[printed codes](../resources/js/Components/WaybillCodes.tsx),
+[seller waybills](../resources/js/Pages/Seller/Orders.tsx),
+[workstation controller](../app/Http/Controllers/Logistics/LogisticsHubWorkstationController.php),
+[shared guidance](../app/Services/Logistics/HubParcelWorkstationService.php) and
+[queue refresh hook](../resources/js/hooks/useOperationalRefresh.ts).
+
+### Authority and compatibility
+
+- Looking up a code never records receipt, custody, cash or completion. The
+  existing confirmation writers, expected state/reference checks and original
+  checkpoints retain authority. Wrong facilities, company management without
+  handler placement, missing pickup confirmation and held parcels remain blocked.
+- Barcode input remains bounded to 255 characters. Old tracking-page URLs are
+  an explicit web scanner option limited to known platform origins and the
+  exact tracking path. Foreign hosts, extra URL payloads, joined codes and hidden
+  controls are rejected. Other service/native API inputs retain raw-code rules.
+- Incoming manifest guidance checks retained custody, company, destination,
+  dispatched status and actual membership. It cannot substitute a loose scan
+  for manifest receipt or omit the required Mother Hub route.
+- No dependency, schema, seed, commission or role policy changes are introduced.
+  The Flutter repository and native command contracts are unchanged. These
+  bounded operational refreshes do not complete the later portal-wide performance
+  batches.
+
+### Verification and assessment
+
+- Backend selection: **928 tests, 46,433 assertions passed** using Docker PHP
+  and isolated SQLite `:memory:` with separate task-local storage/configuration.
+  This includes the logistics directory, courier operations/portal/native parcel
+  boundaries, seller fulfilment/workspaces, web session transitions and waybill
+  input. No development or Azure PostgreSQL database was used for tests.
+- Full frontend suite: **377 passed**. Controlled actual-component checks cover
+  initial scanner focus, current cookie credentials, first camera startup, equal
+  and ambiguous codes, late permission cleanup, duplicate confirmation clicks,
+  cancelled old-facility lookups, expired-session recovery, field feedback,
+  next-step links and polling pause/cancellation.
+- TypeScript/Vite production build and PHP formatting checks pass. The generated
+  manifest resolves the station, seller orders and rider work pages to existing
+  built assets. Markdown links, source references and Git whitespace are checked
+  separately for the final handoff.
+
+**Scoped local assessment: logistics scanning and next-step guidance 5/10 before
+to 8/10 after; printed code clarity 6/10 to 8/10.** The backend custody boundaries
+were already substantial; this change makes entry, recognition, progression and
+feedback coherent. This is a local correctness/usability assessment, not a
+production latency, optical recognition or whole-system readiness rating.
+
+Publish, pull and deploy the reviewed branch before expecting these changes on
+Azure. See [deployment and device acceptance](WEB_AUTH_DEPLOYMENT.md#waybill-scanner-update).
+Actual camera distance/focus, printed output and the deployed signed-in browser
+flow remain device/release checks. No push, merge, deployment or visible-browser
+test was performed during this implementation.
+
+Local code commits:
+
+- `a8fe160` — `fix(waybills): align printed codes and camera recognition`.
+- `a1d182a` — `fix(logistics): connect waybill scans to authorized next steps`.
+
+The documentation commit hash and separate local PR description are included in
+the branch handoff.
