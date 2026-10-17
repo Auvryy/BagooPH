@@ -200,6 +200,10 @@ class HubParcelWorkstationService
 
             return $next('Continue the recorded parcel recovery', 'Company administrator and assigned recovery handlers', 'recovery', $readable, '/parcel-recovery', $readable ? null : 'This account has no access to the recovery observation.');
         }
+        if (in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup'], true) && ($custody['kind'] ?? null) === 'seller') {
+            return $next('Await pickup confirmation from the seller', 'Assigned pickup rider',
+                blocker: 'The pickup rider must confirm collection from the seller before a hub can receive this parcel.');
+        }
         if ($parcel->status === 'picked_up' || ($parcel->status === 'delivery_failed' && $parcel->current_hub_id === null)) {
             $expectedRider = $parcel->status === 'picked_up' ? $parcel->courier_id : $parcel->assigned_rider_id;
             $expectedHub = $parcel->status === 'picked_up' ? $parcel->origin_bayan_hub_id : $parcel->destination_bayan_hub_id;
@@ -209,6 +213,17 @@ class HubParcelWorkstationService
             }
 
             return $next('Receive the physical parcel from its rider', 'Assigned receiving handler', 'scan', $handler, '/scan', $handler ? null : 'An assigned handler must record the intake scan.');
+        }
+        if (($custody['kind'] ?? null) === 'manifest') {
+            $incoming = app(LogisticsManifestService::class)->readable($actor)
+                ->whereKey($custody['manifest_id'] ?? 0)->where('logistics_company_id', $parcel->logistics_company_id)
+                ->where('destination_hub_id', $hub->id)->where('status', 'dispatched')
+                ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true)->whereNull('received_at'))
+                ->first();
+            if ($incoming) {
+                return $next('Receive the parcel on its incoming manifest', 'Assigned receiving handler', 'manifest', $handler,
+                    '/manifests/'.$incoming->id, $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
+            }
         }
         if (! $atHub) {
             return $next('Review custody before another hub action', 'Company administrator', blocker: 'The selected facility is not the recorded parcel holder.');
@@ -238,7 +253,7 @@ class HubParcelWorkstationService
             }
             $ids = $riders->filter(fn ($rider) => ! $rider['assigned_barangay'] || strcasecmp(trim($rider['assigned_barangay']), trim((string) $parcel->order?->destination_barangay)) === 0)->pluck('id')->values()->all();
 
-            return [...$next('Assign an eligible final-mile rider', 'Company administrator or assigned handler', 'assign', ($manager || $handler) && $ids !== [],
+            return [...$next('Assign an eligible final-mile rider', 'Company administrator or assigned handler', 'assign', ($manager || $handler) && $ids !== [], '/deliveries',
                 blocker: ! ($manager || $handler) ? 'This account may read the parcel but cannot assign its rider.' : ($ids === [] ? 'No available eligible rider serves this facility and barangay.' : null)), 'eligible_rider_ids' => $ids];
         }
         if ($parcel->status === 'ready_for_hub_pickup') {
@@ -256,7 +271,7 @@ class HubParcelWorkstationService
 
         $prompt = $this->routing->getDynamicScanPrompt($parcel, $hub);
         if ($prompt['action'] === 'AWAIT_BARANGAY_SORT') {
-            return $next('Sort to the recorded destination barangay bin', 'Assigned destination handler', 'sort', $handler, blocker: $handler ? null : 'An assigned handler must record sorting.');
+            return $next('Sort to the recorded destination barangay bin', 'Assigned destination handler', 'sort', $handler, '/deliveries', blocker: $handler ? null : 'An assigned handler must record sorting.');
         }
         if ($prompt['action'] === 'STAGE_FOR_PICKUP') {
             $blocker = ! $hub->allows_self_pickup ? 'Counter pickup is disabled at this facility.'
@@ -306,7 +321,7 @@ class HubParcelWorkstationService
                 : (($custody['user_id'] ?? null) === $parcel->assigned_rider_id ? 'Delivery rider: '.($parcel->assignedRider?->name ?? 'Recorded delivery rider') : 'Recorded courier; assignment needs review'),
             'manifest' => 'Transport manifest: '.($custody['manifest_reference'] ?? 'Recorded manifest'),
             'buyer' => 'Buyer (handover recorded)',
-            'seller' => 'Seller (return receipt recorded)',
+            'seller' => in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup'], true) ? 'Seller (awaiting pickup)' : 'Seller (return receipt recorded)',
             default => 'Custody not established',
         };
     }

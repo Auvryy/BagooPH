@@ -1,5 +1,7 @@
 import { Link } from '@inertiajs/react';
 
+const actionLabels: Record<string, string> = { scan: 'Open scanner', manifest: 'Open manifests', counter: 'Open counter', sort: 'Open parcel sorting', assign: 'Assign rider', review: 'Open delivery review', recovery: 'Open recovery review' };
+
 export interface ParcelGuidance {
     stage: string;
     order_status: string;
@@ -33,7 +35,7 @@ export function HubParcelNextStep({ guidance, hideLink = false }: { guidance: Pa
             {guidance.blocker && <p className="text-amber-800">{guidance.blocker}</p>}
             {!hideLink && guidance.can_act && guidance.href && (
                 <Link href={guidance.href} className="inline-flex rounded-xs border border-slate-300 bg-white px-3 py-2 font-semibold text-[#E00D42] hover:bg-rose-50">
-                    {guidance.action === 'scan' ? 'Open scanner' : guidance.action === 'manifest' ? 'Open manifests' : guidance.action === 'counter' ? 'Open counter' : 'Open recovery review'}
+                    {actionLabels[guidance.action] ?? 'View next step'}
                 </Link>
             )}
         </div>

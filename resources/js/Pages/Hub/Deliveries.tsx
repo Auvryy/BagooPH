@@ -377,7 +377,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                             </td>
 
                                             <td className="py-3 px-3.5 min-w-[260px] space-y-2">
-                                                <HubParcelNextStep guidance={delivery.guidance} />
+                                                <HubParcelNextStep guidance={delivery.guidance} hideLink={['sort', 'assign'].includes(delivery.guidance.action)} />
                                                 {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
                                                     <button
                                                         type="button"

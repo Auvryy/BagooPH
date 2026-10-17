@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Banknote, Camera, Package, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
@@ -80,6 +81,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [preview, setPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loadingId, setLoadingId] = useState<number | null>(null);
+    useOperationalRefresh(loadingId !== null, ['scope', 'isOnline', 'stats', 'queues', 'recoveryRequestToken']);
     const pending = useRef(false);
     useCourierRequestError(pending, (message) => setErrors({ status: message }));
     const normalizedSearch = search.trim().toLowerCase();

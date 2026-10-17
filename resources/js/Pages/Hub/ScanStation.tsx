@@ -4,10 +4,11 @@ import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
 import { HubParcelNextStep, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
+import WaybillCamera from '@/Components/WaybillCamera';
+import { requestWaybill, waybillCode, WaybillRequestError } from '@/utils/waybillScan';
+import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import {
     ScanLine,
-    Camera,
-    CameraOff,
     Package,
     CheckCircle2,
     AlertCircle,
@@ -93,6 +94,7 @@ interface DynamicPrompt {
 
 interface ScannedDeliveryResult {
     guidance: ParcelGuidance;
+    registry_url?: string | null;
     id: number;
     tracking_number: string;
     status: string;
@@ -146,14 +148,21 @@ export default function ScanStation({
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
+    const [sessionExpired, setSessionExpired] = useState(false);
 
-    // Camera & Web Barcode detection state
-    const [cameraActive, setCameraActive] = useState(false);
-    const [cameraError, setCameraError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const detectorRef = useRef<any>(null);
     const barcodeInputRef = useRef<HTMLInputElement | null>(null);
+    const pendingRequest = useRef<AbortController | null>(null);
+    useOperationalRefresh(isSubmitting, ['recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
+    useEffect(() => {
+        setLastResult(null);
+        setScanError(null);
+        setScanMessage(null);
+        setIsSubmitting(false);
+        return () => { pendingRequest.current?.abort(); pendingRequest.current = null; };
+    }, [activeHub?.id]);
+    useEffect(() => {
+        if (activeTab === 'scan') barcodeInputRef.current?.focus();
+    }, [activeTab, activeHub?.id]);
 
     // Sound effect synthesizer via Web Audio API
     const playSound = (type: 'success' | 'error' | 'beep') => {
@@ -191,206 +200,67 @@ export default function ScanStation({
         }
     };
 
-    // Initialize BarcodeDetector API if supported
-    useEffect(() => {
-        if ('BarcodeDetector' in window) {
-            try {
-                detectorRef.current = new (window as any).BarcodeDetector({
-                    formats: ['code_128', 'code_39', 'qr_code', 'ean_13', 'upc_a'],
-                });
-            } catch {
-                detectorRef.current = null;
-            }
-        }
-    }, []);
-
-    // Camera start/stop
-    const startCamera = async () => {
-        setCameraError(null);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-                setCameraActive(true);
-            }
-        } catch (err: any) {
-            setCameraError('Camera access denied or unavailable: ' + (err.message || 'Unknown error'));
-            setCameraActive(false);
-        }
-    };
-
-    const stopCamera = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach((track) => track.stop());
-            streamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setCameraActive(false);
-    };
-
-    useEffect(() => {
-        return () => {
-            stopCamera();
-        };
-    }, []);
-
-    // Continuous frame scanning loop when camera is active
-    useEffect(() => {
-        let frameId: number;
-        const scanFrame = async () => {
-            if (cameraActive && videoRef.current && detectorRef.current && !isSubmitting) {
-                try {
-                    const barcodes = await detectorRef.current.detect(videoRef.current);
-                    if (barcodes && barcodes.length > 0) {
-                        const rawValue = barcodes[0].rawValue;
-                        if (rawValue && rawValue.trim()) {
-                            stopCamera();
-                            handleBarcodeProcess(rawValue.trim());
-                            return;
-                        }
-                    }
-                } catch {
-                    // Frame detection skip
-                }
-            }
-            if (cameraActive) {
-                frameId = requestAnimationFrame(scanFrame);
-            }
-        };
-
-        if (cameraActive) {
-            frameId = requestAnimationFrame(scanFrame);
-        }
-
-        return () => {
-            cancelAnimationFrame(frameId);
-        };
-    }, [cameraActive, isSubmitting]);
-
-    // Handle barcode intake API submission
-    const handleBarcodeProcess = async (barcodeToScan: string) => {
-        const code = barcodeToScan.trim();
-        if (!code || isSubmitting) return;
-
+    const runScan = async (body: Record<string, unknown>, confirming = false) => {
+        if (pendingRequest.current || !activeHub) return;
+        const request = new AbortController();
+        pendingRequest.current = request;
         setIsSubmitting(true);
         setScanError(null);
         setScanMessage(null);
-
+        setSessionExpired(false);
+        if (!confirming) setLastResult(null);
         try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            const response = await fetch(route('hub.scan'), {
-                method: 'POST',
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-                body: JSON.stringify({
-                    barcode: code,
-                    hub_id: activeHub?.id,
-                    mode: 'inspect',
-                }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                playSound('success');
-                setLastResult({
-                    prompt: data.prompt,
-                    delivery: data.delivery,
-                    confirmed: Boolean(data.confirmed),
-                });
-                setScanMessage(data.message);
-                setBarcodeInput('');
-            } else {
-                playSound('error');
-                setScanError(data.error || 'Failed to process barcode. Parcel not found.');
-            }
-        } catch (err: any) {
-            playSound('error');
-            setScanError(err.message || 'Network error while contacting routing engine.');
-        } finally {
-            setIsSubmitting(false);
-            setTimeout(() => {
-                barcodeInputRef.current?.focus();
-            }, 100);
-        }
-    };
-
-    const confirmScanAction = async () => {
-        if (!lastResult || !lastResult.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan' || isSubmitting) return;
-
-        setIsSubmitting(true);
-        setScanError(null);
-        setScanMessage(null);
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            const response = await fetch(route('hub.scan'), {
-                method: 'POST',
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-                body: JSON.stringify({
-                    barcode: lastResult.delivery.tracking_number,
-                    hub_id: activeHub?.id,
-                    mode: 'confirm',
-                    action: lastResult.prompt.action,
-                    expected_status: lastResult.prompt.expected_status,
-                    attempt_reference: lastResult.prompt.attempt_reference ?? undefined,
-                    route_reference: lastResult.prompt.route_reference ?? undefined,
-                    claim_reference: lastResult.prompt.claim_reference ?? undefined,
-                }),
-            });
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'The custody action could not be recorded.');
-            }
-
-            playSound('success');
-            setLastResult({
-                prompt: data.prompt,
-                delivery: data.delivery,
-                confirmed: Boolean(data.confirmed),
-            });
+            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string }>(
+                `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
+            );
+            if (pendingRequest.current !== request || request.signal.aborted) return;
+            playSound(data.confirmed ? 'success' : 'beep');
+            setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed) });
             setScanMessage(data.message);
-            await refreshPage();
-        } catch (err: any) {
+            setBarcodeInput('');
+            if (confirming) {
+                try { await refreshPage(); }
+                catch { if (!request.signal.aborted) setScanError('The custody action was saved, but the queue could not refresh. Reload this scanner to see the latest records.'); }
+            }
+        } catch (error) {
+            if (pendingRequest.current !== request || request.signal.aborted) return;
             playSound('error');
-            setScanError(err.message || 'Network error while confirming the custody action.');
+            setLastResult(null);
+            setBarcodeInput(String(body.barcode ?? ''));
+            setScanError(error instanceof Error ? error.message : 'The waybill could not be checked. Try again.');
+            setSessionExpired(error instanceof WaybillRequestError && [401, 419].includes(error.status));
         } finally {
-            setIsSubmitting(false);
+            if (pendingRequest.current === request) {
+                pendingRequest.current = null;
+                setIsSubmitting(false);
+            }
         }
+    };
+
+    const handleBarcodeProcess = (barcode: string) => runScan({ barcode: waybillCode(barcode, window.location.origin) ?? barcode, mode: 'inspect' });
+    const confirmScanAction = () => {
+        if (!lastResult?.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan') return;
+        return runScan({
+            barcode: lastResult.delivery.tracking_number, mode: 'confirm',
+            action: lastResult.prompt.action, expected_status: lastResult.prompt.expected_status,
+            attempt_reference: lastResult.prompt.attempt_reference ?? undefined,
+            route_reference: lastResult.prompt.route_reference ?? undefined,
+            claim_reference: lastResult.prompt.claim_reference ?? undefined,
+        }, true);
     };
 
     // Handle Manual Input Submit
     const handleInputSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (barcodeInput.trim()) {
-            handleBarcodeProcess(barcodeInput.trim());
+            handleBarcodeProcess(barcodeInput);
         }
     };
 
     // Hub change handler
     const handleHubChange = (hubId: string) => {
         router.get(
-            route('hub.scan.station'),
+            `${basePath}/scan`,
             { hub_id: hubId },
             { preserveState: false }
         );
@@ -544,16 +414,18 @@ export default function ScanStation({
                 <div className="space-y-4">
                     {/* Error Banner */}
                     {scanError && (
-                        <div className="bg-red-50 border border-red-300 text-red-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
+                        <div role="alert" className="bg-red-50 border border-red-300 text-red-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
                             <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                             <div className="text-xs font-sans">
                                 <span className="font-bold">Scan Routing Error:</span> {scanError}
+                                {sessionExpired && <button type="button" onClick={() => window.location.reload()}
+                                    className="mt-2 block rounded-xs border border-red-300 bg-white px-3 py-2 font-semibold">Reload scanner</button>}
                             </div>
                         </div>
                     )}
 
                     {scanMessage && (
-                        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
+                        <div role="status" className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                             <div className="text-xs font-sans">{scanMessage}</div>
                         </div>
@@ -593,6 +465,9 @@ export default function ScanStation({
                                                 id="barcode-field"
                                                 ref={barcodeInputRef}
                                                 type="text"
+                                                maxLength={255}
+                                                autoComplete="off"
+                                                spellCheck={false}
                                                 value={barcodeInput}
                                                 onChange={(e) => setBarcodeInput(e.target.value)}
                                                 placeholder="Scan with laser gun or enter tracking..."
@@ -620,72 +495,8 @@ export default function ScanStation({
 
                             </div>
 
-                            {/* Camera Viewfinder Card (Minimalist Clean Style) */}
-                            <div className="bg-white rounded-xs border border-slate-300 overflow-hidden shadow-xs">
-                                <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-900 flex items-center gap-2 font-sans uppercase tracking-wider">
-                                        <Camera className="w-4 h-4 text-slate-700" />
-                                        Camera Barcode Reader
-                                    </span>
-
-                                    <button
-                                        type="button"
-                                        onClick={cameraActive ? stopCamera : startCamera}
-                                        className={`text-xs px-3 py-1 rounded-xs font-sans font-bold flex items-center gap-1.5 transition shadow-xs ${
-                                            cameraActive
-                                                ? 'bg-slate-800 text-white hover:bg-slate-900'
-                                                : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        {cameraActive ? (
-                                            <>
-                                                <CameraOff className="w-3.5 h-3.5" />
-                                                Stop Camera
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Camera className="w-3.5 h-3.5" />
-                                                Start Camera
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-
-                                {cameraError && (
-                                    <div className="p-3 bg-red-50 text-red-800 text-xs border-b border-red-200 font-sans">
-                                        {cameraError}
-                                    </div>
-                                )}
-
-                                <div className="relative bg-slate-900 min-h-[190px] max-h-[260px] flex items-center justify-center overflow-hidden">
-                                    <video
-                                        ref={videoRef}
-                                        className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-                                        playsInline
-                                        muted
-                                    />
-
-                                    {/* Viewfinder Target Guide */}
-                                    {cameraActive ? (
-                                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                                            <div className="relative w-56 h-36 border-2 border-dashed border-white/80 rounded-xs">
-                                                <div className="absolute inset-x-0 h-0.5 bg-[#E00D42] top-1/2 -translate-y-1/2 shadow-xs" />
-                                                <div className="absolute top-1.5 left-1.5 text-[9px] font-sans text-white uppercase bg-black/70 px-1 py-0.5 rounded-xs font-bold">
-                                                    Align Barcode
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center p-6 text-slate-400">
-                                            <Camera className="w-8 h-8 mx-auto mb-1.5 text-slate-500 opacity-40" />
-                                            <p className="text-xs font-sans font-bold text-slate-300">Camera Inactive</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs mx-auto">
-                                                Click "Start Camera" or scan via Bluetooth barcode laser scanner.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <WaybillCamera key={activeHub?.id} onScan={handleBarcodeProcess} disabled={isSubmitting}
+                                instruction="Scan the tracking barcode or parcel QR to check the next permitted step." />
                         </div>
 
                         {/* RIGHT COLUMN: Live Routing Action & Intelligence HUD (col-span-6) */}
@@ -704,16 +515,16 @@ export default function ScanStation({
                                     {/* Prominent Action Directive Banner */}
                                     <div className="rounded-xs p-4 text-center bg-slate-900 text-white border border-slate-800 shadow-xs">
                                         <div className="text-[10px] uppercase font-sans font-bold tracking-widest text-slate-400 mb-1">
-                                            {lastResult.prompt.action.replace(/_/g, ' ')}
+                                            {lastResult.confirmed ? 'Custody action saved' : 'Waybill checked'}
                                         </div>
                                         <div className="text-lg sm:text-xl font-black font-sans uppercase tracking-tight">
-                                            {lastResult.prompt.prompt}
+                                            {lastResult.delivery.guidance.next_step}
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3"><HubParcelState guidance={lastResult.delivery.guidance} /><HubParcelNextStep guidance={lastResult.delivery.guidance} hideLink={lastResult.delivery.guidance.action !== 'counter'} /></div>
+                                    <div className="space-y-3"><HubParcelState guidance={lastResult.delivery.guidance} /><HubParcelNextStep guidance={lastResult.delivery.guidance} hideLink={lastResult.delivery.guidance.action === 'scan'} /></div>
 
-                                    {lastResult.prompt.manifest_url && <div className="rounded-xs border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
+                                    {lastResult.prompt.manifest_url && !lastResult.delivery.guidance.href && lastResult.delivery.guidance.can_act && <div className="rounded-xs border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
 
                                     {lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act && lastResult.delivery.guidance.action === 'scan' && (
                                         <div className="rounded-xs border border-amber-300 bg-amber-50 p-3.5">
@@ -735,39 +546,16 @@ export default function ScanStation({
                                         </div>
                                     )}
 
-                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'AWAIT_BARANGAY_SORT' && lastResult.delivery.guidance.can_act && (
-                                        <div className="rounded-xs border border-emerald-300 bg-emerald-50 p-3.5">
-                                            <p className="text-xs text-emerald-900 font-sans mb-3">
-                                                Destination intake is complete. Continue in the parcel registry to sort this parcel into its barangay bin.
-                                            </p>
-                                            <Link
-                                                href={`${basePath}/deliveries?hub_id=${activeHub?.id}&search=${encodeURIComponent(lastResult.delivery.tracking_number)}&status=arrived_at_destination_hub`}
-                                                className="flex w-full items-center justify-center rounded-xs bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
-                                            >
-                                                Open parcel sorting
-                                            </Link>
-                                        </div>
-                                    )}
-
-                                    {!lastResult.prompt.requires_confirmation && lastResult.prompt.action === 'INSPECT_WAYBILL' && lastResult.confirmed && (
-                                        <div className="rounded-xs border border-emerald-300 bg-emerald-50 p-3.5">
-                                            <p className="text-xs text-emerald-900 font-sans mb-3">
-                                                This facility has completed its current custody work for the parcel.
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setLastResult(null);
-                                                    setScanMessage(null);
-                                                    setBarcodeInput('');
-                                                    setTimeout(() => barcodeInputRef.current?.focus(), 0);
-                                                }}
-                                                className="w-full rounded-xs border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-900 hover:bg-slate-50"
-                                            >
-                                                Ready for next parcel
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                        <button type="button" disabled={isSubmitting} onClick={() => handleBarcodeProcess(lastResult.delivery.tracking_number)}
+                                            className="rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50">Check for updates</button>
+                                        {lastResult.delivery.registry_url && !lastResult.delivery.guidance.can_act && <Link href={lastResult.delivery.registry_url}
+                                            className="rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#E00D42]">View parcel records</Link>}
+                                        <button type="button" disabled={isSubmitting} onClick={() => {
+                                            setLastResult(null); setScanMessage(null); setBarcodeInput('');
+                                            barcodeInputRef.current?.focus();
+                                        }} className="rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50">Scan next parcel</button>
+                                    </div>
 
                                     {/* Assigned Sort Bin */}
                                     <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xs border border-slate-300">
