@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { selectWaybill } from '@/utils/waybillScan';
 
 interface Detector { detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>> }
 type DetectorConstructor = new (options: { formats: string[] }) => Detector;
 
-export default function WaybillCamera({ onScan, disabled = false }: { onScan: (value: string) => void; disabled?: boolean }) {
+export default function WaybillCamera({ onScan, disabled = false, instruction = 'A camera scan fills the waybill field. Review it and submit the appropriate manifest action.' }: { onScan: (value: string) => void; disabled?: boolean; instruction?: string }) {
     const video = useRef<HTMLVideoElement>(null);
     const stream = useRef<MediaStream | null>(null);
     const detector = useRef<Detector | null>(null);
@@ -11,6 +12,8 @@ export default function WaybillCamera({ onScan, disabled = false }: { onScan: (v
     const [active, setActive] = useState(false);
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const recognized = useRef(onScan);
+    recognized.current = onScan;
     const release = useCallback(() => {
         stream.current?.getTracks().forEach(track => track.stop());
         stream.current = null;
@@ -65,8 +68,9 @@ export default function WaybillCamera({ onScan, disabled = false }: { onScan: (v
                 const values = video.current && video.current.readyState >= 2 && detector.current
                     ? await detector.current.detect(video.current) : [];
                 if (cancelled) return;
-                const value = values.find(item => typeof item.rawValue === 'string' && item.rawValue.length > 0)?.rawValue;
-                if (value) { stop(); onScan(value); return; }
+                const result = selectWaybill(values, window.location.origin);
+                if (result.error) setError(result.error);
+                if (result.code) { stop(); setError(null); recognized.current(result.code); return; }
             } catch {
                 if (cancelled) return;
                 stop();
@@ -77,7 +81,7 @@ export default function WaybillCamera({ onScan, disabled = false }: { onScan: (v
         };
         void detect();
         return () => { cancelled = true; if (timer) clearTimeout(timer); };
-    }, [active, disabled, onScan, stop]);
+    }, [active, disabled, stop]);
 
     return <div className="rounded-lg border border-slate-300 bg-slate-50 p-3">
         <button type="button" disabled={!active && (disabled || starting)} onClick={active ? stop : start}
@@ -85,7 +89,7 @@ export default function WaybillCamera({ onScan, disabled = false }: { onScan: (v
             {active ? 'Stop camera' : starting ? 'Starting camera...' : 'Scan actual waybill with camera'}
         </button>
         <video ref={video} muted playsInline className={active ? 'mt-3 max-h-64 w-full rounded-lg bg-slate-900 object-contain' : 'hidden'} aria-label="Actual waybill camera" />
-        <p className="mt-2 text-xs text-slate-600">A camera scan fills the waybill field. Review it and submit the appropriate manifest action.</p>
+        <p className="mt-2 text-xs text-slate-600">{instruction} Point at one code at a time.</p>
         {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
     </div>;
 }

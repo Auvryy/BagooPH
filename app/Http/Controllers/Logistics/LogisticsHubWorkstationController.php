@@ -820,7 +820,7 @@ class LogisticsHubWorkstationController extends Controller
         abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may scan parcel custody.');
 
         $inputs = app(WaybillScanInputService::class);
-        $request->merge($inputs->normalize($request->only(['barcode', 'notes', 'action', 'expected_status'])));
+        $request->merge($inputs->normalize($request->only(['barcode', 'notes', 'action', 'expected_status']), allowTrackingUrl: true));
         $validated = $request->validate([
             'barcode' => $inputs->barcodeRules(),
             'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
@@ -873,7 +873,8 @@ class LogisticsHubWorkstationController extends Controller
         $routingEngine = app(LogisticsRoutingEngine::class);
         $prompt = $routingEngine->getDynamicScanPrompt($delivery, $hub);
 
-        if ($prompt['action'] === 'INSPECT_WAYBILL') {
+        if ($prompt['action'] === 'INSPECT_WAYBILL' && (($validated['mode'] ?? 'inspect') === 'confirm'
+            || ! app(HubParcelWorkstationService::class)->registry($hub)->whereKey($delivery->id)->exists())) {
             return $this->operationError(
                 $request,
                 'This parcel is not expected at the active facility for its current custody state.',
@@ -882,7 +883,7 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         if (($validated['mode'] ?? 'inspect') !== 'confirm') {
-            $requiresConfirmation = ! in_array($prompt['action'], ['AWAIT_BARANGAY_SORT', 'AWAIT_RETRY_REVIEW', 'AWAIT_SELLER_RECEIPT', 'AWAIT_RETURN_REVIEW', 'AWAIT_BUYER_PICKUP'], true);
+            $requiresConfirmation = ! in_array($prompt['action'], ['AWAIT_BARANGAY_SORT', 'AWAIT_RETRY_REVIEW', 'AWAIT_SELLER_RECEIPT', 'AWAIT_RETURN_REVIEW', 'AWAIT_BUYER_PICKUP', 'INSPECT_WAYBILL'], true);
 
             return $this->scanResponse($this->scanPayload(
                 delivery: $delivery,
@@ -986,11 +987,14 @@ class LogisticsHubWorkstationController extends Controller
         $base = request()->is('hub/*') ? '/hub' : '';
         $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
             ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
-        $guidance = app(HubParcelWorkstationService::class)->guidance($delivery, $hub, request()->user(), $riders, $base);
+        $workstation = app(HubParcelWorkstationService::class);
+        $guidance = $workstation->guidance($delivery, $hub, request()->user(), $riders, $base);
+        $registryUrl = $workstation->registry($hub)->whereKey($delivery->id)->exists()
+            ? $base.'/deliveries?hub_id='.$hub->id.'&search='.rawurlencode($delivery->tracking_number) : null;
         if (app(HandoverHoldService::class)->held($delivery)) {
             $prompt = ['action' => 'AWAIT_HANDOVER_RECOVERY', 'prompt' => 'Complete supervised handover recovery before an ordinary scan.', 'next_status' => $delivery->status, 'color' => 'amber'];
         }
-        if ($guidance['action'] === 'counter' && $guidance['href']) {
+        if (in_array($guidance['action'], ['counter', 'sort', 'assign'], true) && $guidance['href']) {
             $guidance['href'] .= '&search='.rawurlencode($delivery->tracking_number);
         }
         $custodyHub = $delivery->currentHub;
@@ -1014,6 +1018,7 @@ class LogisticsHubWorkstationController extends Controller
                 'delivery_type' => $delivery->delivery_type,
                 'destination_bin' => app(HubParcelWorkstationService::class)->recordedBin($delivery),
                 'guidance' => $guidance,
+                'registry_url' => $registryUrl,
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,

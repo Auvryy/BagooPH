@@ -157,3 +157,47 @@ After publishing and pulling the settings branch, run the same deployment and ve
 The existing secret-mail transport must be configured for actual OTP delivery. A log/array mailer cannot deliver codes to a person's inbox, and secret-mail checks reject unsafe delivery. Verify adding an address with the current password and emailed code, choosing it for contact, recovering through it, and retaining sign-in with the original address. Removing an additional address revokes its pending recovery credentials. No additional mail provider is required by this change.
 
 Check the saved profile photo in both settings and the header, direct shop contact/branding changes without lost approval, future-address edits, and checkout opening the purchases/tracking workspace. Local tests and a production build do not establish these deployed browser or mail results.
+
+## Waybill scanner update
+
+Publish and pull the reviewed scanner changes, then use the normal deployment
+and verification commands above to install their PHP code and rebuilt frontend.
+This update needs no new migration, reseeding or database reset. Keep existing
+HTTPS, session and facility permissions in place.
+
+Use an assigned hub handler for floor scans. The company administrator manages
+the network and manifests; that responsibility alone does not grant handler
+scans. The [demo account table](../GETTING_STARTED.md#verified-seed-accounts)
+identifies the origin, Mother Hub and destination handlers separately.
+
+Verify these cases on the deployed browser/device:
+
+1. After signing in, open `/hub/scan` directly, or `/scan` on the configured hub
+   host. Check the displayed facility. A preceding Overview visit is unnecessary.
+   A genuinely expired session has a Reload scanner action and may require login.
+2. Read a raw tracking number, either code on a newly printed waybill, and an
+   older QR containing the platform's tracking-page URL. New barcode and QR zones
+   are separated and both contain the actual parcel identifier. The separate
+   View tracking link remains available. Foreign URLs and joined codes fail
+   validation; two different visible parcel codes require a closer camera view.
+3. A lookup displays Waybill checked, the actual custodian, next actor and step.
+   Only a deliberate permitted confirmation records custody. Parcels still held
+   by the seller must first be collected and confirmed by their pickup rider.
+4. Confirm a physical origin receipt and follow Open manifests. Incoming
+   transport opens its actual manifest; receiving and closure remain separate.
+   At the destination, follow Open parcel sorting, then Assign rider from the
+   parcel registry. An assigned rider records departure using that rider's own
+   account. Counter collection and supervised recovery retain their dedicated
+   verification pages and evidence requirements.
+5. Use Check for updates to recheck a waiting parcel and Scan next parcel to
+   return to barcode entry. A failed lookup must remove the previous parcel's
+   confirmation. Changing facility stops the old camera and pending lookup.
+6. After a recorded handover, check the logistics queue and an open rider web
+   Trips page. Relevant queues refresh every 15 seconds while visible and online,
+   pausing during submitted actions. This is web queue freshness, not live GPS or
+   a change to the separate Flutter application.
+
+Camera use requires a secure browser context, permission and supported native
+barcode detection. Unsupported clients retain manual or handheld-scanner entry
+with visible feedback. Test actual print size, camera distance and device focus;
+automated component checks do not certify optical recognition on every device.

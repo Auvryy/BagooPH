@@ -83,6 +83,18 @@ test('scanner blockers suppress unsupported confirmation even when an earlier pr
     assert.match(html, /follow the guidance above/);
 });
 
+test('sorting, assignment and supervised recovery have usable next-step links after a scan', async () => {
+    for (const [action, label, href] of [['sort', 'Open parcel sorting', '/hub/deliveries?hub_id=2&search=BGO-SCANNER'],
+        ['assign', 'Assign rider', '/hub/deliveries?hub_id=2&search=BGO-SCANNER'], ['recovery', 'Open recovery review', '/handover-issues/5'],
+        ['manifest', 'Open manifests', '/hub/manifests/8?hub_id=2']]) {
+        const html = await render({ ...result, prompt: { ...result.prompt, action: 'INSPECT_WAYBILL', requires_confirmation: false },
+            delivery: { ...result.delivery, registry_url: '/hub/deliveries?hub_id=2&search=BGO-SCANNER', guidance: { ...guidance, action, href, next_step: label } } });
+        assert.ok(html.includes(`href="${href.replaceAll('&', '&amp;')}"`));
+        assert.match(html, /Check for updates/); assert.match(html, /Scan next parcel/);
+        assert.doesNotMatch(html, /Confirm custody action/);
+    }
+});
+
 test('staged scanner results preserve real bins and link to secure verification in the current portal', async () => {
     for (const basePath of ['/hub', '']) {
         const html = await render({ ...result, prompt: { ...result.prompt, action: 'AWAIT_BUYER_PICKUP', requires_confirmation: false },

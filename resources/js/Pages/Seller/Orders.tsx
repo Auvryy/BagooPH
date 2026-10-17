@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import WaybillCamera from '@/Components/WaybillCamera';
-import Barcode from '@/Components/Barcode';
+import WaybillCodes from '@/Components/WaybillCodes';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import OrderTrackingPanel, { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
@@ -735,31 +735,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </span>
                             </div>
 
-                            {/* Barcode & QR Code Section */}
-                            <div className="flex items-center justify-between gap-3 p-2 bg-white rounded-xl border border-slate-200">
-                                <div className="space-y-1 flex-1 min-w-0">
-                                    <div className="bg-white px-2 py-1 flex items-center justify-center rounded border border-slate-100 overflow-hidden">
-                                        <Barcode
-                                            value={orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
-                                            height={26}
-                                            width={1.2}
-                                            className="max-w-full h-6.5 object-contain"
-                                        />
-                                    </div>
-                                    <p className="text-[10px] font-sans text-slate-700 truncate font-semibold text-center">
-                                        {orderToAcceptAndPack.order?.delivery?.tracking_number || `BGO-TRK-${orderToAcceptAndPack.order?.order_number}`}
-                                    </p>
-                                </div>
-                                <div className="p-1 bg-white border border-slate-200 rounded-lg shrink-0">
-                                    <QRCodeSVG
-                                        value={typeof window !== 'undefined'
-                                            ? `${window.location.origin}/track/${orderToAcceptAndPack.order?.delivery?.tracking_number || orderToAcceptAndPack.order?.order_number}`
-                                            : `https://bagooph.shop/track/${orderToAcceptAndPack.order?.delivery?.tracking_number || orderToAcceptAndPack.order?.order_number}`}
-                                        size={54}
-                                        level="M"
-                                    />
-                                </div>
-                            </div>
+                            <WaybillCodes trackingNumber={orderToAcceptAndPack.order?.delivery?.tracking_number || orderToAcceptAndPack.order?.order_number || ''} compact />
 
                             {/* Origin & Destination */}
                             <div className="grid grid-cols-2 gap-3 border-t border-slate-300 pt-2 text-[10px]">
@@ -1081,34 +1057,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </div>
                             </div>
 
-                            {/* Barcode & Scannable QR Code Section */}
-                            <div className="py-2.5 border-b border-slate-300 flex items-center justify-between gap-4 bg-slate-50/50 p-2.5 rounded-xl print:bg-white print:border-black">
-                                <div className="space-y-1.5 flex-1 min-w-0">
-                                    <div className="bg-white p-1.5 flex items-center justify-center rounded-lg border border-slate-200 print:border-none print:p-0 overflow-hidden">
-                                        <Barcode
-                                            value={selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
-                                            height={38}
-                                            width={1.6}
-                                            className="max-w-full h-9 object-contain"
-                                        />
-                                    </div>
-                                    <p className="text-xs font-bold font-sans tracking-wider text-slate-900 truncate text-center">
-                                        {selectedOrderForWaybill.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForWaybill.order?.order_number}`}
-                                    </p>
-                                    <p className="text-[9px] text-slate-500 font-sans text-center">
-                                        Scan 1D barcode or QR code for courier pickup, sorting, and delivery
-                                    </p>
-                                </div>
-                                <div className="p-1 bg-white border border-slate-300 rounded-xl shrink-0 shadow-2xs print:border-black print:shadow-none">
-                                    <QRCodeSVG
-                                        value={typeof window !== 'undefined'
-                                            ? `${window.location.origin}/track/${selectedOrderForWaybill.order?.delivery?.tracking_number || selectedOrderForWaybill.order?.order_number}`
-                                            : `https://bagooph.shop/track/${selectedOrderForWaybill.order?.delivery?.tracking_number || selectedOrderForWaybill.order?.order_number}`}
-                                        size={72}
-                                        level="M"
-                                    />
-                                </div>
-                            </div>
+                            <WaybillCodes trackingNumber={selectedOrderForWaybill.order?.delivery?.tracking_number || selectedOrderForWaybill.order?.order_number || ''} />
 
                             {/* Origin & Destination */}
                             <div className="grid grid-cols-2 gap-3 border-b border-slate-300 pb-3 text-[11px]">
@@ -1184,22 +1133,16 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 Order #{selectedOrderForQr.order?.order_number}
                             </h3>
                             <p className="text-xs text-slate-500 font-sans">
-                                Tracking: {selectedOrderForQr.order?.delivery?.tracking_number || `BGO-TRK-${selectedOrderForQr.order?.order_number}`}
+                                Tracking: {selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number || 'Not available yet'}
                             </p>
                         </div>
 
                         {actionError && <p role="alert" className="text-xs text-rose-700">{actionError}</p>}
 
-                        {/* Large Scannable QR Code */}
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl inline-block mx-auto shadow-inner">
-                            <QRCodeSVG
-                                value={typeof window !== 'undefined'
-                                    ? `${window.location.origin}/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`
-                                    : `https://bagooph.shop/track/${selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number}`}
-                                size={180}
-                                level="M"
-                                includeMargin={true}
-                            />
+                        {/* Operational QR identifies the same parcel as its printed tracking barcode. */}
+                        <div className="p-4 bg-white border border-slate-300 rounded-lg inline-block mx-auto">
+                            <QRCodeSVG value={selectedOrderForQr.order?.delivery?.tracking_number || selectedOrderForQr.order?.order_number || ''}
+                                size={180} level="M" marginSize={4} />
                         </div>
 
                         <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
