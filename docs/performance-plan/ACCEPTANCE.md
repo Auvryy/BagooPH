@@ -1,6 +1,6 @@
-# PF01 Browsing Acceptance and Deployment Checks
+# Browsing and Portal Navigation Acceptance
 
-Use this guide after publishing and deploying a reviewed PF01 branch. Current
+Use this guide after publishing and deploying a reviewed PF01 or PF02 branch. Current
 local test results, implementation scope and ratings belong in
 [the roadmap](../CORE_FLOW_ROADMAP.md#october-16-2026-pf01-buyer-pagination-and-responsive-search).
 These manual checks supplement automated evidence; they are not a statement
@@ -8,7 +8,8 @@ that Azure or a device has already passed.
 
 ## Configuration
 
-`CATALOGUE_PREFETCH_ENABLED` controls the reviewed buyer catalogue preparation.
+`CATALOGUE_PREFETCH_ENABLED` controls the reviewed buyer catalogue preparation
+and PF02 buyer/seller page-code preparation.
 Its default is `true` in `config/catalogue.php`; `.env.example` includes the
 setting. Set it to `false` and apply the normal deployment/config-cache refresh
 to disable speculative data loading. The next ordinary response communicates
@@ -18,14 +19,15 @@ tabs need an ordinary request or reload to receive changed server configuration.
 Normal product links, pagination, search submission and server validation remain
 available with the flag disabled. The flag does not disable the existing Vite
 asset-prefetch feature or browser caching of static files. The one-request
-budget applies to speculative catalogue page data, not every asset/notification
-request in the application.
+budget applies to speculative catalogue page data. PF02 shares that coordinator
+with one reviewed page-code preparation at a time; an import can load dependent
+static chunks. This is not a limit on every asset/notification request.
 
-Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01 introduces
+Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01 and PF02 introduce
 no schema migration or catalogue reseeding requirement. Do not reset a database
 to check pagination; use enough existing eligible products or isolated fixtures.
 
-## Manual checks
+## Marketplace checks
 
 | Check | Expected result |
 |---|---|
@@ -54,3 +56,35 @@ checks visible and do not turn a local build, mocked transport test or SQLite
 result into a claim about production latency, mobile Flutter or PostgreSQL
 concurrency. The later [PF05 measurement batch](05-performance-and-release.md)
 defines comparable samples and the remaining role-wide acceptance.
+
+## Buyer and seller navigation
+
+PF02 prepares static page code for reviewed owned destinations. It keeps owned
+page responses out of the speculative data cache because those requests need
+current authorization, mutable records and, for some pages, sensitive settings
+or generated action references. The public catalogue keeps its PF01 policy.
+The [PF02 roadmap entry](../CORE_FLOW_ROADMAP.md#october-18-2026-pf02-buyer-and-seller-navigation)
+records the actual source audit, verification and scoped assessment.
+
+| Check | Expected result |
+|---|---|
+| Buyer intent | From the buyer header/profile menu, deliberate hover or keyboard focus can prepare Profile or Saved products code. A quick pass cancels the delay; touch does not block scrolling. No owned page GET occurs until activation. |
+| Seller intent | Dashboard links and the seller sidebar can prepare Products, Orders, Dashboard or the actual storefront-preview component. Root `/seller/...` and the existing seller-host paths work; root `/products` remains the buyer catalogue. |
+| Private activation | Opening an owned destination sends a fresh authorized request even when its code is ready. The fresh request starts without waiting for a speculative import. It does not display a prepared private response or use an old approval/stock/order result. |
+| Profile sections | Switching to Account, Addresses, Wallet, Vouchers or Orders requests that section's coherent props and current account presentation. A failed switch leaves the previous section selected with visible feedback. Repeated clicks while pending do not create duplicate requests. |
+| Order filters | The selected status, result count, action flags and pagination agree. Address, account and voucher work is skipped when not requested. Selecting another stage resets its page; Refresh retains the selected stage and page. |
+| Edits and saved products | After changing contact/address details, saving/removing a product, updating stock or fulfilling an order, a subsequent open shows saved values from the server. Other tabs still require current server validation; no private snapshot can supply permission. |
+| Seller lists | Search, category, status, stock and page remain attached to the selected URL. Fresh list updates include current shop/category context. Moderation feedback shows the latest decision without exposing its private history. |
+| Last-page recovery | Removing the final saved item or changing a list can shorten pagination. The server selects the remaining last page, and the client corrects only its page parameter while retaining filters and scroll. |
+| Error recovery | A failed reviewed navigation has a visible Try again destination; failed section/filter reads retain feedback and input. Messages, finance and other unreviewed destinations keep their existing request/error behavior. |
+| No unintended activity | Hover/focus never reads messages or notifications, issues pickup codes, fetches private evidence, records ad events or submits actions. Private data prefetch requests, including unmarked requests with `Purpose: prefetch`, are rejected before controller work. |
+| Shared budget | Catalogue data and reviewed page-code preparation share one active candidate. Hidden/offline/Save-Data/very slow clients and foreground work skip new preparation. Existing session, context, mutation, return-to-tab and cross-tab invalidation still apply. |
+| Disable and presentation | After an ordinary response receives the disabled setting, no new policy-driven preparation starts. Fresh links/forms still work. Buyer and seller layouts, typography, colors, navigation grouping and responsive rules retain their own design. |
+
+Static imports may already be present in the browser's module cache; they do not
+contain owned records. Cancelling a link's intent prevents a scheduled import,
+but an import already started cannot be aborted. It retains the preparation slot
+until it settles and cannot restore invalidated context metadata. Neither a
+local build nor a controlled transport test measures real Azure click latency.
+Run explicitly authorized browser/device checks separately. PF03-PF05 retain
+their own implementation and measurement gates.

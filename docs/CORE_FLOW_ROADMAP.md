@@ -5621,3 +5621,87 @@ Local code commits:
 
 The documentation commit hash and separate local PR description are included in
 the branch handoff.
+
+## October 18, 2026: PF02 buyer and seller navigation
+
+Implemented the selected [PF02 plan](performance-plan/02-buyer-and-seller-navigation.md)
+on `perf/buyer-seller-navigation`, based on merged `main` at `9dbf2ce`. This
+extends likely-page preparation to buyer and seller navigation and reduces
+unrequested private-page work while preserving each portal's design.
+
+### Audited destinations and freshness
+
+| Destination/source | Review result | Implemented preparation and activation |
+|---|---|---|
+| Buyer public home/search/product handlers | PF01 already reviews guest/buyer page data, including context-dependent Bag/offer props. | Existing bounded data preparation stays limited to those handlers. Header/footer discovery and department links reuse it, retaining current search, filters and a reset page. |
+| `BuyerProfileController::index`, `OrderHistoryController::index` | Responses include personal records, account correction/email settings, mutable order flags and offers. | Profile and purchase-history links prepare their actual Profile or restricted-history code only. Opening or switching sections requests current authorization, identity and the selected section before showing its records. |
+| `SavedProductController::index`, `SavedProductService::paginate` | Eligibility and buyer-owned entries, including genuinely unavailable products, must be current. | Prepare Saved products code. Actual list opens/paging use fresh owned responses; normal save/remove mutations invalidate prepared context through the existing Inertia events. |
+| Seller `Products`, `Orders`, `Dashboard` handlers | Owned products/moderation, operational flags, current metrics and generated return references require current reads. `HasSellerShop`/`ShopEligibilityService` also validate the sole current shop and discard an obsolete shop-picker session. | Sidebar/dashboard intent prepares only the reviewed component code. Root and seller-host requests remain fresh and retain current ownership/approval rules. Product filter requests return a coherent list/filter/shop/category/auth set. |
+| `SellerDashboardController::previewStorefront` | Preview is an owned, currently authorized route that renders `Marketplace/ShopDetail`, not a separate Seller preview component. | Prepare the real component without requesting shop/product data. The actual preview still runs its current shop guard. |
+| Bag, checkout, messages, notices, evidence, codes and finance | Mutable authority, secrets or display/acknowledgement side effects exclude speculative page data. | Remain outside the private preparation allowlist. Unreviewed destinations retain their existing request/error handling. |
+
+Owned page data is not cached speculatively in this delivery. The shared policy
+permits code/reference preparation when a fresh authority check is required;
+preparing a private response and then fetching it again would spend a request
+without avoiding the required read. Code preparation uses the existing resolved
+page modules and coordinator, not a new endpoint, external cache or service.
+
+### Before and after
+
+| Area | Before | Implemented result |
+|---|---|---|
+| Buyer/seller navigation intent | Owned navigation started page-code loading only after activation. | Reviewed hover/focus waits 150ms; touch stays immediate. One code candidate shares the catalogue preparation budget. A private activation starts its fresh request without waiting for the speculative import. |
+| Profile sections | Switching tabs changed client history and reused already-loaded records. Order partial responses still eagerly built unrelated address, account and voucher data. | Section switches wait for a fresh coherent response. Lazy prop closures skip unrequested work; order counts, account settings and offers share request-local results when requested together. Pending guards and visible feedback preserve recovery. |
+| Seller moderation feedback | Product lists queried the latest moderation decision separately for each row. | An eager, per-product-limited query loads the latest decision for the page. An isolated six-product check uses one moderation lookup and keeps the private relation out of serialized products. |
+| Owned list paging | Seller inventory and saved-product URLs included a server origin; a shortened last page could retain an obsolete page URL. | Inventory, saved products and buyer/seller order pagination use current-origin paths. A small shared hook reconciles a server-clamped page with the URL while keeping other selections. |
+| Speculation boundaries | Only catalogue-marked prefetches entered the explicit server gate. | Any detected prefetch must be a permitted marked catalogue read; unmarked/private/side-effecting requests reject before controller work and retain flash feedback. |
+| Failures and rollback | Private links used ordinary navigation without the catalogue retry target; profile tabs could not show a fresh-read failure. | Reviewed private navigation has a retry destination, and sections/filters retain errors and inputs. The existing configuration switch also stops PF02 preparation; ordinary fresh navigation continues. |
+
+Preparation metadata retains the existing short lifetime, entry cap, account/
+role/hub/asset context, failure cooldown and mutation/tab/session invalidation.
+No private response store, localStorage record cache or background private page
+GET is introduced. Started module imports cannot be aborted; their preparation
+slot stays occupied until settlement, and invalidated generations are discarded.
+Dependent static chunks remain distinct from the page-data request budget.
+
+### Verification and assessment
+
+- Affected buyer, seller, web-session, notification and advertisement backend
+  regression: **963 tests / 14,539 assertions**, passing with
+  SQLite `:memory:` and task-local storage/config inside Docker. No development
+  or production PostgreSQL data was read, reset or changed by tests. The updated
+  **18-case focused selection / 202 assertions** also passed, including retained
+  feedback after repeated unmarked/private speculation.
+- Full frontend suite: **391 tests passed**, including actual link intent,
+  duplicate/modified/foreign/download clicks, shared code/data budgets, stale
+  imports, disabled/hidden/offline/slow clients, fresh private activation,
+  failure targets, profile filters and last-page/history reconciliation.
+- TypeScript and the Vite production build passed. Changed PHP style, whitespace,
+  local documentation links and generated asset references were checked.
+- New backend cases verify smaller order-only responses with no unrelated
+  address/email/voucher queries, fresh owned addresses/stock/saved entries,
+  current account restrictions, wrong-shop denial, root/seller-host behavior,
+  rejected private speculation and latest moderation feedback in one query.
+
+**Scoped buyer/seller navigation assessment: 6/10 before -> 8/10 after.**
+Reviewed code can start earlier, unnecessary partial-read work is avoided and
+mutable/private content is fresh on activation. This is a local correctness and
+request-handling assessment, not a measured Azure latency reduction or an
+increase in overall buyer, seller, security or project readiness. Profile tab
+switches now make a deliberate section read instead of promising instant access
+to an old snapshot. First visits still load their normal full page; code
+preparation does not remove database, image or render time.
+
+No schema, seed, dependency, Flutter or native API change is included. Use the
+normal pull/deploy/verify workflow without a database reset. Browser/device
+visuals, actual production timing and PostgreSQL simultaneous requests were not
+run; [the acceptance guide](performance-plan/ACCEPTANCE.md#buyer-and-seller-navigation)
+retains those release checks. PF03-PF05 remain separate work.
+
+Local implementation commits:
+
+- `1657241` — `perf(buyer): prepare navigation and load current profile sections`.
+- `d1b1733` — `perf(seller): prepare workspaces and streamline product list reads`.
+
+The documentation commit's hash is reported in the handoff. The combined PR
+title/body remains a local draft; no agent push, merge or deployment was made.
